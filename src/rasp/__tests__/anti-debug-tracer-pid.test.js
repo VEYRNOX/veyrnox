@@ -536,12 +536,9 @@ describe('Item 6 — iOS PT_DENY_ATTACH at pre-bridge time', () => {
 });
 
 // ── Item 7 — iOS App Attest entitlement ──────────────────────────────────────
-// AppAttestPlugin.m already contains the DCAppAttestService logic, but the
-// com.apple.developer.devicecheck.appattest-environment entitlement was missing.
-// Without it, DCAppAttestService.isSupported returns NO on every device and the
-// plugin always fails closed — the channel is unreachable. These pins verify
-// the entitlements file exists and is wired into the Xcode build settings so
-// a provisioned build can actually exercise the attest API.
+// App Attest needs different entitlement environments for development and release
+// builds. These pins ensure Debug remains usable for development testing while every
+// Release/TestFlight archive requests the production App Attest environment.
 describe('Item 7 — iOS App Attest entitlement', () => {
   it('ios/App/App/App.entitlements file exists', () => {
     expect(existsSync(entitlementsPath)).toBe(true);
@@ -553,20 +550,25 @@ describe('Item 7 — iOS App Attest entitlement', () => {
     expect(content).toContain('com.apple.developer.devicecheck.appattest-environment');
   });
 
-  it('App.entitlements sets environment to development or production', () => {
+  it('App.entitlements receives its environment from the build configuration', () => {
     expect(existsSync(entitlementsPath)).toBe(true);
     const content = readFileSync(entitlementsPath, 'utf8');
-    const hasDev  = content.includes('<string>development</string>');
-    const hasProd = content.includes('<string>production</string>');
-    expect(hasDev || hasProd).toBe(true);
+    expect(content).toContain('<string>$(APP_ATTEST_ENVIRONMENT)</string>');
   });
 
-  it('project.pbxproj references CODE_SIGN_ENTITLEMENTS for both Debug and Release', () => {
-    // Both build configurations must carry the entitlements path so signing
-    // picks it up in both debug device builds and App Store release builds.
-    const matches = pbxproj.match(/CODE_SIGN_ENTITLEMENTS\s*=\s*App\/App\.entitlements/g);
-    expect(matches).not.toBeNull();
-    expect(matches.length).toBeGreaterThanOrEqual(2);
+  it('uses development App Attest for Debug and production App Attest for Release', () => {
+    const debugBlock = pbxproj.slice(
+      pbxproj.indexOf('504EC3171FED79650016851F /* Debug */'),
+      pbxproj.indexOf('504EC3181FED79650016851F /* Release */'),
+    );
+    const releaseBlock = pbxproj.slice(
+      pbxproj.indexOf('504EC3181FED79650016851F /* Release */'),
+      pbxproj.indexOf('5C1C6CF5FD917A06A8951B24 /* Debug */'),
+    );
+    expect(debugBlock).toContain('APP_ATTEST_ENVIRONMENT = development;');
+    expect(releaseBlock).toContain('APP_ATTEST_ENVIRONMENT = production;');
+    expect(debugBlock).toContain('CODE_SIGN_ENTITLEMENTS = App/App.entitlements;');
+    expect(releaseBlock).toContain('CODE_SIGN_ENTITLEMENTS = App/App.entitlements;');
   });
 
   it('AppAttestPlugin.m imports DeviceCheck framework', () => {

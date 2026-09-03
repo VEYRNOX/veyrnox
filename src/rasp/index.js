@@ -39,10 +39,10 @@
 //       pinset with no issuer-string fallback, but the pinset lacks real-token
 //       device evidence and pin/chain failures currently map to WARN. Phase 4/5
 //       work must establish the real-token behavior before tightening policy.
-//     • iOS App Attest + DeviceCheck (issue #2277): a development entitlement
-//       exists in source, but release provisioning, an independent DeviceCheck
-//       signal, and real-device exercise remain outstanding. The iOS leg must
-//       continue to report unavailable until that evidence exists.
+//     • iOS App Attest + DeviceCheck (issue #2277): Debug selects the development
+//       entitlement and Release selects production, but release provisioning, an
+//       independent DeviceCheck signal, and real-device exercise remain outstanding.
+//       The iOS leg must continue to report unavailable until that evidence exists.
 //   The wiring into SendCrypto.jsx / useRaspArtifact is a SEPARATE follow-on PR;
 //   this module + the native plugin layer are what land here. detect()'s on-device
 //   probes still fail closed to INTEGRITY_UNAVAILABLE with no native capability, and
