@@ -184,6 +184,38 @@ describe('buy/webhook', () => {
       expect(logLine).toContain('order=warn-1');
     });
 
+    // Daily security diff 2026-09-03: the warn line used to carry the FULL
+    // computed HMAC. `verify.expected` is HMAC-SHA256(rawBody, SECRET) over a
+    // body an unauthenticated caller controls, and logSafe's 64-char cap does
+    // not truncate a 64-char SHA-256 hex digest — so the log was a signing
+    // oracle whose output stays valid after the planned flip to `strict`.
+    // Prefixes only. This test fails if the full digest returns.
+    it('warn log never contains the full computed HMAC (no signing oracle)', async () => {
+      const rawBody = JSON.stringify({ eventID: 'ORDER_COMPLETED', webhookData: { id: 'oracle' } });
+      // The attacker-chosen body's real signature — what must NOT reach the log.
+      const realSig = await computeTransakSignature(rawBody, SECRET);
+      const request = await signedReq('POST', null, {
+        rawBody,
+        signature: '11'.repeat(32),
+      });
+      const res = await onRequestPost({ request, env: ENV_WARN });
+      expect(res.status).toBe(200);
+
+      const warnLine = console.warn.mock.calls[0][0];
+      // Sanity: this is the warn path, and the fixture signature really differs.
+      expect(warnLine).toContain('verify_warn');
+      expect(realSig).toHaveLength(64);
+      expect(realSig).not.toBe('11'.repeat(32));
+
+      // The oracle assertion: the full digest must not appear anywhere.
+      expect(warnLine).not.toContain(realSig);
+      // A prefix short enough to be useless for forgery is still present, so
+      // an operator can compare the two sides.
+      expect(warnLine).toContain(`computed=${realSig.slice(0, 8)}`);
+      // And no long run of the digest leaks via any other framing.
+      expect(warnLine).not.toContain(realSig.slice(0, 24));
+    });
+
     it('valid signature is silent (no warn) and still 200', async () => {
       const request = await signedReq('POST', {
         eventID: 'ORDER_COMPLETED',
