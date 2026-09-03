@@ -165,6 +165,24 @@ function overloads.
 - `src/api/trackEvent.js`
 - `src/api/referralApi.js`
 
+**Cloudflare Pages Functions — the server BETWEEN the client and the database.**
+Added 2026-09-03 after `functions/api/buy/webhook.js` produced a finding while
+matching no pattern at all. The list above covers the client caller
+(`src/api/**`) and the database (`sql/**`, `supabase/**`) and skipped the layer
+in the middle for months. This is live, internet-facing, and unauthenticated at
+the edge; it holds `TRANSAK_WEBHOOK_SECRET`, the CORS policy for every `/api/*`
+route, and — once `SUPABASE_SERVICE_ROLE_KEY` is set — a boundary that
+`CLAUDE.md` calls "the ONLY boundary" in front of a key that bypasses RLS.
+- `functions/**` — all of it
+- `functions/api/_middleware.js` — CORS for every API route
+- `functions/api/buy/webhook.js` — unauthenticated, holds an HMAC secret
+- `functions/api/rpc/[fn].js` — the `ALLOWED_RPCS` service-role boundary
+- `functions/api/edge/[fn].js` — the `ALLOWED_FUNCTIONS` edge proxy
+- What to look for: a new route reachable without auth; a widened allowlist; a
+  secret or computed signature reaching `console.*` (a full HMAC over a
+  caller-controlled body is a signing oracle — the 2026-09-03 finding); an
+  `Access-Control-Allow-Origin` that reflects or defaults instead of matching.
+
 **Telemetry / consent / deniability (I2 / I3)**
 - `src/lib/analytics.js`
 - `src/lib/consent.js`
@@ -241,6 +259,24 @@ Supabase.
 **Tests are not automatically "non-security."** A deleted or weakened test for a
 security control is a removed control — diff test files that cover anything
 above, and say so if an assertion disappeared.
+- `e2e/**` — added 2026-09-03. This was prose-only for months with no path
+  entry, so an e2e file was read only if the scanner happened to notice it. On
+  2026-09-03 **seventeen** security assertions changed state in one window
+  (`e2e/post-audit-validation.spec.js`: `skip` → `fixme`, then deleted and
+  replaced with source-level checks) across two separate PRs.
+- `src/**/__tests__/**` — the same argument; a pin is a control.
+- **Treat a change in skip/fixme/todo COUNT as a coverage delta and report it**,
+  the same way you would report a deleted assertion. `git diff` the counts:
+  ```
+  git show <old>:<file> | grep -cE '(test|it|describe)\.(skip|fixme|todo)\('
+  git show <new>:<file> | grep -cE '(test|it|describe)\.(skip|fixme|todo)\('
+  ```
+- **A rewritten test can lose its teeth while the count improves.** When
+  assertions are replaced rather than removed, ask what class of evidence the
+  new ones provide: a test that reads a source file and asserts on its CONTENTS
+  is a regression pin, not behavioural validation of a running app. Both are
+  worth having; only one validates a control. If a report or script then labels
+  the weaker class as "covered" or "PASS", that is a finding (2026-09-03, S-6).
 
 **Docs are not automatically "non-security" either.** A doc that RECORDS what a
 security change does is part of that change. On 2026-09-02 the scan filed a
@@ -267,6 +303,20 @@ SQL RPCs, an unauthenticated edge function, and telemetry egress.
 came from unmatched files — that day both regressions did. Added: the Security
 Advisor egress sink and its publisher set, outbound calls outside `src/api/**`,
 and the credential-floor / coercion-state pages.
+
+*Widened again 2026-09-03*, after a **fifth consecutive** run whose findings came
+from unmatched files — again, both of them did. Added `functions/**` (the
+Cloudflare Pages server layer) and `e2e/**` + `src/**/__tests__/**`.
+
+**This was applied by a human-driven session, and that is the point.** The
+maintenance rule above tells a run to record the pattern to add, because the
+task may only write its own report — so four consecutive runs correctly noted an
+omission none of them could fix. The escalation worked exactly once someone read
+the note and edited this file. If a sixth run produces findings from unmatched
+files, do not just add another pattern: the failure is that a list organised by
+PATH cannot keep up with a codebase organised by BEHAVIOUR, and the fix is to
+lead triage with the behavioural question below rather than to keep extending
+the index.
 
 **Why the list kept lagging, structurally.** It was organised by MODULE ROLE
 (`wallet-core`, `rasp`, `sign-gate`) and by NAMED FILE. Two whole categories cut
