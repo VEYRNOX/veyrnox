@@ -191,6 +191,50 @@ its own.
   is a major *downgrade* and still declares `@ethersproject/*` v5, so it never cleared
   this advisory. Evaluated and rejected 2026-07-19.
 
+### `stream-json` — max severity: moderate — accepted 2026-09-03
+
+- **Advisory:** GHSA-528h-pc64-c93x — `pick`/`ignore`/`filter`/`replace` filters are
+  O(depth²) on nested input, so small crafted JSON blocks the event loop for seconds to
+  minutes (DoS). Vulnerable `<= 3.4.0`; the tree carries `1.9.1`.
+- **Chain:** `@solana/web3.js@1.98.4` → `jayson@4.3.0` → `stream-json@1.9.1`. A production
+  dependency, not dev.
+- **`jayson` is not separately vulnerable.** It has no advisory of its own and appears in
+  `npm audit` only as `stream-json`'s `effects` entry. Fixing `stream-json` clears both;
+  there is nothing to do to `jayson` itself.
+- **Why accepted — no reachable fix, and the obvious one is actively harmful.**
+  1. **No backport.** `1.9.1` is the last release on the 1.x line and the fix landed only
+     in `3.5.0`. `jayson` declares `stream-json: ^1.9.1`, so no range resolution reaches a
+     patched version. This is NOT the `brace-expansion` shape, where the fix was
+     backported into the old lines and ordinary resolution picked it up.
+  2. **An `overrides` entry to `^3.6.0` BREAKS `jayson`. Measured 2026-09-03, do not
+     re-derive.** `stream-json` 3.x removed the `streamers/` tree entirely — there is no
+     `StreamValues` file at any path in `3.6.0` — while
+     `jayson/lib/utils.js:3` still does `require('stream-json/streamers/StreamValues')`.
+     Under the override, `require('jayson')` throws
+     `Cannot find module .../stream-json/src/streamers/StreamValues`.
+     **`npm run build` still exits 0 and `npm audit` gets CLEANER (4 moderate → 2), so a
+     green build and a quiet audit are NOT evidence this override is safe.** Same trap as
+     the retired `brace-expansion` entry, which is worth re-reading before touching this.
+  3. **The vulnerable code is not reachable in any build of this app.** Every
+     `@solana/web3.js` entry point — `index.browser.cjs.js`, `index.browser.esm.js`,
+     `index.cjs.js`, `index.esm.js`, `index.native.js` — imports
+     `jayson/lib/client/browser`. That module's complete require closure is two files
+     (`client/browser/index.js`, `generateRequest.js`) plus `uuid`; it never reaches
+     `lib/utils.js`, the only file in `jayson` that touches `stream-json`. Verified
+     empirically as well as by reading: a production build was grepped across all 544
+     `dist/assets/*.js` chunks for `stream-json`, `streamValues`, `makeFilter` and
+     `jsonFilter` — **zero matches for all four**.
+- **Accounts for** 2 moderate findings as of 2026-09-03 (`stream-json` as the advisory
+  root, `jayson` as its dependent).
+- **Revisit trigger:** `jayson` widens its `stream-json` range to admit `>= 3.5.0` (then
+  the fix is a plain lockfile update, no override); OR `stream-json` backports the fix to
+  a 1.x release; OR `@solana/web3.js` drops `jayson`; OR any code in `src/` or any new
+  dependency imports `jayson`'s main entry rather than `jayson/lib/client/browser`, which
+  would both make the advisory reachable AND be broken by the override — check the bundle
+  grep above before assuming either still holds.
+- **Not tracked — no watcher.** Nobody is monitoring this until someone looks. Do not
+  report it as monitored, and do not invent a watcher name for it.
+
 ## Retired residuals
 
 Entries that were accepted, then genuinely cleared. Kept as a record so a future reader
