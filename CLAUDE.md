@@ -686,8 +686,11 @@ before concluding anything about what gates a merge —
   **Honest cost, stated plainly:** a PR can now merge having passed checks against an
   older base, so a semantic (non-textual) conflict can land untested. `verify` and
   `unit-tests` still gate every merge, and the classic layer's other settings are
-  unchanged. Prior protection JSON backed up under
-  `%TEMP%\veyrnox-protection-backup\main-protection-before.json`; restore with
+  unchanged. **The prior protection JSON was backed up to
+  `%TEMP%\veyrnox-protection-backup\main-protection-before.json` on the Windows machine
+  and is GONE** — that path does not exist here, and a temp dir does not survive a reboot
+  or a machine change. `docs/branch-protection-config.md` carries the real restore
+  payloads and opens by making exactly this point; use it, not this line. Restore with
   `gh api --method PATCH repos/VEYRNOX/veyrnox/branches/main/protection/required_status_checks`
   sending `strict` AND the `checks` array (send the array — `strict` alone risks dropping
   the required-check list).
@@ -1205,9 +1208,13 @@ verification: clear demo (`/?demo=0`), confirm fresh real wallet shows 0.0 on-ch
 
 ## Dev send ungate (testnet verification)
 
-Set `VITE_DEV_UNGATE_SEND=1` via `.env.local` (git-ignored) — NOT an inline shell var
-(fails on Windows/PowerShell). Flips gate decision only, never asset status.
-Dead-code-eliminated from production builds.
+Set `VITE_DEV_UNGATE_SEND=1` via `.env.local` (git-ignored) — still the convention here,
+though the reason changed: this used to say "NOT an inline shell var (fails on
+Windows/PowerShell)", and on macOS zsh an inline `FOO=bar cmd` does work at the shell
+level (verified 2026-09-03). Whether an inline `VITE_*` var reaches `import.meta.env` in
+this project's build is UNTESTED, so keep using `.env.local` — it also persists across
+sessions instead of being lost with the shell. Flips gate decision only, never asset
+status. Dead-code-eliminated from production builds.
 
 ## Wallet model
 
@@ -1222,18 +1229,26 @@ m/44'/60' address; BTC (m/84'/UTXO/PSBT) and SOL (ed25519/SLIP-0010) have their 
 
 ## Environment
 
-- Windows (Git Bash / MINGW64). iOS native build needs a Mac.
+- **macOS (zsh). Repo at `/Users/aljobson/Documents/GitHub/veyrnox`.** iOS native builds
+  run HERE — see the note below.
 - Use `.env.local` for env flags, not inline shell vars.
-- **Never use PowerShell here-strings in a Bash/Git Bash call.** `@'...'@` is PowerShell
-  syntax; in bash the `@` characters are literal, so
-  `git commit -m @'<newline>subject...'@` produces a commit whose subject is a bare `@`
-  with the real subject demoted to the body and a trailing `@` on the last line. Use a
-  heredoc instead — `git commit -F - <<'EOF' ... EOF` — quoting the delimiter so `$` and
-  backticks stay literal. Observed **twice on 2026-07-28** in two independent sessions
-  (see `git reflog`: `commit: @` at 11:43, then two amends to fix it), so this is a
-  recurring trap, not a one-off. Both shells are available here and each needs its own
-  syntax; check which tool you are in before writing a multi-line string. Amend before
-  pushing — a `@` subject in the history is permanent once it lands.
+- **This was a Windows / Git-Bash / MINGW64 machine until 2026-09-03**, and that shows up
+  in more places than a path. If you find `C:\Users\aljob\Downloads\Veyrnox`, `$TEMP`,
+  `%TEMP%`, `$env:TEMP`, `MSYS_NO_PATHCONV`, or a ` ```powershell ` block anywhere in this
+  repo, it is drift, not a live instruction — fix it rather than working around it.
+  A stale `cd` target does not announce itself: the task reports whatever it managed to do.
+- **`iOS native build needs a Mac` no longer gates anything.** That line sat here while
+  iOS archives, exports and TestFlight uploads were being produced on this machine
+  (1.0.1 build 47 uploaded 2026-09-02). Read it as satisfied, not as a blocker.
+- **Use a heredoc for multi-line commit messages** — `git commit -F - <<'EOF' ... EOF`,
+  quoting the delimiter so `$` and backticks stay literal.
+  *Windows-era history, kept because the failure is permanent once pushed:* PowerShell
+  here-string syntax (`@'...'@`) was pasted into a Bash call **twice on 2026-07-28** in two
+  independent sessions (see `git reflog`: `commit: @` at 11:43, then two amends). In bash
+  the `@` characters are literal, so the commit subject became a bare `@` with the real
+  subject demoted to the body. PowerShell is not present on this machine, so that exact
+  paste cannot recur — but the general rule stands: check which shell you are in before
+  writing a multi-line string, and amend before pushing.
 - **`npm ci` / `npm install` work plainly again (2026-07-26).** `--legacy-peer-deps` is no
   longer needed and CI no longer passes it (#1372 bumped `@vitejs/plugin-react` to `^5.2.0`
   so its peer range admits `vite@8`; #1376 dropped the flag from the workflows). Two traps
@@ -1339,7 +1354,7 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
 
 ## The primary checkout is SHARED — never work in it
 
-`C:\Users\aljob\Downloads\Veyrnox` is used concurrently by many sessions: scheduled tasks
+`/Users/aljobson/Documents/GitHub/veyrnox` is used concurrently by many sessions: scheduled tasks
 (daily security diff, branch review, weekly audit, dependency watchers) and any number of
 interactive ones. **10+ worktrees are typically checked out at once.** Treat the primary
 checkout as read-only shared state.
@@ -1354,7 +1369,7 @@ session at once, and an uncommitted edit there can be swept into an unrelated PR
 git fetch origin main
 git worktree prune
 git branch --no-track <branch> origin/main   # --no-track is REQUIRED, see below
-git worktree add "$TEMP/<name>" <branch>
+git worktree add "${TMPDIR:-/tmp}/<name>" <branch>
 ```
 
 - **`--no-track` is not optional.** Without it git sets the upstream to `origin/main`, and
@@ -1376,10 +1391,12 @@ results as `main`. Read from the ref, not the tree: `git show origin/main:<path>
   session mid-flight. It could not be force-pushed (that would have destroyed work seconds
   old), so the branch was abandoned and reopened as #1427.
 
-**Windows/Git-Bash trap:** MSYS rewrites the `:` in `git show origin/main:path`, so the
-command fails and prints nothing — which looks exactly like "no matches found" and will
-have you report a false all-clear. Export `MSYS_NO_PATHCONV=1` first, and sanity-check with
-`git cat-file -s origin/main:<path>` that you are reading a non-zero file.
+**Always sanity-check a ref read** with `git cat-file -s origin/main:<path>` before
+trusting it — every failure mode of `git show <ref>:<path>` is silent, and an empty result
+looks exactly like "no matches found", which will have you report a false all-clear.
+*Windows-era detail, retired 2026-09-03:* on Git Bash, MSYS rewrote the `:` and swallowed
+the command, which is why `MSYS_NO_PATHCONV=1` used to be required. That prefix is a no-op
+on macOS; the byte check never was, and is what actually catches this.
 
 ## Multi-agent working pattern
 
@@ -1416,3 +1433,16 @@ Tie-break: destructive → Router; scope unknown → Spawner; else → Parallel.
 - `docs/hardware-kek-phase-plan.md` — KEK rollout plan
 - `docs/audit-2026-07-01-kek-internal.md` — KEK audit findings
 - `docs/audit-triage/internal-audit-2026-06-17.md` — mainnet gate audit
+
+**Scheduled-task runbooks live in `.claude/scheduled-tasks/<task>/SKILL.md`, and that is
+the copy that RUNS** — the file at `~/.claude/scheduled-tasks/<task>/SKILL.md` is a short
+loader that resolves that path from `origin/main`. There is no second copy: a review
+mirror at `docs/scheduled-tasks/` was **deleted 2026-09-03** (PR #2295).
+
+**Read that deletion as a warning, not housekeeping.** The mirror had drifted, and the
+drift ran the wrong way — PR #1420 added the dependency-audit task's MANDATORY
+accepted-residuals check (Steps 1b/1c) to the `docs/` copy ONLY. The live runbook never
+had it, so the weekly task ran with no residuals awareness from 2026-07-28 until #2295
+ported the steps across, while the mirror's README confidently described behaviour the
+task did not have. A second copy of an operational document does not stay a copy, and
+the stale one is the one that reads as authoritative. Do not reintroduce one.
