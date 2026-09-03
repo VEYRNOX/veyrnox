@@ -49,6 +49,7 @@ import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getBalanceSats } from "@/wallet-core/btc/provider.js";
 import { getBalanceSol } from "@/wallet-core/sol/provider.js";
 import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
+import { assetDisplayLabel, assetDisplaySymbol } from "@/lib/assetLabel";
 import { isDevSendUngated } from "@/lib/devSendOverride";
 import { signAndBroadcastBtc, estimateBtcSend, broadcastBtcTx } from "@/wallet-core/btc/send";
 import { describeBtcPlan } from "@/wallet-core/btc/simulate";
@@ -1941,20 +1942,20 @@ export default function SendCrypto() {
           <div className="flex items-center gap-3 pb-3 border-b border-border">
             <CoinLogo symbol={assetSymbol} size={36} />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">{getAsset(assetSymbol)?.name || assetSymbol}</p>
+              <p className="text-sm font-semibold">{assetDisplayLabel(assetSymbol)}</p>
               <p className="text-xs text-muted-foreground">{selectedWalletName || tw("send.wallet_fallback")}</p>
             </div>
             <div className="text-end shrink-0">
               {demoActive ? (
                 <>
-                  <p className="text-sm font-semibold mono-value">{demoBalance ?? "—"} {assetSymbol}</p>
+                  <p className="text-sm font-semibold mono-value">{demoBalance ?? "—"} {assetDisplaySymbol(assetSymbol)}</p>
                   {sendUsdRate && demoBalance != null && (
                     <p className="text-xs text-muted-foreground">${(demoBalance * sendUsdRate).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                   )}
                 </>
               ) : liveBalance != null ? (
                 <>
-                  <p className="text-sm font-semibold mono-value">{liveBalance} {assetSymbol}</p>
+                  <p className="text-sm font-semibold mono-value">{liveBalance} {assetDisplaySymbol(assetSymbol)}</p>
                   {sendUsdRate && (
                     <p className="text-xs text-muted-foreground">${(parseFloat(liveBalance) * sendUsdRate).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                   )}
@@ -1982,7 +1983,7 @@ export default function SendCrypto() {
             )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">
-                {assetSymbol ? `${getAsset(assetSymbol)?.name || assetSymbol} — ${assetSymbol}` : tw("send.asset_picker.placeholder")}
+                {assetSymbol ? assetDisplayLabel(assetSymbol) : tw("send.asset_picker.placeholder")}
               </p>
               <p className="text-xs text-muted-foreground truncate">
                 {selectedWalletName || tw("send.wallet_picker.placeholder")}

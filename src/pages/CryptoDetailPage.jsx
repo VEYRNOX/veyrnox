@@ -26,6 +26,7 @@ import {
 import { evaluateSuspiciousToken } from "@/lib/suspiciousAssets";
 import { getAsset, getAssetById, canSend } from "@/wallet-core/assets.js";
 import { formatAssetId } from "@/wallet-core/assetId.js";
+import { assetDisplaySymbol, assetChainLabel } from "@/lib/assetLabel";
 
 export default function CryptoDetailPage() {
   const { t } = useTranslation("wallet");
@@ -127,8 +128,11 @@ export default function CryptoDetailPage() {
         <CoinLogo symbol={symbol} size={48} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold">{asset.name}</h1>
-            <span className="text-sm text-muted-foreground font-mono">{symbol}</span>
+            {/* SafePal-parity header: prefer the composite-id resolvedAsset
+                (carries displaySymbol + real chain name) over the legacy
+                TOP_CRYPTOS `asset.name` fallback. Matches Home. */}
+            <h1 className="text-xl font-bold">{assetChainLabel(resolvedAsset) || asset.name}</h1>
+            <span className="text-sm text-muted-foreground font-mono">{assetDisplaySymbol(resolvedAsset) || symbol}</span>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-lg font-semibold mono-value">

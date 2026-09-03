@@ -5,6 +5,7 @@ import { Link, useSearchParams } from "react-router";
 import BackButton from "@/components/BackButton";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS } from "@/wallet-core/assets";
+import { assetDisplayLabel } from "@/lib/assetLabel";
 import { resolveReceive } from "@/lib/receiveAddress";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { demoSendSource } from "@/lib/sendWalletSource";
@@ -205,7 +206,7 @@ export default function ReceiveCrypto() {
                 {symbol ? (
                   <>
                     <CoinLogo symbol={symbol} size={32} />
-                    <span>{ASSETS.find(a => a.symbol === symbol)?.name || symbol} — {symbol}</span>
+                    <span>{assetDisplayLabel(symbol)}</span>
                   </>
                 ) : null}
               </SelectValue>
@@ -215,7 +216,7 @@ export default function ReceiveCrypto() {
                 <SelectItem key={a.symbol} value={a.symbol}>
                   <div className="flex items-center gap-2">
                     <CoinLogo symbol={a.symbol} size={20} />
-                    <span>{a.name} — {a.symbol}</span>
+                    <span>{assetDisplayLabel(a)}</span>
                   </div>
                 </SelectItem>
               ))}
