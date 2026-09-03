@@ -115,10 +115,15 @@ const LEGACY_KDF_PARAMS = Object.freeze({
 // many KiB BEFORE the AES-GCM tag is checked — so an unbounded value is a
 // pre-authentication resource-exhaustion (OOM) vector. Ceilings are generous (well
 // above CURRENT params) yet cap the worst-case allocation/work to a survivable bound.
+// R8 audit MED: dropped memorySize ceiling from 1 GiB to 384 MiB (KiB). Every
+// mobile browser tab caps well under 500 MiB — a 1 GiB Argon2id allocation
+// crashes the tab BEFORE GCM auth runs, so a tampered blob (or attacker with
+// storage write) causes persistent lockout instead of returning an auth error.
+// 384 MiB = 2× the max legitimate profile (v1 legacy 192 MiB) with headroom.
 const MAX_KDF_PARAMS = Object.freeze({
   parallelism: 4,
   iterations: 12,
-  memorySize: 1048576, // KiB == 1 GiB (CURRENT v2 is 96 MiB; v1 legacy 192 MiB still opens)
+  memorySize: 393216, // KiB == 384 MiB (CURRENT v2 is 96 MiB; v1 legacy 192 MiB still opens)
   hashLength: 64,
 });
 

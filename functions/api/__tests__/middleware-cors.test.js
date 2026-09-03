@@ -76,14 +76,15 @@ describe('/api CORS — everything else is refused, not reflected', () => {
   ])('refuses %s (%s)', async (origin) => {
     const got = await acao(origin);
     expect(got).not.toBe(origin);
-    // Falls back to the canonical origin so the browser rejects the response.
-    expect(got).toBe(CANONICAL);
+    // Omitting ACAO makes the browser reject the response without reflecting
+    // any origin that the request did not earn through the allowlist.
+    expect(got).toBeNull();
   });
 
   it('does not let a subdomain label smuggle a dot', async () => {
     // `[a-z0-9-]+` must not admit `.`, or the anchored pattern would still
     // match an attacker-controlled parent domain.
-    expect(await acao('https://a.b.veyrnox-prod.pages.dev.evil.com')).toBe(CANONICAL);
+    expect(await acao('https://a.b.veyrnox-prod.pages.dev.evil.com')).toBeNull();
   });
 });
 
@@ -95,7 +96,7 @@ describe('/api CORS — preflight', () => {
     });
     const res = await onRequest({ request, env: {}, next: async () => new Response('unused') });
     expect(res.status).toBe(204);
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe(CANONICAL);
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull();
   });
 
   it('sets Vary: Origin so a cache cannot serve one origin\'s headers to another', async () => {

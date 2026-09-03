@@ -51,15 +51,17 @@ function corsHeaders(request, env) {
   const origin = request.headers.get('Origin') || '';
   const allowed = getAllowedOrigins(env);
   const match = allowed.includes(origin) || PAGES_PREVIEW_RE.test(origin);
-  return {
-    // Unmatched origins get the canonical origin rather than their own, so the
-    // browser refuses the response instead of us reflecting an attacker's.
-    'Access-Control-Allow-Origin': match ? origin : allowed[0],
+  // Base headers regardless of match; ACAO omitted when unmatched so we don't
+  // assert an origin the request never presented. `Vary: Origin` stays so
+  // caches key on origin.
+  const headers = {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin',
   };
+  if (match) headers['Access-Control-Allow-Origin'] = origin;
+  return headers;
 }
 
 export async function onRequest(context) {
