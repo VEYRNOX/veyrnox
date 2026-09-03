@@ -362,7 +362,8 @@ confirm a fresh real wallet shows 0.0 on-chain and no demo simulation box.
 ## Dev send ungate (testnet verification)
 
 To send `receive_only` assets in dev for verification: set `VITE_DEV_UNGATE_SEND=1` via a
-`.env.local` file (git-ignored) — NOT an inline shell var (fails on Windows/PowerShell).
+`.env.local` file (git-ignored) — the convention here; an inline shell var is not
+guaranteed to reach `import.meta.env` in this build and is lost with the shell.
 This flips the gate decision only, never asset status, and is dead-code-eliminated from
 production builds. The DEV UNGATE banner shows only on a receive_only asset, never on ETH.
 
@@ -443,13 +444,21 @@ Rules that look wrong to a reviewer without repo history. Do NOT flag these.
   — revenue data no longer disclosed. Do not suggest re-granting.
 - **`ALLOW_MAINNET = true` is CORRECT** — mainnet unlocked 2026-06-17 after
   internal audit; do not flag as a security misconfiguration.
-- **Windows / Git Bash environment.** Do not suggest inline shell env vars
-  (`FOO=bar cmd`) — they fail on PowerShell. Use `.env.local`.
+- **Use `.env.local` for env flags**, not inline shell env vars (`FOO=bar cmd`). The old
+  reason given here — "they fail on PowerShell" — is obsolete; the flag simply belongs in
+  a file that persists across sessions.
 
 ## Environment
 
-- Windows (Git Bash / MINGW64). iOS native build is NOT possible here (needs a Mac).
+- **macOS (zsh). Repo at `/Users/aljobson/Documents/GitHub/veyrnox`.**
+- **iOS native builds RUN HERE.** This line said "iOS native build is NOT possible here
+  (needs a Mac)" until 2026-09-03 — it was false, and it is the kind of false that stops
+  a session attempting work it can actually do. Archive, export and TestFlight upload all
+  run on this machine (1.0.1 build 47 uploaded 2026-09-02).
 - Use `.env.local` for env flags, not inline shell vars.
+- This was a Windows / Git-Bash machine until 2026-09-03. Treat any surviving
+  `C:\Users\aljob\Downloads\Veyrnox`, `$TEMP`, `%TEMP%`, `MSYS_NO_PATHCONV` or
+  ` ```powershell ` block in this repo as drift to fix, not a live instruction.
 
 ## Design system
 
