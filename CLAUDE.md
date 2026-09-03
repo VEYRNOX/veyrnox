@@ -1249,6 +1249,43 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
     calling a scan clean, ask which surfaces the pattern list cannot see. When a real
     finding comes from an unmatched file, widen the list in the same session — that is
     the only thing keeping it alive rather than fossilised.
+  - **`grep` without `-F` silently lies about patterns containing `${...}`, `{` or `}`.**
+    This is a sharper failure than the rest of this section: the others return an
+    INCOMPLETE answer, this one returns a CONFIDENT WRONG answer. On 2026-09-03 a
+    security-diff checkpoint ran
+    `grep -c 'computed=${logSafe(verify.expected)}' ` against `origin/main` and got `0`,
+    which reads as "the vulnerable line is gone". The line was present the whole time —
+    `{` is parsed as a BRE interval rather than a literal, so the match fails. Reproduce:
+
+    ```bash
+    git show origin/main:functions/api/buy/webhook.js > /tmp/f.js
+    grep -c  'computed=${logSafe(verify.expected)}' /tmp/f.js   # 0  ← wrong
+    grep -cF 'computed=${logSafe(verify.expected)}' /tmp/f.js   # 1  ← correct
+    ```
+
+    Use `-F` for any literal source text, and reach for it by default when the pattern
+    carries `$ { } ( ) [ ] . * + ? | \`. It nearly shipped a security finding reported as
+    RESOLVED while the vulnerable code was still on `main`. What caught it was not a
+    better grep but a CONSISTENCY CHECK: the PR carrying the fix had not merged, so the
+    fix could not be in `main`, and two facts disagreeing forced a direct re-read.
+    **When a grep result would let you close a finding, confirm it against something
+    that is not a grep** — the PR state, the file read in full, or a test.
+  - **An absence-check must be scoped to CODE, because the fix usually documents the
+    thing it removed.** A security fix worth making is worth a comment saying what used
+    to be there — so the file that removes `X` is the same file that now quotes `X` as
+    history, and any check asserting "`X` is gone" matches the comment and fires.
+    **This happened three times on 2026-09-03**, in two test pins and then in a merge
+    watcher an hour after the pins were fixed, because a shell one-liner did not feel
+    like "a pin". Scope the assertion instead of matching the whole file: strip `//`
+    lines, target the structural form (`// N.` list items, a declaration, an assignment),
+    or read the specific line number. Concretely, the merge watcher for the webhook fix
+    counted `oldform=1` and cried CONTENT-WRONG on a perfectly good merge — line 188 had
+    the fix, line 66 was the comment explaining it.
+  - **Note which way each failure points.** The `-F` bug fails DANGEROUS: it stays silent
+    and reports a clean result that is wrong. The absence-check-hits-its-own-comment bug
+    fails SAFE: it cries wolf on correct work. Both come from a check that cannot tell
+    code from prose, and only the second one announces itself — so finding one is a
+    prompt to go looking for the other, not evidence that verification is working.
 - **Mutation-check every new test pin, or you ship coverage that cannot fail.** Three
   pins written on 2026-09-03 were broken on the first attempt and ALL THREE looked green:
   - **A prefix ate the assertion.** A status-tag pin used `startsWith()` against
