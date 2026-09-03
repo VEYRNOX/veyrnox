@@ -35,16 +35,14 @@
 //   PR #1009 added nonce binding). Tracked residuals — do NOT close these
 //   without device verification (silently landing a wrong pin/entitlement
 //   would fail-closed forever on a real device):
-//     • G2-ROOTCERT-PIN (issue #2276): the Android cert-chain walk still
-//       uses a weak issuer.contains("Google") heuristic instead of a pinned
-//       Play Integrity root (GTS Root R1 lineage). Needs a real Play
-//       Integrity token from a device to verify against — Phase 4/5 work.
-//     • iOS App Attest entitlement + DeviceCheck (issue #2277): the
-//       com.apple.developer.devicecheck.appattest-environment entitlement
-//       and DeviceCheck.framework linkage are not yet present in the build,
-//       so the iOS leg honestly returns INTEGRITY_UNAVAILABLE (→ WARN)
-//       rather than fail-closed FAIL. Requires the Apple Developer profile
-//       + a real iPhone to exercise.
+//     • G2-ROOTCERT-PIN (issue #2276): Android uses a strict SHA-256 root
+//       pinset with no issuer-string fallback, but the pinset lacks real-token
+//       device evidence and pin/chain failures currently map to WARN. Phase 4/5
+//       work must establish the real-token behavior before tightening policy.
+//     • iOS App Attest + DeviceCheck (issue #2277): a development entitlement
+//       exists in source, but release provisioning, an independent DeviceCheck
+//       signal, and real-device exercise remain outstanding. The iOS leg must
+//       continue to report unavailable until that evidence exists.
 //   The wiring into SendCrypto.jsx / useRaspArtifact is a SEPARATE follow-on PR;
 //   this module + the native plugin layer are what land here. detect()'s on-device
 //   probes still fail closed to INTEGRITY_UNAVAILABLE with no native capability, and

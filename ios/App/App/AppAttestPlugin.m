@@ -6,11 +6,12 @@
 // session and only at the pre-sign gate — never on unlock.
 //
 // ── HONEST GAPS (required before this can be ENABLED / trusted) ─────────────
-// 1. The com.apple.developer.devicecheck.appattest-environment entitlement must be
-//    added to ios/App/App/App.entitlements (requires an Apple Developer account +
-//    a provisioning profile). Without it, DCAppAttestService is not usable and
-//    isSupported / the attest calls fail — this plugin then fails closed.
-// 2. DeviceCheck.framework must be linked to the App target.
+// 1. The source entitlement is set to development, but an Apple Developer
+//    provisioning profile must carry it into a signed release build. Without that,
+//    DCAppAttestService is not usable and this plugin fails closed.
+// 2. App Attest uses DeviceCheck.framework, but this plugin has no separate
+//    DeviceCheck signal; obtaining and validating one requires a defined server-side
+//    protocol and would need a design review under I5.
 // 3. Key generation (a one-time network round-trip to Apple) has NOT been
 //    device-exercised.
 // 4. NOT independently audited.
