@@ -93,49 +93,22 @@ jobs:
             echo "docs_only=true" >> "$GITHUB_OUTPUT"
           fi
 
-  deploy:
+  # R8 audit HIGH: build runs PR-controlled code (npm ci + npm run build) and
+  # must NEVER carry the Cloudflare API token. Split from `deploy`: this job
+  # produces `dist/` + `functions/` + `public/_headers`/_redirects and uploads
+  # them as an artifact; the sibling `deploy` job (no checkout, no PR code)
+  # downloads that artifact and publishes it. A postinstall/build script in a
+  # PR therefore cannot exfil the token — it never enters this process.
+  build:
     needs: changes
     runs-on: ubuntu-latest
-    # Dependabot PRs run with a restricted token and CANNOT read Actions
-    # secrets — GitHub withholds them from dependabot-triggered runs by design.
-    # So `secrets.CLOUDFLARE_API_TOKEN` arrives empty and wrangler exits 1 with
-    # "In a non-interactive environment, it's necessary to set a
-    # CLOUDFLARE_API_TOKEN". That made `deploy` a guaranteed red check on every
-    # dependency PR — noise that trains reviewers to ignore a failing pipeline,
-    # which is how the @hello-pangea/dnd bump (#1363) reached review with a red
-    # X that everyone correctly-but-dangerously waved through.
-    #
-    # Skipping is also the safer half of the trade: the alternative fix is to
-    # add the token to Dependabot secrets, which would hand a live deploy
-    # credential to a workflow whose whole job is running a third party's new
-    # code. We deliberately do not want a preview deployment badly enough to
-    # take that.
-    #
-    # Fork PRs fail identically and for the same root cause: GitHub does not
-    # expose secrets to workflows running from a fork either. The `e2e` job
-    # below already documented this ("fork PRs get no Cloudflare secrets") but
-    # nothing acted on it, so `deploy` still ran and still went red.
-    #
-    # `e2e` needs this job, so it skips with us — correct, since there is no
-    # preview URL to test against.
-    #
-    # NOTE for future editors: the fork test must be `fork != true`, NOT the
-    # common `head.repo.full_name == github.repository`. On the `push: [main]`
-    # trigger there is no pull_request payload, so that comparison is false and
-    # would silently stop deploying main. `fork != true` is null-safe: absent
-    # payload -> null -> null != true -> the job runs.
-    #
-    # The docs_only test is `!= 'true'` rather than `== 'false'` for the same
-    # null-safety reason as the fork test above: if the `changes` job ever fails
-    # to produce an output, the value is empty, and empty != 'true' keeps the
-    # deploy running. An exemption must be affirmatively earned.
+    # Skip for the same reasons the previous combined job did — dependabot and
+    # fork PRs have no route to a preview deploy, so their build is wasted work.
     if: >-
       github.actor != 'dependabot[bot]'
       && github.event.pull_request.head.repo.fork != true
       && needs.changes.outputs.docs_only != 'true'
     outputs:
-      deployment_url: ${{ steps.deploy.outputs.deployment-url }}
-      environment: ${{ steps.set-env.outputs.environment }}
       slug: ${{ steps.slug.outputs.slug }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -148,35 +121,11 @@ jobs:
       - run: npm install -g npm@11
       - run: npm ci
 
-      - name: Set environment label
-        id: set-env
-        run: |
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            echo "environment=production" >> "$GITHUB_OUTPUT"
-          else
-            echo "environment=preview" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Build
         env:
-          # Buy ships on every branch. Written flat on purpose: this was
-          # `github.ref == 'refs/heads/main' && 'true' || 'true'`, which reads
-          # like a production/preview gate and is a tautology — both arms are
-          # 'true'. A reviewer skimming the file would take it for a control.
-          #
-          # This env value, NOT wrangler.toml's [vars], is what enables Buy in
-          # the shipped bundle: this job builds with `npm run build` here and
-          # then publishes the built `dist` via `wrangler pages deploy`, so the
-          # flag has to be set at build time to reach import.meta.env. Deleting
-          # it turns the ship gate in src/lib/buy/useBuyEnabled.js back off.
+          # See file-level comment on VITE_BUY_ENABLED / VITE_TRANSAK_API_KEY /
+          # VITE_SUPABASE_* — build-time env only, never the Cloudflare token.
           VITE_BUY_ENABLED: 'true'
-          # VITE_TRANSAK_API_KEY deliberately NOT passed. Nothing under src/
-          # reads it (`git grep VITE_TRANSAK_API_KEY -- src` is empty) — the
-          # Transak credentials are server-side only, read from context.env by
-          # functions/api/buy/session.js, which is where they must stay. Passing
-          # an unread VITE_-prefixed key into the build is the state in which the
-          # first `import.meta.env.VITE_TRANSAK_API_KEY` reference silently
-          # embeds it in the client bundle.
           VITE_SUPABASE_URL: ${{ github.ref == 'refs/heads/main' && vars.VITE_SUPABASE_URL || '' }}
           VITE_SUPABASE_ANON_KEY: ${{ github.ref == 'refs/heads/main' && vars.VITE_SUPABASE_ANON_KEY || '' }}
         run: |
@@ -186,22 +135,8 @@ jobs:
             npm run build:staging
           fi
 
-      - name: Install Wrangler
-        # PINNED. Wrangler 4.122.0 (published 2026-08-12 afternoon) started
-        # bundling something under functions/ that pulls `node:stream` at
-        # publish time, breaking every Pages Function deploy with
-        # `Failed to publish your Function. Got error: Uncaught Error:
-        # No such module "node:stream".`
-        # 4.121.0 (the last version that ran successfully on main —
-        # deploy job 94130595248 for a8880080 at 13:31 UTC 2026-08-12) is
-        # unaffected. Unpin only once the root cause is fixed upstream OR
-        # __tests__/ under functions/ is excluded from bundling.
-        run: npm install -g wrangler@4.121.0
-
       # Branch names reach us from PR heads and can contain shell metacharacters,
       # so they must never be interpolated straight into a command string.
-      # Sanitise to the Cloudflare-safe charset here, then pass the result via
-      # env so the deploy step interpolates a value we control.
       - name: Compute deploy branch slug
         id: slug
         env:
@@ -211,28 +146,92 @@ jobs:
           SLUG="${SLUG%-}"
           echo "slug=${SLUG:-preview}" >> "$GITHUB_OUTPUT"
 
+      # dist/ carries the built client bundle; functions/ and the top-level
+      # public/_headers/_redirects are picked up by `wrangler pages deploy` at
+      # publish time. Ship all three so the deploy job needs nothing from the
+      # PR tree.
+      - name: Package deploy bundle
+        run: |
+          mkdir -p _bundle
+          cp -R dist _bundle/
+          cp -R functions _bundle/
+          if [ -f public/_headers ]; then cp public/_headers _bundle/dist/_headers; fi
+          if [ -f public/_redirects ]; then cp public/_redirects _bundle/dist/_redirects; fi
+          # Include the edge-probe script (used from the post-deploy job) —
+          # trusted only because it will be re-checked-out from main below.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: deploy-bundle
+          path: _bundle
+          retention-days: 3
+
+  deploy:
+    needs: [changes, build]
+    runs-on: ubuntu-latest
+    # NOTE for future editors: the fork test must be `fork != true`, NOT the
+    # common `head.repo.full_name == github.repository`. On the `push: [main]`
+    # trigger there is no pull_request payload, so that comparison is false and
+    # would silently stop deploying main. `fork != true` is null-safe.
+    if: >-
+      github.actor != 'dependabot[bot]'
+      && github.event.pull_request.head.repo.fork != true
+      && needs.changes.outputs.docs_only != 'true'
+    outputs:
+      deployment_url: ${{ steps.deploy.outputs.deployment-url }}
+      environment: ${{ steps.set-env.outputs.environment }}
+      slug: ${{ needs.build.outputs.slug }}
+    steps:
+      # This job intentionally does NOT check out the repository — the whole
+      # point of the build/deploy split is that no PR-controlled file is on
+      # disk while the Cloudflare token is in the environment.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: deploy-bundle
+          path: _bundle
+
+      - name: Set environment label
+        id: set-env
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "environment=production" >> "$GITHUB_OUTPUT"
+          else
+            echo "environment=preview" >> "$GITHUB_OUTPUT"
+          fi
+
+      # PINNED — see prior comment on wrangler 4.122.0 regression.
       - name: Deploy to Cloudflare Pages
         id: deploy
         uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: ''
-          command: pages deploy dist --project-name=veyrnox-prod --branch=${{ steps.slug.outputs.slug }}
-
-      # The /api/data/* functions are executed by NOTHING else in CI: vitest never
-      # loads them, and `vite` does not serve /api/* locally (no wrangler pages
-      # dev script). That blind spot is how /api/data/klines sat at HTTP 502 in
-      # production, on every request, without anyone noticing. This runs the same
-      # probes against the deployment that was just published.
-      - name: Check edge endpoints
-        env:
-          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
-        run: node scripts/check-edge-endpoints.mjs "$DEPLOY_URL"
+          wranglerVersion: '4.121.0'
+          workingDirectory: _bundle
+          command: pages deploy dist --project-name=veyrnox-prod --branch=${{ needs.build.outputs.slug }}
 
       - name: Set deployment status
         if: always()
         run: echo "Deployed to ${{ steps.deploy.outputs.deployment-url }}"
+
+  # /api/data/* endpoint probes moved here so the deploy job carries no PR code
+  # alongside the Cloudflare token. This checks out MAIN (not the PR head) so
+  # only reviewed code runs the probe — the deploy is already live either way.
+  edge-check:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: ${{ needs.deploy.outputs.deployment_url != '' }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: main
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+      - env:
+          DEPLOY_URL: ${{ needs.deploy.outputs.deployment_url }}
+        run: node scripts/check-edge-endpoints.mjs "$DEPLOY_URL"
 
   # Codex P1 2026-08-15: post the preview URL comment from a SEPARATE job that
   # does not check out or run any PR code. Only this job gets pull-requests:
@@ -404,7 +403,7 @@ jobs:
   # it is missing, and GitHub blocks the merge forever waiting for it. The
   # skipping happens in `deploy`/`e2e`; this job always reports.
   staging-gate:
-    needs: [changes, deploy, zap-baseline, e2e]
+    needs: [changes, deploy, edge-check, zap-baseline, e2e]
     runs-on: ubuntu-latest
     if: always()
     permissions:
@@ -413,11 +412,13 @@ jobs:
       - name: Evaluate staging result
         run: |
           DEPLOY_RESULT="${{ needs.deploy.result }}"
+          EDGE_RESULT="${{ needs.edge-check.result }}"
           ZAP_RESULT="${{ needs.zap-baseline.result }}"
           E2E_RESULT="${{ needs.e2e.result }}"
           DOCS_ONLY="${{ needs.changes.outputs.docs_only }}"
 
           echo "deploy:    $DEPLOY_RESULT"
+          echo "edge:      $EDGE_RESULT"
           echo "zap:       $ZAP_RESULT"
           echo "e2e:       $E2E_RESULT"
           echo "docs_only: $DOCS_ONLY"
@@ -437,6 +438,11 @@ jobs:
 
           if [ "$DEPLOY_RESULT" != "success" ]; then
             echo "::error::Deploy failed ($DEPLOY_RESULT) — staging gate blocked"
+            exit 1
+          fi
+
+          if [ "$EDGE_RESULT" != "success" ]; then
+            echo "::error::Edge-endpoint probe $EDGE_RESULT — staging gate blocked"
             exit 1
           fi
 
