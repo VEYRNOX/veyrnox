@@ -23,8 +23,9 @@ package com.veyrnox.app
 //
 // UPDATE (G2 x5c chain-walk, 2026-07-13): on-device JWS signature verification is
 // implemented via verifyJwsSignature() — the full x5c chain is walked (each cert
-// verified by the next cert's key), the root cert issuer is checked for "Google",
-// and the JWS RS256/ES256 signature is verified with the leaf cert's public key.
+// verified by the next cert's key), the root cert is matched against a strict
+// SHA-256 pinset, and the JWS RS256/ES256 signature is verified with the leaf
+// cert's public key.
 // ES256 raw R‖S signatures are transcoded to ASN.1 DER before JCA verify()
 // (issue #951, 2026-07-14) so the ES256 branch is now algorithmically correct
 // — the raw-bytes-to-JCA mismatch that made ES256 verify silently fail-closed
@@ -58,13 +59,12 @@ package com.veyrnox.app
 // threat model and the executable JVM tests (PlayIntegrityNonceVerifierTest).
 //
 // ROOT CERT PINNING (G2-ROOTCERT-PIN): SHA-256 fingerprint of root cert DER bytes
-// is now checked against GOOGLE_ROOT_CA_SHA256 (verifyRootCertFingerprint). The
-// issuer string check is retained as belt-and-suspenders fallback. Status:
-// BUILT-UNVALIDATED — fingerprints sourced from Google's published PKI at
-// https://pki.goog/repository/ (2026-07-14); must be confirmed against a real
-// production Play Integrity token before advancing to VERIFIED. Until confirmed,
-// treat attestation as PROVISIONAL — a token with an unknown root degrades to
-// INTEGRITY_UNAVAILABLE (WARN, not BLOCK).
+// is checked against GOOGLE_ROOT_CA_SHA256 (verifyRootCertFingerprint). There is
+// NO issuer-string fallback. Status: BUILT / unit-tested, but unvalidated against
+// a real production Play Integrity token. Until device evidence confirms the
+// selected Google pinset, treat this attestation channel as PROVISIONAL. A pin or
+// chain mismatch currently degrades to INTEGRITY_UNAVAILABLE (WARN, not BLOCK);
+// changing that policy requires real-token verification first.
 //
 // I4 — FAIL CLOSED. A missing/short nonce, absent Play Services, a token request
 // failure, or ANY parse exception resolves with { available:false }, which the JS

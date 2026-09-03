@@ -40,21 +40,19 @@
 //
 // ── HONEST LIMITATIONS (must not be overstated) ────────────────────────────
 //   • Android: the Play Integrity JWS IS on-device signature-verified since PR
-//     #943 (RS256 x5c chain-walk + Google-issuer root check). Issue #951
+//     #943 (RS256 x5c chain-walk + strict Google-root SHA-256 pinset). Issue #951
 //     (2026-07-14) added a raw R‖S → ASN.1 DER transcoder so the ES256 branch
 //     is algorithmically correct too (before the fix, JCA received raw R‖S and
 //     silently fail-closed on every real ES256 token — inert attested axis).
-//     Residual gap: root-cert pinning is still issuer.contains("Google")
-//     (G2-ROOTCERT-PIN, tracked in issue #2276) and NOT device-verified against
-//     a real Play Integrity token yet — treat attestation results as PROVISIONAL
-//     until Phase 4 + 5. Do NOT swap in a pinned root without device verification;
-//     a wrong pin fails closed on every real device forever.
-//   • iOS: App Attest requires the com.apple.developer.devicecheck.appattest-environment
-//     entitlement (Apple Developer account + provisioning profile) which is NOT yet
-//     present — so on iOS this leg is code-present but honestly UNAVAILABLE until the
-//     entitlement + DeviceCheck.framework linkage land and are device-exercised
-//     (tracked in issue #2277). Fix path also includes escalating BOTH-legs-
-//     unavailable on iOS from WARN to FAIL.
+//     The issuer-string fallback has been removed. The pinned roots are NOT
+//     device-verified against a real Play Integrity token yet — treat attestation
+//     results as PROVISIONAL until Phase 4 + 5. A pin or chain mismatch currently
+//     maps to INTEGRITY_UNAVAILABLE (WARN); changing that to INTEGRITY_FAIL needs
+//     real-token verification first (issue #2276).
+//   • iOS: the source entitlement is set to development, but release provisioning
+//     and device exercise have not confirmed it is present in a signed build. The
+//     current implementation also has no independent DeviceCheck signal. iOS is
+//     therefore honestly UNAVAILABLE until those gaps are resolved (issue #2277).
 //   • NOT device-verified on either platform; NOT independently audited.
 
 import { Capacitor } from '@capacitor/core';
@@ -173,8 +171,8 @@ export function composeConditions(a, b) {
  * always compose with the OS probe axis.
  *
  * On Android the CLEAN result is stronger (Play Integrity JWS verified
- * on-device since PR #943), though root-cert pinning is still
- * issuer-contains-"Google" (G2-ROOTCERT-PIN) and NOT device-verified.
+ * on-device since PR #943), though its strict root pinset is not yet
+ * device-verified against a real Play Integrity token (G2-ROOTCERT-PIN).
  *
  * @param {{ available?: boolean, attestationFailed?: boolean }|null|undefined} probeResult
  * @returns {string} a CONDITION.*

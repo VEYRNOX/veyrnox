@@ -163,9 +163,10 @@ export function useRaspArtifact({ deferAttestation = false, excludeAttestation =
   // Remote-attestation leg (Phase 2b — the egress leg, pre-sign only, deniability-
   // gated inside attestationProbeSource). Play Integrity JWS RS256/ES256 IS
   // on-device signature-verified (PR #943 landed RS256; PR #955 added ES256
-  // raw→DER transcoding; PR #1009 added nonce binding). The tracked residual is
-  // G2-ROOTCERT-PIN (weak issuer heuristic in the cert-chain walk); iOS App
-  // Attest entitlement + DeviceCheck linkage remain honest gaps.
+  // raw→DER transcoding; PR #1009 added nonce binding). Android now uses a strict
+  // root SHA-256 pinset, but lacks real-token device evidence and maps pin/chain
+  // failures to WARN. iOS release provisioning, a distinct DeviceCheck signal,
+  // and device evidence remain honest gaps.
   useEffect(() => {
     if (!ATTESTATION_ENABLED) return;
     if (!Capacitor.isNativePlatform()) return;
