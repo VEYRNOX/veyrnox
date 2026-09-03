@@ -371,7 +371,8 @@ console.log(`  ✓ JSON report: post-audit-qa-report.json`);
 console.log(`  ✓ Markdown report: POST-AUDIT-QA-REPORT.md`);
 
 // Phase 7: Summary
-console.log('\n✅ Post-Audit QA Complete');
+const qaComplete = suitesPassed;
+console.log(qaComplete ? '\n✅ Post-Audit QA Complete' : '\n⚠️  Post-Audit QA Incomplete');
 console.log('================================');
 console.log(`Report saved to: ${REPORT_DIR}`);
 console.log(`View results: open ${path.join(REPORT_DIR, 'POST-AUDIT-QA-REPORT.md')}`);
@@ -385,4 +386,6 @@ if (serverProcess && serverProcess.pid) {
   }
 }
 
-process.exit(0);
+// A report with deferred browser cases or a failed suite is useful evidence, but
+// it is not a successful post-audit validation run.
+process.exit(qaComplete ? 0 : 1);

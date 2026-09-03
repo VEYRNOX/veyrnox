@@ -131,7 +131,9 @@ test.describe('Security Boundary: CSP & XSS Prevention', () => {
   test('#2021 rejects XSS payloads in input fields', async () => {
     expect(sendCryptoCode).not.toMatch(/dangerouslySetInnerHTML/);
     expect(sendCryptoCode).not.toMatch(/innerHTML\s*=/);
-    expect(sendCryptoCode).toMatch(/<Input id="send-note"/);
+    // The legacy optional note field was removed; assert the current user-input
+    // surfaces instead of preserving a stale selector as coverage theater.
+    expect(sendCryptoCode).toMatch(/id="send-recipient"/);
     expect(sendCryptoCode).toMatch(/<Input[\s\S]*id="send-amount"/);
   });
 });
