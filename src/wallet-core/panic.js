@@ -320,6 +320,13 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-remote-screen',          // pages/SendCrypto.jsx remote-screen toggle
   'veyrnox-sim-enabled',            // pages/SendCrypto.jsx tx-simulation toggle
   'dashboard-widgets',              // pages/Dashboard.jsx widget layout
+  // Portfolio balance cache (lib/portfolioBalances.js PORTFOLIO_CACHE_KEY).
+  // Holds the last-known per-wallet balances so Home renders instantly on
+  // unlock. Presence + contents both prove a real Veyrnox wallet exists here
+  // and reveal what it held — must NOT survive a wipe. Written only in the
+  // primary session (I3 chokepoint in the writer); the wipe list is still the
+  // authoritative sweep for anything that ever landed here.
+  'veyrnox-portfolio-cache',
   'notification_prefs',             // legacy push notifications page (removed)
   'veyrnox-demo',                   // api/demoClient.js demo-mode persistence
   // Telemetry/funnel tells (PR #1344). None is key material, but each proves a

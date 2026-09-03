@@ -2204,7 +2204,22 @@ export default function SendCrypto() {
                       if (raw === '' || !Number.isFinite(parsed) || !(sendUsdRate > 0)) {
                         setAmount('');
                       } else {
-                        setAmount(String(parsed / sendUsdRate));
+                        // Per-family decimals — must match what the send path
+                        // will pass to `toBaseUnits`. ASSETS entries carry no
+                        // `.decimals`, so read the same way the actual send
+                        // call does. Getting this wrong (all-18) shipped in
+                        // #2266 and made every fiat send on SOL/BTC/USDC fail
+                        // with "Amount X has more than N decimal places."
+                        let dec = 18;
+                        if (selectedAsset?.family === 'btc') dec = 8;
+                        else if (selectedAsset?.family === 'solana') dec = 9;
+                        else if (isErc20 && selectedAsset?.symbol) {
+                          try { dec = getToken(networkKey, selectedAsset.symbol).decimals; } catch { dec = 18; }
+                        } else if (activeNetwork?.decimals != null) dec = activeNetwork.decimals;
+                        const crypto = parsed / sendUsdRate;
+                        // toFixed then strip trailing zeros so `0.5` doesn't
+                        // render as `0.500000000` downstream.
+                        setAmount(crypto.toFixed(dec).replace(/\.?0+$/, ''));
                       }
                     } else {
                       setAmount(raw);

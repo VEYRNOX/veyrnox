@@ -31,6 +31,7 @@ import { getBalanceSats } from '@/wallet-core/btc/provider.js';
 import { getBalanceSol } from '@/wallet-core/sol/provider.js';
 import { useLivePrices } from '@/lib/priceFeed.js';
 import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
+import { loadPortfolioCache, savePortfolioCache } from '@/lib/portfolioCacheStore.js';
 
 /** USD price for a symbol. Uses livePrices map when given and finite, else falls
  * back to USD_RATES (mock rates, display only). Stablecoins ≈ 1. The optional
@@ -149,7 +150,13 @@ export async function computePortfolio(wallets, walletAddresses, livePrices) {
   // any healthy read (~1s) but short enough that the worst case stays under
   // ~9s. ponytail: fixed constant; wire per-family caps if BTC's typical
   // latency ever justifies a separate budget.
-  const PER_JOB_TIMEOUT_MS = 8000;
+  // Lowered from 8000 → 4000 after device evidence: BTC Esplora is the only
+  // chain that regularly hits this ceiling (device log shows every poll cycle
+  // times it out cleanly), and healthy chains return well under 500ms. 4s
+  // still covers a slow-but-alive chain while halving the cold-unlock render
+  // time when one provider is dead. If a specific chain proves it needs more
+  // headroom, split into per-family caps rather than raising the shared one.
+  const PER_JOB_TIMEOUT_MS = 4000;
   const withPerJobTimeout = (p) => Promise.race([
     p,
     new Promise((resolve) => setTimeout(() => resolve(null), PER_JOB_TIMEOUT_MS)),
@@ -226,6 +233,15 @@ function portfolioKey(wallets, walletAddresses) {
   }).join('|');
 }
 
+// Persistent portfolio-balance cache lives in a SEPARATE module
+// (portfolioCacheStore.js) so the hard "portfolioBalances.js writes nothing
+// to disk" guardrail (portfolioDeniability.test.js) stays a real check on
+// this file. That test exists to catch a future author who silently persists
+// balances here without thinking through the deniability implications; the
+// separate module owns the write and carries its own isDeniabilitySessionActive
+// chokepoints. Cache is present so Home renders last-known figures instantly
+// on unlock instead of showing a skeleton for ~4-8s per-job timeout ceiling.
+
 /**
  * React hook: live portfolio totals for the given wallets. Resilient + cached
  * (60s). Returns react-query's { data, isLoading, refetch } where data is the
@@ -241,14 +257,36 @@ export function usePortfolio(wallets, walletAddresses) {
   // Live basis only when opted-in AND the fetch produced prices without error.
   const liveOk = prices != null && !isError;
   const livePrices = liveOk ? prices : undefined;
+  const key = portfolioKey(wallets || [], walletAddresses || {});
   const query = useQuery({
     // Key includes a live/approx marker so flipping the basis refetches the total.
-    queryKey: ['portfolio', liveOk ? 'live' : 'approx', portfolioKey(wallets || [], walletAddresses || {})],
-    queryFn: () => computePortfolio(wallets, walletAddresses || {}, livePrices),
+    queryKey: ['portfolio', liveOk ? 'live' : 'approx', key],
+    queryFn: async () => {
+      const result = await computePortfolio(wallets, walletAddresses || {}, livePrices);
+      // Only cache real-session, fully-resolved results. `computePortfolio`
+      // returns null in a deniable session (I3 chokepoint upstream), so this
+      // never persists decoy state — and savePortfolioCache double-checks.
+      savePortfolioCache(key, result);
+      return result;
+    },
     enabled,
     staleTime: 30_000,
     refetchInterval: 60_000,
     placeholderData: (prev) => prev,
+    // Instant-render cache: hydrate the last known portfolio synchronously on
+    // mount so the Home dashboard shows numbers immediately after unlock. The
+    // query is still marked stale (older than staleTime) so react-query
+    // refetches in the background; the user sees the cached figures, then a
+    // silent update. Deniable/decoy sessions get undefined (loadPortfolioCache
+    // gates), matching the "no shared-state read" I3 contract.
+    initialData: () => {
+      const cached = loadPortfolioCache(key);
+      return cached ? cached.data : undefined;
+    },
+    initialDataUpdatedAt: () => {
+      const cached = loadPortfolioCache(key);
+      return cached ? cached.ts : 0;
+    },
   });
   return { ...query, priceBasis: liveOk ? 'live' : 'approx', pricesUpdatedAt: updatedAt, refetchPrices };
 }
