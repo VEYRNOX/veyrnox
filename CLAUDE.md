@@ -1411,10 +1411,14 @@ Tie-break: destructive → Router; scope unknown → Spawner; else → Parallel.
 - `docs/audit-triage/internal-audit-2026-06-17.md` — mainnet gate audit
 
 **Scheduled-task runbooks live in `.claude/scheduled-tasks/<task>/SKILL.md`, and that is
-the copy that RUNS** — each task resolves its runbook from that path on `origin/main`.
-`docs/scheduled-tasks/*.md` is an older partial snapshot of the same runbooks and **has
-already drifted**: as of 2026-09-03 the `veyrnox-dependency-audit`,
-`veyrnox-appium-shellquote-watch` and `veyrnox-brace-expansion-watch` copies differ from
-the live ones by thousands of bytes, in both directions. Read `.claude/`; do not edit
-`docs/scheduled-tasks/` expecting it to change behaviour. Reconciling or deleting that
-mirror is an open decision, deliberately not folded into the 2026-09-03 macOS port.
+the copy that RUNS** — the file at `~/.claude/scheduled-tasks/<task>/SKILL.md` is a short
+loader that resolves that path from `origin/main`. There is no second copy: a review
+mirror at `docs/scheduled-tasks/` was **deleted 2026-09-03** (PR #2295).
+
+**Read that deletion as a warning, not housekeeping.** The mirror had drifted, and the
+drift ran the wrong way — PR #1420 added the dependency-audit task's MANDATORY
+accepted-residuals check (Steps 1b/1c) to the `docs/` copy ONLY. The live runbook never
+had it, so the weekly task ran with no residuals awareness from 2026-07-28 until #2295
+ported the steps across, while the mirror's README confidently described behaviour the
+task did not have. A second copy of an operational document does not stay a copy, and
+the stale one is the one that reads as authoritative. Do not reintroduce one.
