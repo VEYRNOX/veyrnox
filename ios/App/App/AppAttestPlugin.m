@@ -9,9 +9,16 @@
 // 1. Debug builds request the development entitlement and Release builds request
 //    the production entitlement. An Apple Developer provisioning profile must carry
 //    the selected entitlement into the signed build; otherwise this plugin fails closed.
-// 2. App Attest uses DeviceCheck.framework, but this plugin has no separate
-//    DeviceCheck signal; obtaining and validating one requires a defined server-side
-//    protocol and would need a design review under I5.
+// 2. RESOLVED, recorded so the change is not silent: this item used to read
+//    "DeviceCheck.framework must be linked to the App target." Linkage is in
+//    place — `#import <DeviceCheck/DeviceCheck.h>` below with
+//    CLANG_ENABLE_MODULES = YES autolinks the framework, and the archives
+//    uploaded to TestFlight (1.0.1 build 47) prove it links and runs. No
+//    project.pbxproj link-phase entry is needed or present.
+//    The REMAINING gap is a different one and must not be read as the same
+//    item: this plugin derives no independent DeviceCheck signal (device
+//    token / bit state). Obtaining and validating one needs a defined
+//    server-side protocol and a design review under I5.
 // 3. Key generation (a one-time network round-trip to Apple) has NOT been
 //    device-exercised.
 // 4. NOT independently audited.
