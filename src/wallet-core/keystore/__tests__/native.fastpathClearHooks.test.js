@@ -147,6 +147,7 @@ describe('fastpath cache — CLEAR at every DEK-rotating / vault-invalidating si
   });
 
   it('restoreFromPersonalBackupShares clears the fast-path alias (KEK rotated)', async (ctx) => {
+    vi.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
     if (typeof keyStore.restoreFromPersonalBackupShares !== 'function') {
       ctx.skip();
       return;
