@@ -479,6 +479,16 @@ export function finalizeDigitalShieldBtcResponse({ session, unsignedPsbtHex, inp
       throw new Error('DIGITAL_SHIELD_BTC_SIGNATURE_MALFORMED');
     }
     const hashType = sigWithHash[sigWithHash.length - 1];
+    // R8 audit HIGH: require SIGHASH_ALL (0x01). A rogue/compromised Keystone
+    // could return SIGHASH_NONE / SIGHASH_SINGLE / *|ANYONECANPAY, which sign
+    // a preimage that does NOT commit to the outputs the user confirmed on
+    // device — the local outputs-match check passes on the unsigned bytes
+    // while a mempool observer rewrites outputs before mining. In-app
+    // btc/send.js uses @scure/btc-signer which defaults to SIGHASH_ALL, so
+    // this restriction breaks nothing legitimate.
+    if (hashType !== 0x01) {
+      throw new Error('DIGITAL_SHIELD_BTC_UNSUPPORTED_SIGHASH');
+    }
     const derSig = sigWithHash.subarray(0, sigWithHash.length - 1);
     const amount = inp.witnessUtxo?.amount ?? original.getInput(i).witnessUtxo?.amount;
     if (amount == null) throw new Error('DIGITAL_SHIELD_BTC_WITNESS_UTXO_MISSING');
