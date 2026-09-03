@@ -49,10 +49,10 @@
 //     results as PROVISIONAL until Phase 4 + 5. A pin or chain mismatch currently
 //     maps to INTEGRITY_UNAVAILABLE (WARN); changing that to INTEGRITY_FAIL needs
 //     real-token verification first (issue #2276).
-//   • iOS: the source entitlement is set to development, but release provisioning
-//     and device exercise have not confirmed it is present in a signed build. The
-//     current implementation also has no independent DeviceCheck signal. iOS is
-//     therefore honestly UNAVAILABLE until those gaps are resolved (issue #2277).
+//   • iOS: Debug selects the development entitlement and Release selects production,
+//     but release provisioning and device exercise have not confirmed it is present in
+//     a signed build. The current implementation also has no independent DeviceCheck
+//     signal. iOS is therefore honestly UNAVAILABLE until those gaps are resolved (#2277).
 //   • NOT device-verified on either platform; NOT independently audited.
 
 import { Capacitor } from '@capacitor/core';

@@ -28,8 +28,9 @@
 //     verify() so ES256 tokens actually verify instead of silently fail-closing.
 //     The pinset is NOT device-verified against a real Play Integrity token yet;
 //     pin/chain failures currently degrade to WARN. See PlayIntegrityPlugin.kt.
-//   • iOS App Attest has a development source entitlement, but release provisioning,
-//     an independent DeviceCheck signal, and real-device evidence remain absent.
+//   • iOS App Attest selects development for Debug and production for Release, but
+//     release provisioning, an independent DeviceCheck signal, and real-device
+//     evidence remain absent.
 //     See AppAttestPlugin.m.
 
 import { Capacitor, registerPlugin } from '@capacitor/core';

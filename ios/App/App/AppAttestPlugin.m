@@ -6,9 +6,9 @@
 // session and only at the pre-sign gate — never on unlock.
 //
 // ── HONEST GAPS (required before this can be ENABLED / trusted) ─────────────
-// 1. The source entitlement is set to development, but an Apple Developer
-//    provisioning profile must carry it into a signed release build. Without that,
-//    DCAppAttestService is not usable and this plugin fails closed.
+// 1. Debug builds request the development entitlement and Release builds request
+//    the production entitlement. An Apple Developer provisioning profile must carry
+//    the selected entitlement into the signed build; otherwise this plugin fails closed.
 // 2. App Attest uses DeviceCheck.framework, but this plugin has no separate
 //    DeviceCheck signal; obtaining and validating one requires a defined server-side
 //    protocol and would need a design review under I5.
