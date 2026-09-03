@@ -5,7 +5,7 @@ import { Link, useSearchParams } from "react-router";
 import BackButton from "@/components/BackButton";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS } from "@/wallet-core/assets";
-import { assetDisplayLabel, assetDisplaySymbol } from "@/lib/assetLabel";
+import { assetDisplayLabel } from "@/lib/assetLabel";
 import { resolveReceive } from "@/lib/receiveAddress";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { demoSendSource } from "@/lib/sendWalletSource";
