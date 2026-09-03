@@ -537,12 +537,42 @@ describe('Play Integrity root cert SHA-256 pinning (G2-ROOTCERT-PIN)', () => {
     // Check the NUMBERED gap items only, not the whole file. The header quotes
     // the retired wording verbatim so the change is auditable, and a
     // whole-file substring check would fire on that history note — the same
-    // trap the S-3 pin above fell into. What must not come back is the claim
+    // trap the S-3 pin below fell into. What must not come back is the claim
     // as a LIVE item in the gap list.
     const gapItems = (appAttestM.match(/^\/\/ \d+\.[^\n]*/gm) ?? []).join('\n');
     expect(gapItems).not.toMatch(/must be linked/i);
     // The resolution must be recorded, not silently dropped.
     expect(gapItems).toMatch(/RESOLVED/);
+  // ── S-3 (branch review 2026-09-03) ──────────────────────────────────────────
+  // The trust decision used to be
+  //   `fingerprint in GOOGLE_ROOT_CA_SHA256 || fingerprint in ADDITIONAL_TRUSTED_ROOTS_FOR_TESTING`
+  // where the second set was a process-wide MutableSet compiled into the release
+  // binary — empty at rest, but writable by anything in-process and guarded only
+  // by a comment. The extra roots are now an explicit `extraTrustedRoots`
+  // parameter defaulting to empty, so production trusts the Google pinset alone
+  // and any widening is visible at a call site.
+  it('has NO mutable trust-anchor state — extra roots are a parameter, not a global', () => {
+    // Assert on CODE, not mentions: the file's own comment records what was
+    // removed and names the old identifier, so a bare substring check would
+    // fire on the history note rather than on a reintroduced declaration.
+    const code = playJwsKt
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('//'))
+      .join('\n');
+    // The writable set must be gone entirely, not merely unused.
+    expect(code).not.toContain('ADDITIONAL_TRUSTED_ROOTS_FOR_TESTING');
+    expect(code).not.toMatch(/MutableSet|mutableSetOf/);
+    // Extra roots arrive as a parameter that defaults to empty.
+    expect(playJwsKt).toMatch(/extraTrustedRoots:\s*Set<String>\s*=\s*emptySet\(\)/);
+    // The pinset itself stays an immutable val.
+    expect(playJwsKt).toMatch(/private val GOOGLE_ROOT_CA_SHA256 = setOf\(/);
+  });
+
+  it('production calls verify() without extra trusted roots', () => {
+    // The sole production caller must use the 2-arg form; passing a third
+    // argument from production code is the supply-chain signal this guards.
+    expect(playKt).toMatch(/PlayIntegrityJwsVerifier\.verify\(token,\s*::base64UrlDecode\)/);
+    expect(playKt).not.toMatch(/PlayIntegrityJwsVerifier\.verify\([^)]*,[^)]*,[^)]*\)/);
   });
 
   it('pinset provenance claims SOURCING only, never real-token observation', () => {

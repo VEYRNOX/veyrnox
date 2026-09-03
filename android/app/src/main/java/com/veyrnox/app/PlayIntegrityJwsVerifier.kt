@@ -58,12 +58,22 @@ internal object PlayIntegrityJwsVerifier {
         "71cca5391f9e794b04802530b363e121da8a3043bb26662fea4dca7fc951a4bd",
     )
 
-    // Test seam: same-module JVM tests may inject a test-generated root's SHA-256
-    // fingerprint here so a legitimate 2-cert fixture chain can exercise the full
-    // crypto/trust path without requiring a real Google-issued cert. NEVER read
-    // outside `internal` scope; NEVER populated by production code. If a production
-    // path ever tries to write here, treat it as a supply-chain compromise.
-    internal val ADDITIONAL_TRUSTED_ROOTS_FOR_TESTING: MutableSet<String> = mutableSetOf()
+    // S-3 (branch review 2026-09-03): there is deliberately NO mutable trust-anchor
+    // state in this object. The test fixture root arrives as an explicit call
+    // argument (see `extraTrustedRoots` below), not through a writable set.
+    //
+    // What used to be here: `internal val ADDITIONAL_TRUSTED_ROOTS_FOR_TESTING:
+    // MutableSet<String>` — a process-wide mutable set OR-ed into the trust
+    // decision, compiled into the release binary, empty at rest and guarded only
+    // by a comment saying never to populate it. Nothing enforced that. Anything
+    // running in-process could widen the pinned root set at runtime, and a review
+    // would have to notice a write to a global to catch it. Making the extra roots
+    // a parameter means production simply does not pass any (see the sole caller,
+    // PlayIntegrityPlugin.verifyJwsSignature), and any attempt to trust an extra
+    // root is visible at a call site instead of hidden in shared state.
+    //
+    // Do NOT reintroduce a mutable default here, and do NOT give this parameter a
+    // non-empty default value — either restores exactly what was removed.
 
     /**
      * Verify the JWS token's signature and cert chain.
@@ -72,10 +82,20 @@ internal object PlayIntegrityJwsVerifier {
      * @param b64Decode  Platform-appropriate base64url decoder. Production callers
      *                   supply android.util.Base64; tests supply java.util.Base64 so
      *                   this object stays free of android.* imports (issue #957).
+     * @param extraTrustedRoots  Additional root SHA-256 fingerprints to accept
+     *                   ALONGSIDE the Google pinset. Defaults to empty, which is
+     *                   what production uses; only the JVM fixture passes a value,
+     *                   so a fixture chain can exercise the real crypto/trust path
+     *                   without a Google-issued cert. A non-empty value from
+     *                   production code is a supply-chain compromise signal.
      * @return true iff the chain walks, root is pin-trusted, and signature verifies.
      *         Returns false on any parse/crypto failure (fail-closed, I4).
      */
-    fun verify(token: String, b64Decode: (String) -> ByteArray): Boolean {
+    fun verify(
+        token: String,
+        b64Decode: (String) -> ByteArray,
+        extraTrustedRoots: Set<String> = emptySet(),
+    ): Boolean {
         return try {
             val parts = token.split(".")
             if (parts.size != 3) return false
@@ -115,7 +135,7 @@ internal object PlayIntegrityJwsVerifier {
             //    (issue #1097 — the prior OR fallback was a full trust bypass; any
             //    self-signed cert with "Google" in the subject DN passed.)
             val rootCert = chain[chainLen - 1]
-            if (!verifyRootCertFingerprint(rootCert)) return false
+            if (!verifyRootCertFingerprint(rootCert, extraTrustedRoots)) return false
 
             // 5. JWS signature over "header.payload" — ES256 raw R‖S 64 bytes transcoded to
             //    ASN.1 DER before JCA verify(); RS256 PKCS#1 bytes used as-is.
@@ -139,9 +159,12 @@ internal object PlayIntegrityJwsVerifier {
         }
     }
 
-    private fun verifyRootCertFingerprint(cert: X509Certificate): Boolean = runCatching {
+    private fun verifyRootCertFingerprint(
+        cert: X509Certificate,
+        extraTrustedRoots: Set<String>,
+    ): Boolean = runCatching {
         val digest = MessageDigest.getInstance("SHA-256")
         val fingerprint = digest.digest(cert.encoded).joinToString("") { "%02x".format(it) }
-        fingerprint in GOOGLE_ROOT_CA_SHA256 || fingerprint in ADDITIONAL_TRUSTED_ROOTS_FOR_TESTING
+        fingerprint in GOOGLE_ROOT_CA_SHA256 || fingerprint in extraTrustedRoots
     }.getOrDefault(false)
 }

@@ -8,10 +8,12 @@ package com.veyrnox.app
 //
 // Fixture design (issue #1097):
 //   - A test root CA (`testRootCert`) is generated once per class run and its
-//     SHA-256 fingerprint is injected into
-//     PlayIntegrityJwsVerifier.ADDITIONAL_TRUSTED_ROOTS_FOR_TESTING so that
-//     legitimate 2-cert chains (leaf signed by testRoot) exercise the full
-//     crypto/trust path. This replaces the previous fixture of self-signed
+//     SHA-256 fingerprint is passed to verify() as the `extraTrustedRoots`
+//     argument (via the verifyWithTestRoot helper) so that legitimate 2-cert
+//     chains (leaf signed by testRoot) exercise the full crypto/trust path.
+//     S-3 (2026-09-03): this used to be injected into a process-wide mutable
+//     set on the verifier. That set is gone — production passes no extra roots
+//     at all, so there is no writable trust anchor in the release binary. This replaces the previous fixture of self-signed
 //     "CN=Google LLC" leaves, which pinned the WRONG behaviour: it relied on
 //     the `issuer.contains("Google")` trust-bypass fallback that #1097 removes.
 //
@@ -57,6 +59,13 @@ import org.json.JSONObject
 
 class PlayIntegrityJwsVerifierTest {
 
+    // Every fixture chain terminates at testRootCert, which is NOT in the Google
+    // pinset — so each call must hand verify() the fixture root explicitly.
+    // Production calls verify() with no third argument at all.
+    private fun verifyWithTestRoot(token: String): Boolean =
+        PlayIntegrityJwsVerifier.verify(token, b64Decode, testRoots)
+
+
     companion object {
         val b64Decode: (String) -> ByteArray = { seg ->
             var s = seg.replace('-', '+').replace('_', '/')
@@ -69,9 +78,13 @@ class PlayIntegrityJwsVerifierTest {
             Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
         }
 
-        // Test root CA (EC) — its fingerprint is registered as a trusted pin.
+        // Test root CA (EC) — its fingerprint is passed per-call as an extra
+        // trusted root; nothing global is mutated.
         lateinit var testRootPair: KeyPair
         lateinit var testRootCert: X509Certificate
+
+        // The fixture's extra-trusted-root set, handed to verify() explicitly.
+        lateinit var testRoots: Set<String>
 
         // Leaf key pairs (signed by testRootCert).
         lateinit var ec256Pair: KeyPair
@@ -97,9 +110,8 @@ class PlayIntegrityJwsVerifierTest {
                 sigAlg = "SHA256withECDSA",
             )
 
-            // Register the test root fingerprint via the internal test seam.
-            val fp = sha256Hex(testRootCert.encoded)
-            PlayIntegrityJwsVerifier.ADDITIONAL_TRUSTED_ROOTS_FOR_TESTING.add(fp)
+            // The fixture root is trusted only for calls that explicitly pass it.
+            testRoots = setOf(sha256Hex(testRootCert.encoded))
 
             // Leaves signed by the test root.
             ec256Pair = KeyPairGenerator.getInstance("EC", "BC").apply {
@@ -215,27 +227,43 @@ class PlayIntegrityJwsVerifierTest {
     @Test
     fun `ES256 happy path with pinned test root returns true`() {
         val token = buildJws("ES256", ec256Pair, listOf(ecLeafCert, testRootCert))
-        assertTrue(PlayIntegrityJwsVerifier.verify(token, b64Decode))
+        assertTrue(verifyWithTestRoot(token))
+    }
+
+    // S-3 (2026-09-03): the security property behind removing the mutable test
+    // seam. The fixture chain is cryptographically perfect — it is the SAME token
+    // the happy path above accepts — and differs only in that no extra root is
+    // passed. That is exactly how production calls verify(). If this ever returns
+    // true, the fixture root has become trusted by default and the Google pinset
+    // is no longer the sole production trust anchor.
+    @Test
+    fun `S-3 - fixture chain is NOT trusted on the production 2-arg call`() {
+        val token = buildJws("ES256", ec256Pair, listOf(ecLeafCert, testRootCert))
+        assertTrue("precondition: this exact token verifies WITH the fixture root", verifyWithTestRoot(token))
+        assertFalse(
+            "Production passes no extra roots — the fixture root must not be trusted there",
+            PlayIntegrityJwsVerifier.verify(token, b64Decode),
+        )
     }
 
     @Test
     fun `RS256 happy path with pinned test root returns true`() {
         val token = buildJws("RS256", rsa2048Pair, listOf(rsaLeafCert, testRootCert))
-        assertTrue(PlayIntegrityJwsVerifier.verify(token, b64Decode))
+        assertTrue(verifyWithTestRoot(token))
     }
 
     @Test
     fun `ES256 bit-flip on r byte returns false`() {
         val token = buildJws("ES256", ec256Pair, listOf(ecLeafCert, testRootCert),
             tamperSig = { sig -> sig.clone().also { it[0] = (it[0].toInt() xor 0x01).toByte() } })
-        assertFalse(PlayIntegrityJwsVerifier.verify(token, b64Decode))
+        assertFalse(verifyWithTestRoot(token))
     }
 
     @Test
     fun `ES256 sig not 64 bytes returns false`() {
         val token = buildJws("ES256", ec256Pair, listOf(ecLeafCert, testRootCert),
             tamperSig = { it.copyOf(32) })
-        assertFalse(PlayIntegrityJwsVerifier.verify(token, b64Decode))
+        assertFalse(verifyWithTestRoot(token))
     }
 
     @Test
@@ -244,26 +272,26 @@ class PlayIntegrityJwsVerifierTest {
         val parts = token.split(".")
         val tamperedPayload = b64Encode("""{"verdict":"FAILS_INTEGRITY"}""".toByteArray())
         val tampered = "${parts[0]}.$tamperedPayload.${parts[2]}"
-        assertFalse(PlayIntegrityJwsVerifier.verify(tampered, b64Decode))
+        assertFalse(verifyWithTestRoot(tampered))
     }
 
     @Test
     fun `ES256 signed with different key returns false`() {
         // Leaf cert holds ec256Pair.public, but we sign with ec256Pair2 → sig mismatch.
         val token = buildJws("ES256", ec256Pair2, listOf(ecLeafCert, testRootCert))
-        assertFalse(PlayIntegrityJwsVerifier.verify(token, b64Decode))
+        assertFalse(verifyWithTestRoot(token))
     }
 
     @Test
     fun `unknown alg HS256 returns false`() {
         val token = buildJws("HS256", ec256Pair, listOf(ecLeafCert, testRootCert))
-        assertFalse(PlayIntegrityJwsVerifier.verify(token, b64Decode))
+        assertFalse(verifyWithTestRoot(token))
     }
 
     @Test
     fun `malformed JWS with only two parts returns false`() {
         val token = "aGVhZGVy.cGF5bG9hZA"
-        assertFalse(PlayIntegrityJwsVerifier.verify(token, b64Decode))
+        assertFalse(verifyWithTestRoot(token))
     }
 
     // ---------- Issue #1097 negative tests ----------
@@ -287,7 +315,7 @@ class PlayIntegrityJwsVerifierTest {
         val token = buildJws("ES256", attackerKp, listOf(forgedGoogleCert))
         assertFalse(
             "Self-signed CN=Google cert must not be trusted — issuer-string bypass removed (#1097)",
-            PlayIntegrityJwsVerifier.verify(token, b64Decode),
+            verifyWithTestRoot(token),
         )
     }
 
@@ -320,7 +348,7 @@ class PlayIntegrityJwsVerifierTest {
         val token = buildJws("ES256", attackerLeafKp, listOf(forgedLeaf, forgedRoot))
         assertFalse(
             "Forged 2-cert Google chain must not be trusted — root fingerprint pin is authoritative (#1097)",
-            PlayIntegrityJwsVerifier.verify(token, b64Decode),
+            verifyWithTestRoot(token),
         )
     }
 
@@ -334,7 +362,7 @@ class PlayIntegrityJwsVerifierTest {
         val token = buildJws("ES256", testRootPair, listOf(testRootCert))
         assertFalse(
             "x5c length 1 must not verify even if that single cert's fingerprint is pinned (#1097)",
-            PlayIntegrityJwsVerifier.verify(token, b64Decode),
+            verifyWithTestRoot(token),
         )
     }
 
@@ -365,7 +393,7 @@ class PlayIntegrityJwsVerifierTest {
             .joinToString("") { "%02x".format(it) }
         assertFalse(
             "Precondition: forged root fingerprint must not be pinned",
-            PlayIntegrityJwsVerifier.ADDITIONAL_TRUSTED_ROOTS_FOR_TESTING.contains(forgedFp),
+            testRoots.contains(forgedFp),
         )
         val forgedLeaf = buildCert(
             subjectDn = "CN=attest.google.com",
@@ -377,7 +405,7 @@ class PlayIntegrityJwsVerifierTest {
         val token = buildJws("ES256", forgedLeafKp, listOf(forgedLeaf, forgedRoot))
         assertFalse(
             "Issuer CN 'Google' must not substitute for a SHA-256 pin match (L-3 doc contract)",
-            PlayIntegrityJwsVerifier.verify(token, b64Decode),
+            verifyWithTestRoot(token),
         )
     }
 
@@ -398,6 +426,6 @@ class PlayIntegrityJwsVerifierTest {
             "CN=Untrusted Leaf", strangerLeafKp.public,
             "CN=Untrusted Root", strangerRootKp.private, "SHA256withECDSA")
         val token = buildJws("ES256", strangerLeafKp, listOf(strangerLeaf, strangerRoot))
-        assertFalse(PlayIntegrityJwsVerifier.verify(token, b64Decode))
+        assertFalse(verifyWithTestRoot(token))
     }
 }
