@@ -22,7 +22,10 @@ android {
         applicationId "com.veyrnox.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 40
+        // Play permanently reserves a version code after an upload attempt, even
+        // when that edit is not released. 40 is already consumed; use 41 for the
+        // next Internal Testing-only AAB.
+        versionCode 41
         // Customer-facing version for the public Play launch. versionCode is internal
         // bookkeeping (monotonic, permanently consumed per upload, never shown to users);
         // versionName is what appears on the store listing.

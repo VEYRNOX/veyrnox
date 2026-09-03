@@ -42,7 +42,7 @@ describe('staging mobile release contract', () => {
   });
 
   it('uses the next unused store numbers confirmed in the consoles', () => {
-    expect(androidBuild).toContain('versionCode 40');
+    expect(androidBuild).toContain('versionCode 41');
     expect(androidBuild).toContain('versionName "1.0.1"');
     expect(iosProject.match(/CURRENT_PROJECT_VERSION = 22;/g)).toHaveLength(2);
     expect(iosProject.match(/MARKETING_VERSION = 1\.0\.1;/g)).toHaveLength(2);
