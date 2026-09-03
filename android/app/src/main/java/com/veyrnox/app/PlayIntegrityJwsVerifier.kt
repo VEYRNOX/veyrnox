@@ -28,10 +28,25 @@ import org.json.JSONObject
 
 internal object PlayIntegrityJwsVerifier {
 
-    // Known Google root CA SHA-256 fingerprints (DER bytes of the cert).
-    // Source: Google Trust Services published root CA bundle (https://pki.goog/repository/,
-    // captured 2026-07-17). All four roots are currently in Play Integrity signing rotation;
-    // real tokens observed in the wild have chained via any of R1/R2/R3/R4.
+    // Google root CA SHA-256 fingerprints (DER bytes of the cert).
+    //
+    // PROVENANCE — sourcing only, NOT observation. These four fingerprints are
+    // transcribed from the Google Trust Services published root CA bundle at
+    // https://pki.goog/repository/ (captured 2026-07-17). That is the whole of
+    // the evidence behind this set.
+    //
+    // WHICH ROOTS PLAY INTEGRITY ACTUALLY SIGNS WITH IS UNVERIFIED. No real
+    // production Play Integrity token has been captured and inspected, so the
+    // claim "R1/R2/R3/R4 covers the live signing rotation" is an assumption
+    // carried from Google's published bundle — not something measured. All four
+    // are pinned to widen coverage against that uncertainty, which is the
+    // opposite of proof that all four are in use.
+    //
+    // Consequence if the assumption is wrong: a genuine token chaining to a root
+    // absent from this set fails the pin and degrades to INTEGRITY_UNAVAILABLE
+    // (WARN, not BLOCK — see PlayIntegrityPlugin file header), so the failure is
+    // fail-closed and non-bricking. Capture a real token before tightening that
+    // policy to INTEGRITY_FAIL or before narrowing this set (issue #2276).
     private val GOOGLE_ROOT_CA_SHA256 = setOf(
         // GTS Root R1
         "2a575471e31340bc21581cbd2cf13e158463203ece94bcf9d3cc196bf09a5472",

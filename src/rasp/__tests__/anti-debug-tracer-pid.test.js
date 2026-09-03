@@ -482,6 +482,23 @@ describe('Play Integrity root cert SHA-256 pinning (G2-ROOTCERT-PIN)', () => {
     // called at runtime. If the delegate is deleted, the verifier is dead code.
     expect(playKt).toMatch(/PlayIntegrityJwsVerifier\.verify\s*\(/);
   });
+
+  // ── S-1 (branch review 2026-09-03) ──────────────────────────────────────────
+  // The pinset comment used to read "real tokens observed in the wild have
+  // chained via any of R1/R2/R3/R4" — an assertion of real-token observation
+  // sitting on the trust anchor, directly contradicting every other comment in
+  // the attestation stack ("NOT device-verified against a real Play Integrity
+  // token"). No token has ever been captured. Under verify-don't-assert that
+  // sentence is exactly the class of claim that needs evidence, so it is now
+  // sourcing-only. Guard against the observation claim coming back.
+  it('pinset provenance claims SOURCING only, never real-token observation', () => {
+    expect(playJwsKt).not.toMatch(/observed in the wild/i);
+    expect(playJwsKt).not.toMatch(/currently in Play Integrity signing rotation/i);
+    // Must still name where the fingerprints actually came from.
+    expect(playJwsKt).toMatch(/pki\.goog\/repository/);
+    // Must state plainly that the live signing rotation is unmeasured.
+    expect(playJwsKt).toMatch(/UNVERIFIED|never been measured|unmeasured/i);
+  });
 });
 
 // ── Item 6 — iOS PT_DENY_ATTACH at pre-bridge time ───────────────────────────
