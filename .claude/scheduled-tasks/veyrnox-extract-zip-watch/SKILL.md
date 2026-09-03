@@ -11,9 +11,11 @@ almost entirely with read-only `npm view` registry queries — do NOT modify fil
 > file. Signal 3 needs `package.json`, which must be read from the ref rather than the
 > working tree — the primary checkout is shared by many worktrees and scheduled tasks and
 > is frequently on an unrelated branch. Use
-> `git show origin/main:package.json`, with `MSYS_NO_PATHCONV=1` exported on Windows/MSYS
-> (without it the `:` is rewritten, the command fails SILENTLY, and an empty result reads
-> as "the harness was retired" — a false trigger).
+> `git show origin/main:package.json`, and confirm a non-zero byte count with
+> `git cat-file -s origin/main:package.json` — that read fails silently, and an empty
+> result reads as "the harness was retired", a false trigger. (An `MSYS_NO_PATHCONV=1`
+> Git-Bash caveat was dropped here 2026-09-03; the byte check covers the same failure on
+> any platform.)
 
 ## Background (why this task exists)
 

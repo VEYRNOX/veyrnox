@@ -10,7 +10,7 @@ HARD CONSTRAINTS — DO NOT VIOLATE
 - NOTIFY ONLY. Do NOT create a branch, do NOT edit any file (especially not SendCrypto.jsx), do NOT run any wiring/TDD, do NOT open any PR (draft or otherwise). Your entire job is detect-and-notify.
 - **Shared-checkout note (2026-07-28): no worktree needed here, deliberately.** Sibling
   scheduled tasks now cut a worktree or read from `origin/main`, because
-  `C:\Users\aljob\Downloads\Veyrnox` is shared by ~10 concurrent worktrees and sessions.
+  `/Users/aljobson/Documents/GitHub/veyrnox` is shared by ~10 concurrent worktrees and sessions.
   This task touches **no local checkout at all** — it is a single `gh pr list` against
   `aljobson/veyrnox-secure` — so there is nothing to isolate. Do not add worktree ceremony
   to match the others. The NOTIFY-ONLY rule above is already the stronger constraint.

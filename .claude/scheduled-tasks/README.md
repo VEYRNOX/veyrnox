@@ -30,26 +30,26 @@ A directory here is not evidence a task is registered — `appium-shellquote` an
 For the two full-runbook tasks (and for any `LOADER.md` change), the live copy
 is in the home directory and this repo is downstream of it:
 
-```powershell
+```bash
 # repo -> live
-Copy-Item ".claude/scheduled-tasks/<task>/SKILL.md" `
-          "$env:USERPROFILE/.claude/scheduled-tasks/<task>/SKILL.md"
+cp ".claude/scheduled-tasks/<task>/SKILL.md" \
+   "$HOME/.claude/scheduled-tasks/<task>/SKILL.md"
 
 # live -> repo (what to run after editing the task)
-Copy-Item "$env:USERPROFILE/.claude/scheduled-tasks/<task>/SKILL.md" `
-          ".claude/scheduled-tasks/<task>/SKILL.md"
+cp "$HOME/.claude/scheduled-tasks/<task>/SKILL.md" \
+   ".claude/scheduled-tasks/<task>/SKILL.md"
 ```
 
 Check for drift before trusting the mirror:
 
-```powershell
-Get-FileHash ".claude/scheduled-tasks/<task>/SKILL.md",
-             "$env:USERPROFILE/.claude/scheduled-tasks/<task>/SKILL.md"
+```bash
+shasum -a 256 ".claude/scheduled-tasks/<task>/SKILL.md" \
+              "$HOME/.claude/scheduled-tasks/<task>/SKILL.md"
 ```
 
 ## Why mirror instead of symlink
 
-A directory junction from `~/.claude/scheduled-tasks/<task>` into a repo
+A symlink from `~/.claude/scheduled-tasks/<task>` into a repo
 worktree would remove the drift risk, but it couples a daily automation to a
 working tree that gets branched, cleaned and re-cloned. A stale or missing
 worktree would silently break the task. The mirror is manual but cannot fail
@@ -128,6 +128,13 @@ anything that runs.
 ## Note on contents
 
 These files describe process, not secrets. They do contain the author's local
-working path (`C:\Users\aljob\Downloads\Veyrnox`), which already appears in
-`.claude/launch.json`. Do not add credentials, keys, or tokens to a task
-definition — this repository is public.
+working path (`/Users/aljobson/Documents/GitHub/veyrnox`). Do not add
+credentials, keys, or tokens to a task definition — this repository is public.
+
+**These paths rot, and a rotted one fails silently.** They were all
+`C:\Users\aljob\Downloads\Veyrnox` until 2026-09-03, long after the machine
+became a Mac — the 2026-09-03 dep-audit run had to improvise every path in its
+own runbook to complete. A task whose `cd` target does not exist does not
+usually announce that clearly; it reports whatever it managed to do. If you move
+the checkout again, grep this directory for the old path and fix every hit in
+one commit.

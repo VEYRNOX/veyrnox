@@ -12,10 +12,12 @@ read the shared checkout's working tree.
 > other scheduled tasks, and is frequently on a detached HEAD or an unrelated branch. This
 > task needs no worktree, but as of 2026-08-25 it DOES read one repo file — the lockfile —
 > and it must read it from the ref, never the tree:
-> `MSYS_NO_PATHCONV=1 git show origin/main:package-lock.json`. Sanity-check with
-> `git cat-file -s origin/main:package-lock.json` that the byte count is non-zero; on
-> Git Bash the `:` gets path-rewritten without `MSYS_NO_PATHCONV`, and the command then
-> fails silently in a way that looks exactly like "no matches found".
+> `git show origin/main:package-lock.json`. Sanity-check with
+> `git cat-file -s origin/main:package-lock.json` that the byte count is non-zero — every
+> failure mode of that read is silent, and an empty result looks exactly like "no matches
+> found", which here would read as "the residual is gone". (This carried an
+> `MSYS_NO_PATHCONV=1` prefix until 2026-09-03, for a Git-Bash-only path-rewrite bug; the
+> prefix is a no-op on macOS, the byte check is not.)
 
 ## Background (why this task exists)
 `elliptic` GHSA-848j-6mx2-7j84 ("Uses a Cryptographic Primitive with a Risky
@@ -84,7 +86,7 @@ requires a package that does not exist yet.
 0. Re-derive the chain before probing anything, so this runbook cannot go stale the way it
    just did:
    ```bash
-   MSYS_NO_PATHCONV=1 git -C <repo> show origin/main:package-lock.json > /tmp/vx-lock.json
+   git -C <repo> show origin/main:package-lock.json > /tmp/vx-lock.json
    node -e 'const p=JSON.parse(require("fs").readFileSync("/tmp/vx-lock.json","utf8")).packages||{};
      for(const [k,v] of Object.entries(p)){const d={...v.dependencies,...v.optionalDependencies};
        if(d&&d.elliptic)console.log("requires elliptic:",k,v.version);}'

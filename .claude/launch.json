@@ -18,7 +18,7 @@
     {
       "name": "veyrnox-4173",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "C:\\Users\\aljob\\Downloads\\Veyrnox", "run", "preview", "--", "--port", "4173", "--strictPort"],
+      "runtimeArgs": ["run", "preview", "--", "--port", "4173", "--strictPort"],
       "port": 4173,
       "autoPort": false
     }

@@ -5,7 +5,7 @@ description: Weekly tracker that reads all Veyrnox audit docs and updates a find
 
 You are running the weekly audit findings tracker for the Veyrnox wallet. Veyrnox is a self-custody crypto wallet (Vite + React + Capacitor). Mainnet is live.
 
-Working directory: C:\Users\aljob\Downloads\Veyrnox
+Working directory: /Users/aljobson/Documents/GitHub/veyrnox
 
 ## Your job
 
@@ -30,21 +30,21 @@ Synthesise all audit findings across every audit document in `docs/`, compare th
    Use a **branch** worktree, not `--detach`: the same checkout then serves as
    both the analysis snapshot and the branch the PR is opened from.
 
-   ```powershell
-   $branch = "audit-tracker/<DATE>"
-   $wt     = "$env:TEMP\veyrnox-audit-snapshot"
+   ```bash
+   branch="audit-tracker/<DATE>"
+   wt="${TMPDIR:-/tmp}/veyrnox-audit-snapshot"
 
    git worktree prune
-   if (Test-Path $wt) { git worktree remove --force $wt }
+   [ -d "$wt" ] && git worktree remove --force "$wt"
 
    # --no-track is REQUIRED. Without it git sets upstream to origin/main and a
    # later `git push` from this branch would target MAIN.
-   if (-not (git show-ref --verify --quiet "refs/heads/$branch"; $?)) {
-     git branch --no-track $branch origin/main
-   }
-   if (git config --get "branch.$branch.merge") { git branch --unset-upstream $branch }
+   git show-ref --verify --quiet "refs/heads/$branch" || \
+     git branch --no-track "$branch" origin/main
+   git config --get "branch.$branch.merge" >/dev/null && \
+     git branch --unset-upstream "$branch"
 
-   git worktree add $wt $branch
+   git worktree add "$wt" "$branch"
    ```
 
    Run **all** Step 1 doc reads and Step 2 code greps inside `$wt`. Because the
@@ -94,7 +94,7 @@ For each check: FIXED / STILL OPEN / REGRESSED (was fixed, now broken) / UNVERIF
 **Label every row with its evidence method:** `(grep)` for findings you re-verified against source this run, `(doc)` for findings whose status you took from an audit doc or PR history without re-checking. Do not blur the two.
 
 ### Step 3 — Write the tracker
-Get today's date (PowerShell: `Get-Date -Format "yyyy-MM-dd"`).
+Get today's date (`date +%F`).
 
 Write `docs/audit-findings-tracker.md` **into the worktree** (`$wt` from Step 0),
 overwriting each week. Not into the primary working directory — that is the
@@ -160,15 +160,15 @@ because a pushed branch is still not `main`.
    ```
    If that blob hash matches step 1, the tracker is already current on `main` — **report that, skip the commit and the PR entirely, and remove the worktree.** Do not open a no-op PR.
 3. Otherwise commit and push:
-   ```powershell
-   cd $wt
+   ```bash
+   cd "$wt"
    git add docs/audit-findings-tracker.md
-   git commit -o docs/audit-findings-tracker.md `
+   git commit -o docs/audit-findings-tracker.md \
      -m "docs(audit): update findings tracker <DATE>"
-   git push -u origin $branch
+   git push -u origin "$branch"
 
-   gh pr create --base main --head $branch `
-     --title "docs(audit): update findings tracker <DATE>" `
+   gh pr create --base main --head "$branch" \
+     --title "docs(audit): update findings tracker <DATE>" \
      --body "Automated weekly findings tracker, re-checked against origin/main @ <SHA>. Static analysis only — FIXED means the code change is present, NOT that the control is verified working. INTERNAL."
 
    gh pr merge --squash --auto
@@ -180,8 +180,8 @@ because a pushed branch is still not `main`.
    **Use `--auto`, never `--admin`.** If `main` is red the PR waits — correct.
 4. **Verify where it actually is, and report it honestly.** Pushing makes the
    work durable; it does not make it `main`.
-   ```powershell
-   git ls-remote --heads origin $branch          # pushed?
+   ```bash
+   git ls-remote --heads origin "$branch"        # pushed?
    gh pr view <PR#> --json state,mergeCommit     # merged?
    ```
    Report exactly one of:
@@ -194,9 +194,9 @@ because a pushed branch is still not `main`.
    'safe', 'anchored', or 'durable'. Branch pointers in the local repo have been
    clobbered by concurrent activity; a pushed remote branch has not.
 5. Remove the worktree — after the PR is open, and including when the run aborts:
-   ```powershell
-   cd "C:\Users\aljob\Downloads\Veyrnox"
-   git worktree remove "$env:TEMP\veyrnox-audit-snapshot" --force
+   ```bash
+   cd "/Users/aljobson/Documents/GitHub/veyrnox"
+   git worktree remove "${TMPDIR:-/tmp}/veyrnox-audit-snapshot" --force
    ```
 
 ## Hard constraints
