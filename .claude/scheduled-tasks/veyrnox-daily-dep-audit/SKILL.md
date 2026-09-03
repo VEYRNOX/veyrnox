@@ -6,28 +6,36 @@ description: Daily npm audit summary for Veyrnox wallet dependencies
 Run a dependency security audit for the Veyrnox wallet project and present the results as a visual widget.
 
 ## Objective
-Check the Veyrnox wallet project at `C:\Users\aljob\Downloads\Veyrnox` for npm dependency vulnerabilities and display a clear daily summary.
+Check the Veyrnox wallet project at `/Users/aljobson/Documents/GitHub/veyrnox` for npm dependency vulnerabilities and display a clear daily summary.
 
 ## Steps
 
 1. Audit `origin/main`'s dependency state — **not the shared checkout's working tree**.
 
-   The primary checkout at `C:\Users\aljob\Downloads\Veyrnox` is used concurrently by ~10
-   worktrees and several other scheduled tasks, and is frequently on a detached HEAD or an
-   unrelated feature branch. Running `npm audit` there audits whatever that branch happens
-   to carry — and then reports it as the project's state. Resolve from the ref instead:
+   The primary checkout at `/Users/aljobson/Documents/GitHub/veyrnox` is used concurrently
+   by ~10 worktrees and several other scheduled tasks, and is frequently on a detached HEAD
+   or an unrelated feature branch. Running `npm audit` there audits whatever that branch
+   happens to carry — and then reports it as the project's state. Resolve from the ref
+   instead:
 
    ```bash
-   export MSYS_NO_PATHCONV=1      # MSYS rewrites the ':' and the command fails SILENTLY
-   cd "C:/Users/aljob/Downloads/Veyrnox" && git fetch origin main
-   SCRATCH="$TEMP/veyrnox-dep-audit"; mkdir -p "$SCRATCH"
+   cd "/Users/aljobson/Documents/GitHub/veyrnox" && git fetch origin main
+   SCRATCH="${TMPDIR:-/tmp}/veyrnox-dep-audit"; rm -rf "$SCRATCH"; mkdir -p "$SCRATCH"
    git show origin/main:package.json      > "$SCRATCH/package.json"
    git show origin/main:package-lock.json > "$SCRATCH/package-lock.json"
-   git cat-file -s origin/main:package-lock.json   # must be non-zero; a silent MSYS
-                                                   # failure yields an empty file, which
-                                                   # audits as 0 vulnerabilities
+   git cat-file -s origin/main:package-lock.json   # must be non-zero, and must match
+                                                   # `wc -c` on the written file — an empty
+                                                   # or truncated lockfile audits as 0
+                                                   # vulnerabilities and looks like good news
    cd "$SCRATCH" && npm audit --json
    ```
+
+   **This block was Windows/Git-Bash until 2026-09-03** and carried an
+   `export MSYS_NO_PATHCONV=1` guard, because MSYS rewrote the `:` in
+   `git show origin/main:path` and the command failed silently. That guard is a no-op on
+   macOS and has been removed. The byte-count check is NOT part of that guard and stays:
+   it catches an empty or truncated lockfile from any cause, and a lockfile that audits as
+   zero vulnerabilities is indistinguishable from a clean one.
 
    Record the `origin/main` SHA you audited in the report, so a later reader can tell what
    was actually measured. Never run `npm install` or `npm audit fix` in the primary
@@ -331,4 +339,4 @@ stayed invisible to the daily audit for weeks.
 - Do NOT create, edit, or trigger scheduled tasks/watchers from this audit — only
   reference them by name in the report.
 - If the project directory doesn't exist or npm fails, output a widget showing the error clearly rather than silently failing.
-- Use the Bash tool for the npm command (Git Bash is available on this Windows machine).
+- Use the Bash tool for the npm command (zsh on macOS).
