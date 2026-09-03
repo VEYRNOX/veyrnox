@@ -5,6 +5,7 @@ import { Link, useSearchParams } from "react-router";
 import BackButton from "@/components/BackButton";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS } from "@/wallet-core/assets";
+import { assetDisplayLabel } from "@/lib/assetLabel";
 import { resolveReceive } from "@/lib/receiveAddress";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { demoSendSource } from "@/lib/sendWalletSource";
@@ -202,33 +203,23 @@ export default function ReceiveCrypto() {
           <Select value={symbol} onValueChange={(v) => { setSymbol(v); setCopied(false); }}>
             <SelectTrigger className="mt-1.5 h-12 [&>span]:flex [&>span]:items-center [&>span]:gap-3" aria-labelledby="receive-asset-label">
               <SelectValue placeholder={t("receive.asset_placeholder")}>
-                {(() => {
-                  if (!symbol) return null;
-                  const a = ASSETS.find(x => x.symbol === symbol);
-                  const disp = a?.displaySymbol || a?.symbol || symbol;
-                  const chainLabel = a?.family === "erc20" ? "Ethereum" : a?.name;
-                  return (
-                    <>
-                      <CoinLogo symbol={symbol} size={32} />
-                      <span>{disp}{chainLabel ? ` (${chainLabel})` : ""}</span>
-                    </>
-                  );
-                })()}
+                {symbol ? (
+                  <>
+                    <CoinLogo symbol={symbol} size={32} />
+                    <span>{assetDisplayLabel(symbol)}</span>
+                  </>
+                ) : null}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {ASSETS.map((a) => {
-                const disp = a.displaySymbol || a.symbol;
-                const chainLabel = a.family === "erc20" ? "Ethereum" : a.name;
-                return (
-                  <SelectItem key={a.symbol} value={a.symbol}>
-                    <div className="flex items-center gap-2">
-                      <CoinLogo symbol={a.symbol} size={20} />
-                      <span>{disp}{chainLabel ? ` (${chainLabel})` : ""}</span>
-                    </div>
-                  </SelectItem>
-                );
-              })}
+              {ASSETS.map((a) => (
+                <SelectItem key={a.symbol} value={a.symbol}>
+                  <div className="flex items-center gap-2">
+                    <CoinLogo symbol={a.symbol} size={20} />
+                    <span>{assetDisplayLabel(a)}</span>
+                  </div>
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
