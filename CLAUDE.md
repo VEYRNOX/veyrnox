@@ -816,6 +816,8 @@ read-gate), plus a regression-test assertion restored. Two items needed work.
   consecutive runs produced findings from files no pattern matched (07-27 the SQL/edge
   surface, 07-28 `src/components/FirstRunTour.jsx`). The 07-28 report records the pattern
   to add; the task file may only write its own report, so it has NOT been applied.
+  **Applied 2026-09-03**, after the streak reached five runs — see the Working-pattern
+  entry near the end of this file for what was added and why a run cannot do it itself.
 - **Process — `main` moves faster than a document can describe it.** Three separate
   staleness events in one day, all the same shape: a statement true when written and
   false when merged. (a) #1412 landed 7 min after the scan's pre-merge checkpoint —
@@ -1276,6 +1278,14 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
   (`docs/honesty-check-2026-08-31.md`, PR #2187, zero code changes — both flags wrong),
   and the daily security diff produced BOTH its findings from files no scan pattern
   matched (`docs/security-diffs/diff-2026-08-31.md` — third consecutive run to do so).
+  That reached a **fifth** consecutive run on 2026-09-03, both findings again from
+  unmatched files, and the list was widened with `functions/**` (the Cloudflare Pages
+  server layer — internet-facing, holds `TRANSAK_WEBHOOK_SECRET` and the service-role
+  boundary, and had never been in the list) plus `e2e/**` and `src/**/__tests__/**`.
+  **A run cannot fix this itself** — the task may only write its own report, so four
+  runs in a row recorded an omission none of them was permitted to correct. If you are
+  reading a report that carries a `## Scan-list maintenance` section, applying it is
+  the handoff; nobody else will.
   - **Search the words the CODE uses, not the words the CLAIM uses.** Implementation
     nouns (`Panel`, `Handler`, `Feed`, `Store`, `Verifier`) find features; marketing
     verbs (`reviews`, `detects`, `protects`) do not. `advisor.*simulation` misses a
