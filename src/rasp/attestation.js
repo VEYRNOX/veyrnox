@@ -45,12 +45,16 @@
 //     is algorithmically correct too (before the fix, JCA received raw R‖S and
 //     silently fail-closed on every real ES256 token — inert attested axis).
 //     Residual gap: root-cert pinning is still issuer.contains("Google")
-//     (G2-ROOTCERT-PIN) and NOT device-verified against a real Play Integrity
-//     token yet — treat attestation results as PROVISIONAL until Phase 4 + 5.
+//     (G2-ROOTCERT-PIN, tracked in issue #2276) and NOT device-verified against
+//     a real Play Integrity token yet — treat attestation results as PROVISIONAL
+//     until Phase 4 + 5. Do NOT swap in a pinned root without device verification;
+//     a wrong pin fails closed on every real device forever.
 //   • iOS: App Attest requires the com.apple.developer.devicecheck.appattest-environment
 //     entitlement (Apple Developer account + provisioning profile) which is NOT yet
 //     present — so on iOS this leg is code-present but honestly UNAVAILABLE until the
-//     entitlement + DeviceCheck.framework linkage land and are device-exercised.
+//     entitlement + DeviceCheck.framework linkage land and are device-exercised
+//     (tracked in issue #2277). Fix path also includes escalating BOTH-legs-
+//     unavailable on iOS from WARN to FAIL.
 //   • NOT device-verified on either platform; NOT independently audited.
 
 import { Capacitor } from '@capacitor/core';
