@@ -107,23 +107,34 @@ async function solRpcPost(url, method, params) {
 }
 
 /**
+ * Try `method(params)` against each candidate URL in order via solRpcPost. Used
+ * for every send-path RPC (blockhash, rent, broadcast, status) so those calls
+ * route through CapacitorHttp on native and bypass the CORS/preflight failure
+ * that `@solana/web3.js` Connection's raw fetch hits on the Capacitor app origin.
+ * The old Connection-backed path is kept for tx history / prioritization fees.
+ */
+async function solRpcCall(networkKey, method, params) {
+  const candidates = rpcUrlCandidates(networkKey);
+  let lastErr;
+  for (const url of candidates) {
+    try {
+      return await solRpcPost(url, method, params);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr;
+}
+
+/**
  * Confirmed balance in lamports (BigInt). Uses solRpcPost with fallback across
  * candidate URLs so a rate-limited or unreachable primary is skipped.
  * @returns {Promise<bigint>}
  */
 export async function getBalanceLamports(networkKey, address) {
   if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
-  const candidates = rpcUrlCandidates(networkKey);
-  let lastErr;
-  for (const url of candidates) {
-    try {
-      const result = await solRpcPost(url, 'getBalance', [address, { commitment: 'confirmed' }]);
-      return BigInt(result.value);
-    } catch (err) {
-      lastErr = err;
-    }
-  }
-  throw lastErr;
+  const result = await solRpcCall(networkKey, 'getBalance', [address, { commitment: 'confirmed' }]);
+  return BigInt(result.value);
 }
 
 /** Convenience: confirmed balance as a SOL number (display only). */
@@ -141,7 +152,11 @@ export async function getBalanceSol(networkKey, address) {
  * @returns {Promise<{ blockhash: string, lastValidBlockHeight: number }>}
  */
 export async function getLatestBlockhash(networkKey) {
-  return withFallback(networkKey, (conn) => conn.getLatestBlockhash('confirmed'));
+  const result = await solRpcCall(networkKey, 'getLatestBlockhash', [{ commitment: 'confirmed' }]);
+  return {
+    blockhash: result.value.blockhash,
+    lastValidBlockHeight: result.value.lastValidBlockHeight,
+  };
 }
 
 /**
@@ -153,10 +168,8 @@ export async function getLatestBlockhash(networkKey) {
  * @returns {Promise<bigint>}
  */
 export async function getRentExemptMinimum(networkKey, space = 0) {
-  return withFallback(networkKey, async (conn) => {
-    const lamports = await conn.getMinimumBalanceForRentExemption(space, 'confirmed');
-    return BigInt(lamports);
-  });
+  const lamports = await solRpcCall(networkKey, 'getMinimumBalanceForRentExemption', [space, { commitment: 'confirmed' }]);
+  return BigInt(lamports);
 }
 
 /**
@@ -249,8 +262,13 @@ export async function getAddressHistory(networkKey, address, { limit = 25 } = {}
  */
 export async function broadcastRawTx(networkKey, rawTx) {
   getSolNetwork(networkKey); // throws if mainnet gated / disabled
-  const conn = getConnection(networkKey);
-  return conn.sendRawTransaction(rawTx, { skipPreflight: false, preflightCommitment: 'confirmed' });
+  const bytes = rawTx instanceof Uint8Array ? rawTx : new Uint8Array(rawTx);
+  // Buffer is available in the app runtime (polyfilled for Solana web3.js).
+  const encoded = Buffer.from(bytes).toString('base64');
+  return solRpcCall(networkKey, 'sendTransaction', [
+    encoded,
+    { encoding: 'base64', skipPreflight: false, preflightCommitment: 'confirmed' },
+  ]);
 }
 
 /**
@@ -260,8 +278,43 @@ export async function broadcastRawTx(networkKey, rawTx) {
  * isn't usable as a backdoor confirmation path on a gated network.
  */
 export async function confirmTx(networkKey, signature, blockhash, lastValidBlockHeight) {
-  const conn = getConnection(networkKey);
-  return conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+  // Poll getSignatureStatuses via CapacitorHttp-routed RPC instead of relying on
+  // @solana/web3.js Connection.confirmTransaction, which uses a WebSocket
+  // subscription that is unreliable on the Capacitor native origin (same class
+  // of failure as the CORS/preflight one solRpcPost was added to work around).
+  // Loop until the signature confirms OR the block height passes
+  // lastValidBlockHeight; on expiry throw a message send.js already matches
+  // (`BlockheightExceeded`) so its rebuild-and-resend retry engages unchanged.
+  const POLL_MS = 1500;
+  const HARD_TIMEOUT_MS = 90_000;
+  const started = Date.now();
+  // ponytail: naive polling; if throughput ever matters, switch to a signature
+  // subscribe path that also runs through CapacitorHttp/CapacitorWebSocket.
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const status = await solRpcCall(networkKey, 'getSignatureStatuses', [[signature], { searchTransactionHistory: false }]);
+    const value = status?.value?.[0] ?? null;
+    if (value != null) {
+      const conf = value.confirmationStatus;
+      if (value.err) {
+        return { value: { err: value.err } };
+      }
+      if (conf === 'confirmed' || conf === 'finalized') {
+        return { value: { err: null } };
+      }
+    }
+    let currentHeight = null;
+    try {
+      currentHeight = await solRpcCall(networkKey, 'getBlockHeight', [{ commitment: 'confirmed' }]);
+    } catch { /* transient — try again next tick */ }
+    if (typeof currentHeight === 'number' && currentHeight > lastValidBlockHeight) {
+      throw new Error(`BlockheightExceeded: last valid block height ${lastValidBlockHeight} passed for blockhash ${blockhash}`);
+    }
+    if (Date.now() - started > HARD_TIMEOUT_MS) {
+      throw new Error(`BlockheightExceeded: confirmation timeout for blockhash ${blockhash}`);
+    }
+    await new Promise((r) => setTimeout(r, POLL_MS));
+  }
 }
 
 /**
@@ -284,8 +337,8 @@ export async function confirmTx(networkKey, signature, blockhash, lastValidBlock
  */
 export async function getSignatureLanding(networkKey, signature) {
   try {
-    const conn = getConnection(networkKey);
-    const { value } = await conn.getSignatureStatus(signature, { searchTransactionHistory: true });
+    const status = await solRpcCall(networkKey, 'getSignatureStatuses', [[signature], { searchTransactionHistory: true }]);
+    const value = status?.value?.[0] ?? null;
     if (value == null) return { landed: false, err: null };
     return { landed: true, err: value.err ?? null };
   } catch {
