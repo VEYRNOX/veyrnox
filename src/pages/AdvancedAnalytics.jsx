@@ -33,30 +33,47 @@ export default function AdvancedAnalytics() {
 
   const assetTotals = portfolio?.assetTotals ?? {};
   const totalUSD = portfolio?.grandTotal ?? 0;
-  const assets = Object.keys(assetTotals).filter(c => (assetTotals[c]?.usd ?? 0) > 0);
+  // assetTotals is keyed by composite id ("ETH:mainnet"), and every value
+  // carries the bare `.symbol` for lookup. Prior code destructured just the
+  // KEY into `c` and fed it to VOLATILITY/SHARPE — which are symbol-keyed —
+  // so every lookup missed and portfolio risk always collapsed to
+  // DEFAULT_VOLATILITY. Carry the pair so display and math both work.
+  const assets = Object.keys(assetTotals)
+    .filter(id => (assetTotals[id]?.usd ?? 0) > 0)
+    .map(id => ({ id, symbol: assetTotals[id].symbol || id }));
+  const stableTotalUSD = useMemo(() => (
+    Object.values(assetTotals).reduce(
+      (s, v) => s + ((v?.symbol === "USDC" || v?.symbol === "USDT") ? (v.usd ?? 0) : 0),
+      0,
+    )
+  ), [assetTotals]);
 
   const portfolioVolatility = useMemo(() => {
     if (totalUSD === 0) return 0;
-    return assets.reduce((s, c) => s + (assetTotals[c].usd / totalUSD) * (VOLATILITY[c] ?? DEFAULT_VOLATILITY), 0);
+    return assets.reduce(
+      (s, { id, symbol }) => s + (assetTotals[id].usd / totalUSD) * (VOLATILITY[symbol] ?? DEFAULT_VOLATILITY),
+      0,
+    );
   }, [assets, assetTotals, totalUSD]);
 
   const portfolioSharpe = useMemo(() => {
     if (totalUSD === 0) return 0;
-    return assets.reduce((s, c) => s + (assetTotals[c].usd / totalUSD) * (SHARPE[c] ?? DEFAULT_SHARPE), 0);
+    return assets.reduce(
+      (s, { id, symbol }) => s + (assetTotals[id].usd / totalUSD) * (SHARPE[symbol] ?? DEFAULT_SHARPE),
+      0,
+    );
   }, [assets, assetTotals, totalUSD]);
 
   const diversificationScore = useMemo(() => {
     if (assets.length === 0) return 0;
-    const weights = assets.map(c => (assetTotals[c].usd ?? 0) / totalUSD);
+    const weights = assets.map(({ id }) => (assetTotals[id].usd ?? 0) / totalUSD);
     const hhi = weights.reduce((s, w) => s + w * w, 0);
     return Math.round((1 - hhi) * 100);
   }, [assets, assetTotals, totalUSD]);
 
-  const stableRatio = useMemo(() => {
-    const stables = ["USDC", "USDT"];
-    const stableUSD = stables.reduce((s, c) => s + (assetTotals[c]?.usd ?? 0), 0);
-    return totalUSD > 0 ? ((stableUSD / totalUSD) * 100).toFixed(1) : 0;
-  }, [assetTotals, totalUSD]);
+  const stableRatio = useMemo(() => (
+    totalUSD > 0 ? ((stableTotalUSD / totalUSD) * 100).toFixed(1) : 0
+  ), [stableTotalUSD, totalUSD]);
 
   const monthlyPerformance = useMemo(() => {
     const months = {};
@@ -83,11 +100,11 @@ export default function AdvancedAnalytics() {
   const worstMonth = pricesEnabled ? Math.min(...monthlyPerformance.map(m => m.inflow - m.outflow)) : null;
   const winMonths = pricesEnabled ? monthlyPerformance.filter(m => m.inflow > m.outflow).length : null;
 
-  const radarData = assets.slice(0, 5).map(c => ({
-    asset: c,
-    allocation: totalUSD > 0 ? Math.round(((assetTotals[c].usd ?? 0) / totalUSD) * 100) : 0,
-    volatility: Math.round((VOLATILITY[c] ?? DEFAULT_VOLATILITY) * 100),
-    sharpe: Math.round((SHARPE[c] ?? DEFAULT_SHARPE) * 100),
+  const radarData = assets.slice(0, 5).map(({ id, symbol }) => ({
+    asset: symbol,
+    allocation: totalUSD > 0 ? Math.round(((assetTotals[id].usd ?? 0) / totalUSD) * 100) : 0,
+    volatility: Math.round((VOLATILITY[symbol] ?? DEFAULT_VOLATILITY) * 100),
+    sharpe: Math.round((SHARPE[symbol] ?? DEFAULT_SHARPE) * 100),
   }));
 
   const riskLevel = portfolioVolatility < 0.3
@@ -206,19 +223,19 @@ export default function AdvancedAnalytics() {
             </ResponsiveContainer>
           </div>
           <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
-            {assets.map(c => (
-              <div key={c} className="px-4 py-3 flex items-center gap-3">
-                <div className="w-16 text-sm font-semibold">{c}</div>
+            {assets.map(({ id, symbol }) => (
+              <div key={id} className="px-4 py-3 flex items-center gap-3">
+                <div className="w-16 text-sm font-semibold">{symbol}</div>
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-muted-foreground w-14">Volatility</span>
-                    <div className="flex-1 h-1.5 rounded-full bg-secondary"><div className="h-full rounded-full bg-destructive" style={{ width: `${Math.min((VOLATILITY[c] || DEFAULT_VOLATILITY) * 100, 100)}%` }} /></div>
-                    <span className="text-[10px] text-muted-foreground w-8">{((VOLATILITY[c] || DEFAULT_VOLATILITY) * 100).toFixed(0)}%</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-secondary"><div className="h-full rounded-full bg-destructive" style={{ width: `${Math.min((VOLATILITY[symbol] || DEFAULT_VOLATILITY) * 100, 100)}%` }} /></div>
+                    <span className="text-[10px] text-muted-foreground w-8">{((VOLATILITY[symbol] || DEFAULT_VOLATILITY) * 100).toFixed(0)}%</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-muted-foreground w-14">Sharpe</span>
-                    <div className="flex-1 h-1.5 rounded-full bg-secondary"><div className="h-full rounded-full bg-success" style={{ width: `${Math.min((SHARPE[c] || DEFAULT_SHARPE) * 70, 100)}%` }} /></div>
-                    <span className="text-[10px] text-muted-foreground w-8">{SHARPE[c] || DEFAULT_SHARPE}</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-secondary"><div className="h-full rounded-full bg-success" style={{ width: `${Math.min((SHARPE[symbol] || DEFAULT_SHARPE) * 70, 100)}%` }} /></div>
+                    <span className="text-[10px] text-muted-foreground w-8">{SHARPE[symbol] || DEFAULT_SHARPE}</span>
                   </div>
                 </div>
               </div>

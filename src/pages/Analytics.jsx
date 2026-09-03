@@ -11,6 +11,21 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
 import { formatUsd, resolveLocale } from "@/lib/locale";
+import { getAssetById } from "@/wallet-core/assets";
+
+// Fallback palette when CURRENCY_COLORS has no entry for a symbol. Order lifted
+// from the chart-N HSL scale so a per-index fallback still reads on-theme.
+// Keeps every slice distinguishable when the pie has 5+ assets.
+const FALLBACK_COLORS = [
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
+  'hsl(var(--primary))',
+  'hsl(var(--success))',
+  'hsl(var(--caution))',
+];
 
 const RANGES = [
   { label: "7D", days: 7 },
@@ -66,12 +81,38 @@ export default function Analytics() {
 
   const totalUSD = portfolio?.grandTotal ?? 0;
 
+  // assetTotals is KEYED by composite id ("ETH:mainnet"), and the value carries
+  // the bare `symbol` for display + palette lookup. Prior code destructured
+  // the entry as `[name, v]` and passed the KEY through as `name` — that's
+  // what shipped the "ETH:mainnet" pie labels and the all-grey slices (the
+  // CURRENCY_COLORS map is keyed by bare symbol, so the composite id missed).
+  //
+  // Match the Dashboard label formula (WalletPortfolioPage.jsx:867) —
+  // `DISPLAY (Chain)`, chain = "Ethereum" for erc20 (a.name there is the
+  // token brand) else the ASSETS entry's own name. Color falls back to a
+  // theme-safe palette by index when CURRENCY_COLORS has no entry.
   const allocationData = useMemo(() => {
     if (!portfolio?.assetTotals) return [];
     return Object.entries(portfolio.assetTotals)
-      .map(([name, v]) => ({ name, value: Math.round(v.usd ?? 0) }))
+      .map(([id, v]) => {
+        const asset = getAssetById(id);
+        const symbol = v.symbol || asset?.symbol || id;
+        const displaySymbol = asset?.displaySymbol || symbol;
+        const chainLabel = asset?.family === "erc20" ? "Ethereum" : asset?.name;
+        const label = chainLabel ? `${displaySymbol} (${chainLabel})` : displaySymbol;
+        return {
+          id,
+          symbol,
+          name: label,
+          value: Math.round(v.usd ?? 0),
+        };
+      })
       .filter(d => d.value > 0)
-      .sort((a, b) => b.value - a.value);
+      .sort((a, b) => b.value - a.value)
+      .map((entry, idx) => ({
+        ...entry,
+        color: CURRENCY_COLORS[entry.symbol] || FALLBACK_COLORS[idx % FALLBACK_COLORS.length],
+      }));
   }, [portfolio]);
 
   const monthlyData = useMemo(() => {
@@ -246,7 +287,7 @@ export default function Analytics() {
               <PieChart>
                 <Pie data={allocationData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
                   {allocationData.map((entry) => (
-                    <Cell key={entry.name} fill={CURRENCY_COLORS[entry.name] || '#888'} />
+                    <Cell key={entry.id} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip content={<PieTooltip />} />
@@ -256,9 +297,9 @@ export default function Analytics() {
               {allocationData.map(d => {
                 const pct = totalUSD > 0 ? ((d.value / totalUSD) * 100).toFixed(1) : "0";
                 return (
-                  <div key={d.name} className="flex items-center justify-between">
+                  <div key={d.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full shrink-0" style={{ background: CURRENCY_COLORS[d.name] || '#888' }} />
+                      <div className="h-2 w-2 rounded-full shrink-0" style={{ background: d.color }} />
                       <span className="text-xs font-semibold">{d.name}</span>
                     </div>
                     <div className="text-end">

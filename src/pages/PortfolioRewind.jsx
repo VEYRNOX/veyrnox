@@ -7,6 +7,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "@/l
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
 import { formatUsd, resolveLocale } from "@/lib/locale";
+import { getAssetById } from "@/wallet-core/assets";
 
 const PERIODS = [
   { label: "30 Days Ago", key: "30d", days: 30 },
@@ -56,14 +57,25 @@ export default function PortfolioRewind() {
   const gain = currentValue - pastValue;
   const gainPct = pastValue > 0 ? (gain / pastValue) * 100 : 0;
 
+  // assetTotals is keyed by composite id ("ETH:mainnet"); the value carries
+  // the bare `.symbol` for tx-history filter, price lookup, and display.
+  // Prior code destructured the KEY as `sym` — the tx-filter (`tx.assetSymbol
+  // === sym`) then never matched (assetSymbol is a bare symbol), so
+  // `pastVal` collapsed to `currentVal` for every asset and every row
+  // reported "+0.0% since then". Also rendered the composite id in the row.
   const assetBreakdown = Object.entries(portfolio?.assetTotals ?? {})
     .filter(([, v]) => (v?.usd ?? 0) > 0)
-    .map(([sym, v]) => {
+    .map(([id, v]) => {
+      const symbol = v.symbol || id;
+      const asset = getAssetById(id);
+      const displaySymbol = asset?.displaySymbol || symbol;
+      const chainLabel = asset?.family === "erc20" ? "Ethereum" : asset?.name;
+      const label = chainLabel ? `${displaySymbol} (${chainLabel})` : displaySymbol;
       const currentVal = v.usd ?? 0;
-      const assetTxs = (history ?? []).filter(tx => tx.assetSymbol === sym && tx.timestamp >= cutoffMs);
+      const assetTxs = (history ?? []).filter(tx => tx.assetSymbol === symbol && tx.timestamp >= cutoffMs);
       let pastVal = currentVal;
       for (const tx of assetTxs) {
-        const rate = (prices?.[sym] ?? USD_RATES[sym]) || 0;
+        const rate = (prices?.[symbol] ?? USD_RATES[symbol]) || 0;
         const usd = parseFloat(tx.amount || '0') * rate;
         if (tx.type === 'receive') pastVal -= usd;
         if (tx.type === 'send') pastVal += usd;
@@ -71,7 +83,7 @@ export default function PortfolioRewind() {
       pastVal = Math.max(0, pastVal);
       const change = currentVal - pastVal;
       const changePct = pastVal > 0 ? (change / pastVal) * 100 : 0;
-      return { sym, currentVal, pastVal, change, changePct };
+      return { id, symbol, label, currentVal, pastVal, change, changePct };
     });
 
   if (!isUnlocked) {
@@ -149,8 +161,8 @@ export default function PortfolioRewind() {
       <div className="space-y-2">
         <p className="text-sm font-semibold">Asset Breakdown</p>
         {assetBreakdown.map(a => (
-          <div key={a.sym} className="p-3.5 rounded-xl border border-border bg-card flex items-center justify-between">
-            <div><p className="text-sm font-medium">{a.sym}</p></div>
+          <div key={a.id} className="p-3.5 rounded-xl border border-border bg-card flex items-center justify-between">
+            <div><p className="text-sm font-medium">{a.label}</p></div>
             <div className="text-end">
               <p className="text-sm font-semibold">{formatUsd(a.pastVal, resolveLocale())}</p>
               <p className={`text-xs ${a.change >= 0 ? "text-success" : "text-destructive"}`}>
