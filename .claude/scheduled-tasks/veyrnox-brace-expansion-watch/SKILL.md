@@ -68,7 +68,7 @@ method.*
 
 Upstream watcher for the Veyrnox wallet's accepted `brace-expansion` security residual (advisory GHSA-mh99-v99m-4gvg — DoS via unbounded expansion length causing an out-of-memory process crash; per-line vulnerable ranges `< 1.1.17`, `>= 2.0.0 < 2.1.3`, `>= 3.0.0 < 3.0.3`, `>= 4.0.0 < 5.0.8`).
 
-Read-only. Do NOT modify anything in `C:\Users\aljob\Downloads\Veyrnox` — no `npm install` in the repo, no edits to `package.json`, `package-lock.json`, or any repo file, no `npm audit fix`. All work happens in scratch directories. Use the Bash tool (Git Bash) for npm commands.
+Read-only. Do NOT modify anything in `/Users/aljobson/Documents/GitHub/veyrnox` — no `npm install` in the repo, no edits to `package.json`, `package-lock.json`, or any repo file, no `npm audit fix`. All work happens in scratch directories. Use the Bash tool for npm commands.
 
 ## Background — why the obvious fix does not work
 
@@ -112,13 +112,12 @@ Also record `node -e "console.log(typeof require('brace-expansion'))"` in that d
 Get `package.json` and `package-lock.json` into a second scratch dir **from `origin/main`, not from the checkout's working tree** — the primary checkout is shared by ~10 worktrees and other scheduled tasks and is frequently on a detached HEAD or an unrelated branch, so its tree is of unknown provenance and may carry another session's uncommitted lockfile edit:
 
 ```bash
-export MSYS_NO_PATHCONV=1      # MSYS rewrites the ':' and the command fails SILENTLY
-cd "C:/Users/aljob/Downloads/Veyrnox" && git fetch origin main
+cd "/Users/aljobson/Documents/GitHub/veyrnox" && git fetch origin main
 git show origin/main:package.json      > "$SCRATCH2/package.json"
 git show origin/main:package-lock.json > "$SCRATCH2/package-lock.json"
 ```
 
-Confirm both are non-empty before use (`git cat-file -s origin/main:package-lock.json`) — a silent MSYS failure leaves a zero-byte file, which resolves to an empty tree and reads as "the residual is gone". Then run `npm install --package-lock-only` (do NOT pass `--legacy-peer-deps` — PR #1372 fixed the peer conflict that used to require it, and the flag drops `appium` and ~30 packages, corrupting the result). Sanity-check that `node_modules/appium` is still present; if it is missing the resolve is corrupt — report that and stop.
+Confirm both are non-empty before use (`git cat-file -s origin/main:package-lock.json`) — a silent failure of that read leaves a zero-byte file, which resolves to an empty tree and reads as "the residual is gone". Then run `npm install --package-lock-only` (do NOT pass `--legacy-peer-deps` — PR #1372 fixed the peer conflict that used to require it, and the flag drops `appium` and ~30 packages, corrupting the result). Sanity-check that `node_modules/appium` is still present; if it is missing the resolve is corrupt — report that and stop.
 
 Then enumerate every lockfile entry whose path ends in `node_modules/minimatch` and record the `brace-expansion` range each one declares. If NO entry declares a `^1.` or `^2.` range, every consumer is on the 5.x-compatible shape -> **TRIGGER**.
 

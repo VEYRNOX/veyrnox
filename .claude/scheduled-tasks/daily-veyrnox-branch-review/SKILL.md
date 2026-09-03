@@ -3,7 +3,7 @@ name: daily-veyrnox-branch-review
 description: Daily branch-review workflow on the Veyrnox repo
 ---
 
-Run the branch-review workflow on the Veyrnox repository located at C:\Users\aljob\Downloads\Veyrnox.
+Run the branch-review workflow on the Veyrnox repository located at /Users/aljobson/Documents/GitHub/veyrnox.
 
 Objective: Review the current branch vs main across four dimensions — correctness, security/honesty, design-system compliance, and accessibility — then report findings.
 
@@ -30,24 +30,27 @@ session and had to be abandoned (force-pushing would have destroyed work seconds
 3. Cut a **read-only snapshot worktree** of the target and run the review inside it:
    ```
    git worktree prune
-   git worktree add "$TEMP/veyrnox-branch-review" <target-branch>
+   git worktree add "${TMPDIR:-/tmp}/veyrnox-branch-review" <target-branch>
    ```
    Everything the workflow reads must come from that path. If it cannot be created, fall
    back to `git show origin/main:<path>` / `git diff origin/main...<target>` and **say in
    the report that the fallback was used**.
 4. Remove it when the report is written:
-   `git worktree remove "$TEMP/veyrnox-branch-review" --force`
+   `git worktree remove "${TMPDIR:-/tmp}/veyrnox-branch-review" --force`
 
-**Never** `git checkout` / `git switch` / `git stash` in `C:\Users\aljob\Downloads\Veyrnox`
+**Never** `git checkout` / `git switch` / `git stash` in `/Users/aljobson/Documents/GitHub/veyrnox`
 — that reaches into every other running session at once. Never edit a file there; an
 uncommitted change in the shared tree can be swept into an unrelated PR.
 
-**Windows/Git-Bash trap:** MSYS rewrites the `:` in `git show origin/main:path`, so the
-command fails silently and prints nothing — indistinguishable from "no matches". Export
-`MSYS_NO_PATHCONV=1` before any `git show <ref>:<path>`.
+**Sanity-check every `git show <ref>:<path>`** with `git cat-file -s <ref>:<path>` before
+trusting the output. A read that returns nothing is indistinguishable from "the file is
+empty" or "no matches", and every failure mode of this command is silent.
+(This replaced a Windows/Git-Bash `MSYS_NO_PATHCONV=1` note on 2026-09-03 — MSYS used to
+rewrite the `:` and swallow the command. That guard is a no-op on macOS; the byte check
+is not, and catches the same class of silent-empty read on any platform.)
 
 Steps:
-1. Work inside the Step 0 snapshot worktree, NOT C:\Users\aljob\Downloads\Veyrnox
+1. Work inside the Step 0 snapshot worktree, NOT /Users/aljobson/Documents/GitHub/veyrnox
 2. Run the `branch-review` workflow (via the Workflow tool with name "branch-review") against the target branch identified in Step 0
 3. Each finding should be adversarially verified before being reported
 4. Output a structured report with sections: Correctness, Security/Honesty, Design System, Accessibility
@@ -62,7 +65,7 @@ onto the branch of the PR that was reviewed.
 ```bash
 git fetch origin main
 git branch --no-track fix/<slug> origin/main   # --no-track: a bare push must not target main
-git worktree add "$TEMP/<slug>" fix/<slug>
+git worktree add "${TMPDIR:-/tmp}/<slug>" fix/<slug>
 # fix + test there, then open a PR referencing the reviewed PR and its finding IDs
 ```
 

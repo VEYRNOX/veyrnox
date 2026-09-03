@@ -5,7 +5,7 @@ description: Weekly npm audit for Veyrnox — flags CVEs in crypto/wallet depend
 
 You are running the weekly dependency security audit for the Veyrnox wallet. Veyrnox is a self-custody crypto wallet (Vite + React + Capacitor; ethers v6; @noble/@scure). Mainnet is live.
 
-Working directory: C:\Users\aljob\Downloads\Veyrnox
+Working directory: /Users/aljobson/Documents/GitHub/veyrnox
 Repo: `VEYRNOX/veyrnox`
 
 ## Step 0 — Isolated worktree on a per-run branch (DO THIS FIRST)
@@ -15,23 +15,23 @@ several other scheduled tasks touch it concurrently, and the primary checkout is
 frequently on a detached HEAD or an unrelated feature branch. Never `git checkout`
 in the shared tree — it either fails or drags another agent's work across.
 
-```powershell
+```bash
 git fetch origin main
 
-$branch = "dep-audit/<DATE>"
-$wt     = "$env:TEMP\veyrnox-dep-audit"
+branch="dep-audit/<DATE>"
+wt="${TMPDIR:-/tmp}/veyrnox-dep-audit"
 
 git worktree prune
-if (Test-Path $wt) { git worktree remove --force $wt }
+[ -d "$wt" ] && git worktree remove --force "$wt"
 
 # --no-track is REQUIRED. Without it git sets upstream to origin/main and a
 # later `git push` from this branch would target MAIN.
-if (-not (git show-ref --verify --quiet "refs/heads/$branch"; $?)) {
-  git branch --no-track $branch origin/main
-}
-if (git config --get "branch.$branch.merge") { git branch --unset-upstream $branch }
+git show-ref --verify --quiet "refs/heads/$branch" || \
+  git branch --no-track "$branch" origin/main
+git config --get "branch.$branch.merge" >/dev/null && \
+  git branch --unset-upstream "$branch"
 
-git worktree add $wt $branch
+git worktree add "$wt" "$branch"
 ```
 
 Write the report **inside the worktree**. Run `npm audit` in the primary
@@ -78,7 +78,7 @@ Check if any of these specific packages appear in the vulnerability list:
 - `@walletconnect/*` packages
 
 ### Step 4 — Write the report
-Get today's date (PowerShell: `Get-Date -Format "yyyy-MM-dd"`).
+Get today's date (`date +%F`).
 
 Write `docs/dependency-audits/dep-audit-<DATE>.md`:
 
@@ -117,21 +117,21 @@ The commit was never blocked — a ruleset gates the push, not the commit — bu
 the report never reached `origin/main`. It survived only in whatever local
 checkout the task happened to run in, which in this repo is how work gets lost.
 
-```powershell
-cd "$env:TEMP\veyrnox-dep-audit"
+```bash
+cd "${TMPDIR:-/tmp}/veyrnox-dep-audit"
 git add docs/dependency-audits/dep-audit-<DATE>.md
-git commit -o docs/dependency-audits/dep-audit-<DATE>.md `
+git commit -o docs/dependency-audits/dep-audit-<DATE>.md \
   -m "docs(deps): weekly dependency audit <DATE>"
-git push -u origin $branch
+git push -u origin "$branch"
 
-gh pr create --base main --head $branch `
-  --title "docs(deps): weekly dependency audit <DATE>" `
+gh pr create --base main --head "$branch" \
+  --title "docs(deps): weekly dependency audit <DATE>" \
   --body "Automated weekly npm audit. INTERNAL — static advisory review only; CVE applicability not verified by exploitation."
 
 gh pr merge --squash --auto
 
-cd "C:\Users\aljob\Downloads\Veyrnox"
-git worktree remove "$env:TEMP\veyrnox-dep-audit"
+cd "/Users/aljobson/Documents/GitHub/veyrnox"
+git worktree remove "${TMPDIR:-/tmp}/veyrnox-dep-audit"
 ```
 
 `git add` is REQUIRED and must come first — `git commit -o` errors on an
@@ -153,17 +153,23 @@ If any CRITICAL or HIGH CVE affects `@noble/*`, `@scure/*`, `ethers`, or `@walle
    report PR. A lockfile change and a docs file have different review needs and
    must not share a merge decision.
 
-```powershell
-$fixBranch = "fix/dep-audit-<DATE>"
+```bash
+fixBranch="fix/dep-audit-<DATE>"
 # fresh worktree, same Step 0 pattern, then:
 git add package.json package-lock.json
-git commit -o package.json package-lock.json `
+git commit -o package.json package-lock.json \
   -m "fix(deps): npm audit fix <DATE> — <package> CVE"
-git push -u origin $fixBranch
-gh pr create --base main --head $fixBranch `
-  --title "fix(deps): npm audit fix <DATE> — <package> CVE" `
-  --body "Automated `npm audit fix` for <CVE>. Tests pass locally. NOT auto-merged — a dependency change needs human review before landing."
+git push -u origin "$fixBranch"
+gh pr create --base main --head "$fixBranch" \
+  --title "fix(deps): npm audit fix <DATE> — <package> CVE" \
+  --body 'Automated `npm audit fix` for <CVE>. Tests pass locally. NOT auto-merged — a dependency change needs human review before landing.'
 ```
+
+**Note the quoting on that `--body`: single quotes, deliberately.** The text contains
+`` `npm audit fix` `` in backticks. Under PowerShell a backtick was an escape character and
+this was harmless; in bash, backticks inside DOUBLE quotes are command substitution, so a
+double-quoted body would silently *run* `npm audit fix` while composing the PR
+description — the exact destructive command this step is gating behind human review.
 
 4. **Do NOT `--auto` the dependency PR.** The report is docs and can land itself;
    a lockfile change cannot. Leave it open for a human, and say so in the run

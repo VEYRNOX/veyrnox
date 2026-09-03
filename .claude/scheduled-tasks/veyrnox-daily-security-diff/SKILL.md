@@ -5,7 +5,7 @@ description: Daily scan of security-sensitive file changes in Veyrnox — flags 
 
 You are running the daily security diff scan for the Veyrnox wallet codebase. Veyrnox is a self-custody, coercion-resistant crypto wallet (Vite + React + Capacitor; ethers v6; @noble/@scure). Mainnet is live.
 
-Working directory: C:\Users\aljob\Downloads\Veyrnox
+Working directory: /Users/aljobson/Documents/GitHub/veyrnox
 
 ## Security invariants
 - I1: keys never leave the device
@@ -42,29 +42,27 @@ staged files and was switched to a different branch *mid-command*, twice. A
 worktree sidesteps this: it is a second checkout in its own directory, so the
 shared tree is never touched and its dirty/clean state is irrelevant.
 
-```powershell
+```bash
 git fetch origin main
 
-$branch = "security-diff/<DATE>"          # e.g. security-diff/2026-07-20
-$wt     = "$env:TEMP\veyrnox-security-diff"
+branch="security-diff/<DATE>"             # e.g. security-diff/2026-07-20
+wt="${TMPDIR:-/tmp}/veyrnox-security-diff"
 
 # Clean up a stale worktree from a previous crashed run, if any.
 git worktree prune
-if (Test-Path $wt) { git worktree remove --force $wt }
+[ -d "$wt" ] && git worktree remove --force "$wt"
 
 # Re-run on the same day: reuse the existing branch rather than failing.
 # --no-track is REQUIRED. Without it git sets upstream to origin/main, and a
 # later `git push` from this branch would target MAIN. Verified 2026-07-19:
 # a plain `git branch <name> origin/main` set .remote=origin /
 # .merge=refs/heads/main. The same applies to `git branch -f`.
-if (-not (git show-ref --verify --quiet "refs/heads/$branch"; $?)) {
-  git branch --no-track $branch origin/main
-}
-if (git config --get "branch.$branch.merge") {
-  git branch --unset-upstream $branch
-}
+git show-ref --verify --quiet "refs/heads/$branch" || \
+  git branch --no-track "$branch" origin/main
+git config --get "branch.$branch.merge" >/dev/null && \
+  git branch --unset-upstream "$branch"
 
-git worktree add $wt $branch
+git worktree add "$wt" "$branch"
 ```
 
 Branch off **`origin/main`** each day, so the PR is a one-file diff against
@@ -77,13 +75,13 @@ the analysis — see Step 1.
 failure and stop; a failed scan is fine, a disturbed working tree is not.
 
 ### Step 1 — Get today's date and the last 24h of commits on main
-Run in PowerShell:
-```
-Get-Date -Format "yyyy-MM-dd"
+Run in bash:
+```bash
+date +%F
 git log origin/main --since="24 hours ago" --oneline --name-only
 ```
 
-**Run Steps 1–3 from the main repo directory** (`C:\Users\aljob\Downloads\Veyrnox`),
+**Run Steps 1–3 from the main repo directory** (`/Users/aljobson/Documents/GitHub/veyrnox`),
 not the worktree. All of it is read-only git plumbing, so a dirty tree is harmless.
 
 Scan `origin/main` explicitly rather than the current branch, so the report is
@@ -385,7 +383,7 @@ Step 5.
 >
 > Never report "no amendment needed" on the strength of checkpoint 1 alone.
 
-```powershell
+```bash
 git fetch origin main
 git log <tip-from-step-1>..origin/main --oneline
 ```
@@ -428,16 +426,16 @@ PR open. The report needed a follow-up commit to correct itself.
 ### Step 5 — Commit, push the branch, open a PR, then remove the worktree
 
 Write the report file (Step 4) **inside the worktree**, at
-`$env:TEMP\veyrnox-security-diff\docs\security-diffs\diff-<DATE>.md`, then:
+`${TMPDIR:-/tmp}/veyrnox-security-diff/docs/security-diffs/diff-<DATE>.md`, then:
 
-```powershell
-cd "$env:TEMP\veyrnox-security-diff"
+```bash
+cd "${TMPDIR:-/tmp}/veyrnox-security-diff"
 git add docs/security-diffs/diff-<DATE>.md
 git commit -o docs/security-diffs/diff-<DATE>.md -m "docs(security-diff): daily scan <DATE>"
-git push -u origin $branch
+git push -u origin "$branch"
 
-gh pr create --base main --head $branch `
-  --title "docs(security-diff): daily scan <DATE>" `
+gh pr create --base main --head "$branch" \
+  --title "docs(security-diff): daily scan <DATE>" \
   --body "Automated daily security diff for <DATE>. INTERNAL static analysis only — no dynamic testing, no device verification, no on-chain confirmation. Not the outstanding independent third-party audit."
 
 # CHECKPOINT 2 — re-check AFTER the commit, immediately before arming
@@ -453,8 +451,8 @@ git log <tip-from-step-4b>..origin/main --oneline
 # Lands by itself once `verify` and `mainnet-flag-gate` pass.
 gh pr merge --squash --auto
 
-cd "C:\Users\aljob\Downloads\Veyrnox"
-git worktree remove "$env:TEMP\veyrnox-security-diff"
+cd "/Users/aljobson/Documents/GitHub/veyrnox"
+git worktree remove "${TMPDIR:-/tmp}/veyrnox-security-diff"
 ```
 
 **Do NOT remove the worktree before checkpoint 2.** Amending on the same
@@ -498,9 +496,9 @@ optional: with `--auto` the merge is asynchronous, so checkpoints 1 and 2 are
 both snapshots taken before publication. Neither can see the gap between them
 and the merge. This is the only checkpoint that observes the published state.
 
-Do not poll in a sleep loop. Arm a watcher and keep working. This one is
-**bash**, not PowerShell — run it through the Monitor tool (or the Bash tool
-with `run_in_background`), which notifies you on each emitted line:
+Do not poll in a sleep loop. Arm a watcher and keep working. Run it through the
+Monitor tool (or the Bash tool with `run_in_background`), which notifies you on
+each emitted line:
 
 ```bash
 # Emits one line when the PR merges, closes, or a required check fails.
@@ -521,7 +519,7 @@ done
 
 Once merged, re-check the full window — window close through the merge commit:
 
-```powershell
+```bash
 git fetch origin main
 git log <tip-from-step-1>..origin/main --oneline
 ```
@@ -531,13 +529,13 @@ believing the subject line**, then add a **dated correction** on a NEW branch.
 Step 5 removed the worktree, so build a fresh one exactly as in Step 0 — same
 `--no-track` rule, same "never switch the shared tree" rule:
 
-```powershell
-$branch = "security-diff/<DATE>-amend"   # NOT the per-day branch: its PR has
+```bash
+branch="security-diff/<DATE>-amend"      # NOT the per-day branch: its PR has
                                          # merged and it may already be deleted
-$wt     = "$env:TEMP\veyrnox-security-diff-amend"
+wt="${TMPDIR:-/tmp}/veyrnox-security-diff-amend"
 git fetch origin main
-git branch --no-track $branch origin/main
-git worktree add $wt $branch
+git branch --no-track "$branch" origin/main
+git worktree add "$wt" "$branch"
 ```
 
 Branch from `origin/main` — which now contains the merged report — so the
