@@ -543,6 +543,8 @@ describe('Play Integrity root cert SHA-256 pinning (G2-ROOTCERT-PIN)', () => {
     expect(gapItems).not.toMatch(/must be linked/i);
     // The resolution must be recorded, not silently dropped.
     expect(gapItems).toMatch(/RESOLVED/);
+  });
+
   // ── S-3 (branch review 2026-09-03) ──────────────────────────────────────────
   // The trust decision used to be
   //   `fingerprint in GOOGLE_ROOT_CA_SHA256 || fingerprint in ADDITIONAL_TRUSTED_ROOTS_FOR_TESTING`
