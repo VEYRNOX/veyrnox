@@ -179,11 +179,13 @@ comment/config-level; no attestation BEHAVIOUR changed and nothing advanced to v
 - S-4/S-5 (`a0d99c05`): DeviceCheck linkage was RESOLVED (clang module autolinking) but
   #2280 swapped it for a different gap without saying so; and one header carried three
   status declarations in two vocabularies. Both now explicit.
-- **Still open and now untracked:** #2276 is CLOSED administratively with DoD items 3
-  (chain/pin failure must return INTEGRITY_FAIL, still maps to WARN) and 4 (real-token
-  device exercise) UNMET. Ordering is load-bearing — capture a token BEFORE tightening
-  to INTEGRITY_FAIL, or a wrong pin fails closed on every real device forever. Per-item
-  audit in that issue's comments.
+- **Still open — #2276 REOPENED 2026-09-03** (this line said "CLOSED administratively
+  and untracked" for part of that day; the owner reopened it once the gap was visible).
+  DoD items 3 (chain/pin failure must return INTEGRITY_FAIL — still maps to WARN at
+  `PlayIntegrityPlugin.kt:168` → `attestation.js:185-186`) and 4 (real-token device
+  exercise) are UNMET; 1, 2 and 5 are met. Ordering is load-bearing — capture a token
+  BEFORE tightening to INTEGRITY_FAIL. Per-item audit and the latch analysis are in that
+  issue's comments.
 
 **Vault:** AES-256-GCM, Argon2id KDF — **96 MiB / t=6 for vaults created from
 2026-08-24 (#2054); 192 MiB / t=3 for older ones**, which stay there until the v2
@@ -915,6 +917,28 @@ today via PRs #1435..#1461 plus #1462 (M-10) stacked-merged via #1442 (M-4).
 **Open residuals:** M-1 (EVM key unzeroable, ethers v6), M-6 (iOS bridge H copy),
 #1111 (vault AAD v:3 migration — plan r2 done, implementation blocked on owner decisions),
 LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
+- **[#2276](https://github.com/VEYRNOX/veyrnox/issues/2276) — Play Integrity root pin
+  has no real-token evidence, and pin failures do not block.** Reopened 2026-09-03. The
+  pinset and chain walk exist (`PlayIntegrityJwsVerifier.kt`), but the four roots are
+  transcribed from Google's published PKI bundle and no production token has ever been
+  captured, so which roots Play Integrity actually signs with is unmeasured. A pin or
+  chain miss maps to INTEGRITY_UNAVAILABLE → WARN, not INTEGRITY_FAIL → BLOCK.
+  **Do DoD 4 before DoD 3.** Tightening to INTEGRITY_FAIL sets the sticky session latch
+  (`attestation.js:298`), so a wrong pin yields a self-renewing BLOCK on genuine devices
+  rather than one fail-closed call — the latch clears on app-lock, but the next pre-sign
+  probe re-fails and re-latches. Token capture also needs a deliberately instrumented
+  build that CANNOT be merged: `g2-rs256-chain-walk.test.js` pins `debugExtractTokenHeader`
+  as absent, on purpose. Capture which root the real `x5c` chain terminates at — that one
+  fact unblocks both DoD 3 and any narrowing of the pinset.
+- **[#2275](https://github.com/VEYRNOX/veyrnox/issues/2275) — 17 security e2e assertions
+  are inert.** Reopened 2026-09-03. `e2e/post-audit-validation.spec.js` carries 17
+  `test.fixme('#2275: …')` markers (converted from `test.skip` in #2278), covering VULN-19
+  nonce pinning incl. across restart, monitoring-endpoint rate limiting, query-
+  canonicalisation HMAC bypass, `RestoreFromShares` cleanup validation, shard PIN-floor
+  enforcement, the hardware-KEK enrollment gate blocking send, and the biometric
+  `kekEnrolled` assertion. None of these ran before #2278 either — no coverage was
+  removed — but the block reads as covered and is not. This issue is the named un-skip
+  condition; keep it open until the markers are gone.
 - **Referral RPC arg rename — DONE (pre-publish window, 2026-07-24).**
   `increment_referral` renamed from `ref_code` to `p_code` (DROP+recreate in
   `sql/api-security-hardening.sql`, client updated in `referralApi.js`). Run the
