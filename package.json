@@ -39,7 +39,7 @@
     "test:post-audit": "node scripts/run-post-audit-qa.mjs",
     "test:post-audit:validation": "playwright test e2e/post-audit-validation.spec.js",
     "test:post-audit:boundaries": "playwright test e2e/post-audit-security-boundaries.spec.js",
-    "test:post-audit:unit": "vitest run src/wallet-core/post-audit-unit-tests.test.js",
+    "test:post-audit:unit": "vitest run src/wallet-core/evm/__tests__/send.nonce.test.js src/wallet-core/evm/__tests__/token-send.nonce.test.js src/pages/__tests__/RestoreFromShares.hardening.test.jsx src/components/__tests__/WalletEntry.kek-gate.test.jsx src/lib/__tests__/biometricUnlock.kekSinglePrompt.test.js",
     "android:test": "wdio tests/android/wdio.conf.js",
     "ios:test": "wdio tests/ios/wdio.conf.js",
     "ios:test:vault": "wdio tests/ios/wdio.conf.js --spec tests/ios/specs/vault.spec.js",

@@ -21,6 +21,12 @@ const TEST_SUITES = [
   'e2e/post-audit-security-boundaries.spec.js',
 ];
 
+const DEFERRED_VALIDATION_FILE = 'e2e/post-audit-validation.spec.js';
+const POST_AUDIT_UNIT_COMMAND = [
+  'run',
+  'test:post-audit:unit',
+];
+
 const AUDIT_FINDINGS = {
   'VULN-19': {
     severity: 'CRITICAL',
@@ -108,6 +114,15 @@ const checks = {
     });
     console.log(`  ✓ All ${TEST_SUITES.length} test suites found`);
   },
+  'Deferred validations are reported honestly': () => {
+    const validation = fs.readFileSync(path.join(projectRoot, DEFERRED_VALIDATION_FILE), 'utf8');
+    const deferred = (validation.match(/\btest\.fixme\(/g) || []).length;
+    if (deferred > 0) {
+      console.warn(`  ! ${deferred} deferred validation(s) remain in ${DEFERRED_VALIDATION_FILE}`);
+    } else {
+      console.log('  ✓ No deferred post-audit validations');
+    }
+  },
   'Build verified': () => {
     try {
       execSync('npm run build', { cwd: projectRoot, stdio: 'ignore' });
@@ -159,6 +174,23 @@ const results = {
   suites: {},
 };
 
+const deferredValidationCount = (
+  fs.readFileSync(path.join(projectRoot, DEFERRED_VALIDATION_FILE), 'utf8').match(/\btest\.fixme\(/g) || []
+).length;
+
+try {
+  console.log('\n  Running: post-audit-unit');
+  execFileSync('npm', POST_AUDIT_UNIT_COMMAND, {
+    cwd: projectRoot,
+    stdio: 'inherit',
+  });
+  results.suites['post-audit-unit'] = { status: 'completed', failures: 0 };
+  console.log('  ✓ post-audit-unit passed');
+} catch (e) {
+  results.suites['post-audit-unit'] = { status: 'failed', error: e.message };
+  console.error('  ✗ post-audit-unit failed');
+}
+
 for (const suite of TEST_SUITES) {
   const suiteName = path.basename(suite, '.spec.js');
   console.log(`\n  Running: ${suiteName}`);
@@ -206,15 +238,20 @@ let totalTests = 0;
 let coveredTests = 0;
 
 for (const [finding, details] of Object.entries(AUDIT_FINDINGS)) {
+  const unitPassed = results.suites['post-audit-unit']?.status === 'completed';
+  const browserValidationComplete = (
+    results.suites['post-audit-validation']?.status === 'completed'
+    && deferredValidationCount === 0
+  );
   coverage.auditFindings[finding] = {
     severity: details.severity,
     description: details.description,
     testsCovering: details.tests.length,
-    status: results.suites[`post-audit-validation`]?.status === 'completed' ? 'covered' : 'uncovered',
+    status: unitPassed && browserValidationComplete ? 'covered' : 'not-established',
   };
 
   totalTests += details.tests.length;
-  if (results.suites[`post-audit-validation`]?.status === 'completed') {
+  if (unitPassed && browserValidationComplete) {
     coveredTests += details.tests.length;
   }
 }
@@ -231,7 +268,8 @@ console.log('\n🔒 Phase 5: Security Validation Checklist');
 console.log('---');
 
 // Determine security check status based on actual test execution
-const suitesPassed = Object.values(results.suites).every(s => s.status === 'completed');
+const suitesPassed = Object.values(results.suites).every(s => s.status === 'completed')
+  && deferredValidationCount === 0;
 
 const securityChecks = [
   { name: 'VULN-19 nonce pinning', status: suitesPassed ? 'passed' : 'unknown' },
@@ -266,17 +304,15 @@ const report = {
     totalSuites: TEST_SUITES.length,
     suites: results.suites,
   },
+  deferredValidationCount,
   coverage: coverage,
   auditFindings: AUDIT_FINDINGS,
   securityValidation: securityChecks,
   recommendations: [
-    'All CRITICAL findings validated',
-    'No regressions detected in validation suites',
-    'Rate-limiting and nonce pinning verified',
-    'Shard hardening encryption tested',
-    'KEK enrollment gates enforced',
-    'Session race conditions mitigated',
-    'Next: Deploy to staging environment for full integration testing',
+    ...(deferredValidationCount > 0
+      ? [`${deferredValidationCount} browser validation(s) remain deferred; do not treat this report as full audit coverage.`]
+      : ['All configured post-audit validations completed.']),
+    'Run the focused unit suite before treating its covered controls as regression-tested.',
   ],
 };
 
@@ -292,6 +328,7 @@ const markdownReport = `
 
 ## Executive Summary
 - **Test Suites Run:** ${TEST_SUITES.length}
+- **Deferred Browser Validations:** ${deferredValidationCount}
 - **Audit Findings Validated:** ${Object.keys(AUDIT_FINDINGS).length}
 - **Security Checks Passed:** ${securityChecks.filter(c => c.status === 'passed').length}/${securityChecks.length}
 - **Overall Status:** ${securityChecks.every(c => c.status === 'passed') ? '✓ PASS' : '✗ FAIL'}
@@ -325,7 +362,7 @@ ${report.recommendations.map(r => `- ${r}`).join('\n')}
 - Logs: Individual suite reports
 
 ---
-*This report validates all security fixes from audit rounds 3+4 (2026-08-16)*
+*This report is incomplete while deferred browser validations remain. It must not be used to assert that all audit fixes are validated.*
 `;
 
 fs.writeFileSync(path.join(REPORT_DIR, 'POST-AUDIT-QA-REPORT.md'), markdownReport);
@@ -334,7 +371,8 @@ console.log(`  ✓ JSON report: post-audit-qa-report.json`);
 console.log(`  ✓ Markdown report: POST-AUDIT-QA-REPORT.md`);
 
 // Phase 7: Summary
-console.log('\n✅ Post-Audit QA Complete');
+const qaComplete = suitesPassed;
+console.log(qaComplete ? '\n✅ Post-Audit QA Complete' : '\n⚠️  Post-Audit QA Incomplete');
 console.log('================================');
 console.log(`Report saved to: ${REPORT_DIR}`);
 console.log(`View results: open ${path.join(REPORT_DIR, 'POST-AUDIT-QA-REPORT.md')}`);
@@ -348,4 +386,6 @@ if (serverProcess && serverProcess.pid) {
   }
 }
 
-process.exit(0);
+// A report with deferred browser cases or a failed suite is useful evidence, but
+// it is not a successful post-audit validation run.
+process.exit(qaComplete ? 0 : 1);
