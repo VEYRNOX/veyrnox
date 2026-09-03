@@ -12,11 +12,20 @@
 import { getAsset } from '@/wallet-core/assets.js';
 
 /**
+ * @typedef {{
+ *   symbol?: string,
+ *   displaySymbol?: string,
+ *   name?: string,
+ *   family?: string,
+ * }} AssetLabelEntry
+ */
+
+/**
  * The user-visible symbol for an asset — `displaySymbol` when set, else the
  * internal `symbol`. Accepts an entry OR a bare symbol string (looked up).
  * Returns the input as-is if lookup fails (fail-honest — never a fabricated
  * label).
- * @param {object|string|null|undefined} assetOrSymbol
+ * @param {AssetLabelEntry|string|null|undefined} assetOrSymbol
  * @returns {string}
  */
 export function assetDisplaySymbol(assetOrSymbol) {
@@ -30,7 +39,7 @@ export function assetDisplaySymbol(assetOrSymbol) {
  * override to "Ethereum" since USDC/USDT live on Ethereum mainnet in Veyrnox
  * today; every other row's `asset.name` is already chain-shaped (Ethereum,
  * Polygon, Arbitrum, Optimism, Avalanche, BNB Chain, Bitcoin, Solana).
- * @param {object|string|null|undefined} assetOrSymbol
+ * @param {AssetLabelEntry|string|null|undefined} assetOrSymbol
  * @returns {string} — chain label or '' if the asset can't be resolved
  */
 export function assetChainLabel(assetOrSymbol) {
@@ -43,7 +52,7 @@ export function assetChainLabel(assetOrSymbol) {
  * "DISPLAY (Chain)" — the canonical SafePal-parity label used on Home. Use
  * this for headers, dropdowns, confirmation dialogs, and any surface that
  * names the asset.
- * @param {object|string|null|undefined} assetOrSymbol
+ * @param {AssetLabelEntry|string|null|undefined} assetOrSymbol
  * @returns {string}
  */
 export function assetDisplayLabel(assetOrSymbol) {
