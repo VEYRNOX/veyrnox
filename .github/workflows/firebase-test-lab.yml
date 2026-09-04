@@ -398,16 +398,20 @@ jobs:
           ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
         run: |
-          # Resolve for BOTH schemes so the AppUITests build graph gets the
-          # same Capacitor module instance the App target uses. Previously we
-          # only resolved for -scheme App; xcodebuild then re-resolved on
-          # first use of -scheme AppUITests and picked a stale/split
-          # capacitor-swift-pm graph, which made SharePlugin.swift compile
-          # against a Capacitor without CAPPluginCall.reject.
-          rm -f App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved || true
+          # Keep the checked-in Package.resolved as the single source of truth for
+          # SPM versions. Deleting it (as #1749 tried) forces xcodebuild to
+          # re-resolve, and each scheme's resolution picks a different
+          # capacitor-swift-pm — producing the split graph that makes
+          # SharePlugin.swift compile against a Capacitor without .reject.
+          #
+          # With the lock in place, both -scheme AppUITests and -scheme App see
+          # the same 8.5.0 that CapApp-SPM/Package.swift pins exactly. We still
+          # do a hydration pass under each scheme so xcodebuild has fetched
+          # every product path, but neither call re-resolves versions.
           xcodebuild -resolvePackageDependencies \
             -project App.xcodeproj \
             -scheme AppUITests \
+            -disableAutomaticPackageResolution \
             -allowProvisioningUpdates \
             -authenticationKeyPath "$ASC_KEY_PATH" \
             -authenticationKeyID "$ASC_KEY_ID" \
@@ -415,6 +419,7 @@ jobs:
           xcodebuild -resolvePackageDependencies \
             -project App.xcodeproj \
             -scheme App \
+            -disableAutomaticPackageResolution \
             -allowProvisioningUpdates \
             -authenticationKeyPath "$ASC_KEY_PATH" \
             -authenticationKeyID "$ASC_KEY_ID" \
@@ -437,6 +442,7 @@ jobs:
             -sdk iphoneos \
             -configuration Debug \
             -derivedDataPath build/ \
+            -disableAutomaticPackageResolution \
             DEVELOPMENT_TEAM=R54268MWFV \
             CODE_SIGN_STYLE=Automatic \
             DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \
