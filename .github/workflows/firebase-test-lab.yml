@@ -205,13 +205,16 @@ jobs:
             TIMEOUT="5m"
           fi
           echo "results_dir=$RESULTS_DIR" >> "$GITHUB_OUTPUT"
+          # Trimmed from 3 devices (oriole/panther/shiba) to 1 on
+          # 2026-08-15 to stay under Spark's 10-virtual-slot daily cap.
+          # shiba (Pixel 8, API 34) chosen as the newest supported target.
+          # Comments MUST stay outside the gcloud line-continuation block —
+          # a `#` inside `cmd \` terminates the command silently and the next
+          # line runs as its own command (`--device: command not found`).
           set +e
           gcloud firebase test android run \
             --type robo \
             --app artifacts/app-firebaseTest.apk \
-            # Trimmed from 3 devices (oriole/panther/shiba) to 1 on
-            # 2026-08-15 to stay under Spark's 10-virtual-slot daily cap.
-            # shiba (Pixel 8, API 34) chosen as the newest supported target.
             --device model=shiba,version=34,locale=en,orientation=portrait \
             --timeout "$TIMEOUT" \
             --num-flaky-test-attempts 0 \
@@ -460,12 +463,13 @@ jobs:
           else
             TIMEOUT="5m"
           fi
+          # Trimmed from 2 devices (iphone13pro/iphone14) to 1 on
+          # 2026-08-15 to stay under Spark's 5-physical-slot daily cap.
+          # iphone14 kept as the more recent hardware.
+          # Comments MUST stay outside the gcloud line-continuation block.
           set +e
           gcloud firebase test ios run \
             --test ios/App/build/Build/Products/ios-tests.zip \
-            # Trimmed from 2 devices (iphone13pro/iphone14) to 1 on
-            # 2026-08-15 to stay under Spark's 5-physical-slot daily cap.
-            # iphone14 kept as the more recent hardware.
             --device model=iphone14,version=17.5,locale=en_US,orientation=portrait \
             --timeout "$TIMEOUT" \
             --results-bucket "$RESULTS_BUCKET" \
