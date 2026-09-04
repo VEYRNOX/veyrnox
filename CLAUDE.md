@@ -377,9 +377,16 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
   - `ci.yml` is now the **single** Play upload path. The firebase duplicate was
     removed because it raced CI and silently consumed versionCodes.
   - Gating context: **no Play Pre-launch report exists for ANY versionCode** —
-    verified in the console 2026-09-01 against the current candidate, 40. A clean
-    report is a mandatory 1.0.1 submission gate, so the gate is unmet. Tracked in
-    #1960.
+    verified in the console 2026-09-01 against candidate 40, still empty
+    2026-09-04 for 41. Root cause not established (app still `com.veyrnox.app
+    (unreviewed)` — never gone through app review; Google's Console suggests
+    Closed testing). **#1960 CLOSED 2026-09-04** on the accepted-residual
+    reasoning: Firebase Test Lab now provides equivalent crash/ANR data on
+    the same Robo infrastructure, and is the primary automated gate going
+    forward — 265 UI actions clean on versionCode 41 (Pixel 8, Android 14,
+    matrix `matrix-hhpcvb8uffw6a`). The Play Pre-launch empty state is left
+    open as accepted residual; if wanted, the recommended path is upload to
+    Closed testing + send for review (blocked on the Aug 12 rejection risk).
 - **Release build verified end-to-end 2026-07-23** (INTERNAL): signed `app-release.aab`,
   `jarsigner` verified, `BuildConfig.RELEASE_CERT_SHA256` = Google's app-signing cert.
   Fixed en route: `keystore.properties` `storeFile` resolved against the wrong directory
