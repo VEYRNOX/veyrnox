@@ -125,7 +125,10 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(workflow).not.toContain('--event push');
     expect(workflow).not.toContain('dawidd6/action-download-artifact');
     expect(workflow).toContain('name: veyrnox-firebase-test-apk');
-    expect(workflow).toContain('--app artifacts/app-firebaseTest.apk');
+    // Google product flavour: the APK is app-google-firebaseTest.apk, not
+    // app-firebaseTest.apk. The old assertion pinned the wrong filename and is
+    // what made every Firebase Test Lab run under #1960 hit "APK not found".
+    expect(workflow).toContain('--app artifacts/app-google-firebaseTest.apk');
     expect(workflow).not.toContain('--app artifacts/app-release.aab');
   });
 
