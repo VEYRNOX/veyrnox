@@ -6,22 +6,46 @@ to run.
 
 ## Current state (2026-09-04)
 
-Broken. `android-robo` fails with:
+**Working.** Full rebuild landed 2026-09-04 afternoon on Firebase project
+`veyrnox-400ae` (Workspace-visible, project number 567659013773). Latest run
+`matrix-hhpcvb8uffw6a` completed 265 UI actions on Pixel 8 / Android 14 with
+zero crashes and zero ANRs against versionCode 41. **Android side needs no
+further owner action.**
 
-```
-ERROR: (gcloud.firebase.test.android.run) Permission denied while creating
-bucket [***]. Is billing enabled for project: [veyrnox-wallet]?
-```
+**iOS side is still broken but in a different way** — SPM Capacitor graph
+fixed by PR #2316 (SharePlugin.swift now compiles), next blocker is code
+signing: the App Manager App Store Connect key cannot drive xcodebuild's
+"cloud signing" path, and no provisioning profile exists for
+`com.veyrnox.app.AppUITests.xctrunner`. iOS crash data is covered by
+TestFlight + Xcode Organizer per the CLAUDE.md pre-submission gate; do not
+rebuild iOS on Firebase Test Lab unless the ASC key is promoted to Admin OR
+a manual-signing pipeline is added (see checklist below).
 
-Two upstream causes narrowed here that owner must resolve in GCP Console:
+## Live configuration on `veyrnox-400ae`
 
-1. **Project identity mismatch.** Workflow secret `GCP_PROJECT_ID = veyrnox-wallet`.
-   Firebase account `support@veyrnox.com` has no access to `veyrnox-wallet` — its
-   Firebase console lists only `veyrnox-400ae` and `device-streaming-2b4fab1b`.
-   `veyrnox-wallet` is confirmed real (`docs/Feature-Status.md` — the RevenueCat
-   service account lives there) but may not be REGISTERED as a Firebase project.
-2. **Service-account permissions.** Even with the correct project, the SA lacks
-   the roles Test Lab needs to auto-create a results bucket.
+- Firebase project: registered (added 2026-09-04). Blaze billing active.
+- APIs enabled: `testing.googleapis.com`, `toolresults.googleapis.com`.
+- Service account: `github-actions-testlab@veyrnox-400ae.iam.gserviceaccount.com`
+  with `roles/firebase.qualityAdmin`, `roles/cloudtestservice.testAdmin`,
+  `roles/serviceusage.serviceUsageConsumer`.
+- Results bucket: `gs://veyrnox-400ae-testlab-results` (uniform bucket-level
+  access; SA has `roles/storage.objectAdmin` bucket-scoped).
+- GitHub secrets: `GCP_PROJECT_ID=veyrnox-400ae`, `GCP_SA_KEY` (SA JSON),
+  `GCS_RESULTS_BUCKET=veyrnox-400ae-testlab-results`.
+
+Owner-workflow chain that made it work: PRs #2307, #2309, #2313, #2314, #2315,
+#2316. All merged.
+
+## Historical note
+
+The workflow was originally wired to `veyrnox-wallet` (personal account,
+al.jobson1@gmail.com) which owns the RevenueCat SA but had never been
+registered as a Firebase project. That path got as far as creating Firebase's
+default bucket but the SA couldn't write to it — Firebase-managed buckets
+reject even project-owner IAM edits. The rebuild moved everything onto the
+Workspace-visible `veyrnox-400ae`, which already existed as a Firebase
+project. If Firebase Test Lab is ever moved back to a different project, the
+checklist below is what needed doing.
 
 ## GitHub configuration (already set)
 
