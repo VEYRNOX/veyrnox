@@ -11,6 +11,12 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import {
+  countDeferralMarkers,
+  readPlaywrightSkipped,
+  readVitestSkipped,
+} from './lib/postAuditDeferrals.mjs';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '..');
 
@@ -25,10 +31,6 @@ const TEST_SUITES = [
 // previous single-file constant meant a `fixme` added to the boundaries spec
 // was invisible to the gate (branch review 2026-09-03, S-2).
 const DEFERRED_VALIDATION_FILES = TEST_SUITES;
-
-// `test.skip` defers a case exactly as much as `test.fixme` does — a gate that
-// counts only one of them can be satisfied by renaming.
-const DEFERRAL_RE = /\btest\.(fixme|skip)\(/g;
 
 const POST_AUDIT_UNIT_COMMAND = [
   'run',
@@ -71,24 +73,9 @@ function countSpecDeferrals() {
       console.warn(`  ! cannot count deferrals: ${file} not found`);
       continue;
     }
-    out[file] = (fs.readFileSync(full, 'utf8').match(DEFERRAL_RE) || []).length;
+    out[file] = countDeferralMarkers(fs.readFileSync(full, 'utf8'));
   }
   return out;
-}
-
-// Skipped-case count from vitest's JSON reporter. Returns 0 when the file is
-// absent or unparseable — the caller treats that as "no evidence of skips",
-// which is why the reporter flag is passed explicitly rather than relied upon.
-function readVitestSkipped(jsonPath) {
-  try {
-    const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-    if (typeof raw.numPendingTests === 'number' || typeof raw.numTodoTests === 'number') {
-      return (raw.numPendingTests || 0) + (raw.numTodoTests || 0);
-    }
-    return 0;
-  } catch {
-    return 0;
-  }
 }
 
 const AUDIT_FINDINGS = {
@@ -240,8 +227,10 @@ const results = {
   suites: {},
 };
 
+// Static markers, by spec file. Combined with the runtime counts below once the
+// suites have run — see `deferredValidationCount`.
 const specDeferrals = countSpecDeferrals();
-const deferredValidationCount = Object.values(specDeferrals).reduce((a, b) => a + b, 0);
+const specRuntimeSkips = {};
 
 // Skipped UNIT cases are deferred too, and the exit code cannot see them: vitest
 // exits 0 with skips present, so `status: 'completed'` read as full coverage
@@ -297,14 +286,26 @@ for (const suite of TEST_SUITES) {
         'playwright',
         'test',
         path.join(projectRoot, suite),
-        '--reporter=json',
-        '--reporter=html',
+        // ONE --reporter flag carrying both. Passing the flag twice does not
+        // stack: the second occurrence overwrites the first, so the previous
+        // `--reporter=json --reporter=html` pair produced HTML only and the JSON
+        // report this loop names was never written — `reportFile` was computed
+        // and then never read.
+        '--reporter=json,html',
       ],
       {
         cwd: projectRoot,
         env: {
           ...process.env,
           PLAYWRIGHT_HTML_REPORT: path.join(REPORT_DIR, 'html'),
+          // Without this the JSON reporter writes to stdout, which `stdio:
+          // 'inherit'` sends straight to the console — visible, unparseable.
+          // `_OUTPUT_FILE` (not `_OUTPUT_NAME`) is the one that takes a full
+          // path: playwright/lib/runner/index.js resolveOutputFile() checks
+          // PLAYWRIGHT_JSON_OUTPUT_FILE first and returns immediately;
+          // PLAYWRIGHT_JSON_OUTPUT_NAME is only a filename joined onto a
+          // separately-resolved output dir.
+          PLAYWRIGHT_JSON_OUTPUT_FILE: reportFile,
         },
         stdio: 'inherit',
       }
@@ -316,7 +317,29 @@ for (const suite of TEST_SUITES) {
     results.suites[suiteName] = { status: 'failed', error: e.message };
     console.error(`  ✗ ${suiteName} failed`);
   }
+
+  // Read the report on BOTH paths, for the same reason as the unit suite above:
+  // a failing run still reports how many cases it skipped, and dropping that
+  // understates the deferral count.
+  const runtimeSkips = readPlaywrightSkipped(reportFile);
+  specRuntimeSkips[suite] = runtimeSkips;
+  results.suites[suiteName].skipped = Math.max(specDeferrals[suite] || 0, runtimeSkips);
+  if (results.suites[suiteName].skipped > 0) {
+    console.log(
+      `  ! ${suiteName}: ${results.suites[suiteName].skipped} deferred case(s) ` +
+      `(static markers ${specDeferrals[suite] || 0}, reported skipped ${runtimeSkips}) — not covered`,
+    );
+  }
 }
+
+// Per spec, take the LARGER of the static marker count and the runtime skipped
+// count. A crashed run writes no JSON and reports 0; a runtime `test.skip(cond)`
+// leaves no marker and counts 0 statically. Summing would double-count the
+// ordinary case where both see the same deferral.
+const deferredValidationCount = DEFERRED_VALIDATION_FILES.reduce(
+  (sum, file) => sum + Math.max(specDeferrals[file] || 0, specRuntimeSkips[file] || 0),
+  0,
+);
 
 // Phase 4: Coverage analysis
 console.log('\n📊 Phase 4: Coverage Analysis');
