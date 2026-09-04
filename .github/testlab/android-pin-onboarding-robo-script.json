@@ -134,5 +134,31 @@
         }
       ]
     }
+  },
+  {
+    "description": "Decline telemetry — I3 path exercised, no analytics egress from this run",
+    "eventType": "VIEW_CLICKED",
+    "elementDescriptors": [
+      {
+        "text": "No thanks"
+      }
+    ]
+  },
+  {
+    "description": "Allow the app to route past consent into the main wallet UI",
+    "eventType": "WAIT",
+    "delayTime": 3000
+  },
+  {
+    "description": "Fresh vault landed on the main wallet screen — Send action reachable",
+    "eventType": "ASSERTION",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "elementDescriptors": [
+        {
+          "text": "Send"
+        }
+      ]
+    }
   }
 ]
