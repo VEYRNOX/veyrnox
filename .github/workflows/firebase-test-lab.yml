@@ -211,6 +211,17 @@ jobs:
           # Comments MUST stay outside the gcloud line-continuation block —
           # a `#` inside `cmd \` terminates the command silently and the next
           # line runs as its own command (`--device: command not found`).
+          # If GCS_RESULTS_BUCKET isn't set (or the SA lacks bucket-create perms
+          # on it), fall back to Firebase Test Lab's default bucket. Firebase
+          # auto-creates one when the project has Test Lab enabled; results still
+          # show up in the Firebase Console under the matrix ID either way. This
+          # is what unblocked #1960 — the pre-existing GCS_RESULTS_BUCKET secret
+          # pointed at a bucket the SA couldn't write to, and every run failed
+          # `Permission denied while creating bucket`.
+          BUCKET_ARGS=()
+          if [ -n "${RESULTS_BUCKET:-}" ]; then
+            BUCKET_ARGS+=(--results-bucket "$RESULTS_BUCKET" --results-dir "$RESULTS_DIR")
+          fi
           set +e
           gcloud firebase test android run \
             --type robo \
@@ -220,8 +231,7 @@ jobs:
             --num-flaky-test-attempts 0 \
             --no-resign \
             --robo-script .github/testlab/android-pin-onboarding-robo-script.json \
-            --results-bucket "$RESULTS_BUCKET" \
-            --results-dir "$RESULTS_DIR" 2>&1 | tee firebase-test-lab.log
+            "${BUCKET_ARGS[@]}" 2>&1 | tee firebase-test-lab.log
           TEST_STATUS=${PIPESTATUS[0]}
           set -e
 
@@ -271,8 +281,10 @@ jobs:
       # and UI dumps is deliberately not emitted because it can contain wallet
       # state. The inventory still shows exactly which per-axis diagnostics are
       # available for a private follow-up inspection.
+      # Only runs when a custom bucket is configured. Firebase's default bucket
+      # is inventoried via the Firebase Console instead — no gcloud call needed.
       - name: Surface sanitized Firebase result inventory
-        if: always() && steps.robo.outputs.results_dir != ''
+        if: always() && steps.robo.outputs.results_dir != '' && env.RESULTS_BUCKET != ''
         env:
           RESULTS_BUCKET: ${{ secrets.GCS_RESULTS_BUCKET }}
           RESULTS_DIR: ${{ steps.robo.outputs.results_dir }}
@@ -294,7 +306,11 @@ jobs:
             echo "### Firebase Test Lab — Robo crawl"
             echo "Results: https://console.firebase.google.com/project/${PROJECT_ID}/testlab/histories/"
             echo "Matrix: \`${MATRIX_ID:-unavailable}\`"
-            echo "Bucket:  gs://${RESULTS_BUCKET}/${RESULTS_DIR}"
+            if [ -n "${RESULTS_BUCKET:-}" ]; then
+              echo "Bucket:  gs://${RESULTS_BUCKET}/${RESULTS_DIR}"
+            else
+              echo "Bucket:  (Firebase default — see Console link above)"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   # --------------------------------------------------------------
