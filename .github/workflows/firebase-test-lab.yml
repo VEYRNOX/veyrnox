@@ -225,7 +225,7 @@ jobs:
           set +e
           gcloud firebase test android run \
             --type robo \
-            --app artifacts/app-firebaseTest.apk \
+            --app artifacts/app-google-firebaseTest.apk \
             --device model=shiba,version=34,locale=en,orientation=portrait \
             --timeout "$TIMEOUT" \
             --num-flaky-test-attempts 0 \
