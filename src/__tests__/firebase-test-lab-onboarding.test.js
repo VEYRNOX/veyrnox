@@ -104,6 +104,9 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
       { text: 'Submit PIN' },
       ...[...pin].map(text => ({ text })),
       { text: 'Submit PIN' },
+      // Declining telemetry exercises the I3 no-egress path deliberately —
+      // do not "simplify" by removing this click or the wallet-render check.
+      { text: 'No thanks' },
     ]);
     expect(roboScript.every(({ visionText }) => visionText == null)).toBe(true);
     expect(roboScript.some(({ eventType }) => eventType === 'VIEW_TEXT_CHANGED')).toBe(false);
@@ -111,6 +114,13 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
       eventType: 'ASSERTION',
       contextDescriptor: expect.objectContaining({
         elementDescriptors: [{ text: 'Help improve Veyrnox' }],
+      }),
+    }));
+    // Post-consent assertion: the main wallet UI actually rendered.
+    expect(roboScript).toContainEqual(expect.objectContaining({
+      eventType: 'ASSERTION',
+      contextDescriptor: expect.objectContaining({
+        elementDescriptors: [{ text: 'Send' }],
       }),
     }));
   });

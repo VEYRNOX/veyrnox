@@ -205,9 +205,13 @@ jobs:
             TIMEOUT="5m"
           fi
           echo "results_dir=$RESULTS_DIR" >> "$GITHUB_OUTPUT"
-          # Trimmed from 3 devices (oriole/panther/shiba) to 1 on
-          # 2026-08-15 to stay under Spark's 10-virtual-slot daily cap.
-          # shiba (Pixel 8, API 34) chosen as the newest supported target.
+          # Device matrix — 3 devices for OEM + API spread:
+          #   shiba   Pixel 8    API 34  (newest supported Pixel)
+          #   bluejay Pixel 6a   API 32  (older Pixel, lower-spec)
+          #   SCG13   Galaxy S22 API 36  (Samsung One UI — OEM diversity,
+          #                               exercises StrongBox / Knox paths)
+          # Trimmed to 1 on 2026-08-15 for Spark's 10-slot cap; restored to 3
+          # 2026-09-04 after project moved to Blaze billing on veyrnox-400ae.
           # Comments MUST stay outside the gcloud line-continuation block —
           # a `#` inside `cmd \` terminates the command silently and the next
           # line runs as its own command (`--device: command not found`).
@@ -227,6 +231,8 @@ jobs:
             --type robo \
             --app artifacts/app-google-firebaseTest.apk \
             --device model=shiba,version=34,locale=en,orientation=portrait \
+            --device model=bluejay,version=32,locale=en,orientation=portrait \
+            --device model=SCG13,version=36,locale=en,orientation=portrait \
             --timeout "$TIMEOUT" \
             --num-flaky-test-attempts 0 \
             --no-resign \
