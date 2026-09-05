@@ -275,7 +275,7 @@ export default function Documentation() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <Table>
+                  <Table className="table-responsive">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-[250px]">Feature</TableHead>
@@ -291,7 +291,7 @@ export default function Documentation() {
                             <TableCell className="font-medium" data-label="Feature">{item.name}</TableCell>
                             <TableCell className="text-muted-foreground" data-label="Description">{item.desc}</TableCell>
                             <TableCell data-label="Status">
-                              <Badge variant="outline" className={STATUS_META[status].className}>
+                              <Badge variant="outline" className={`whitespace-nowrap ${STATUS_META[status].className}`}>
                                 {STATUS_META[status].label}
                               </Badge>
                             </TableCell>
