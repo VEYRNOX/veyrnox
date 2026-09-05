@@ -40,25 +40,54 @@ export function countDeferralMarkers(source) {
   return (stripCommentsAndStrings(source).match(DEFERRAL_RE) || []).length;
 }
 
-// Both readers return 0 for an absent or unparseable file. That is NOT "clean" —
-// it is "no runtime evidence", which is exactly why the caller maxes it against
-// the static count instead of trusting it alone.
+// NO EVIDENCE IS NOT ZERO. Both readers return `null` when the report is absent
+// or unparseable, and a number only when they actually read one.
+//
+// They used to return 0 for both, on the reasoning that the caller maxes the
+// runtime count against the static count. That covers a deferral BOTH sources
+// can see. It does not cover the case this gate exists for: a skip with no
+// static marker at all — a `test.skip(cond)` evaluated at runtime, a serial
+// describe whose remaining cases are skipped after an earlier failure, a
+// project `grep`/`testIgnore` filter — in a run whose report never landed.
+// Static reads 0, runtime reads 0, `Math.max(0, 0)` is 0, and the gate prints
+// full coverage having read nothing.
+//
+// `null` forces the caller to decide, and the decision it must make is to
+// block: a gate cannot claim "no deferred validations" when it could not tell.
+// Callers that merge with a static count must use `?? 0` explicitly and record
+// the gap — `Math.max(n, null)` coerces to 0 and silently restores the bug.
 function readJson(jsonPath, pick) {
+  let raw;
   try {
-    return pick(JSON.parse(readFileSync(jsonPath, 'utf8'))) || 0;
+    raw = JSON.parse(readFileSync(jsonPath, 'utf8'));
   } catch {
-    return 0;
+    return null; // absent, unreadable, or not JSON — no evidence either way
   }
+  const value = pick(raw);
+  return Number.isFinite(value) ? value : null;
 }
 
 // vitest's JSON reporter: pending (`.skip`) and todo cases both mean not run.
+// Returns null when there is no readable report — see readJson.
 export function readVitestSkipped(jsonPath) {
-  return readJson(jsonPath, (raw) => (raw.numPendingTests || 0) + (raw.numTodoTests || 0));
+  return readJson(jsonPath, (raw) => {
+    if (!raw || typeof raw !== 'object') return null;
+    // A report with NEITHER key is not a vitest report; treating it as 0 is the
+    // same lie as treating a missing file as 0.
+    if (!('numPendingTests' in raw) && !('numTodoTests' in raw)) return null;
+    return (raw.numPendingTests || 0) + (raw.numTodoTests || 0);
+  });
 }
 
 // Playwright's JSON reporter. `stats.skipped` covers `test.skip`, `test.fixme`
 // and every case inside a skipped describe — the shapes the regex above had to
 // be widened to see statically.
+// Returns null when there is no readable report — see readJson.
 export function readPlaywrightSkipped(jsonPath) {
-  return readJson(jsonPath, (raw) => (raw && raw.stats && raw.stats.skipped) || 0);
+  return readJson(jsonPath, (raw) => {
+    // `{}` and `{stats:{}}` are not "zero skips", they are a report that does
+    // not say. Only a numeric stats.skipped counts as evidence.
+    const skipped = raw && raw.stats ? raw.stats.skipped : undefined;
+    return Number.isFinite(skipped) ? skipped : null;
+  });
 }

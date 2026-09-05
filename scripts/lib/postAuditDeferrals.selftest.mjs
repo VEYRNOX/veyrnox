@@ -100,15 +100,35 @@ const fixture = (name, contents) => {
   check('vitest: pending + todo summed', readVitestSkipped(vi) === 3);
 }
 
-// 7. The dangerous branch. Absent, empty and malformed files all return 0 — which
-//    is why run-post-audit-qa.mjs maxes these against the static count instead of
-//    trusting them. Pinned so nobody "simplifies" the fallback into a throw, or
-//    reads these zeros as evidence of a clean run.
+// 7. The dangerous branch — CHANGED 2026-09-05, and the inversion is the fix.
+//
+//    This block used to assert these all return 0, on the reasoning that
+//    run-post-audit-qa.mjs maxes them against the static count. It pinned the
+//    defect: `Math.max(0, 0)` is 0, so a skip with NO static marker — a runtime
+//    `test.skip(cond)`, a serial describe skipping after a failure, a project
+//    grep filter — in a run whose report never landed produced "0 deferred" and
+//    the gate printed full coverage having read nothing.
+//
+//    "No evidence" is now null, distinct from "zero skips", and the caller
+//    blocks its verdict on it. Do not soften these back to 0: the whole gate
+//    rests on the two being distinguishable.
 {
-  check('playwright: missing file returns 0', readPlaywrightSkipped(path.join(dir, 'nope.json')) === 0);
-  check('vitest: missing file returns 0', readVitestSkipped(path.join(dir, 'nope.json')) === 0);
-  check('playwright: malformed json returns 0', readPlaywrightSkipped(fixture('bad.json', '{')) === 0);
-  check('playwright: no stats key returns 0', readPlaywrightSkipped(fixture('nostats.json', '{}')) === 0);
+  check('playwright: missing file returns null', readPlaywrightSkipped(path.join(dir, 'nope.json')) === null);
+  check('vitest: missing file returns null', readVitestSkipped(path.join(dir, 'nope.json')) === null);
+  check('playwright: malformed json returns null', readPlaywrightSkipped(fixture('bad.json', '{')) === null);
+  check('playwright: no stats key returns null', readPlaywrightSkipped(fixture('nostats.json', '{}')) === null);
+  check('playwright: stats without skipped returns null', readPlaywrightSkipped(fixture('nostatskip.json', JSON.stringify({ stats: { expected: 4 } }))) === null);
+  check('vitest: report with neither count key returns null', readVitestSkipped(fixture('vinone.json', '{}')) === null);
+
+  // A REAL zero must still be a zero — otherwise the fix blocks every clean run
+  // and someone reverts the whole thing.
+  check('playwright: genuine 0 skips is 0, not null', readPlaywrightSkipped(fixture('pwzero.json', JSON.stringify({ stats: { expected: 4, skipped: 0 } }))) === 0);
+  check('vitest: genuine 0 skips is 0, not null', readVitestSkipped(fixture('vizero.json', JSON.stringify({ numPendingTests: 0, numTodoTests: 0 }))) === 0);
+
+  // The coercion trap the caller must avoid, pinned here because it is the
+  // exact line that would silently restore the bug.
+  check('Math.max(n, null) coerces null to 0 — callers must use ?? and record the gap',
+    Math.max(3, null) === 3 && Math.max(0, null) === 0);
 }
 
 if (fail > 0) {
