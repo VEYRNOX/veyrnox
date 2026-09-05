@@ -64,7 +64,7 @@
 // Comparison is on JSON.stringify, not toEqual: field ORDER matters as much as
 // field values, because a raw dump inspects bytes, not deep-equality.
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   ensureStealthPool,
   createHiddenWallet,
@@ -420,6 +420,56 @@ describe('H-2 — reveal-time REPAIR toward the footprint era', () => {
 
     // Byte-identical, not merely same-profile: no re-encrypt happened at all.
     expect(JSON.stringify(await get(slot))).toBe(before);
+  }, 300_000);
+
+  it('an UNREADABLE pool does not trigger a rewrite (era fail-safe)', async () => {
+    // 2026-09-05. deniabilityKdfProfile() returns KDF_PARAMS on every failure
+    // route — openDb throwing, and every probe read faulting into null, since
+    // readProfile swallows a getKey error. So "pool unreadable" was
+    // indistinguishable from "fresh device", and the repair path read the
+    // second meaning: it re-encrypted an already-uniform v1 slot to v2 and left
+    // it the UNIQUE blob in the dump. That is the #2103 defect this path exists
+    // to heal, reintroduced by a transient storage fault.
+    //
+    // It is also what the `no needless rewrite` case above catches in CI when a
+    // probe read happens to fail under parallel load — the assertion was right
+    // and the code was wrong.
+    //
+    // Mocking the profile module to answer KDF_PARAMS with fromPool:false is
+    // exactly what an unreadable pool produces, and is deterministic where the
+    // real fault is not.
+    vi.resetModules();
+    vi.doMock('../deniabilityKdfProfile.js', async (orig) => {
+      const real = /** @type {any} */ (await orig());
+      return {
+        ...real,
+        deniabilityKdfProfile: async () => KDF_PARAMS,
+        deniabilityKdfProfileWithSource: async () => ({ kdf: KDF_PARAMS, fromPool: false }),
+      };
+    });
+    try {
+      const stealth = await import('../stealth.js');
+      await stealth.createHiddenWallet('placeholder-secret-12345', 128);
+      await clearStore();
+      await seedV1ChaffOnly();
+
+      const secret = 'unreadable-pool-secret-abcd';
+      const slot = await stealth.slotForSecret(secret);
+      const container = makeContainer([{ id: newWalletId(), mnemonic: generateMnemonic(128) }]);
+      await put(slot, await encryptVault(serializeContainer(container), secret, V1_PARAMS));
+
+      const before = JSON.stringify(await get(slot));
+      expect(await stealth.tryRevealHidden(secret)).not.toBeNull();
+      await stealth._awaitPendingKdfRekey();
+
+      // Byte-identical: an era the pool did not vouch for authorises nothing.
+      expect(JSON.stringify(await get(slot))).toBe(before);
+      // And the slot still matches the pool, which is the property that matters.
+      expect(JSON.stringify((await get(slot)).kdf)).toBe(V1_KDF_FINGERPRINT);
+    } finally {
+      vi.doUnmock('../deniabilityKdfProfile.js');
+      vi.resetModules();
+    }
   }, 300_000);
 
   it('the stealth rekey SETTLES when the slot vanishes inside the window (wipe race)', async () => {

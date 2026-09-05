@@ -145,7 +145,7 @@ import { decryptVault, encryptVault, KDF_PARAMS, VAULT_VERSION, vaultKdfDiffersF
 // because that needs its secret. So a pool holding one can never be made
 // uniform at a new era; holding the era is the only option that neither
 // destroys wallets nor moves the tell onto the wallets hidden hardest.
-import { deniabilityKdfProfile, encryptDeniabilityVault } from './deniabilityKdfProfile.js';
+import { deniabilityKdfProfile, encryptDeniabilityVault, deniabilityKdfProfileWithSource } from './deniabilityKdfProfile.js';
 import { generateMnemonic, validateMnemonic } from './mnemonic.js';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
@@ -675,8 +675,19 @@ export async function tryRevealHidden(secret) {
         try {
           // Nest rather than early-return, for the same reason the slot check
           // below does: every exit from this callback has to reach resolve().
-          const era = await deniabilityKdfProfile();
-          const fresh = vaultKdfDiffersFrom(blob, era)
+          // FAIL-SAFE ERA (2026-09-05). `fromPool` is false when the pool could
+          // not be read — openDb throwing, or every probe read faulting into
+          // null — and NOT only on a genuinely fresh device. The two are
+          // indistinguishable from the value alone, and treating an unreadable
+          // pool as "the era is the current default" made this repair rewrite an
+          // already-uniform slot to v2, leaving it the unique blob in the dump:
+          // exactly the #2103 defect this path exists to heal.
+          //
+          // A repair that cannot see the pool must do nothing. Writers keep
+          // defaulting — a fresh device has no era to match — which is why this
+          // bit is consumed here and not inside deniabilityKdfProfile().
+          const { kdf: era, fromPool } = await deniabilityKdfProfileWithSource();
+          const fresh = fromPool && vaultKdfDiffersFrom(blob, era)
             ? await encryptVault(plaintext, secret, era)
             : null;
           if (fresh && fresh.ct && fresh.iv && fresh.salt) {
