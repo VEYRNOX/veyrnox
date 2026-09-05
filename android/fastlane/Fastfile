@@ -1,0 +1,84 @@
+default_platform(:android)
+
+# Google Play auth — service account JSON.
+# Provide EITHER GOOGLE_PLAY_JSON_KEY_PATH (file) OR GOOGLE_PLAY_JSON_KEY_DATA
+# (raw JSON string — matches ci.yml's GOOGLE_PLAY_SERVICE_ACCOUNT_JSON secret).
+def play_auth
+  if ENV["GOOGLE_PLAY_JSON_KEY_DATA"]
+    { json_key_data: ENV["GOOGLE_PLAY_JSON_KEY_DATA"] }
+  else
+    { json_key: ENV.fetch("GOOGLE_PLAY_JSON_KEY_PATH") }
+  end
+end
+
+platform :android do
+  desc "Read Play Console track state (no build, no upload)"
+  lane :status do
+    tracks = google_play_track_version_codes(
+      package_name: "com.veyrnox.app",
+      track: "internal",
+      **play_auth,
+    )
+    UI.message("Internal track versionCodes: #{tracks.inspect}")
+  end
+
+  desc "Rebuild web bundle + cap sync — mandatory before AAB assembly"
+  lane :prep_web do
+    sh("cd ../.. && npm run build && npx cap sync android")
+  end
+
+  desc "Assemble signed release AAB (uses android/keystore.properties)"
+  lane :build do
+    prep_web
+    gradle(
+      project_dir: "..",
+      task: "bundle",
+      build_type: "Release",
+      flavor: "google",
+    )
+  end
+
+  desc "Upload the signed AAB to Play Console internal testing"
+  lane :internal do
+    build
+    upload_to_play_store(
+      package_name: "com.veyrnox.app",
+      track: "internal",
+      release_status: "draft",
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      aab: "../app/build/outputs/bundle/googleRelease/app-google-release.aab",
+      **play_auth,
+    )
+  end
+
+  # No production lane — CLAUDE.md submission hold + no Play Pre-launch report
+  # has ever been generated (see #1960 accepted-residual).
+
+  desc "Assemble the huawei-flavor release AAB (HMS build, no GMS/Play Integrity)"
+  lane :build_huawei do
+    prep_web
+    gradle(
+      project_dir: "..",
+      task: "bundle",
+      build_type: "Release",
+      flavor: "huawei",
+    )
+  end
+
+  desc "Upload huawei-flavor AAB to Huawei AppGallery Connect draft"
+  lane :huawei do
+    build_huawei
+    huawei_appgallery_connect(
+      client_id: ENV.fetch("HUAWEI_CLIENT_ID"),
+      client_secret: ENV.fetch("HUAWEI_CLIENT_SECRET"),
+      app_id: ENV.fetch("HUAWEI_APP_ID"),
+      aab_path: "../app/build/outputs/bundle/huaweiRelease/app-huawei-release.aab",
+      # No auto-submit — leave as draft; submission is a manual gate.
+      submit_for_review: false,
+    )
+  end
+end

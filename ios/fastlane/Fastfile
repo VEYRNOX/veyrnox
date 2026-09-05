@@ -1,0 +1,66 @@
+default_platform(:ios)
+
+# App Store Connect API key comes from env — see .env.fastlane.example.
+# App Manager role (not Admin); manual signing path per CLAUDE.md.
+def asc_api_key
+  app_store_connect_api_key(
+    key_id: ENV.fetch("ASC_KEY_ID"),
+    issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+    key_filepath: ENV.fetch("ASC_KEY_PATH", File.expand_path("~/.appstoreconnect/private_keys/AuthKey_#{ENV.fetch('ASC_KEY_ID')}.p8")),
+    duration: 1200,
+    in_house: false,
+  )
+end
+
+platform :ios do
+  desc "Read App Store / TestFlight state (no build, no upload)"
+  lane :status do
+    api = asc_api_key
+    latest_testflight_build_number(api_key: api, app_identifier: "com.veyrnox.app")
+  end
+
+  desc "Rebuild web bundle + cap sync — CLAUDE.md mandatory pre-archive step"
+  lane :prep_web do
+    sh("cd .. && npm run build && npx cap sync ios")
+  end
+
+  desc "Archive + export IPA using existing manual-signing ExportOptions.plist"
+  lane :build do
+    prep_web
+    build_app(
+      workspace: "App/App.xcworkspace",
+      scheme: "App",
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: "App/ExportOptions.plist",
+      output_directory: "build",
+      output_name: "App.ipa",
+      clean: true,
+      include_bitcode: false,
+      include_symbols: true,
+    )
+  end
+
+  desc "Verify built IPA contains no dev flags (CLAUDE.md pre-submission check)"
+  lane :verify_ipa do
+    ipa = "build/App.ipa"
+    UI.user_error!("IPA missing: #{ipa}") unless File.exist?(ipa)
+    hits = sh("unzip -p '#{File.expand_path(ipa)}' 'Payload/App.app/public/assets/index-*.js' | grep -oE 'VITE_(BYPASS_RASP|DEV_UNGATE_SEND|DEMO_MODE):\"1\"' || true", log: false).strip
+    UI.user_error!("Dev flag in IPA: #{hits}") unless hits.empty?
+    UI.success("IPA clean — no dev flags")
+  end
+
+  desc "Full build + verify + TestFlight upload"
+  lane :beta do
+    build
+    verify_ipa
+    upload_to_testflight(
+      api_key: asc_api_key,
+      ipa: "build/App.ipa",
+      skip_waiting_for_build_processing: true,
+      skip_submission: true,
+    )
+  end
+
+  # No release lane — CLAUDE.md submission hold. Add when gate passes.
+end

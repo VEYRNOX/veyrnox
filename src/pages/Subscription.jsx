@@ -746,7 +746,19 @@ export default function Subscription() {
 
       </div>
 
-      <Card className="border-primary/30">
+      <Card className="border-primary/30 relative">
+        {!isPaidPlan && (
+          // Fast-follower: every multi-tier paywall (1Password, NordVPN, Duolingo,
+          // Bitwarden) marks one plan to defeat indecision. Safety Plus is the
+          // intended default. Hidden once the user already holds a paid tier —
+          // "Recommended" on a plan you own reads as a nudge to nowhere.
+          <Badge
+            variant="outline"
+            className="absolute -top-2.5 start-4 text-[10px] uppercase tracking-wide px-2 py-0.5 border-primary/40 bg-background text-primary"
+          >
+            Recommended
+          </Badge>
+        )}
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             Safety Plus
@@ -778,7 +790,11 @@ export default function Subscription() {
                   role="radiogroup"
                   aria-label="Billing period"
                   onKeyDown={handleBillingKeyDown}
-                  className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border"
+                  // Asymmetric grid anchors Annual as the primary choice — same
+                  // pattern used by Duolingo Super, Calm, Blinkist. Symmetric
+                  // toggles leave Annual as a peer of Monthly; giving it 2fr
+                  // vs 1fr makes it the visual default without hiding Monthly.
+                  className="grid grid-cols-[1fr_2fr] gap-2 p-1 rounded-lg bg-muted/40 border border-border"
                 >
                   <button
                     ref={monthlyRadioRef}
@@ -872,7 +888,12 @@ export default function Subscription() {
                 onClick={handleUpgrade}
               >
                 {busy ? <Loader2 className="h-4 w-4 me-2 motion-safe:animate-spin" /> : <Sparkles className="h-4 w-4 me-2" />}
-                {isNative ? (selectedPriceString ? `Upgrade — ${selectedPriceString}` : "Upgrade — loading pricing") : "Upgrade — mobile only"}
+                {/* Action-verb + outcome-named CTA — matches the pattern used
+                    by top security-app paywalls (1Password "Get 1Password",
+                    Bitwarden "Get Premium"). Keeping the "Upgrade" verb so the
+                    existing role/name assertions in Subscription.test.jsx keep
+                    working; the outcome now sits next to it. */}
+                {isNative ? (selectedPriceString ? `Upgrade to Safety Plus — ${selectedPriceString}` : "Upgrade to Safety Plus — loading pricing") : "Upgrade to Safety Plus — mobile only"}
               </Button>
 
               {/* Renewal terms. Both stores require this disclosure at the
@@ -959,17 +980,16 @@ export default function Subscription() {
               <p className="text-sm text-muted-foreground">
                 AI Security Protection includes everything in Free and Safety Plus, then adds live online TIP-backed Vigil answers.
               </p>
-              {isNative ? (
-                aiOfferingConfigured ? (
-                  <>
-                    {/* Monthly / Annual toggle — mirrors Safety Plus. Renders
-                        even when packages haven't resolved yet so the paywall
-                        keeps its shape; prices fall back to "—" and the
-                        Upgrade button is disabled below. */}
+              {(isNative && !aiOfferingConfigured) ? null : (
+                <>
+                  {/* Monthly / Annual toggle — mirrors Safety Plus. Renders on
+                      web too (with "—" prices and a disabled CTA) so the paywall
+                      keeps its shape; matches the pattern the Safety Plus card
+                      already uses so both tiers look identical on web preview. */}
                     <div
                       role="radiogroup"
                       aria-label="AI Security Protection billing period"
-                      className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border"
+                      className="grid grid-cols-[1fr_2fr] gap-2 p-1 rounded-lg bg-muted/40 border border-border"
                     >
                       <button
                         type="button"
@@ -1032,44 +1052,51 @@ export default function Subscription() {
                     <Button
                       className="w-full bg-sky-600 hover:bg-sky-700 text-white"
                       onClick={handleAiUpgrade}
-                      disabled={busy || !aiPurchaseAvailable}
+                      disabled={!isNative || busy || !aiPurchaseAvailable}
                     >
                       {busy
                         ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : aiPurchaseAvailable
-                          ? `Subscribe${aiSelectedPriceString ? ` • ${aiSelectedPriceString}` : ''}`
-                          : "Subscribe — loading pricing"}
+                        : !isNative
+                          ? `Subscribe to AI Security Protection — mobile only`
+                          : aiPurchaseAvailable
+                            ? `Subscribe to AI Security Protection${aiSelectedPriceString ? ` — ${aiSelectedPriceString}` : ''}`
+                            : "Subscribe — loading pricing"}
                     </Button>
-                    <p className="text-xs text-muted-foreground text-center">
-                      Billed as an in-app subscription through the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"}.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleRestore}
-                      disabled={busy}
-                      className="text-xs text-muted-foreground underline w-full text-center"
-                    >
-                      Restore purchases
-                    </button>
-                    {!isHuawei && (
-                      <button
-                        type="button"
-                        onClick={handleRedeemCode}
-                        disabled={busy}
-                        className="text-xs text-muted-foreground underline w-full text-center"
-                      >
-                        Redeem code
-                      </button>
+                    {isNative && (
+                      <>
+                        <p className="text-xs text-muted-foreground text-center">
+                          Billed as an in-app subscription through the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"}.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleRestore}
+                          disabled={busy}
+                          className="text-xs text-muted-foreground underline w-full text-center"
+                        >
+                          Restore purchases
+                        </button>
+                        {!isHuawei && (
+                          <button
+                            type="button"
+                            onClick={handleRedeemCode}
+                            disabled={busy}
+                            className="text-xs text-muted-foreground underline w-full text-center"
+                          >
+                            Redeem code
+                          </button>
+                        )}
+                      </>
+                    )}
+                    {!isNative && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        No payment can be made on this screen. Purchase this plan through the mobile app stores.
+                      </p>
                     )}
                   </>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    AI Security Protection is intended to be sold as an in-app subscription, but its RevenueCat offering is not configured in this build yet.
-                  </p>
-                )
-              ) : (
+                )}
+              {(isNative && !aiOfferingConfigured) && (
                 <p className="text-xs text-muted-foreground">
-                  Web remains read-only for subscriptions; this plan is purchased and managed through the mobile app stores.
+                  AI Security Protection is intended to be sold as an in-app subscription, but its RevenueCat offering is not configured in this build yet.
                 </p>
               )}
             </>
