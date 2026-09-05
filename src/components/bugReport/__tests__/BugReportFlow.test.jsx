@@ -1,21 +1,57 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act, fireEvent } from '@testing-library/react';
-import BugReportFlow from '../BugReportFlow';
 
-// Slice 1c — flow state machine. No real capture, no upload. What the tests
-// pin here is the walk: explainer → countdown → recording → close, and the
-// kill switches that must fire even before capture is wired.
+// Slice 1a-1d flow tests. What the tests pin here is the walk:
+// explainer → countdown → recording → review → close, and every kill
+// switch that must fire regardless of whether real capture is wired.
 //
-// Mutation targets each row will catch when reintroduced:
-//   - explainer-only open (missing continue) → advance test goes red
-//   - close cleanup missing → reopen carries stale state
-//   - visibility abort dropped → the vis-hidden test goes red
-//   - 30s cap removed → recording persists past 30s (test fast-forwards)
+// Mutations these tests catch when reintroduced:
+//   - reset-on-open removed → reopen goes straight back into recording
+//   - visibilitychange listener removed → hidden vis test goes red
+//   - 30s cap removed → recording persists past 30s
+//   - stop → close (bypasses review) → review test goes red
+//   - capture handle not aborted on close → abort spy test goes red
 
 vi.mock('lucide-react', () => ({ X: () => null }));
 
-beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: false }));
+// Route hook mocked — this file tests flow states, not routing. A dedicated
+// useRouteKillSwitch.test.js pins the hook itself.
+vi.mock('@/lib/bugReport/useRouteKillSwitch', () => ({
+  useRouteKillSwitch: () => {},
+}));
+
+// Capture bridge mocked so stop() resolves synchronously with fake timers.
+const mockAbort = vi.fn();
+const mockStop = vi.fn(() => Promise.resolve({
+  sizeBytes: 0, durationMs: 3000, source: 'mock', blob: null,
+}));
+vi.mock('@/lib/bugReport/captureBridge', () => ({
+  startCapture: () => Promise.resolve({ stop: mockStop, abort: mockAbort }),
+}));
+
+let BugReportFlow;
+
+beforeEach(async () => {
+  mockAbort.mockReset();
+  mockStop.mockReset().mockImplementation(() => Promise.resolve({
+    sizeBytes: 0, durationMs: 3000, source: 'mock', blob: null,
+  }));
+  vi.useFakeTimers({ shouldAdvanceTime: false });
+  vi.resetModules();
+  BugReportFlow = (await import('../BugReportFlow')).default;
+});
 afterEach(() => vi.useRealTimers());
+
+// Helper: advance timers AND flush microtasks so awaited promises resolve.
+async function advance(ms) {
+  await act(async () => {
+    vi.advanceTimersByTime(ms);
+    // Flush pending microtasks — capture-bridge Promise resolutions and
+    // useState updates chained off them settle here.
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
 
 describe('BugReportFlow — closed', () => {
   it('renders nothing when open=false', () => {
@@ -48,57 +84,83 @@ describe('BugReportFlow — explainer', () => {
 });
 
 describe('BugReportFlow — countdown → recording', () => {
-  it('continue advances to countdown, then to recording after 3s', () => {
+  it('continue advances to countdown, then to recording after 3s', async () => {
     render(<BugReportFlow open onClose={() => {}} />);
     fireEvent.click(screen.getByTestId('bug-report-continue'));
     expect(screen.getByTestId('bug-report-countdown')).toBeInTheDocument();
-
-    // Countdown ticks: 3 → 2 → 1 → 0/'Go' → recording state
-    // The transition to 'recording' happens on the render after countdown
-    // hits 0. Ticks are one per second.
-    act(() => vi.advanceTimersByTime(1000));
-    act(() => vi.advanceTimersByTime(1000));
-    act(() => vi.advanceTimersByTime(1000));
-    // After 3 ticks the countdown reads 0 and the effect fires to switch
-    // to 'recording' — that switch is synchronous inside the effect.
+    await advance(3000);
     expect(screen.getByTestId('bug-report-recording')).toBeInTheDocument();
     expect(screen.getByTestId('bug-report-stop')).toBeInTheDocument();
   });
 
-  it('stop from recording invokes onClose', () => {
+  it('stop from recording transitions to review (NOT close)', async () => {
     const onClose = vi.fn();
     render(<BugReportFlow open onClose={onClose} />);
     fireEvent.click(screen.getByTestId('bug-report-continue'));
-    act(() => vi.advanceTimersByTime(3000));
-    fireEvent.click(screen.getByTestId('bug-report-stop'));
+    await advance(3000);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('bug-report-stop'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    // Mutation defence: if stop calls close() directly (the pre-1d
+    // behaviour), the review screen never appears and onClose fires early.
+    expect(screen.getByTestId('bug-report-review')).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe('BugReportFlow — review', () => {
+  it('shows Send and Delete buttons after stop', async () => {
+    render(<BugReportFlow open onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('bug-report-continue'));
+    await advance(3000);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('bug-report-stop'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId('bug-report-send')).toBeInTheDocument();
+    expect(screen.getByTestId('bug-report-delete')).toBeInTheDocument();
+  });
+
+  it('Delete closes without sending', async () => {
+    const onClose = vi.fn();
+    render(<BugReportFlow open onClose={onClose} />);
+    fireEvent.click(screen.getByTestId('bug-report-continue'));
+    await advance(3000);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('bug-report-stop'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByTestId('bug-report-delete'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('BugReportFlow — 30s hard cap (I2)', () => {
-  it('auto-closes when recording reaches 30 seconds', () => {
-    const onClose = vi.fn();
-    render(<BugReportFlow open onClose={onClose} />);
+  it('auto-transitions to review when recording reaches 30 seconds', async () => {
+    render(<BugReportFlow open onClose={() => {}} />);
     fireEvent.click(screen.getByTestId('bug-report-continue'));
-    act(() => vi.advanceTimersByTime(3000));
+    await advance(3000);
     expect(screen.getByTestId('bug-report-recording')).toBeInTheDocument();
 
     // Mutation defence: if the 30s cap is removed OR compared with > instead
-    // of >=, the flow persists here and onClose never fires.
-    act(() => vi.advanceTimersByTime(30_000));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    // of >=, the flow persists in recording and never reaches review.
+    await advance(30_000);
+    expect(screen.getByTestId('bug-report-review')).toBeInTheDocument();
   });
 });
 
 describe('BugReportFlow — visibilitychange kill switch', () => {
-  it('aborts recording when the document goes hidden', () => {
+  it('aborts recording when the document goes hidden', async () => {
     const onClose = vi.fn();
     render(<BugReportFlow open onClose={onClose} />);
     fireEvent.click(screen.getByTestId('bug-report-continue'));
-    act(() => vi.advanceTimersByTime(3000));
+    await advance(3000);
     expect(screen.getByTestId('bug-report-recording')).toBeInTheDocument();
 
-    // Simulate the user backgrounding the app / OS taking a call.
     Object.defineProperty(document, 'visibilityState', {
       configurable: true, get: () => 'hidden',
     });
@@ -107,10 +169,9 @@ describe('BugReportFlow — visibilitychange kill switch', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('does NOT abort explainer or countdown on visibility hidden (only recording)', () => {
+  it('does NOT abort explainer or countdown on visibility hidden', () => {
     const onClose = vi.fn();
     render(<BugReportFlow open onClose={onClose} />);
-    // Still on explainer — vis change is irrelevant here.
     Object.defineProperty(document, 'visibilityState', {
       configurable: true, get: () => 'hidden',
     });
@@ -120,21 +181,40 @@ describe('BugReportFlow — visibilitychange kill switch', () => {
   });
 });
 
+describe('BugReportFlow — capture handle abort on close (I2)', () => {
+  it('aborts the live capture handle when close fires mid-recording', async () => {
+    render(<BugReportFlow open onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('bug-report-continue'));
+    await advance(3000);
+    // Wait one more tick for startCapture promise to store handle in ref.
+    await advance(0);
+
+    // Now trigger a close via the visibility kill switch (real code path).
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true, get: () => 'hidden',
+    });
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+
+    // Mutation defence: if close() forgets to invoke handle.abort(), the
+    // recording buffer survives — a fundamental "nothing leaves without
+    // Send" break the moment slice 1e wires a real buffer.
+    expect(mockAbort).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('BugReportFlow — state resets between opens', () => {
-  it('reopens onto explainer after a prior close from recording', () => {
+  it('reopens onto explainer after a prior close from recording', async () => {
     const { rerender } = render(<BugReportFlow open onClose={() => {}} />);
     fireEvent.click(screen.getByTestId('bug-report-continue'));
-    act(() => vi.advanceTimersByTime(3000));
+    await advance(3000);
     expect(screen.getByTestId('bug-report-recording')).toBeInTheDocument();
 
-    // Close and reopen.
     rerender(<BugReportFlow open={false} onClose={() => {}} />);
     rerender(<BugReportFlow open onClose={() => {}} />);
 
-    // Mutation defence: without the reset-on-open effect, the flow reopens
-    // straight back into recording — no consent, no countdown, straight to
-    // capture. That is exactly the kind of silent-capture bug I2/I4 exist
-    // to prevent.
+    // Without the reset-on-open effect, the flow reopens straight into
+    // recording — no consent, no countdown, straight to capture. Exactly
+    // the silent-capture bug I2/I4 exist to prevent.
     expect(screen.getByTestId('bug-report-explainer')).toBeInTheDocument();
     expect(screen.queryByTestId('bug-report-recording')).toBeNull();
   });

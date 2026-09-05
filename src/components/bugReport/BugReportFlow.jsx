@@ -1,12 +1,11 @@
 // @ts-nocheck
 // src/components/bugReport/BugReportFlow.jsx
 //
-// Slice 1c of the opt-in bug-report recording feature. See
+// Slice 1a-1d of the opt-in bug-report recording feature. See
 // docs/bug-report-recording-plan.md for the full contract.
 //
-// Renders the state machine that walks a user through explainer → consent +
-// countdown → recording (mock in this slice) → back to settings. No capture,
-// no upload, no encryption in this slice; those land in 1d + 1e.
+// Renders the state machine that walks a user through:
+//   explainer → countdown (3-2-1) → recording → review → done
 //
 // Runtime effect: NONE on any current build. Slice 1b's BugReportButton
 // only opens this flow when isBugReportEnabled() returns true, which
@@ -14,25 +13,27 @@
 // deniability. All three false on every shipped build, so the button
 // self-hides and this component never mounts.
 //
-// State machine:
-//   'explainer'   — first sheet, user confirms they understand what happens
-//   'countdown'   — 3-2-1 before capture would begin (mock in this slice)
-//   'recording'   — 30s timer + STOP button (no actual capture yet)
-//   'done'        — closes flow (parent unmounts)
+// Slice history:
+//   1c added state machine + explainer + countdown + recording UI + 30s
+//      cap + visibilitychange kill switch.
+//   1d added mock capture handle, review screen (Send / Delete / Cancel),
+//      and route-change kill switch via useRouteKillSwitch.
 //
-// Kill switches implemented in this slice:
+// Kill switches now live:
 //   - Cancel button on every screen
-//   - Escape key (via Dialog primitive's built-in handler)
+//   - X close button
 //   - visibilitychange -> abort while recording
-//   - 30s hard cap in the recording state
+//   - 30s hard cap in recording
+//   - route change into a denied route -> abort while recording OR review
 //
-// Kill switches DEFERRED to slice 1d (need real capture to be meaningful):
-//   - Route change into a denied route
-//   - App-lock event
-//   - Panic-wipe event
+// Kill switches DEFERRED (need real capture / native events to be meaningful):
+//   - App-lock event  (Slice 1e or Slice 2)
+//   - Panic-wipe event (Slice 1e or Slice 2)
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X } from 'lucide-react';
+import { startCapture } from '@/lib/bugReport/captureBridge';
+import { useRouteKillSwitch } from '@/lib/bugReport/useRouteKillSwitch';
 
 const RECORDING_CAP_MS = 30_000;
 const COUNTDOWN_START = 3;
@@ -41,6 +42,8 @@ export default function BugReportFlow({ open, onClose }) {
   const [state, setState] = useState('explainer');
   const [countdown, setCountdown] = useState(COUNTDOWN_START);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [captureResult, setCaptureResult] = useState(null);
+  const captureHandleRef = useRef(null);
 
   // Reset to explainer whenever the flow reopens; a stale terminal state
   // from a previous session must not leak into a fresh open.
@@ -49,13 +52,24 @@ export default function BugReportFlow({ open, onClose }) {
       setState('explainer');
       setCountdown(COUNTDOWN_START);
       setElapsedMs(0);
+      setCaptureResult(null);
+      captureHandleRef.current = null;
     }
   }, [open]);
 
+  // Central close helper. Aborts any live capture handle before unmounting
+  // so a buffer never survives the flow. Slice 1e adds encryption + upload
+  // — the abort-on-close guarantee must hold before then to keep the
+  // "nothing leaves the device unless Send is tapped" property honest.
   const close = useCallback(() => {
+    if (captureHandleRef.current) {
+      try { captureHandleRef.current.abort(); } catch {}
+      captureHandleRef.current = null;
+    }
     setState('explainer');
     setCountdown(COUNTDOWN_START);
     setElapsedMs(0);
+    setCaptureResult(null);
     onClose?.();
   }, [onClose]);
 
@@ -80,7 +94,19 @@ export default function BugReportFlow({ open, onClose }) {
     return () => clearInterval(interval);
   }, [state]);
 
-  // Recording ticker + 30s hard cap
+  // Start capture on entering 'recording'; keep the handle for stop/abort.
+  useEffect(() => {
+    if (state !== 'recording') return;
+    let cancelled = false;
+    startCapture().then((handle) => {
+      if (cancelled) { try { handle.abort(); } catch {} return; }
+      captureHandleRef.current = handle;
+    }).catch(() => { /* mock cannot fail; real capture will surface here */ });
+    return () => { cancelled = true; };
+  }, [state]);
+
+  // Recording ticker + 30s hard cap. On cap-hit, stop the capture and
+  // move to review — same shape as the user tapping Stop.
   useEffect(() => {
     if (state !== 'recording') return;
     const start = Date.now();
@@ -89,13 +115,29 @@ export default function BugReportFlow({ open, onClose }) {
       setElapsedMs(el);
       if (el >= RECORDING_CAP_MS) {
         clearInterval(interval);
-        // Slice 1c: no capture to finalise, just close. Slice 1d transitions
-        // to 'playback' here with the captured buffer.
-        close();
+        stopAndReview();
       }
     }, 100);
     return () => clearInterval(interval);
-  }, [state, close]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
+  // Stop capture and transition to review. Isolated so both the 30s cap
+  // and the Stop button call the same path.
+  const stopAndReview = useCallback(() => {
+    const handle = captureHandleRef.current;
+    captureHandleRef.current = null;
+    if (!handle) { setState('review'); setCaptureResult(null); return; }
+    handle.stop().then((result) => {
+      setCaptureResult(result);
+      setState('review');
+    }).catch(() => {
+      // If the capture handle failed (e.g. real plugin returned an error),
+      // do NOT silently succeed — close the flow and let the user try
+      // again. Explicit fail-closed matches I4.
+      close();
+    });
+  }, [close]);
 
   // visibilitychange kill switch: abort while recording (I2 - no silent
   // capture continuing behind another app). No effect in other states -
@@ -108,6 +150,25 @@ export default function BugReportFlow({ open, onClose }) {
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [state, close]);
+
+  // Route kill switch: navigation into a denied route while a recording is
+  // armed (recording OR review — review still holds a capture buffer) aborts
+  // the flow. See src/lib/bugReport/recordableRoutes.js for the allow/deny
+  // lists and useRouteKillSwitch.js for the hook's contract.
+  useRouteKillSwitch({
+    active: state === 'recording' || state === 'review',
+    onAbort: close,
+  });
+
+  const onSend = useCallback(() => {
+    // Slice 1e replaces this with the encryption + upload pipeline. Kept as
+    // a visible placeholder in 1d so the review screen has a tangible action
+    // that is honest about what happens next.
+    if (typeof window !== 'undefined') {
+      window.alert('Upload lands in slice 1e. For now the recording is discarded on close.');
+    }
+    close();
+  }, [close]);
 
   if (!open) return null;
 
@@ -125,6 +186,7 @@ export default function BugReportFlow({ open, onClose }) {
             {state === 'explainer' && 'Report a problem'}
             {state === 'countdown' && 'Recording starts in…'}
             {state === 'recording' && 'Recording'}
+            {state === 'review' && 'Review recording'}
           </h2>
           <button
             type="button"
@@ -193,16 +255,53 @@ export default function BugReportFlow({ open, onClose }) {
               </p>
             </div>
             <p className="text-xs text-muted-foreground text-center mb-4">
-              Slice 1c: capture not wired yet. This is the countdown UI only.
+              Capture handle is mocked in slice 1d. Real capture lands in slice 2.
             </p>
             <button
               type="button"
-              onClick={close}
+              onClick={stopAndReview}
               data-testid="bug-report-stop"
               className="w-full min-h-[44px] rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
             >
               Stop
             </button>
+          </div>
+        )}
+
+        {state === 'review' && (
+          <div data-testid="bug-report-review">
+            <div className="rounded-xl border border-border bg-card p-4 mb-4 text-center">
+              <p className="text-sm font-medium mb-1">Recording captured</p>
+              <p className="text-xs text-muted-foreground">
+                Source: <span className="mono-value">{captureResult?.source ?? 'unknown'}</span>
+                {' · '}
+                Duration: <span className="mono-value">
+                  {Math.round((captureResult?.durationMs ?? 0) / 100) / 10}s
+                </span>
+              </p>
+              <p className="text-xs text-muted-foreground mt-3">
+                Preview player lands in slice 1e — the current handle
+                returns metadata only (no video buffer yet).
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <button
+                type="button"
+                onClick={onSend}
+                data-testid="bug-report-send"
+                className="w-full min-h-[44px] rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+              >
+                Send to support
+              </button>
+              <button
+                type="button"
+                onClick={close}
+                data-testid="bug-report-delete"
+                className="w-full min-h-[44px] rounded-xl border border-border text-foreground hover:bg-card transition-colors"
+              >
+                Delete and close
+              </button>
+            </div>
           </div>
         )}
       </div>
