@@ -16,7 +16,18 @@ import { WALLET_GATE } from "@/api/base44Client";
 import WalletEntry from "@/components/WalletEntry";
 import WalletEntryErrorBoundary from "@/components/WalletEntryErrorBoundary";
 
+// Dev-only bypass so a design-review sim/browser session can reach protected
+// routes (/plans, etc.) without going through onboarding + PIN + KEK enrollment.
+// Guarded by BOTH `import.meta.env.DEV` (vite strips this to false in prod
+// builds — the whole branch dead-code-eliminates) AND an explicit env flag
+// nobody sets by accident. Never trust either alone: DEV alone would open
+// every dev preview; the flag alone in a hypothetical prod build with the
+// var set would open prod. Both together = design-review only.
+const DEV_BYPASS_WALLET_GATE =
+  import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_WALLET_GATE === '1';
+
 export default function WalletGate() {
+  if (DEV_BYPASS_WALLET_GATE) return <Outlet />;
   // Gate-less ONLY for the web demo tour. Every native build — including a
   // demo-data native build — gates here so the app's entry point is always the
   // in-app create/import/unlock front door, never the marketing /landing page.
