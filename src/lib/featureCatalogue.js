@@ -468,19 +468,19 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'AI Security Advisor',
-        status: 'roadmap',
+        status: 'built',
         summary: 'LLM-powered security chat with local knowledge fallback',
         explanation: 'Built. A floating chat panel (SecurityAdvisor) powered by the TIP backend via a server-side Supabase Edge Function proxy (tip-chat). The advisor answers wallet, crypto, and security questions with context-aware responses; streaming errors fall back to a bundled local knowledge base (I4 fail-closed). The system prompt (server-side) refuses seeds, keys, and PINs. User messages are scrubbed of secret material before sending. Requires explicit advisor consent (opt-in). Suppressed entirely in deniability/demo sessions (I3 — FAB hidden, zero egress). The wallet never ships TIP API keys (I1); the Edge Function holds them server-side. NOT independently audited.',
       },
       {
         name: 'Address Threat Screening',
-        status: 'roadmap',
+        status: 'built',
         summary: 'Multi-source sanctions, phishing, and hack-registry screening on send',
         explanation: 'Built. Before a send, the recipient address is screened via a multi-source aggregator (sanctions lists, phishing registries, hack-fund trackers, contract-risk signals, and transaction simulation) through the tip-screen Edge Function proxy. Covers EVM, BTC, and SOL address formats. A sanctioned-namespace cross-chain lane blocks known threat actors (Tornado Cash, Lazarus, Blender.io, Sinbad, Ronin bridge) on every EVM chain, not just Ethereum. Falls back to honest "unknown" when all sources are unavailable rather than defaulting to "clean" (I4). A locally-cached, Ed25519-signed IOC manifest provides offline/deniability screening. Advisory — warns rather than silently blocks. NOT independently audited.',
       },
       {
         name: 'Educational Assistant',
-        status: 'roadmap',
+        status: 'built',
         summary: 'Answer wallet and crypto security questions',
         explanation: 'Built. The AI Security Advisor doubles as an educational assistant — it answers questions about gas, approvals, address formats, wallet security, and crypto concepts. Responses are context-aware (the advisor knows which screen the user is on) and include follow-up suggestions. Falls back to the local knowledge base when offline. Advisory only — the AI never holds keys and never signs.',
       },
