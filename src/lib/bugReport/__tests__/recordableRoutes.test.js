@@ -37,22 +37,39 @@ describe('canRecordOnRoute — allowlist', () => {
     expect(canRecordOnRoute('/docs')).toBe(true);
   });
 
-  it('allows subroutes under an allowlist prefix', () => {
-    // No `/settings` subroute exists in App.jsx today; these pin the prefix
-    // BEHAVIOUR so a future real subpage inherits predictably rather than
-    // surprising whoever adds it.
-    expect(canRecordOnRoute('/settings/privacy')).toBe(true);
-    expect(canRecordOnRoute('/settings/network/rpc-endpoints')).toBe(true);
+  it('does NOT inherit subroutes of an allowlisted route', () => {
+    // CHANGED 2026-09-05, and the reversal is deliberate — this block used to
+    // assert the opposite ("allows subroutes under an allowlist prefix").
+    //
+    // Prefix ALLOW-matching means any future `/settings/<x>` becomes recordable
+    // the moment it is added, silently, which contradicts this module's promise
+    // that new routes default to DENIED. The design doc tried to contain that
+    // with a `/settings/wipe` denylist entry, which was not a route. Making the
+    // allowlist exact removes the hazard instead of re-guarding it.
+    //
+    // Every allowlist entry is a leaf route today, so nothing is lost. Adding a
+    // subroute now costs one reviewed line — which is the intent.
+    expect(canRecordOnRoute('/settings')).toBe(true);
+    expect(canRecordOnRoute('/settings/privacy')).toBe(false);
+    expect(canRecordOnRoute('/settings/network/rpc-endpoints')).toBe(false);
+    expect(canRecordOnRoute('/docs/getting-started')).toBe(false);
   });
 
-  it('`/` is exact-match only and does not swallow the whole app', () => {
-    // The one entry where the segment-boundary rule earns its keep: matchesPrefix
-    // tests '/receive'.startsWith('//'), which is false. Drop the boundary guard
-    // and `/` would allow every route in the app, denylist entries included.
+  it('`/` does not swallow the whole app', () => {
     expect(canRecordOnRoute('/')).toBe(true);
     expect(canRecordOnRoute('/unclassified')).toBe(false);
     expect(canRecordOnRoute('/tax')).toBe(false);
     expect(canRecordOnRoute('/duress-pin')).toBe(false);
+  });
+
+  it('the DENYLIST still matches by prefix — the asymmetry is the point', () => {
+    // Broad matching fails safe in the deny direction, and two entries depend
+    // on it. Mutation defence: switch the denylist to exact matching and both
+    // of these go green-to-red.
+    expect(canRecordOnRoute('/onboarding/restore-shares')).toBe(false);
+    expect(canRecordOnRoute('/dev/prf-spike')).toBe(false);
+    expect(_internals.evaluate('/onboarding/restore-shares', ['/onboarding/restore-shares'], ['/onboarding']))
+      .toBe(false);
   });
 });
 
@@ -135,11 +152,13 @@ describe('canRecordOnRoute — denies the real sensitive routes', () => {
     //
     // Mutation defence: swap the order of the two listMatches calls inside
     // evaluate() and the first expectation goes red.
-    const allow = ['/settings'];
+    // The overlap has to be an EXACT allowlist entry now that allow-matching is
+    // exact: `/settings/keys` on both lists. Deny must still win.
+    const allow = ['/settings', '/settings/keys'];
     const deny = ['/settings/keys'];
     expect(_internals.evaluate('/settings/keys', allow, deny)).toBe(false);
+    // Prefix-denied descendant of that same entry.
     expect(_internals.evaluate('/settings/keys/export', allow, deny)).toBe(false);
-    expect(_internals.evaluate('/settings/privacy', allow, deny)).toBe(true);
     expect(_internals.evaluate('/settings', allow, deny)).toBe(true);
   });
 

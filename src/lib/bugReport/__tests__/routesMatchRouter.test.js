@@ -75,15 +75,20 @@ describe('recordableRoutes lists correspond to src/App.jsx', () => {
     }
   });
 
-  it('every ALLOWLIST entry names a route that exists', () => {
-    // A phantom here is not dangerous the way a phantom deny is — it fails
+  it('every ALLOWLIST entry is an EXACT declared route', () => {
+    // Stricter than the denylist check on purpose. Allow-matching is exact
+    // (see evaluate), so an entry that is merely a PREFIX of some route matches
+    // nothing at all — it is dead config that reads as coverage. The denylist
+    // may legitimately be prefix-only (`/onboarding`, `/dev`).
+    //
+    // A phantom here is not dangerous the way a phantom deny is; it fails
     // closed. It is still a lie about what the feature can record, and it is
     // what tempts the next reader into "fixing" the allowlist by widening it.
     const declared = declaredRoutes();
     for (const entry of _internals.ALLOWLIST) {
       expect(
-        correspondsToARoute(entry, declared),
-        `ALLOWLIST entry ${entry} matches no route in App.jsx`
+        declared.includes(entry),
+        `ALLOWLIST entry ${entry} is not an exact route in App.jsx — allow-matching is exact, so it grants nothing`
       ).toBe(true);
     }
   });
@@ -118,18 +123,23 @@ describe('recordableRoutes lists correspond to src/App.jsx', () => {
     }
   });
 
-  it('no ALLOWLIST entry is a prefix that swallows a denied route', () => {
-    // `/` is exact-match-only in matchesPrefix ('/x'.startsWith('//') is false),
-    // so it cannot swallow the app — but an entry like `/wallet` would swallow
-    // `/wallet-seed-qr`'s siblings. Deny still wins at runtime; this catches the
-    // shape at review time, where it is cheaper to reason about.
+  it('no declared route is a subroute of an allowlisted route', () => {
+    // With exact allow-matching this can no longer grant anything, so it is a
+    // REVIEW signal rather than a safety check: if someone adds `/settings/keys`
+    // to App.jsx, it is silently unrecordable, and the person adding it should
+    // decide that on purpose rather than discover it later.
+    //
+    // Replaces an earlier version that asserted no allowlist entry covers a
+    // denylist entry. Under exact matching that could never happen, so it was
+    // pinning an impossibility — kept in spirit, retargeted at the thing that
+    // can still change.
+    const declared = declaredRoutes();
     for (const allowed of _internals.ALLOWLIST) {
-      for (const denied of _internals.DENYLIST) {
-        expect(
-          _internals.matchesPrefix(denied, allowed),
-          `ALLOWLIST ${allowed} covers DENYLIST ${denied} — deny still wins, but say so on purpose`
-        ).toBe(false);
-      }
+      const subroutes = declared.filter((r) => r !== allowed && r.startsWith(allowed === '/' ? '//' : allowed + '/'));
+      expect(
+        subroutes,
+        `${allowed} has declared subroutes ${subroutes.join(', ')} — allow-matching is exact, so they are NOT recordable. Add them deliberately or confirm the denial.`
+      ).toEqual([]);
     }
   });
 });

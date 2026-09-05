@@ -93,10 +93,9 @@ Mirrors the `useBuyEnabled()` pattern in `src/lib/buyEnabled.js`.
 
 ## Route allowlist (design)
 
-The allowlist is a hardcoded set of route path prefixes in
-`src/lib/bugReport/recordableRoutes.js`. Adding a route requires an explicit
-line change. New routes default to DENIED — a route not in the allowlist cannot
-be recorded.
+Both lists are hardcoded in `src/lib/bugReport/recordableRoutes.js`. Adding a
+route requires an explicit line change. New routes default to DENIED — a route
+not in the allowlist cannot be recorded.
 
 > **Corrected 2026-09-05.** The lists below originally named routes this app
 > does not have. Of 24 literals only 3 were real, and **all 16 denylist entries
@@ -114,20 +113,53 @@ be recorded.
 > lists, the module and its tests were all consistent with each other and none
 > of them was consistent with the app.
 
+**The allowlist is EXACT-match. The denylist is PREFIX-match.** The asymmetry is
+deliberate: broad matching in the deny direction fails safe, broad matching in
+the allow direction is how an unreviewed route becomes recordable. A subroute of
+an allowed route is a new route, and new routes default to DENIED.
+
+This replaced "`/settings` (top level and all subroutes)" on 2026-09-05. Prefix
+allow-matching meant any future `/settings/<x>` would become recordable the
+moment it was added, silently — contradicting the default-deny promise directly
+above. The design tried to contain that with a `/settings/wipe` denylist entry,
+which is not a route. Exact matching removes the hazard rather than re-guarding
+it, and costs nothing today because every entry is a leaf route.
+
 **Allowlist (recording MAY happen if user has consented on these routes):**
 
-- `/` — Dashboard. Exact-match only; `/` cannot swallow the app because the
-  boundary rule tests `startsWith('//')`.
+- `/` — Dashboard
 - `/receive` — address display page
-- `/settings` — top level and any future subroutes. **Re-decide before Slice 1b:**
-  Settings renders duress/KEK/consent posture. The original design guarded this
-  with a `/settings/wipe` denylist entry, which was a phantom; if that guard was
-  load-bearing, this entry needs a real decision rather than a replacement
-  phantom. The config pages themselves (`/duress-pin`, `/panic-wipe`,
-  `/stealth-wallets`) are separate denied routes.
+- `/settings` — **DECIDED 2026-09-05: stays recordable.** See below.
 - `/plans`
 - `/docs` — the Documentation page. Replaces the design's `/help` and
   `/documentation`, neither of which exists. `/features` redirects here.
+
+### `/settings` — the decision
+
+It was flagged for re-decision because the design's only guard for it was a
+phantom. Resolved in favour of keeping it, on three grounds:
+
+1. **The coercion concern is absent.** Settings renders no duress, stealth or
+   panic state; those pages are separate routes and all three are denied. It
+   does not even link to them. The rehearsal row is deliberately built to
+   disclose nothing — *"must read as ordinary — no wallet/set count, no
+   multi-set hint, no 'decoy' wording"* (`RehearsalSettingsRow.jsx`).
+2. **What it does render is posture booleans** — KEK enrolled, biometric on, 2FA
+   on. The #2256 Advisor review judged exactly these non-coercion-relevant in
+   the same breath as removing `duress_configured` and `stealth_pool_present`.
+   Same threat model, same answer.
+3. **Denying it would break the feature, not narrow it.** The bug-report button
+   lives in Settings, and `useRouteKillSwitch` aborts immediately when armed on
+   a denied route — every recording would abort the instant it started.
+
+**Residual, stated rather than hidden.** `WhitelistManager` renders inline on
+Settings and lists counterparty addresses. That is a real disclosure to support.
+It is the same class the design already accepted for `/receive` (the address QR)
+and `/` (balances), and the accepted v1 mitigation applies: no in-app redaction,
+the user previews and re-records if a sensitive detail lands in frame. Denying
+`/settings` over a weaker disclosure than one already allowlisted would be
+incoherent. If v1 redaction is reconsidered, `WhitelistManager` is the first
+candidate.
 
 **`/send` is not recordable, and cannot be split today.** The design wanted
 `/send/form` recordable with `/send/confirm` and `/send/sign` denied. Those are
@@ -137,8 +169,8 @@ them. `/send` is therefore denied whole — stricter than the design asked for.
 Splitting `SendCrypto` into real subroutes is the prerequisite for recording the
 amount form; until then, denying the route is the honest option.
 
-**Denylist (recording is ALWAYS aborted on these routes, even if allowlisted by
-prefix — belt-and-braces):**
+**Denylist (prefix-matched; recording is ALWAYS aborted on these routes, and
+deny wins over allow on any overlap):**
 
 Seed and backup material:
 - `/wallet-seed-qr` — the seed on screen as a QR
@@ -297,9 +329,11 @@ than no coverage — see CLAUDE.md "Mutation-check every new test pin".
     this ordering is otherwise untestable — and the original suite "covered" it
     with `/settings/wipe`, a path that is not a route)
   - Missing route defaults to false (I4)
-  - Prefix match works but does not leak: `/settings/privacy` allowed;
-    `/settingsomething` NOT allowed
-  - `/` is exact-match only and does not swallow the app
+  - Allow-matching is EXACT: `/settings` allowed, `/settings/privacy` NOT
+    allowed, `/settingsomething` NOT allowed
+  - Deny-matching is by PREFIX: `/onboarding/restore-shares` and `/dev/prf-spike`
+    denied via `/onboarding` and `/dev`
+  - `/` does not swallow the app
   - Every denied route returns false, asserted on the REAL paths
 
 - **`routesMatchRouter.test.js`** — correspondence with the router, and the pin

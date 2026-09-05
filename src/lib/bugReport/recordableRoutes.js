@@ -33,23 +33,54 @@
 // on the MATCHING LOGIC, and every path they asserted was invented, so they
 // were self-consistent with the module and never touched the router.
 
+// ALLOWLIST IS EXACT-MATCH. DENYLIST IS PREFIX-MATCH. The asymmetry is the
+// point: broad matching in the deny direction fails safe, broad matching in the
+// allow direction is how an unreviewed route becomes recordable.
+//
+// The design doc originally read "/settings (top level and all subroutes)" and
+// guarded the inheritance with a `/settings/wipe` denylist entry — a path that
+// is not a route. That guard was gesturing at a real hazard: with prefix
+// allow-matching, ANY future `/settings/<x>` route is recordable the moment it
+// is added, silently, which contradicts this module's own promise that new
+// routes default to DENIED. Replacing one phantom with another would have left
+// the hazard; making the allowlist exact removes it. Every entry below is a
+// leaf route, so this costs nothing today and forces a conscious line change
+// the day a subroute appears.
 const ALLOWLIST = Object.freeze([
-  // Dashboard. Exact-match only: matchesPrefix('/x', '/') tests
-  // '/x'.startsWith('//'), which is false, so this cannot swallow the app.
-  '/',
+  '/',          // Dashboard
   '/receive',
-  // Settings. No subroutes exist today, so nothing is inherited through this
-  // prefix. REVIEW BEFORE SLICE 1B: Settings renders duress/KEK/consent
-  // posture, which is coercion-adjacent even though the config pages
-  // themselves are separate denied routes. The design doc allowlists it and
-  // guarded it with `/settings/wipe`, which was a phantom; if that guard was
-  // load-bearing, this entry needs re-deciding, not a replacement phantom.
+  // Settings — DECIDED 2026-09-05, kept recordable. See the note below.
   '/settings',
   '/plans',
   // `/docs` is the real Documentation route. The design doc asked for `/help`
   // and `/documentation`; neither exists. `/features` redirects here.
   '/docs',
 ]);
+
+// Why /settings stays allowed, having been flagged for re-decision:
+//
+//  1. The coercion concern is absent. Settings renders NO duress, stealth or
+//     panic state — those pages are separate routes and all three are denied
+//     below. It does not even link to them. The rehearsal row is deliberately
+//     built to disclose nothing ("must read as ordinary — no wallet/set count,
+//     no multi-set hint, no 'decoy' wording", RehearsalSettingsRow.jsx).
+//  2. What it does render is posture booleans — KEK enrolled, biometric on,
+//     2FA on. The #2256 Advisor review judged exactly these non-coercion-
+//     relevant while removing `duress_configured` and `stealth_pool_present`
+//     from the same payload. Same threat model, same answer.
+//  3. Denying it would break the feature outright, not merely narrow it. The
+//     bug-report button lives in Settings, and useRouteKillSwitch aborts
+//     immediately when armed on a denied route — every recording would abort
+//     the instant it started.
+//
+// Residual, stated rather than hidden: WhitelistManager renders inline here and
+// lists counterparty addresses. That is a real disclosure to support, but it is
+// the class the design already accepted for `/receive` (the address QR) and `/`
+// (balances), with the accepted v1 mitigation being preview-and-re-record —
+// "In-app redaction UI. (Skipped for v1 — user deletes and re-records if a
+// sensitive detail lands in frame)". Denying /settings over a weaker disclosure
+// than one already allowlisted would be incoherent. If v1 redaction is ever
+// reconsidered, WhitelistManager is the first candidate.
 
 const DENYLIST = Object.freeze([
   // Seed and backup material.
@@ -118,8 +149,12 @@ function listMatches(path, list) {
  */
 function evaluate(path, allowlist, denylist) {
   if (typeof path !== 'string' || path.length === 0) return false;
+  // Deny by PREFIX — broad matching fails safe, and `/onboarding` and `/dev`
+  // rely on it to cover their subroutes.
   if (listMatches(path, denylist)) return false;
-  return listMatches(path, allowlist);
+  // Allow by EXACT MATCH ONLY. A subroute of an allowed route is a new route,
+  // and new routes default to DENIED.
+  return allowlist.includes(path);
 }
 
 /**
