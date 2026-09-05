@@ -14,6 +14,7 @@ import com.veyrnox.app.RaspIntegrityPlugin;
 import com.veyrnox.app.PlayIntegrityPlugin;
 import com.veyrnox.app.VeyrnoxEnclavePlugin;
 import com.veyrnox.app.AndroidBiometricCachePlugin;
+import com.veyrnox.app.BugReportPlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -42,6 +43,11 @@ public class MainActivity extends BridgeActivity {
         // M2d — Android StrongBox/TEE vault-blob wrap (ungated PR #1152).
         registerPlugin(VeyrnoxEnclavePlugin.class);
         registerPlugin(AndroidBiometricCachePlugin.class);
+        // Bug-report screen recording (slice 2b). Zero runtime effect on shipped
+        // builds — the JS caller (slice 2c/2d) is gated behind
+        // VITE_BUG_REPORT_ENABLED (default OFF). Register unconditionally so a
+        // future flag flip doesn't need a manifest change.
+        registerPlugin(BugReportPlugin.class);
         // HuaweiIapPlugin lives in the `huawei` source set (HMS-only classpath).
         // Load reflectively so google/samsung/fdroid builds compile without HMS.
         if (BuildConfig.HAS_HUAWEI_IAP) {
