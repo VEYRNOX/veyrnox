@@ -628,7 +628,22 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
       });
     });
 
-    it('sends the live page snapshot in remote chat context', async () => {
+    // INVERTED 2026-09-05. This test previously asserted that the page snapshot
+    // IS sent, down to `wallet_session.wallet_count` — i.e. it pinned the
+    // disclosure that the 2026-09-03 security diff rated a REGRESSION, and its
+    // presence is part of why the gap survived review: the leak looked like
+    // covered, intended behaviour.
+    //
+    // The consent copy promises the typed question plus the current screen and
+    // chain. The snapshot is no longer transmitted, so the assertions are
+    // reversed rather than deleted — deleting them would remove the record that
+    // this payload was once expected on the wire.
+    //
+    // Flagged loudly because "align the tests with the new behaviour" is a
+    // review smell in this repo. The behaviour change is deliberate and argued
+    // in SecurityAdvisor.jsx's send path; the deeper pin lives in
+    // SecurityAdvisor.noSnapshotEgress.test.jsx.
+    it('does NOT send the live page snapshot in remote chat context', async () => {
       vi.resetModules();
       vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
 
@@ -659,10 +674,16 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
       const [, options] = fetchSpy.mock.calls.at(-1);
       const payload = JSON.parse(options.body);
 
+      // What the consent copy promises still goes.
       expect(payload.context.wallet_chain).toBe('bitcoin');
-      expect(payload.context.page_snapshot.pathname).toBe('/send');
-      expect(payload.context.page_snapshot.route_params.asset).toBe('BTC');
-      expect(payload.context.page_snapshot.wallet_session.wallet_count).toBe(2);
+      expect(payload.context.current_screen).toBeTruthy();
+      // What it does not promise does not go — neither the container nor any
+      // value inside it, by name or by content.
+      expect(payload.context.page_snapshot).toBeUndefined();
+      expect(payload.context.page_snapshot_omitted).toBeUndefined();
+      expect(options.body).not.toContain('route_params');
+      expect(options.body).not.toContain('wallet_count');
+      expect(options.body).not.toContain('wallet_session');
     });
   });
 });
