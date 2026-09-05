@@ -887,9 +887,13 @@ export default function Subscription() {
               )}
 
               {/* CTA */}
+              {/* whitespace-normal etc. — same reasoning as the AI tier CTA
+                  below: the outcome-named "Upgrade to Safety Plus — $9.99"
+                  string overflows the base Button's whitespace-nowrap on
+                  narrow iPhones. Let it wrap. */}
               <Button
                 disabled={!isNative || !selectedPackage || busy}
-                className="w-full"
+                className="w-full whitespace-normal h-auto min-h-10 py-3 text-center leading-snug"
                 onClick={handleUpgrade}
               >
                 {busy ? <Loader2 className="h-4 w-4 me-2 motion-safe:animate-spin" /> : <Sparkles className="h-4 w-4 me-2" />}
@@ -1054,8 +1058,14 @@ export default function Subscription() {
                         <span className="text-xs text-muted-foreground line-through mono-value">{aiSelectedRegularPrice}</span>
                       )}
                     </div>
+                    {/* whitespace-normal + h-auto + py-3 overrides the base
+                        Button's whitespace-nowrap so the outcome-named
+                        "Subscribe to AI Security Protection — $19.99" text
+                        wraps to two lines on narrow iPhones instead of
+                        overflowing the sky-600 pill. Verified in TestFlight
+                        2026-09-05 — text was spilling past the right edge. */}
                     <Button
-                      className="w-full bg-sky-600 hover:bg-sky-700 text-white"
+                      className="w-full bg-sky-600 hover:bg-sky-700 text-white whitespace-normal h-auto min-h-10 py-3 text-center leading-snug"
                       onClick={handleAiUpgrade}
                       disabled={!isNative || busy || !aiPurchaseAvailable}
                     >
