@@ -20,6 +20,11 @@ ios/build/
 ios/Gemfile.lock
 ios/.bundle/
 ios/vendor/
+android/fastlane/report.xml
+android/fastlane/README.md
+android/Gemfile.lock
+android/.bundle/
+android/vendor/
 
 # Trezor Connect self-hosted iframe bundle — generated at build time from node_modules.
 # Re-created by: node scripts/bundle-trezor-connect.mjs  (also runs as npm prebuild).
