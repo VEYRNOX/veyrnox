@@ -4,7 +4,7 @@
 // this to false in prod) AND the explicit VITE_DEV_BYPASS_WALLET_GATE=='1'
 // flag. Either alone must NOT open the gate.
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router';
 
