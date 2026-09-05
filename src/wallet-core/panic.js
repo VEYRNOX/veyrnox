@@ -463,6 +463,27 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   // (setRelockGraceMs no-ops in decoy/demo); this closes the residue gap.
   'veyrnox-relock-grace-ms',
   'veyrnox-relock-grace-disclosed',
+  // Store-review prompt state (landed 2026-09-05 in 92580cf6, found by that
+  // day's security diff). Writer: lib/reviewPrompt.js SEND_COUNT_KEY /
+  // LAST_ASKED_KEY / DECLINED_KEY, incremented from SendCrypto.jsx's
+  // SendDoneView mount effect.
+  //
+  // veyrnox-review-send-count is the strongest tell of the three, and stronger
+  // than most of this list: its PRESENCE proves a real Veyrnox install existed
+  // here, and its VALUE states how many sends completed from it. The other two
+  // add install-age evidence — a 90-day cooldown timestamp and a declined flag
+  // both imply the app was used long enough to be asked. Same tell class as
+  // veyrnox-referral-prompt-dismissed above, listed for exactly the same
+  // reason: that prompt also only renders after a completed send.
+  //
+  // Writers are already I3-guarded (every exported function in reviewPrompt.js
+  // returns early on isDeniabilityOrDemoActive), so a decoy session cannot
+  // advance the real user's state. That guard is why the residue list is still
+  // the authoritative sweep rather than redundant — it covers anything that
+  // ever landed here, including from a build predating the guard.
+  'veyrnox-review-send-count',
+  'veyrnox-review-last-asked-ts',
+  'veyrnox-review-declined',
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
