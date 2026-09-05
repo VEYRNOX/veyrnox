@@ -63,6 +63,12 @@ function isPlaceholderKey(pk) {
   return true;
 }
 
+// WebCrypto requires an ArrayBuffer-backed BufferSource. Copying also keeps
+// caller-owned views (which may have offsets) out of the crypto boundary.
+function toArrayBuffer(bytes) {
+  return Uint8Array.from(bytes).buffer;
+}
+
 async function importAesKey(rawKeyBytes) {
   return crypto.subtle.importKey(
     'raw',
@@ -128,9 +134,9 @@ export async function encrypt(plaintext, supportPublicKey = PLACEHOLDER_SUPPORT_
 
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH_BYTES));
   const ctBuf = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
+    { name: 'AES-GCM', iv: toArrayBuffer(iv) },
     key,
-    plaintext,
+    toArrayBuffer(plaintext),
   );
 
   return {
@@ -160,9 +166,9 @@ export async function decrypt(envelope, recipientPrivateKey) {
   const key = await importAesKey(aeadKeyBytes);
   aeadKeyBytes.fill(0);
   const ptBuf = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: envelope.iv },
+    { name: 'AES-GCM', iv: toArrayBuffer(envelope.iv) },
     key,
-    envelope.ct,
+    toArrayBuffer(envelope.ct),
   );
   return new Uint8Array(ptBuf);
 }

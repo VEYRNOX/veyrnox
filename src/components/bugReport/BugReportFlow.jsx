@@ -31,18 +31,31 @@
 //   - Panic-wipe event (Slice 1e or Slice 2)
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { X } from 'lucide-react';
 import { startCapture } from '@/lib/bugReport/captureBridge';
 import { useRouteKillSwitch } from '@/lib/bugReport/useRouteKillSwitch';
+import { sendBugReport } from '@/lib/bugReport/uploadClient';
+import { PLACEHOLDER_SUPPORT_PUBLIC_KEY } from '@/lib/bugReport/encrypt';
 
 const RECORDING_CAP_MS = 30_000;
 const COUNTDOWN_START = 3;
+
+// Read once at module load — Vite inlines this, so the constant is
+// dead-code-friendly and doesn't cost anything on the shipped bundle.
+// Slice 3 will replace with a version pulled from Capacitor's App info
+// at runtime (or a build-time inject) so the support triage identifier
+// matches the actual shipping build. Hardcoded for now to avoid
+// depending on @capacitor/app just for this string.
+const APP_VERSION = '1.0.1';
 
 export default function BugReportFlow({ open, onClose }) {
   const [state, setState] = useState('explainer');
   const [countdown, setCountdown] = useState(COUNTDOWN_START);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [captureResult, setCaptureResult] = useState(null);
+  const [ticketId, setTicketId] = useState(null);
+  const [sendError, setSendError] = useState(null);
   const captureHandleRef = useRef(null);
 
   // Reset to explainer whenever the flow reopens; a stale terminal state
@@ -53,6 +66,8 @@ export default function BugReportFlow({ open, onClose }) {
       setCountdown(COUNTDOWN_START);
       setElapsedMs(0);
       setCaptureResult(null);
+      setTicketId(null);
+      setSendError(null);
       captureHandleRef.current = null;
     }
   }, [open]);
@@ -160,15 +175,36 @@ export default function BugReportFlow({ open, onClose }) {
     onAbort: close,
   });
 
-  const onSend = useCallback(() => {
-    // Slice 1e replaces this with the encryption + upload pipeline. Kept as
-    // a visible placeholder in 1d so the review screen has a tangible action
-    // that is honest about what happens next.
-    if (typeof window !== 'undefined') {
-      window.alert('Upload lands in slice 1e. For now the recording is discarded on close.');
+  const onSend = useCallback(async () => {
+    setSendError(null);
+    setState('sending');
+    try {
+      // captureResult.blob is a Uint8Array on native (slice 2c). On web
+      // it is null and sendBugReport throws BUG_REPORT_NO_CAPTURE — the
+      // review button should never have been reachable in that case
+      // because the whole feature is gated behind isBugReportEnabled().
+      const platform = (() => {
+        try { return Capacitor.getPlatform(); } catch { return 'web'; }
+      })();
+      // Support key: PLACEHOLDER (all zeros) until slice 3 replaces it
+      // with a real x25519 public key generated on an offline device.
+      // encrypt.js refuses the placeholder, so onSend fails clearly
+      // rather than shipping ciphertext no one can decrypt. That is the
+      // correct behaviour for a slice-2 build.
+      const { report_id } = await sendBugReport({
+        captureBuffer: captureResult?.blob ?? null,
+        deviceId: crypto.randomUUID(),
+        platform: platform === 'ios' ? 'ios' : 'android',
+        appVersion: APP_VERSION,
+        supportPublicKey: PLACEHOLDER_SUPPORT_PUBLIC_KEY,
+      });
+      setTicketId(report_id);
+      setState('sent');
+    } catch (e) {
+      setSendError(e?.message || 'Send failed');
+      setState('error');
     }
-    close();
-  }, [close]);
+  }, [captureResult]);
 
   if (!open) return null;
 
@@ -187,6 +223,9 @@ export default function BugReportFlow({ open, onClose }) {
             {state === 'countdown' && 'Recording starts in…'}
             {state === 'recording' && 'Recording'}
             {state === 'review' && 'Review recording'}
+            {state === 'sending' && 'Sending…'}
+            {state === 'sent' && 'Report sent'}
+            {state === 'error' && 'Send failed'}
           </h2>
           <button
             type="button"
@@ -302,6 +341,58 @@ export default function BugReportFlow({ open, onClose }) {
                 Delete and close
               </button>
             </div>
+          </div>
+        )}
+
+        {state === 'sending' && (
+          <div data-testid="bug-report-sending" className="text-center py-6">
+            <p className="text-sm text-muted-foreground">
+              Encrypting on your device and uploading…
+            </p>
+          </div>
+        )}
+
+        {state === 'sent' && (
+          <div data-testid="bug-report-sent">
+            <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+              Thanks — the recording is on its way to support.
+            </p>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+              Reference this ticket ID if you email us about the issue:
+            </p>
+            <div className="rounded-xl border border-border bg-card p-4 mb-4 text-center">
+              <p className="mono-value text-sm break-all">{ticketId ?? ''}</p>
+            </div>
+            <button
+              type="button"
+              onClick={close}
+              data-testid="bug-report-done"
+              className="w-full min-h-[44px] rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        )}
+
+        {state === 'error' && (
+          <div data-testid="bug-report-error">
+            <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+              We couldn't send the report. Your recording was not
+              uploaded.
+            </p>
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 mb-4">
+              <p className="text-xs text-destructive mono-value break-all">
+                {sendError ?? 'Unknown error'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={close}
+              data-testid="bug-report-error-close"
+              className="w-full min-h-[44px] rounded-xl border border-border text-foreground hover:bg-card transition-colors"
+            >
+              Close
+            </button>
           </div>
         )}
       </div>
