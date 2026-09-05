@@ -37,6 +37,32 @@ consequences, and picks the invariant.
 | I4 (fail closed) | Every gate defaults DENY: missing route entry = no recording; missing flag = no recording; unknown session type = no recording. |
 | I5 (backend untrusted) | Video is E2E-encrypted client-side to a support keypair whose private half is held OFFLINE. |
 
+## Known conflict with existing security controls (added 2026-09-05, slice 2b)
+
+**Android FLAG_SECURE (M13, MainActivity.java).** The window carries
+`WindowManager.LayoutParams.FLAG_SECURE` window-wide, which blocks
+OS-level screenshots + screen recording. MediaProjection cannot
+capture a `FLAG_SECURE` surface — a recording made with the flag on
+comes back as black frames.
+
+Slice 2b's `BugReportPlugin.setSecureFlag(enabled)` gives Slice 2c the
+coordination hook. Rules Slice 2c MUST enforce:
+- On enter recording state: `setSecureFlag(false)`
+- On any terminal state (stop, abort, close, kill switches, JS unmount):
+  `setSecureFlag(true)` BEFORE releasing the recorder
+- On route kill switch fired: `setSecureFlag(true)` first, then abort
+- NEVER call `setSecureFlag(false)` from a decoy/demo session (I3 — a
+  coerced tap must not disable the seized-device screenshot guard)
+
+Never leave FLAG_SECURE cleared after a recording ends — it is the
+window-wide guarantee against seized-device screenshotting.
+
+**RASP interaction (both platforms).** `RaspIntegrityPlugin` (Android
++ iOS) treats an active MediaProjection / ReplayKit broadcast as a
+tamper signal. For the bug-report path this is EXPECTED. Slice 2c/2d
+must notify RASP of a legitimate recording window so RASP does not
+raise its own indicator.
+
 ## Non-goals
 
 - Automatic screen recording on crash. (Would fail Apple 5.1.1(i) — consent

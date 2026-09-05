@@ -87,6 +87,17 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+        <!-- Bug-report screen recording (slice 2b of docs/bug-report-recording-plan.md).
+             MediaProjection on Android 14+ (API 34+) REQUIRES a running foreground
+             service of type mediaProjection at the moment getMediaProjection() is
+             called, or the framework throws SecurityException. This service exists
+             only to satisfy that requirement — the plugin owns the MediaRecorder +
+             VirtualDisplay lifecycle. Zero runtime effect on shipped builds because
+             the calling JS is gated behind VITE_BUG_REPORT_ENABLED (default OFF). -->
+        <service
+            android:name=".BugReportRecorderService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
     </application>
 
     <!-- Permissions -->
@@ -111,4 +122,13 @@
          USE_BIOMETRIC covers API 28+; USE_FINGERPRINT covers API 23–27. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+    <!-- Bug-report screen recording (slice 2b).
+         FOREGROUND_SERVICE: legal from Android 9; needed to run the recorder service.
+         FOREGROUND_SERVICE_MEDIA_PROJECTION: required from Android 14 (API 34) to
+           declare mediaProjection as the service's type.
+         Zero-effect on shipped builds — the calling JS is gated behind
+         VITE_BUG_REPORT_ENABLED (default OFF). Slice 3 store-disclosure amend
+         answers the Play sensitive-permissions form for these. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 </manifest>
