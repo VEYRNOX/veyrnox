@@ -724,7 +724,12 @@ export default function Subscription() {
             )}
           </div>
           <p className="text-xs text-muted-foreground">Everything to hold, send and secure your crypto — no account required.</p>
-          <HighlightChips features={FREE_FEATURES} max={6} />
+          {/* Free tier shows every feature — the whole point of the plan
+              comparison is knowing what Free already covers, so a "+N more"
+              collapse here hides the value proposition. Safety Plus and AI
+              Security Protection still cap because their long lists exist
+              on their dedicated pages. */}
+          <HighlightChips features={FREE_FEATURES} max={FREE_FEATURES.length} />
         </div>
 
         <div className="space-y-2">
