@@ -115,6 +115,7 @@ export async function sendBugReport({
   // size vs body, PUTs to Supabase Storage via service_role, PATCHes
   // the row to status='uploaded'. Failures throw with generic messages
   // (fail-closed hygiene — see functions/api/bug-report/upload.js).
+  const uploadBody = new Uint8Array(wire);
   const res = await fetch('/api/bug-report/upload', {
     method: 'POST',
     headers: {
@@ -122,7 +123,8 @@ export async function sendBugReport({
       'X-Report-Id': reportId,
       'X-Envelope-Size': String(wire.byteLength),
     },
-    body: wire,
+    // Keep a copy at the network boundary so this view has an owned buffer.
+    body: uploadBody,
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
