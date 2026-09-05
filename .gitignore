@@ -13,16 +13,25 @@ node_modules
 dist/
 build/
 
-# Fastlane runtime artefacts (ios/Gemfile + ios/fastlane/{Appfile,Fastfile} tracked)
+# Fastlane runtime artefacts. Gemfile, Gemfile.lock, Appfile and Fastfile are
+# all TRACKED — Gemfile.lock deliberately so.
+#
+# It was ignored when these lanes landed, which left `gem "fastlane"` and
+# `gem "fastlane-plugin-huawei_appgallery_connect"` resolving fresh on every
+# `bundle install`. That is an unpinned, third-party Ruby tree executing with
+# the App Store Connect .p8, the Play service-account JSON and
+# HUAWEI_CLIENT_SECRET in its environment. CLAUDE.md's supply-chain rule (pin
+# exact versions, justify new dependencies, review a native plugin's surface)
+# applies most sharply to code holding release signing credentials.
+#
+# Regenerate with `bundle lock` (resolve only, no install) and review the diff.
 ios/fastlane/report.xml
 ios/fastlane/README.md
 ios/build/
-ios/Gemfile.lock
 ios/.bundle/
 ios/vendor/
 android/fastlane/report.xml
 android/fastlane/README.md
-android/Gemfile.lock
 android/.bundle/
 android/vendor/
 
