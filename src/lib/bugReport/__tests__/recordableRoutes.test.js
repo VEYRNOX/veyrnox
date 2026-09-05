@@ -30,17 +30,29 @@ describe('canRecordOnRoute — fail-closed defaults (I4)', () => {
 
 describe('canRecordOnRoute — allowlist', () => {
   it('allows exact-match allowlist entries', () => {
-    expect(canRecordOnRoute('/dashboard')).toBe(true);
+    expect(canRecordOnRoute('/')).toBe(true);
     expect(canRecordOnRoute('/receive')).toBe(true);
+    expect(canRecordOnRoute('/settings')).toBe(true);
     expect(canRecordOnRoute('/plans')).toBe(true);
-    expect(canRecordOnRoute('/help')).toBe(true);
-    expect(canRecordOnRoute('/documentation')).toBe(true);
+    expect(canRecordOnRoute('/docs')).toBe(true);
   });
 
   it('allows subroutes under an allowlist prefix', () => {
+    // No `/settings` subroute exists in App.jsx today; these pin the prefix
+    // BEHAVIOUR so a future real subpage inherits predictably rather than
+    // surprising whoever adds it.
     expect(canRecordOnRoute('/settings/privacy')).toBe(true);
     expect(canRecordOnRoute('/settings/network/rpc-endpoints')).toBe(true);
-    expect(canRecordOnRoute('/send/form')).toBe(true);
+  });
+
+  it('`/` is exact-match only and does not swallow the whole app', () => {
+    // The one entry where the segment-boundary rule earns its keep: matchesPrefix
+    // tests '/receive'.startsWith('//'), which is false. Drop the boundary guard
+    // and `/` would allow every route in the app, denylist entries included.
+    expect(canRecordOnRoute('/')).toBe(true);
+    expect(canRecordOnRoute('/unclassified')).toBe(false);
+    expect(canRecordOnRoute('/tax')).toBe(false);
+    expect(canRecordOnRoute('/duress-pin')).toBe(false);
   });
 });
 
@@ -50,8 +62,11 @@ describe('canRecordOnRoute — segment-boundary matching (no substring leaks)', 
     // `/settingsomething` accidentally allowed too — user opens a debug route
     // called /settingsxray that shows keys, and it becomes recordable.
     expect(canRecordOnRoute('/settingsomething')).toBe(false);
-    expect(canRecordOnRoute('/dashboardbeta')).toBe(false);
     expect(canRecordOnRoute('/plansomething')).toBe(false);
+    // Real neighbour, not a hypothetical: `/docs` must not reach `/dashboard-widgets`
+    // and `/receive` must not reach a future `/receive-history`.
+    expect(canRecordOnRoute('/docsearch')).toBe(false);
+    expect(canRecordOnRoute('/receive-history')).toBe(false);
   });
 
   it('respects `/` as the only valid segment boundary', () => {
@@ -64,42 +79,79 @@ describe('canRecordOnRoute — segment-boundary matching (no substring leaks)', 
   });
 });
 
-describe('canRecordOnRoute — denylist wins on conflict (I4 belt-and-braces)', () => {
-  it('denies denylist entries even though nothing on the allowlist matches', () => {
-    // Sanity: pure denies work.
-    expect(canRecordOnRoute('/pin')).toBe(false);
-    expect(canRecordOnRoute('/seed/reveal')).toBe(false);
-    expect(canRecordOnRoute('/verify-seed')).toBe(false);
-    expect(canRecordOnRoute('/backup/personal')).toBe(false);
-    expect(canRecordOnRoute('/recovery/shard')).toBe(false);
-    expect(canRecordOnRoute('/wallet-entry')).toBe(false);
-    expect(canRecordOnRoute('/panic/erase')).toBe(false);
-    expect(canRecordOnRoute('/decoy/entry')).toBe(false);
-    expect(canRecordOnRoute('/duress/setup')).toBe(false);
-    expect(canRecordOnRoute('/wc/session-request')).toBe(false);
+describe('canRecordOnRoute — denies the real sensitive routes', () => {
+  // Every path below is declared in src/App.jsx. The previous version of this
+  // block asserted `/pin`, `/seed/reveal`, `/verify-seed`, `/backup/personal`,
+  // `/recovery/shard`, `/wallet-entry`, `/panic/erase`, `/decoy/entry`,
+  // `/duress/setup` and `/wc/session-request` — ten paths, none of them routes.
+  // Every one passed, because an unknown path is denied by default. The block
+  // proved the fail-closed default ten times over and proved nothing about the
+  // denylist. routesMatchRouter.test.js now pins the correspondence directly.
+
+  it('denies the seed and backup routes', () => {
+    expect(canRecordOnRoute('/wallet-seed-qr')).toBe(false);
+    expect(canRecordOnRoute('/verify')).toBe(false);
+    expect(canRecordOnRoute('/personal-backup')).toBe(false);
+    expect(canRecordOnRoute('/onboarding/restore-shares')).toBe(false);
+    expect(canRecordOnRoute('/hd-wallet')).toBe(false);
   });
 
-  it('denies /send/confirm and /send/sign — different-prefix from /send/form', () => {
-    // /send/form is allowed exactly; /send/confirm and /send/sign are neither
-    // covered by that prefix nor by any other allowlist entry. They also sit
-    // on the denylist as belt-and-braces. This documents both properties.
-    expect(canRecordOnRoute('/send/form')).toBe(true);
-    expect(canRecordOnRoute('/send/form/eth-sepolia')).toBe(true);
-    expect(canRecordOnRoute('/send/confirm')).toBe(false);
-    expect(canRecordOnRoute('/send/sign')).toBe(false);
-    expect(canRecordOnRoute('/send/sign/wc-request-42')).toBe(false);
+  it('denies the coercion-configuration routes', () => {
+    // The deliberate segment-boundary rule is why these must be spelled in
+    // full. `/duress` does NOT match `/duress-pin` — a prefix only matches at
+    // `/` or end — so the old shorthand entries were inert.
+    expect(canRecordOnRoute('/duress-pin')).toBe(false);
+    expect(canRecordOnRoute('/stealth-wallets')).toBe(false);
+    expect(canRecordOnRoute('/panic-wipe')).toBe(false);
+    expect(canRecordOnRoute('/wallet-access')).toBe(false);
   });
 
-  it('denies a route that IS covered by an allowlist prefix (proves deny-wins)', () => {
-    // /settings/wipe is on the denylist AND covered by the /settings allowlist
-    // prefix. This is the ONLY test that proves deny-wins under a conflict
-    // (the /send/* tests above prove segment-boundary + missing-allow, not
-    // conflict resolution). Mutation defence: swap the order of the two
-    // listMatches calls in canRecordOnRoute and this row goes red.
-    expect(canRecordOnRoute('/settings')).toBe(true);
-    expect(canRecordOnRoute('/settings/privacy')).toBe(true);
-    expect(canRecordOnRoute('/settings/wipe')).toBe(false);
-    expect(canRecordOnRoute('/settings/wipe/confirm')).toBe(false);
+  it('denies the whole /send route, because confirm and sign live inside it', () => {
+    // SendCrypto.jsx is ONE route; the confirm and sign steps are component
+    // state, not paths. There is no `/send/form` to allow and no `/send/sign`
+    // to deny, so the route is denied whole. If SendCrypto is ever split into
+    // real subroutes, this is the assertion to revisit — not the allowlist.
+    expect(canRecordOnRoute('/send')).toBe(false);
+    expect(canRecordOnRoute('/crypto-signing')).toBe(false);
+    expect(canRecordOnRoute('/walletconnect')).toBe(false);
+    expect(canRecordOnRoute('/connect')).toBe(false);
+  });
+
+  it('denies auth-posture and dev routes', () => {
+    expect(canRecordOnRoute('/biometric-auth')).toBe(false);
+    expect(canRecordOnRoute('/hardware-wallet')).toBe(false);
+    expect(canRecordOnRoute('/dev/prf-spike')).toBe(false);
+  });
+
+  it('denylist wins over an allowlist prefix that covers it', () => {
+    // Conflict resolution, not the fail-closed default — the two are only
+    // distinguishable when a path matches BOTH lists. The real lists do not
+    // overlap (routesMatchRouter.test.js asserts that), so the overlap is
+    // constructed here against _internals.evaluate, which is the same function
+    // canRecordOnRoute calls.
+    //
+    // The old suite covered this with `/settings/wipe`, which is not a route —
+    // so the one case that proved deny-wins was asserting on a phantom.
+    //
+    // Mutation defence: swap the order of the two listMatches calls inside
+    // evaluate() and the first expectation goes red.
+    const allow = ['/settings'];
+    const deny = ['/settings/keys'];
+    expect(_internals.evaluate('/settings/keys', allow, deny)).toBe(false);
+    expect(_internals.evaluate('/settings/keys/export', allow, deny)).toBe(false);
+    expect(_internals.evaluate('/settings/privacy', allow, deny)).toBe(true);
+    expect(_internals.evaluate('/settings', allow, deny)).toBe(true);
+  });
+
+  it('evaluate() is the function canRecordOnRoute delegates to', () => {
+    // Keeps the test above honest: if canRecordOnRoute ever stops routing
+    // through evaluate(), the deny-wins pin would be testing dead code.
+    for (const p of ['/', '/receive', '/send', '/duress-pin', '/unclassified', '']) {
+      expect(
+        _internals.evaluate(p, _internals.ALLOWLIST, _internals.DENYLIST),
+        `evaluate and canRecordOnRoute must agree on ${p || '(empty)'}`
+      ).toBe(canRecordOnRoute(p));
+    }
   });
 });
 

@@ -98,26 +98,68 @@ The allowlist is a hardcoded set of route path prefixes in
 line change. New routes default to DENIED — a route not in the allowlist cannot
 be recorded.
 
+> **Corrected 2026-09-05.** The lists below originally named routes this app
+> does not have. Of 24 literals only 3 were real, and **all 16 denylist entries
+> matched zero routes** — `/pin`, `/seed`, `/wc`, `/decoy`, `/settings/wipe` and
+> the rest are not paths in `src/App.jsx`. Nothing was exploitable, because a
+> denylist of phantoms behind an allowlist of phantoms fails closed, but the
+> denylist would have stopped nothing the moment Slice 1b made the allowlist
+> real. The segment-boundary rule made it worse rather than better: a naive
+> `startsWith` would have caught `/duress-pin` under `/duress`; requiring
+> `prefix + '/'` means it does not.
+>
+> Every entry below is now a path declared in `src/App.jsx`, and
+> `routesMatchRouter.test.js` fails if that stops being true. **Do not add a
+> route to either list without checking it against the router** — the previous
+> lists, the module and its tests were all consistent with each other and none
+> of them was consistent with the app.
+
 **Allowlist (recording MAY happen if user has consented on these routes):**
 
-- `/dashboard`
-- `/send/form` (the amount + address form, BEFORE the confirm+sign step)
-- `/receive` (address display page)
-- `/settings` (top level and all subroutes)
+- `/` — Dashboard. Exact-match only; `/` cannot swallow the app because the
+  boundary rule tests `startsWith('//')`.
+- `/receive` — address display page
+- `/settings` — top level and any future subroutes. **Re-decide before Slice 1b:**
+  Settings renders duress/KEK/consent posture. The original design guarded this
+  with a `/settings/wipe` denylist entry, which was a phantom; if that guard was
+  load-bearing, this entry needs a real decision rather than a replacement
+  phantom. The config pages themselves (`/duress-pin`, `/panic-wipe`,
+  `/stealth-wallets`) are separate denied routes.
 - `/plans`
-- `/help`
-- `/documentation`
+- `/docs` — the Documentation page. Replaces the design's `/help` and
+  `/documentation`, neither of which exists. `/features` redirects here.
+
+**`/send` is not recordable, and cannot be split today.** The design wanted
+`/send/form` recordable with `/send/confirm` and `/send/sign` denied. Those are
+not routes: `SendCrypto.jsx` is a single `/send` route and the confirm and sign
+steps are component state inside it, so the gate has no path to distinguish
+them. `/send` is therefore denied whole — stricter than the design asked for.
+Splitting `SendCrypto` into real subroutes is the prerequisite for recording the
+amount form; until then, denying the route is the honest option.
 
 **Denylist (recording is ALWAYS aborted on these routes, even if allowlisted by
 prefix — belt-and-braces):**
 
-- `/onboarding/*`
-- `/seed/*`, `/verify-seed/*`, `/backup/*`, `/recovery/*`
-- `/pin/*`, `/lock/*`, `/unlock/*`
-- `/wallet-entry`
-- `/send/confirm`, `/send/sign` (the signing chokepoints)
-- `/wc/*` (WalletConnect approval + signing flows)
-- Any route beginning with `/decoy/`, `/duress/`, `/stealth/`, `/panic/`
+Seed and backup material:
+- `/wallet-seed-qr` — the seed on screen as a QR
+- `/verify` — seed-word verification quiz
+- `/personal-backup` — shard export + passphrase entry
+- `/onboarding/*` — covers `/onboarding/restore-shares`
+- `/hd-wallet` — derivation paths / account tree
+
+Coercion configuration:
+- `/duress-pin`, `/stealth-wallets`, `/panic-wipe`
+- `/wallet-access` — PIN reset / recovery
+
+Signing and money movement:
+- `/send` (see above), `/crypto-signing`
+- `/walletconnect`, `/connect` — pairing, session approval, signing
+
+Authentication posture:
+- `/biometric-auth`, `/hardware-wallet`
+
+Dev-only:
+- `/dev/*` — covers `/dev/prf-spike`
 
 Denylist wins on any conflict. Missing route = DENIED (I4).
 
@@ -249,12 +291,24 @@ Every test below must be re-verified by reintroducing the defect and confirming
 the test goes red. Coverage that stays green under its own mutation is worse
 than no coverage — see CLAUDE.md "Mutation-check every new test pin".
 
-- **`recordableRoutes.test.js`**
-  - Denylist wins on any conflict (add a route to BOTH; expect false)
+- **`recordableRoutes.test.js`** — behaviour of the gate
+  - Denylist wins on any conflict, exercised through `_internals.evaluate` with
+    synthetic overlapping lists (the real lists deliberately do not overlap, so
+    this ordering is otherwise untestable — and the original suite "covered" it
+    with `/settings/wipe`, a path that is not a route)
   - Missing route defaults to false (I4)
   - Prefix match works but does not leak: `/settings/privacy` allowed;
     `/settingsomething` NOT allowed
-  - Every route in the denylist returns false regardless of parents
+  - `/` is exact-match only and does not swallow the app
+  - Every denied route returns false, asserted on the REAL paths
+
+- **`routesMatchRouter.test.js`** — correspondence with the router, and the pin
+  that would have caught the original defect
+  - Every allowlist and denylist entry names a route declared in `src/App.jsx`
+  - The seed / coercion / signing routes are each explicitly on the denylist
+  - No allowlist entry is a prefix that swallows a denied route
+  - Parses a plausible route table first, so a broken parse fails loudly
+    instead of passing vacuously against an empty list
 
 - **`bugReportEnabled.test.js`**
   - `VITE_BUG_REPORT_ENABLED` missing / '0' / any non-'1' → gate off
