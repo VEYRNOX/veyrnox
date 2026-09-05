@@ -126,8 +126,8 @@ const workflows = [
 // txid entry in docs/verified-evidence.json) but the badge no longer surfaces
 // the distinction to users.
 const STATUS_META = {
-  [STATUS.VERIFIED]: { label: "Live",     className: "bg-success/10 text-success border-success/20" },
-  [STATUS.BUILT]:    { label: "Live",     className: "bg-success/10 text-success border-success/20" },
+  [STATUS.VERIFIED]: { label: "LIVE",     className: "bg-success/10 text-success border-success/20" },
+  [STATUS.BUILT]:    { label: "LIVE",     className: "bg-success/10 text-success border-success/20" },
   [STATUS.ROADMAP]:  { label: "Roadmap",  className: "bg-muted/50 text-muted-foreground border-border" },
 };
 
