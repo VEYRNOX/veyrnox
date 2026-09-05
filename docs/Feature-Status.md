@@ -671,9 +671,24 @@ All BUILT / device-verified on the test iPhone — NOT independently audited.
   substring leak), composed enable gate at
   [src/lib/bugReport/bugReportEnabled.js](../src/lib/bugReport/bugReportEnabled.js)
   (ship flag `VITE_BUG_REPORT_ENABLED` default OFF + deniability + native-only,
-  I4 fail-closed everywhere). **Zero runtime effect** — no application code
-  imports either module yet, so Slice 1a is safe to merge under the 1.0.1
-  submission hold. Slice 1b: React screens (explainer/consent/playback), mock
+  I4 fail-closed everywhere).
+  **Corrected 2026-09-05:** this entry originally read *"Zero runtime effect — no
+  application code imports either module yet, so Slice 1a is safe to merge under
+  the 1.0.1 submission hold."* The second half was false in the very commit that
+  wrote it. That same commit shipped
+  [BugReportButton.jsx](../src/components/bugReport/BugReportButton.jsx) — whose own
+  header calls itself Slice 1b — and wired it into `Settings.jsx`, so
+  `isBugReportEnabled()` is evaluated on every Settings render.
+  What is actually true, and what the merge-safety claim should have rested on:
+  `VITE_BUG_REPORT_ENABLED` is set nowhere in the repo or in any workflow, the
+  comparison is strict-equal `'1'`, and `BugReportButton` returns `null` when the
+  gate is closed — so the button renders on no current build and there is no
+  visible or behavioural effect. `canRecordOnRoute` genuinely has no runtime
+  caller. The distinction matters because a future reader who flips the ship flag
+  believing nothing is wired would get a live Settings entry whose handler is a
+  placeholder `window.alert`. Correction rather than rewrite (I4): the original
+  wording is quoted above rather than quietly replaced.
+  Slice 1b: React screens (explainer/consent/playback), mock
   capture, Supabase Storage bucket + `create_bug_report_upload` RPC, libsodium
   sealed-box encryption. Slice 2: iOS ReplayKit + Android MediaProjection
   Capacitor plugins, real-device verification. Slice 3: flag flip, Play Data
