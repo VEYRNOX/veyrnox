@@ -146,24 +146,40 @@ async function readProfile(db, key) {
 }
 
 /**
- * The Argon2id profile this device's deniability blobs are recorded under, as a
- * `kdf`-shaped object ready to stamp into a new blob. Falls back to the current
- * KDF_PARAMS when nothing readable exists (fresh device, post-panic-wipe, or a
- * storage fault) — the same value the generators used before this module, so the
- * fallback can never be worse than the previous behaviour.
+ * The Argon2id profile this device's deniability blobs are recorded under, WITH
+ * the one bit callers cannot otherwise recover: whether it was actually read
+ * from the pool, or defaulted because nothing readable was there.
  *
- * A recorded profile is accepted only if it passes the same
- * `assertSaneKdfParams` range check the read path applies, so a corrupt or
- * hostile blob cannot steer a new write to an OOM-sized memorySize.
+ * `deniabilityKdfProfile()` collapses both cases to a value, and for a WRITER
+ * that is right — a fresh device has no era to match, so the current default is
+ * the only sensible stamp. For the reveal-time REPAIR paths it is wrong, and
+ * measurably so.
  *
- * @returns {Promise<Record<string, unknown>>}
+ * WHY THIS BIT EXISTS (2026-09-05). Every failure route here returns
+ * KDF_PARAMS: `openDb()` throwing, and — less obviously — every `readProfile()`
+ * returning null, since a transient `getKey` fault is swallowed into `null` and
+ * both passes then fall through. So an unreadable pool is indistinguishable
+ * from a fresh device, and the repair path read that as "the era is v2" and
+ * re-encrypted an already-uniform v1 slot to v2.
+ *
+ * That makes the slot the unique blob in the dump — precisely the #2103 defect
+ * the repair path exists to heal. Reproduced by forcing the era to KDF_PARAMS
+ * against an all-v1 pool: the slot was rewritten and its fingerprint no longer
+ * matched the pool. It also explains the `deniability-kdf-parity` CI flake of
+ * 2026-09-05, where one probe read failing under parallel load flipped the era
+ * and the "no needless rewrite" assertion fired correctly.
+ *
+ * A repair that cannot read the pool must do NOTHING. Rewriting toward the
+ * modern default is the one action guaranteed to break uniformity.
+ *
+ * @returns {Promise<{ kdf: Record<string, unknown>, fromPool: boolean }>}
  */
-export async function deniabilityKdfProfile() {
+export async function deniabilityKdfProfileWithSource() {
   let db;
   try {
     db = await openDb();
   } catch {
-    return KDF_PARAMS;
+    return { kdf: KDF_PARAMS, fromPool: false };
   }
   try {
     // Pass 1 — vote over the stealth-pool sample. See POOL_PROBE_COUNT.
@@ -191,18 +207,44 @@ export async function deniabilityKdfProfile() {
       // arbitrarily by Map order.
       if (n > bestCount) { bestFp = fp; bestCount = n; }
     }
-    if (bestFp != null) return Object.freeze({ .../** @type {any} */ (seen.get(bestFp)) });
+    if (bestFp != null) {
+      return {
+        kdf: Object.freeze({ .../** @type {any} */ (seen.get(bestFp)) }),
+        fromPool: true,
+      };
+    }
 
     // Pass 2 — no readable pool (fresh device, wiped, or a storage fault).
     // First match wins among the remaining anchors.
     for (const key of PROBE_KEYS.slice(POOL_PROBE_COUNT)) {
       const kdf = await readProfile(db, key);
-      if (kdf) return Object.freeze({ ...kdf });
+      if (kdf) return { kdf: Object.freeze({ ...kdf }), fromPool: true };
     }
   } finally {
     try { db.close(); } catch { /* best-effort */ }
   }
-  return KDF_PARAMS;
+  return { kdf: KDF_PARAMS, fromPool: false };
+}
+
+/**
+ * The Argon2id profile this device's deniability blobs are recorded under, as a
+ * `kdf`-shaped object ready to stamp into a new blob. Falls back to the current
+ * KDF_PARAMS when nothing readable exists (fresh device, post-panic-wipe, or a
+ * storage fault) — the same value the generators used before this module, so the
+ * fallback can never be worse than the previous behaviour.
+ *
+ * A recorded profile is accepted only if it passes the same
+ * `assertSaneKdfParams` range check the read path applies, so a corrupt or
+ * hostile blob cannot steer a new write to an OOM-sized memorySize.
+ *
+ * WRITERS should keep using this. A REPAIR path must use
+ * `deniabilityKdfProfileWithSource()` and skip its rewrite when `fromPool` is
+ * false — see that function for why.
+ *
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export async function deniabilityKdfProfile() {
+  return (await deniabilityKdfProfileWithSource()).kdf;
 }
 
 /**
