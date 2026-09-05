@@ -34,11 +34,17 @@ import { parseTypedData, detectAssetAuthorising } from '@/wallet-core/evm/typed-
 // Permit2 primary types (Uniswap Permit2 contract). Regular EIP-2612 Permit
 // uses the bare 'Permit' primary type and is scored separately by allowance
 // magnitude.
+// All SIX Permit2 primary types. The batch SignatureTransfer pair was missing
+// until 2026-09-05; because an unrecognised name falls through to LEVEL.OK and
+// OK is the only verdict this surface signs, `PermitBatchTransferFrom` was the
+// single Permit-family payload that could be approved. See typed-data.js.
 const PERMIT2_PRIMARY_TYPES = new Set([
   'PermitSingle',
   'PermitBatch',
   'PermitTransferFrom',
   'PermitWitnessTransferFrom',
+  'PermitBatchTransferFrom',
+  'PermitBatchWitnessTransferFrom',
 ]);
 
 // Same unlimited-allowance detection shape as typed-data.js `isUnlimited`.
