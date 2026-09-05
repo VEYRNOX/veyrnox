@@ -116,7 +116,10 @@ describe('Subscription page — web (no store)', () => {
     isNativePlatform.mockReturnValue(false);
     renderPage();
     expect(screen.getByText(/testing-only/i)).toBeTruthy();
-    expect(screen.getByRole('button', { name: /mobile only/i })).toBeDisabled();
+    // Both paid-tier cards now render a disabled "mobile only" CTA on web
+    // (Safety Plus and AI Security Protection). Scope by tier name.
+    expect(screen.getByRole('button', { name: /Safety Plus.*mobile only/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /AI Security Protection.*mobile only/i })).toBeDisabled();
   });
 });
 
