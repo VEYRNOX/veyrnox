@@ -126,10 +126,26 @@ Denylist wins on any conflict. Missing route = DENIED (I4).
 
 ## Encryption model (zero-knowledge)
 
-**Model:** asymmetric. libsodium `crypto_box_seal` (sealed box) against a
-support ed25519/x25519 public key baked into the app binary. The corresponding
+**Model:** asymmetric, sealed-box-equivalent. Implemented via the crypto
+stack Veyrnox already ships (`@noble/curves` x25519 + `@noble/hashes`
+HKDF-SHA256 + WebCrypto AES-256-GCM) rather than libsodium — same security
+properties, no new dependency to audit. See
+[`src/lib/bugReport/encrypt.js`](../src/lib/bugReport/encrypt.js) for the
+wire format and the placeholder-key refuse.
+
+The construction: fresh ephemeral x25519 keypair per encrypt(), ECDH
+against the support public key baked into the app binary, HKDF-SHA256 to
+an AES-256-GCM key (info string binds the derivation to the specific
+ephemeral pk so envelopes cannot cross-decrypt), authenticated encryption
+with a random 12-byte IV per envelope. The corresponding recipient
 PRIVATE key is held on an offline signing device — never on any
 internet-connected support laptop.
+
+The design doc previously named libsodium `crypto_box_seal`. That is a
+mechanism, not a security property — the property we want is "sender
+anonymous, recipient key offline, authenticated encryption". The @noble
+construction delivers that with zero new deps. Kept the "sealed box"
+naming in prose because it is the recognisable name for the pattern.
 
 **Client per-report ephemeral:** generated fresh for every report, discarded
 immediately after encryption. Nothing persistent, nothing correlatable to a
