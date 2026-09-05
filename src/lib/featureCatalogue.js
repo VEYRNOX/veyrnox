@@ -486,9 +486,9 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Portfolio Q&A',
-        status: 'roadmap',
-        summary: 'Questions over public on-chain data',
-        explanation: 'Answer questions over the user’s public on-chain data. Advisory only — never autonomous trading or management. Specced, not yet built.',
+        status: 'built',
+        summary: 'Answer portfolio-safety questions in context',
+        explanation: 'Built. The AI Security Advisor is wired to portfolio surfaces (dashboard, portfolio snapshots / rewind, risk score, on-chain analytics, advanced analytics, net worth tracker, custom widgets) via useAdvisorSnapshot + page-context prompts. The advisor answers questions about the user’s portfolio in context — supported assets, diversification safety, backup readiness, snapshot interpretation, risk-score meaning — using the pageContext block for the current screen. Advisory only; the AI never holds keys and never signs. I2 boundary: the advisor snapshot deliberately carries shell state only (counts, locked state, fiat currency), NEVER balances / addresses / signatures — numeric-value portfolio queries fall back to generic guidance. I3: snapshot is dropped in deniability/demo sessions (useAdvisorSnapshot chokepoint). NOT independently audited.',
       },
       {
         name: 'Live Phishing Domain Feed',
