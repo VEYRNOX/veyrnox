@@ -31,6 +31,7 @@ import SessionSettings from "../components/security/SessionSettings";
 import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Spinner from "@/components/Spinner";
+import BugReportButton from "@/components/bugReport/BugReportButton";
 
 export default function Settings() {
   const { t } = useTranslation("wallet");
@@ -527,6 +528,19 @@ export default function Settings() {
             </div>
             <span className="text-sm text-primary font-medium">Email</span>
           </button>
+          {/* Bug-report screen recording. Self-hides when
+              VITE_BUG_REPORT_ENABLED != '1' — currently OFF on every shipped
+              build (Slice 1a/1b of docs/bug-report-recording-plan.md).
+              onStart placeholder wired here in Slice 1b; the explainer +
+              capture state machine lands in Slice 1c. */}
+          <BugReportButton onStart={() => {
+            // Placeholder — Slice 1c replaces this with the state-machine
+            // launcher. If the flag ever flips before 1c ships, the user sees
+            // this alert rather than a broken flow.
+            if (typeof window !== 'undefined') {
+              window.alert('Bug reporting is being built. Please email support@veyrnox.com for now.');
+            }
+          }} />
         </div>
       )}
 
