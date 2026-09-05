@@ -92,7 +92,16 @@ class RaspIntegrityPlugin : Plugin() {
      * BLOCK. Verify against src/rasp/nativeProbe.js, which is the authority, and
      * against its "Item 16 — screenCapture re-bucketed to elevated (#1108)"
      * regression test. The underlying surveillance vector is separately blocked
-     * at the OS layer by MainActivity's unconditional FLAG_SECURE.
+     * at the OS layer by FLAG_SECURE — set window-wide in MainActivity.onCreate.
+     *
+     * CORRECTED 2026-09-05: this read "MainActivity's unconditional FLAG_SECURE"
+     * and that word stopped being accurate when BugReportPlugin gained
+     * setSecureFlag() (slice 2b). The flag can now be cleared, but only for a
+     * legitimate screen recording: the clear requires a fresh OS capture grant,
+     * and BugReportPlugin re-applies the flag on pause/resume/destroy whenever no
+     * recording is running. So the reasoning above still holds for every state
+     * this plugin observes — it is just no longer true by construction, and a
+     * future change to that plugin could break it.
      *
      * overlayActive (item 23): platform-symmetry field mirroring iOS overlayActive
      * (UIAccessibilityIsAssistiveTouchRunning). True when any accessibility service

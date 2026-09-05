@@ -80,6 +80,31 @@ class BugReportPlugin : Plugin() {
     private var outputFile: File? = null
     private var recordingStartedAtMs: Long = 0L
 
+    // FLAG_SECURE self-healing state (2026-09-05 security diff).
+    //
+    // `setSecureFlag(false)` used to be an unconditional bridge method: any JS
+    // in the webview could clear the window's screenshot protection, on every
+    // shipped build (the ship flag gates the JS caller, not `registerPlugin`),
+    // and NOTHING restored it — MainActivity.onCreate was the only other writer
+    // and there is no re-apply, so a crash between the clear and the terminal
+    // state left the wallet capturable until process restart.
+    //
+    // The JS chokezone (captureBridge) was and is correct. The lesson, third
+    // time in this codebase after K-2 and lib/consent.js: a correct chokepoint
+    // is not the control when the capability behind it is independently
+    // reachable. So the guarantee moves here, next to the window flag.
+    private var captureGrantedAtMs: Long = 0L
+    private var secureFlagCleared = false
+
+    companion object {
+        // A clear must follow a real OS screen-capture grant, and closely. The
+        // documented order is requestPermission() -> setSecureFlag(false) ->
+        // startRecording(), so the gap is milliseconds in practice; two minutes
+        // is generous for a slow device without letting one grant license a
+        // clear for the rest of the process lifetime.
+        private const val GRANT_VALIDITY_MS = 120_000L
+    }
+
     @PluginMethod
     fun setSecureFlag(call: PluginCall) {
         val enabled = call.getBoolean("enabled") ?: run {
@@ -90,16 +115,72 @@ class BugReportPlugin : Plugin() {
             call.reject("no activity")
             return
         }
+        // Restoring protection is always allowed. CLEARING it is not: it must
+        // follow a fresh OS capture grant, or accompany a recording that is
+        // already running. Without this the method is a standalone "disable
+        // screenshot protection" primitive reachable from any webview JS.
+        if (!enabled && !clearIsAuthorised()) {
+            call.reject("setSecureFlag(false) requires an active screen-capture grant")
+            return
+        }
+
         // Main-thread only — Window flags are UI-thread state.
         activity.runOnUiThread {
-            val flag = android.view.WindowManager.LayoutParams.FLAG_SECURE
-            if (enabled) {
-                activity.window.setFlags(flag, flag)
-            } else {
-                activity.window.clearFlags(flag)
-            }
+            applySecureFlag(enabled)
             call.resolve()
         }
+    }
+
+    /** True iff clearing FLAG_SECURE is currently legitimate. */
+    private fun clearIsAuthorised(): Boolean {
+        if (projection != null) return true // a recording is genuinely running
+        val granted = captureGrantedAtMs
+        if (granted == 0L) return false
+        return System.currentTimeMillis() - granted <= GRANT_VALIDITY_MS
+    }
+
+    /** Single writer for the window flag, so `secureFlagCleared` cannot drift. */
+    private fun applySecureFlag(enabled: Boolean) {
+        val activity = activity ?: return
+        val flag = android.view.WindowManager.LayoutParams.FLAG_SECURE
+        if (enabled) {
+            activity.window.setFlags(flag, flag)
+            secureFlagCleared = false
+        } else {
+            activity.window.clearFlags(flag)
+            secureFlagCleared = true
+        }
+    }
+
+    /**
+     * Re-apply FLAG_SECURE unless a recording is genuinely in progress.
+     *
+     * Runs on both pause and resume. Pause is the one that matters most: it is
+     * exactly when the recents/app-switcher thumbnail is taken, and it means an
+     * abandoned or crashed capture cannot leave the window exposed for the rest
+     * of the process. Resume additionally covers activity recreation.
+     */
+    private fun healSecureFlag() {
+        if (!secureFlagCleared) return
+        if (projection != null) return // live recording — restoring would black the capture
+        activity?.runOnUiThread { applySecureFlag(true) }
+    }
+
+    override fun handleOnPause() {
+        healSecureFlag()
+        super.handleOnPause()
+    }
+
+    override fun handleOnResume() {
+        healSecureFlag()
+        super.handleOnResume()
+    }
+
+    override fun handleOnDestroy() {
+        // Best effort: a destroyed activity's window is going away, but if the
+        // process survives into a new activity this keeps the invariant true.
+        if (secureFlagCleared) applySecureFlag(true)
+        super.handleOnDestroy()
     }
 
     @PluginMethod
@@ -125,6 +206,11 @@ class BugReportPlugin : Plugin() {
             call.reject("User denied screen capture")
             return
         }
+        // A real grant just landed — this is what authorises a subsequent
+        // FLAG_SECURE clear. Recorded here rather than in requestPermission()
+        // so a cancelled or denied dialog authorises nothing.
+        captureGrantedAtMs = System.currentTimeMillis()
+
         // Serialise the result Intent so JS can round-trip it back to
         // startRecording. Callers must NOT interpret the bytes — they
         // are an opaque token this plugin re-parses on start.
