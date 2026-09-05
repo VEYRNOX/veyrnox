@@ -660,6 +660,19 @@ All BUILT / device-verified on the test iPhone — NOT independently audited.
 - AI portfolio advisor — 💡 advisory-only allowed; auto-executing ❌ out of scope
 
 ## 10. Niceties / analytics / utilities — 💡 mostly parking-lot
+- **PostHog forwarding — 🅿️ PARKED 2026-09-05 (owner decision).** Suggestion was to
+  fork the existing `functions/api/rpc/[fn].js` proxy so events routed to the
+  `track_event` RPC also POST to PostHog EU (`eu.i.posthog.com/i/v0/e/`),
+  fire-and-forget via `ctx.waitUntil`. Client stays PostHog-unaware — no SDK, no
+  autocapture, no session replay, no CSP change; the existing consent /
+  deniability / rate-limit gates in [src/api/trackEvent.js](../src/api/trackEvent.js)
+  still enforce upstream. **NOT built.** Blocked on: (a) 1.0.1 submission clearing
+  both stores; (b) owner-approved amendment of Play Data Safety +
+  Apple App Privacy to declare a third-party analytics destination (currently
+  declared as "no third-party analytics" — see
+  `docs/play-launch/data-safety-form.md:346` and `docs/SAST-PASS-FULL.md:99`,
+  both of which would need updating in the SAME change); (c) in-app privacy
+  screen + veyrnox.com/privacy update. Resume trigger is ALL THREE; do not part-ship.
 - Help menu (top-bar Documentation entry) — ✅ (`HelpMenu.jsx`, PR #48)
 - Address book — ✅ (with per-chain validation on save)
 - ENS / SNS **resolution** in Send — ✅ (resolve-only); ENS **registration** — ❌ removed (PR #48)
