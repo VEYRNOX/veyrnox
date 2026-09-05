@@ -29,18 +29,43 @@ vi.mock('@/lib/bugReport/captureBridge', () => ({
   startCapture: () => Promise.resolve({ stop: mockStop, abort: mockAbort }),
 }));
 
+// Slice 2d — Send button now calls sendBugReport. Mock resolves with a
+// ticket id by default; tests that need to hit the error branch
+// re-mock inline.
+const mockSendBugReport = vi.fn(() => Promise.resolve({ report_id: 'test-ticket-123' }));
+vi.mock('@/lib/bugReport/uploadClient', () => ({
+  sendBugReport: (...args) => mockSendBugReport(...args),
+}));
+
+// encrypt.js placeholder key — real value doesn't matter for the flow
+// test; sendBugReport is stubbed above and never runs the real crypto.
+vi.mock('@/lib/bugReport/encrypt', () => ({
+  PLACEHOLDER_SUPPORT_PUBLIC_KEY: new Uint8Array(32),
+}));
+
+vi.mock('@capacitor/core', () => ({
+  Capacitor: { getPlatform: () => 'ios' },
+}));
+
 let BugReportFlow;
 
 beforeEach(async () => {
   mockAbort.mockReset();
   mockStop.mockReset().mockImplementation(() => Promise.resolve({
-    sizeBytes: 0, durationMs: 3000, source: 'mock', blob: null,
+    // Slice 2d: return a real blob so onSend's NO_CAPTURE guard doesn't fire.
+    sizeBytes: 12, durationMs: 3000, source: 'replaykit',
+    blob: new Uint8Array([1, 2, 3, 4]),
   }));
+  mockSendBugReport.mockReset().mockResolvedValue({ report_id: 'test-ticket-123' });
+  vi.stubGlobal('crypto', {
+    ...globalThis.crypto,
+    randomUUID: () => 'fixed-device-uuid-for-tests',
+  });
   vi.useFakeTimers({ shouldAdvanceTime: false });
   vi.resetModules();
   BugReportFlow = (await import('../BugReportFlow')).default;
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 // Helper: advance timers AND flush microtasks so awaited promises resolve.
 async function advance(ms) {
@@ -135,6 +160,76 @@ describe('BugReportFlow — review', () => {
       await Promise.resolve();
     });
     fireEvent.click(screen.getByTestId('bug-report-delete'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mockSendBugReport).not.toHaveBeenCalled();
+  });
+});
+
+describe('BugReportFlow — Send (slice 2d)', () => {
+  async function walkToReview() {
+    render(<BugReportFlow open onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('bug-report-continue'));
+    await advance(3000);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('bug-report-stop'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  }
+
+  it('Send transitions to sending → sent with ticket id displayed', async () => {
+    await walkToReview();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('bug-report-send'));
+      // Let the promise chain settle: sending render, then sent render.
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId('bug-report-sent')).toBeInTheDocument();
+    expect(screen.getByText(/test-ticket-123/)).toBeInTheDocument();
+    expect(mockSendBugReport).toHaveBeenCalledTimes(1);
+    // Contract with slice 1e-4: expected argument shape.
+    const args = mockSendBugReport.mock.calls[0][0];
+    expect(args.captureBuffer).toBeInstanceOf(Uint8Array);
+    expect(args.deviceId).toBe('fixed-device-uuid-for-tests');
+    expect(args.platform).toBe('ios');
+    expect(args.supportPublicKey).toBeInstanceOf(Uint8Array);
+    expect(args.supportPublicKey.length).toBe(32);
+  });
+
+  it('Send failure transitions to error with the message shown', async () => {
+    mockSendBugReport.mockRejectedValueOnce(new Error('BUG_REPORT_ENCRYPT_PLACEHOLDER_KEY'));
+    await walkToReview();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('bug-report-send'));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId('bug-report-error')).toBeInTheDocument();
+    expect(screen.getByText(/PLACEHOLDER_KEY/)).toBeInTheDocument();
+    // Onclose should NOT have fired on error — user gets to see the
+    // message and dismiss themselves.
+  });
+
+  it('Done from sent invokes onClose', async () => {
+    const onClose = vi.fn();
+    render(<BugReportFlow open onClose={onClose} />);
+    fireEvent.click(screen.getByTestId('bug-report-continue'));
+    await advance(3000);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('bug-report-stop'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('bug-report-send'));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByTestId('bug-report-done'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
