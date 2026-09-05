@@ -57,4 +57,28 @@ platform :android do
 
   # No production lane — CLAUDE.md submission hold + no Play Pre-launch report
   # has ever been generated (see #1960 accepted-residual).
+
+  desc "Assemble the huawei-flavor release AAB (HMS build, no GMS/Play Integrity)"
+  lane :build_huawei do
+    prep_web
+    gradle(
+      project_dir: "..",
+      task: "bundle",
+      build_type: "Release",
+      flavor: "huawei",
+    )
+  end
+
+  desc "Upload huawei-flavor AAB to Huawei AppGallery Connect draft"
+  lane :huawei do
+    build_huawei
+    huawei_appgallery_connect(
+      client_id: ENV.fetch("HUAWEI_CLIENT_ID"),
+      client_secret: ENV.fetch("HUAWEI_CLIENT_SECRET"),
+      app_id: ENV.fetch("HUAWEI_APP_ID"),
+      aab_path: "../app/build/outputs/bundle/huaweiRelease/app-huawei-release.aab",
+      # No auto-submit — leave as draft; submission is a manual gate.
+      submit_for_review: false,
+    )
+  end
 end
