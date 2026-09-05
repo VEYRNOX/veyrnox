@@ -1,10 +1,49 @@
 // EIP-712 typed-data decode, Permit/Permit2/Seaport detection, human summary.
 // Pure — no keys, no network calls.
 
+// Permit2's SignatureTransfer interface has SIX primary types, not four.
+// `PermitBatchTransferFrom` and `PermitBatchWitnessTransferFrom` were missing
+// until 2026-09-05, and their absence was not inert: an unrecognised
+// primaryType falls through detectAssetAuthorising to LEVEL.OK, which on the
+// WalletConnect surface is the ONLY typed-data verdict that signs. Every
+// recognised asset-authorising type is refused there (acknowledged is
+// hardcoded false, and CAUTION/RISK never map to ALLOW), so the one Permit
+// payload the wallet would actually sign was the batch drain.
 const PERMIT_PRIMARY_TYPES = new Set([
   'Permit', 'PermitSingle', 'PermitBatch',
   'PermitTransferFrom', 'PermitWitnessTransferFrom',
+  'PermitBatchTransferFrom', 'PermitBatchWitnessTransferFrom',
 ]);
+
+// Names that grant a third party the power to move assets. The allowlists above
+// are a denylist-by-omission whose fall-through is silent signing, so a name
+// nobody enumerated — a new Permit2 revision, SafeTx, 0x ERC721Order, Blur
+// Order, ERC-7710 Delegation — inherits the same hole the two additions above
+// just closed.
+//
+// This is the structural backstop: a payload that hands an ADDRESS-typed
+// spender/operator/delegate to someone is asset-authorising whatever it calls
+// itself. It keys off the declared type graph, which parseTypedData has already
+// reconciled against primaryType (H-4), so a hostile dApp cannot dodge it by
+// lying about the name — lying about the graph is what H-4 rejects.
+//
+// Deliberately NOT the broader "score every unrecognised type CAUTION". On this
+// surface CAUTION means REFUSED, so that would stop legitimate non-asset typed
+// data — DAO votes, SIWE-style logins — which sign fine today and authorise
+// nothing.
+const AUTHORISING_FIELD_NAMES = new Set(['spender', 'operator', 'delegate']);
+
+/** Does the primary struct hand an address-typed spender/operator/delegate away? */
+function grantsAddressAuthority(types, primaryType) {
+  const fields = types?.[primaryType];
+  if (!Array.isArray(fields)) return false;
+  return fields.some(
+    (f) => f
+      && typeof f.name === 'string'
+      && f.type === 'address'
+      && AUTHORISING_FIELD_NAMES.has(f.name.toLowerCase()),
+  );
+}
 const SEAPORT_PRIMARY_TYPES = new Set(['OrderComponents', 'BulkOrder']);
 
 export function parseTypedData(raw) {
@@ -84,6 +123,17 @@ export function detectAssetAuthorising(parsed) {
       reason:
         `Marketplace order (${pt}): signing can give away your tokens or NFTs. ` +
         `Only sign on a marketplace you trust.`,
+    };
+  }
+  // Shape backstop — see AUTHORISING_FIELD_NAMES. Runs AFTER the named lists so
+  // a recognised type keeps its specific copy and its `kind`.
+  if (grantsAddressAuthority(parsed.types, pt)) {
+    return {
+      isAssetAuthorising: true,
+      kind: 'permit',
+      reason:
+        `This signature (${pt}) names a spender that could move your tokens, ` +
+        `with no on-chain approval. Only sign if you trust this app.`,
     };
   }
   return { isAssetAuthorising: false, reason: null };

@@ -155,6 +155,69 @@ describe('scoreWcTypedDataLevel', () => {
     expect(scoreWcTypedDataLevel(JSON.stringify(masquerade))).toBe(LEVEL.CAUTION);
   });
 
+  // H-B1 (weekly audit 2026-09-05). Permit2's SignatureTransfer interface has
+  // SIX primary types; the two batch ones were in neither allowlist. That was
+  // not a cosmetic omission: an unrecognised primaryType falls through to
+  // LEVEL.OK, and on the WalletConnect surface OK is the ONLY typed-data
+  // verdict that signs (`acknowledged` is hardcoded false, so CAUTION and RISK
+  // are both refused). Every OTHER Permit-family payload was already
+  // unsignable — so `PermitBatchTransferFrom` was the one drain the wallet
+  // would have approved, with no warning banner and no mandatory ack.
+  //
+  // The realistic payload names EXACT balances, not uint256-max, so the
+  // unlimited-allowance marker never fires. Asserting on the type, not on an
+  // unlimited amount, is the whole point.
+  const permitBatchTransferFrom = (primaryType) => ({
+    types: {
+      EIP712Domain: [{ name: 'name', type: 'string' }, { name: 'chainId', type: 'uint256' }],
+      TokenPermissions: [{ name: 'token', type: 'address' }, { name: 'amount', type: 'uint256' }],
+      [primaryType]: [
+        { name: 'permitted', type: 'TokenPermissions[]' },
+        { name: 'spender', type: 'address' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'deadline', type: 'uint256' },
+      ],
+    },
+    primaryType,
+    domain: { name: 'Permit2', chainId: 1 },
+    message: {
+      permitted: [{ token: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', amount: '1234567' }],
+      spender: '0x000000000000000000000000000000000000dEaD',
+      nonce: '1',
+      deadline: '99999999999',
+    },
+  });
+
+  it('RISK on Permit2 batch SignatureTransfer types (was silently OK)', () => {
+    expect(scoreWcTypedDataLevel(permitBatchTransferFrom('PermitBatchTransferFrom'))).toBe(LEVEL.RISK);
+    expect(scoreWcTypedDataLevel(permitBatchTransferFrom('PermitBatchWitnessTransferFrom'))).toBe(LEVEL.RISK);
+  });
+
+  it('CAUTION on an UNKNOWN type that still hands an address a spender role', () => {
+    // The structural backstop. The named allowlists are a denylist-by-omission
+    // whose fall-through signs; a name nobody enumerated (a future Permit2
+    // revision, SafeTx, ERC-7710 Delegation) must not inherit that hole.
+    // Not RISK — it is unrecognised, so it earns refusal, not a specific claim.
+    const unknown = permitBatchTransferFrom('SomeFutureAuthorisation');
+    expect(scoreWcTypedDataLevel(unknown)).toBe(LEVEL.CAUTION);
+  });
+
+  it('still OK when an unknown type authorises nothing (no over-blocking)', () => {
+    // Guards the fix against the over-broad version: scoring EVERY unrecognised
+    // type CAUTION would refuse DAO votes and SIWE-style logins, which sign
+    // today and grant no one anything.
+    const vote = {
+      types: {
+        EIP712Domain: [{ name: 'name', type: 'string' }],
+        Vote: [{ name: 'proposal', type: 'uint256' }, { name: 'choice', type: 'uint8' }],
+      },
+      primaryType: 'Vote',
+      domain: { name: 'Snapshot' },
+      message: { proposal: '42', choice: 1 },
+    };
+    expect(scoreWcTypedDataLevel(vote)).toBe(LEVEL.OK);
+  });
+
   it('CAUTION on Seaport marketplace orders (asset-authorising but not permit-shape)', () => {
     const seaport = {
       types: {
