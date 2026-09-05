@@ -12,6 +12,11 @@ to run.
 zero crashes and zero ANRs against versionCode 41. **Android side needs no
 further owner action.**
 
+That run is the only Test Lab evidence that exists, and it is bound to
+versionCode 41. Play Internal testing has since moved on — **versionCode 42
+(1.0.1) released 2026-09-05 21:30, and `main` is already at 43** — and neither
+has been through Test Lab. Do not read the clean 41 result as covering them.
+
 **iOS side is still broken but in a different way** — SPM Capacitor graph
 fixed by PR #2316 (SharePlugin.swift now compiles), next blocker is code
 signing: the App Manager App Store Connect key cannot drive xcodebuild's
