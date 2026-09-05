@@ -13,6 +13,14 @@ node_modules
 dist/
 build/
 
+# Fastlane runtime artefacts (ios/Gemfile + ios/fastlane/{Appfile,Fastfile} tracked)
+ios/fastlane/report.xml
+ios/fastlane/README.md
+ios/build/
+ios/Gemfile.lock
+ios/.bundle/
+ios/vendor/
+
 # Trezor Connect self-hosted iframe bundle — generated at build time from node_modules.
 # Re-created by: node scripts/bundle-trezor-connect.mjs  (also runs as npm prebuild).
 public/trezor-connect/
@@ -47,6 +55,7 @@ secrets.json
 # ...except the committed template of var NAMES (no values). The negation must
 # come AFTER the .env.* rule above or git keeps ignoring it.
 !.env.example
+!.env.*.example
 # ...and the staging build config (public config only, no secrets — see
 # .env.staging itself and Task 5 of the staging environment CI pipeline plan).
 !.env.staging
