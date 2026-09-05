@@ -1,5 +1,29 @@
 default_platform(:ios)
 
+# Build-time flags that must never be "1" in a shipped bundle. Each is
+# DEV-guarded in source, so none can be live in a `vite build` — this is
+# defence in depth: the value being inlined at all means the build was made in
+# a way nobody intended.
+#
+# Match the VALUE, never the bare name. Vite inlines the whole
+# import.meta.env object, so a clean build still CONTAINS every key; a bare
+# `grep VITE_BYPASS_RASP` fires on a perfectly good IPA.
+#
+# THIS LIST MUST GROW WITH THE CODEBASE. It shipped covering 3 of the 6 flags
+# that existed, because it was copied from CLAUDE.md and never re-derived —
+# VITE_DEV_BYPASS_WALLET_GATE landed the same day as this lane and was not
+# added. src/__tests__/shipUnsafeFlags.coverage.test.js now fails if a
+# ship-unsafe flag exists in src/ and is missing here, so the list cannot
+# silently fall behind again. Add to that test's shape rule too if a new flag
+# is named in a way it would not recognise.
+SHIP_UNSAFE_BOOLEAN_FLAGS = %w[
+  BYPASS_RASP
+  DEV_UNGATE_SEND
+  DEMO_MODE
+  DEV_BYPASS_WALLET_GATE
+  SIM_BYPASS_BALANCE
+].freeze
+
 # App Store Connect API key comes from env — see .env.fastlane.example.
 # App Manager role (not Admin); manual signing path per CLAUDE.md.
 def asc_api_key
@@ -45,9 +69,53 @@ platform :ios do
   lane :verify_ipa do
     ipa = "build/App.ipa"
     UI.user_error!("IPA missing: #{ipa}") unless File.exist?(ipa)
-    hits = sh("unzip -p '#{File.expand_path(ipa)}' 'Payload/App.app/public/assets/index-*.js' | grep -oE 'VITE_(BYPASS_RASP|DEV_UNGATE_SEND|DEMO_MODE):\"1\"' || true", log: false).strip
-    UI.user_error!("Dev flag in IPA: #{hits}") unless hits.empty?
-    UI.success("IPA clean — no dev flags")
+
+    bundle = sh(
+      "unzip -p '#{File.expand_path(ipa)}' 'Payload/App.app/public/assets/index-*.js'",
+      log: false,
+    )
+
+    # Refuse to report clean on an empty or implausible read. If the asset path
+    # or filename ever changes, `unzip -p` prints nothing, every check below
+    # finds nothing, and the lane would pass — a green result meaning "we looked
+    # at no bytes". That is the failure mode this whole check exists to prevent,
+    # so it is the first thing asserted.
+    if bundle.length < 10_000 || !bundle.include?("VITE_")
+      UI.user_error!(
+        "Could not read an inlined web bundle out of #{ipa} " \
+        "(#{bundle.length} bytes, VITE_ keys present: #{bundle.include?('VITE_')}). " \
+        "The asset path or name probably changed. Refusing to call the IPA clean."
+      )
+    end
+
+    hits = SHIP_UNSAFE_BOOLEAN_FLAGS
+      .map { |f| "VITE_#{f}" }
+      .select { |f| bundle.include?(%(#{f}:"1")) }
+
+    # VITE_FORCE_TIER is value-shaped, not boolean: any non-empty value
+    # self-upgrades every install to that tier and skips RevenueCat entirely
+    # (src/lib/entitlement.js, Codex P1 2026-08-15). Matching `:"1"` would miss
+    # `:"safety_plus"`, which is the only value anyone would actually set.
+    forced = bundle[/VITE_FORCE_TIER:"([^"]+)"/, 1]
+    hits << "VITE_FORCE_TIER=#{forced}" if forced
+
+    UI.user_error!("Dev flag in shipped IPA: #{hits.join(', ')}") unless hits.empty?
+
+    # VITE_BUG_REPORT_ENABLED is a genuine SHIP flag, not a dev flag — Slice 3
+    # flips it deliberately. So it is not in the list above. It is still checked,
+    # because the store disclosures for screen recording are not live yet and a
+    # build with it on must not reach review before they are. Slice 3 sets
+    # ALLOW_BUG_REPORT_FLAG=1 once Play Data Safety and Apple App Privacy are
+    # updated, rather than editing this lane.
+    if bundle.include?(%(VITE_BUG_REPORT_ENABLED:"1")) && ENV["ALLOW_BUG_REPORT_FLAG"] != "1"
+      UI.user_error!(
+        "VITE_BUG_REPORT_ENABLED is ON in this IPA, but screen recording is not " \
+        "declared on the store listings. Update Play Data Safety + Apple App " \
+        "Privacy first, then re-run with ALLOW_BUG_REPORT_FLAG=1."
+      )
+    end
+
+    UI.success("IPA clean — #{SHIP_UNSAFE_BOOLEAN_FLAGS.length + 1} ship-unsafe flags checked, none set")
   end
 
   desc "Full build + verify + TestFlight upload"
