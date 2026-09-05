@@ -8,12 +8,32 @@
 // imports advisorBridge covers publisher number seven, written six months from
 // now by someone who never read #2256.
 //
-// WHAT IT PROTECTS. publishAdvisorContext does not stay on the device:
-// SecurityAdvisor merges the payload into `effectivePageSnapshot` and POSTs it
-// to tip-chat as `context.page_snapshot`, alongside a PERSISTENT `device_id`
-// (getOrCreateDeviceId). Any key here is therefore a durable, per-device
-// disclosure to a backend that I5 declares untrusted. Consent gates the
-// transmission; it does not make a coercion-relevant fact safe to send.
+// WHAT IT PROTECTS — UPDATED 2026-09-05, because the paragraph that used to sit
+// here is now false and a false rationale is worse than none.
+//
+// It read: "publishAdvisorContext does not stay on the device: SecurityAdvisor
+// merges the payload into `effectivePageSnapshot` and POSTs it to tip-chat as
+// `context.page_snapshot`, alongside a PERSISTENT `device_id`." That was true
+// when written and is the exact disclosure the 2026-09-03 security diff rated a
+// REGRESSION — the consent copy promised only the typed question, the current
+// screen and the selected chain, while 62 pages were publishing 196 keys.
+//
+// The snapshot is no longer transmitted at all. SecurityAdvisor's send path
+// carries `current_screen` and `wallet_chain` and nothing else from this bus,
+// pinned by SecurityAdvisor.noSnapshotEgress.test.jsx.
+//
+// So this file is now DEFENCE IN DEPTH, and it is kept for two reasons rather
+// than retired. First, the egress cut is one edit away from being undone, and
+// this is the layer that would still refuse a coercion oracle if it were.
+// Second, a properly-disclosed version of per-page awareness is a live
+// possibility; the day someone rebuilds it, this pin is what stops
+// `duress_configured` riding along again.
+//
+// KNOWN GAP, recorded rather than fixed here: this scan parses only literal
+// `publishAdvisorContext({ ... })` calls, so it does not see the objects passed
+// through `useAdvisorSnapshot()`. That mattered while those objects egressed;
+// it does not today. If snapshot transmission is ever restored, widening this
+// scan to the hook's callers is a prerequisite, not a follow-up.
 //
 // The two removed in #2256:
 //   Settings.jsx          duress_configured   — device HAS a duress wallet

@@ -72,12 +72,20 @@ export default function Settings() {
   // KEK + passkey/biometric come from the shared R2 facade that is already
   // fail-closed and I3-safe.
   //
-  // NO COERCION ORACLES IN THIS PAYLOAD (#2256). What is published here does
-  // not stay on the device: SecurityAdvisor merges it into
-  // `effectivePageSnapshot` and sends it to the tip-chat backend as
-  // `context.page_snapshot`, next to a PERSISTENT `device_id`. A field here is
-  // therefore a durable, per-device disclosure to a backend that I5 declares
-  // untrusted.
+  // NO COERCION ORACLES IN THIS PAYLOAD (#2256).
+  //
+  // CORRECTED 2026-09-05. This used to say "What is published here does not
+  // stay on the device: SecurityAdvisor merges it into `effectivePageSnapshot`
+  // and sends it to the tip-chat backend as `context.page_snapshot`, next to a
+  // PERSISTENT `device_id`." True when written, and the reason #2256 removed
+  // `duress_configured`. It is no longer true: the snapshot is not transmitted
+  // at all, because the consent copy only ever promised the typed question, the
+  // current screen and the selected chain.
+  //
+  // The rule below still stands, as defence in depth rather than as a live
+  // egress control — the cut is one edit away from being undone, and a
+  // properly-disclosed per-page feature may be rebuilt. Treat anything added
+  // here as if it will be transmitted.
   //
   // `duress_configured` was in this object and has been removed. The I3
   // suppression below is correct and was never the problem — the disclosure
