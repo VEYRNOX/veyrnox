@@ -6,8 +6,17 @@
 //
 // See docs/bug-report-recording-plan.md for the full contract.
 //
-// This is a foundation module for Slice 1a. Nothing imports it yet at runtime.
-// Slice 1b will consume it from the Settings entry point and the native bridge.
+// CONSUMED AT RUNTIME. components/bugReport/BugReportButton.jsx calls
+// isBugReportEnabled() on every render, and Settings.jsx renders that button —
+// both landed in the same commit as this file.
+//
+// This header previously read "Nothing imports it yet at runtime. Slice 1b will
+// consume it from the Settings entry point", which was false when it was
+// written. Corrected 2026-09-05; the accurate statement is not "nothing calls
+// this" but "the gate is closed on every shipped build": VITE_BUG_REPORT_ENABLED
+// is set nowhere in the repo or in any workflow, and the comparison below is
+// strict-equal '1', so the button renders nowhere. Whoever flips that flag is
+// turning on a wired-up entry point, not adding one.
 //
 // Three gates compose:
 //   1. Ship gate  — VITE_BUG_REPORT_ENABLED === '1' (load-time constant).
