@@ -20,6 +20,7 @@ import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import { useDigitalShield } from '@/context/DigitalShieldContext';
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import ReferralPrompt from "@/components/ReferralPrompt";
+import { recordSuccessfulSend, triggerReviewPromptIfEligible } from "@/lib/reviewPrompt";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -247,6 +248,15 @@ function SendDoneView({ amount, currency, txResult, onSendAnother }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduce]);
 
+  // Native store-review prompt. No branching UI (Apple 1.1.7 / Play policy
+  // forbid sentiment-gated reviews). OS enforces its own caps; our local
+  // gate (≥3 sends, 90-day cooldown, declined-flag, I3-suppressed) prevents
+  // asking too early or after a decline. Both send paths land here via
+  // SendDoneView, so one mount-effect covers both.
+  useEffect(() => {
+    recordSuccessfulSend();
+    triggerReviewPromptIfEligible().catch(() => {});
+  }, []);
 
   const container = {
     hidden: {},

@@ -11,7 +11,8 @@ import { useWallet } from "@/lib/WalletProvider";
 import { useTier } from "@/lib/TierProvider";
 import { hasSafetyPlusAccess, tierLabel, TIER } from "@/lib/tier";
 import { getAuthModel } from "@/lib/authModel";
-import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText, FileSignature, BarChart3 } from "lucide-react";
+import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText, FileSignature, BarChart3, Star, MessageSquare } from "lucide-react";
+import { openStoreForRating, openFeedback } from "@/lib/reviewPrompt";
 import { isMessageSigningEnabled, setMessageSigningEnabled } from "@/lib/messageSigning";
 import { hasConsent, setConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
@@ -485,6 +486,49 @@ export default function Settings() {
         </div>
         <span className="text-sm text-primary font-medium">View</span>
       </Link>
+
+      {/* Rate & feedback — always-visible, non-gated paths. No sentiment
+          branching (Apple 1.1.7 / Play policy). Hidden in decoy/demo (I3);
+          the handlers themselves also refuse to fire under coercion, so a
+          stale-render tap still no-ops. */}
+      {!isDeniabilityOrDemoActive() && (
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => { openStoreForRating().catch(() => {}); }}
+            data-testid="rate-app-button"
+            className="w-full flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px] text-start"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Star className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Rate Veyrnox</p>
+                <p className="text-xs text-muted-foreground">Open the store review prompt</p>
+              </div>
+            </div>
+            <span className="text-sm text-primary font-medium">Rate</span>
+          </button>
+          <button
+            type="button"
+            onClick={openFeedback}
+            data-testid="send-feedback-button"
+            className="w-full flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px] text-start"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <MessageSquare className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Send feedback</p>
+                <p className="text-xs text-muted-foreground">Reach the team directly by email</p>
+              </div>
+            </div>
+            <span className="text-sm text-primary font-medium">Email</span>
+          </button>
+        </div>
+      )}
 
       {/* Danger Zone */}
       <div className="p-5 rounded-xl border border-destructive/30 bg-destructive/5 space-y-3">
