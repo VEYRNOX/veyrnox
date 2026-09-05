@@ -242,6 +242,25 @@ const specRuntimeSkips = {};
 let deferredUnitCount = 0;
 const unitJsonPath = path.join(REPORT_DIR, 'post-audit-unit.json');
 
+// Suites whose runtime report could not be read. NOT the same as "0 skips":
+// a run that crashed before writing JSON, or wrote something unparseable, tells
+// us nothing about what it skipped. The gate must not report full coverage on
+// the strength of a file it never read, so these block the verdict below.
+const runtimeEvidenceGaps = [];
+
+/** Fold a reader's `number | null` into a count, recording a gap for null. */
+function useRuntimeCount(suiteName, value) {
+  if (value === null) {
+    runtimeEvidenceGaps.push(suiteName);
+    console.warn(
+      `  ! ${suiteName}: NO runtime report — cannot tell how many cases were ` +
+      `skipped. Counting 0 for the merge, blocking the verdict.`,
+    );
+    return 0;
+  }
+  return value;
+}
+
 try {
   console.log('\n  Running: post-audit-unit');
   execFileSync('npm', POST_AUDIT_UNIT_COMMAND.map(
@@ -250,7 +269,7 @@ try {
     cwd: projectRoot,
     stdio: 'inherit',
   });
-  deferredUnitCount = readVitestSkipped(unitJsonPath);
+  deferredUnitCount = useRuntimeCount('post-audit-unit', readVitestSkipped(unitJsonPath));
   results.suites['post-audit-unit'] = {
     status: 'completed',
     failures: 0,
@@ -264,7 +283,7 @@ try {
 } catch (e) {
   // Read the JSON anyway: a failing run still reports how many were skipped,
   // and losing that would understate the deferral count.
-  deferredUnitCount = readVitestSkipped(unitJsonPath);
+  deferredUnitCount = useRuntimeCount('post-audit-unit', readVitestSkipped(unitJsonPath));
   results.suites['post-audit-unit'] = {
     status: 'failed',
     error: e.message,
@@ -321,7 +340,7 @@ for (const suite of TEST_SUITES) {
   // Read the report on BOTH paths, for the same reason as the unit suite above:
   // a failing run still reports how many cases it skipped, and dropping that
   // understates the deferral count.
-  const runtimeSkips = readPlaywrightSkipped(reportFile);
+  const runtimeSkips = useRuntimeCount(suiteName, readPlaywrightSkipped(reportFile));
   specRuntimeSkips[suite] = runtimeSkips;
   results.suites[suiteName].skipped = Math.max(specDeferrals[suite] || 0, runtimeSkips);
   if (results.suites[suiteName].skipped > 0) {
@@ -360,12 +379,24 @@ const completedSuites = Object.entries(results.suites)
 const nothingDeferred = deferredValidationCount === 0 && deferredUnitCount === 0;
 const allSuitesRan = Object.values(results.suites).every((s) => s.status === 'completed');
 
+// "Nothing deferred" is only believable if every suite's runtime report was
+// actually read. Without this, a run whose reports never landed prints full
+// coverage on zero evidence — the failure mode the deferral gate exists to
+// prevent, arrived at from the other direction.
+const runtimeEvidenceComplete = runtimeEvidenceGaps.length === 0;
+if (!runtimeEvidenceComplete) {
+  console.warn(
+    `\n  ! runtime evidence missing for: ${runtimeEvidenceGaps.join(', ')} — ` +
+    `the deferral count is a FLOOR, not a total.`,
+  );
+}
+
 // Is ANY completed suite behavioural? Today none are — every post-audit suite
 // reads source and asserts on its content. Kept as a computed value rather than
 // a constant so adding a genuine browser-driving suite upgrades the report
 // automatically instead of silently leaving it understated.
 const behaviouralEvidence = completedSuites.some((name) => !SOURCE_LEVEL_SUITES.has(name));
-const evidenceClass = !allSuitesRan || !nothingDeferred
+const evidenceClass = !allSuitesRan || !nothingDeferred || !runtimeEvidenceComplete
   ? 'incomplete'
   : behaviouralEvidence
     ? 'behaviour-verified'
@@ -409,7 +440,7 @@ console.log('---');
 // `suitesPassed` now also requires that nothing was SKIPPED inside the unit
 // suite — vitest exits 0 with skips present, so the exit code alone let a
 // skipped case read as a passed control (branch review S-1).
-const suitesPassed = allSuitesRan && nothingDeferred;
+const suitesPassed = allSuitesRan && nothingDeferred && runtimeEvidenceComplete;
 
 // A check backed only by source-level assertions is `source-verified`, not
 // `passed`. Same evidence, honest label.
