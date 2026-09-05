@@ -660,6 +660,28 @@ All BUILT / device-verified on the test iPhone — NOT independently audited.
 - AI portfolio advisor — 💡 advisory-only allowed; auto-executing ❌ out of scope
 
 ## 10. Niceties / analytics / utilities — 💡 mostly parking-lot
+- **Opt-in bug-report screen recording — 🎯 TARGET / HONEST-DISABLED 2026-09-05.**
+  User-initiated, ≤30s, previewable, E2E-encrypted to an OFFLINE support keypair.
+  Deliberately NOT session replay (session replay on a self-custody wallet would
+  record seed reveal + PIN entry as pixels — I1 break; automatic capture would
+  break I2/I3). Slice 1a landed 2026-09-05 as pure foundations: design doc at
+  [docs/bug-report-recording-plan.md](bug-report-recording-plan.md), route
+  allowlist at [src/lib/bugReport/recordableRoutes.js](../src/lib/bugReport/recordableRoutes.js)
+  (fail-closed, denylist-wins, segment-boundary matched — no `/settingsomething`
+  substring leak), composed enable gate at
+  [src/lib/bugReport/bugReportEnabled.js](../src/lib/bugReport/bugReportEnabled.js)
+  (ship flag `VITE_BUG_REPORT_ENABLED` default OFF + deniability + native-only,
+  I4 fail-closed everywhere). **Zero runtime effect** — no application code
+  imports either module yet, so Slice 1a is safe to merge under the 1.0.1
+  submission hold. Slice 1b: React screens (explainer/consent/playback), mock
+  capture, Supabase Storage bucket + `create_bug_report_upload` RPC, libsodium
+  sealed-box encryption. Slice 2: iOS ReplayKit + Android MediaProjection
+  Capacitor plugins, real-device verification. Slice 3: flag flip, Play Data
+  Safety + Apple App Privacy amendments (add "user-triggered screen recording"
+  category — currently declared as "no third-party analytics, no screen
+  capture"), versionCode bump, submit. Owner-approved for the 1.0.1/1.0.2 train
+  ahead of the independent audit; Slice 3 will NOT flip the flag until store
+  disclosures are LIVE on the listing pages.
 - **PostHog forwarding — 🅿️ PARKED 2026-09-05 (owner decision).** Suggestion was to
   fork the existing `functions/api/rpc/[fn].js` proxy so events routed to the
   `track_event` RPC also POST to PostHog EU (`eu.i.posthog.com/i/v0/e/`),
