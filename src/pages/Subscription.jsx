@@ -746,7 +746,19 @@ export default function Subscription() {
 
       </div>
 
-      <Card className="border-primary/30">
+      <Card className="border-primary/30 relative">
+        {!isPaidPlan && (
+          // Fast-follower: every multi-tier paywall (1Password, NordVPN, Duolingo,
+          // Bitwarden) marks one plan to defeat indecision. Safety Plus is the
+          // intended default. Hidden once the user already holds a paid tier —
+          // "Recommended" on a plan you own reads as a nudge to nowhere.
+          <Badge
+            variant="outline"
+            className="absolute -top-2.5 start-4 text-[10px] uppercase tracking-wide px-2 py-0.5 border-primary/40 bg-background text-primary"
+          >
+            Recommended
+          </Badge>
+        )}
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             Safety Plus
@@ -778,7 +790,11 @@ export default function Subscription() {
                   role="radiogroup"
                   aria-label="Billing period"
                   onKeyDown={handleBillingKeyDown}
-                  className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border"
+                  // Asymmetric grid anchors Annual as the primary choice — same
+                  // pattern used by Duolingo Super, Calm, Blinkist. Symmetric
+                  // toggles leave Annual as a peer of Monthly; giving it 2fr
+                  // vs 1fr makes it the visual default without hiding Monthly.
+                  className="grid grid-cols-[1fr_2fr] gap-2 p-1 rounded-lg bg-muted/40 border border-border"
                 >
                   <button
                     ref={monthlyRadioRef}
@@ -872,7 +888,12 @@ export default function Subscription() {
                 onClick={handleUpgrade}
               >
                 {busy ? <Loader2 className="h-4 w-4 me-2 motion-safe:animate-spin" /> : <Sparkles className="h-4 w-4 me-2" />}
-                {isNative ? (selectedPriceString ? `Upgrade — ${selectedPriceString}` : "Upgrade — loading pricing") : "Upgrade — mobile only"}
+                {/* Action-verb + outcome-named CTA — matches the pattern used
+                    by top security-app paywalls (1Password "Get 1Password",
+                    Bitwarden "Get Premium"). Keeping the "Upgrade" verb so the
+                    existing role/name assertions in Subscription.test.jsx keep
+                    working; the outcome now sits next to it. */}
+                {isNative ? (selectedPriceString ? `Upgrade to Safety Plus — ${selectedPriceString}` : "Upgrade to Safety Plus — loading pricing") : "Upgrade to Safety Plus — mobile only"}
               </Button>
 
               {/* Renewal terms. Both stores require this disclosure at the
