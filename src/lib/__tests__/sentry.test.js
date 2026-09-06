@@ -27,7 +27,7 @@ vi.mock('@/wallet-core/deniabilitySession', () => ({
 
 vi.mock('@/api/demoClient', () => ({ DEMO: false }));
 
-vi.mock('@/lib/consent', () => ({
+vi.mock('../consent', () => ({
   hasConsent: vi.fn(() => true),
 }));
 
@@ -55,7 +55,7 @@ beforeEach(() => {
     import('@/wallet-core/deniabilitySession').then((m) => {
       m.isDeniabilityOrDemoActive.mockReturnValue(false);
     }),
-    import('@/lib/consent').then((m) => {
+    import('../consent').then((m) => {
       m.hasConsent.mockReturnValue(true);
     }),
   ]);
@@ -77,7 +77,7 @@ describe('initSentry guards', () => {
 
   it('does nothing when consent is not granted', async () => {
     const Sentry = await import('@sentry/react');
-    const consent = await import('@/lib/consent');
+    const consent = await import('../consent');
     consent.hasConsent.mockReturnValueOnce(false);
     await withEnv({ VITE_SENTRY_DSN: 'https://x@y/1' }, async () => {
       const { initSentry } = await loadFresh();

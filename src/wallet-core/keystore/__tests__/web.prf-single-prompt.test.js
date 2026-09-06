@@ -118,11 +118,11 @@ describe('web.js getHardwareFactor — single-prompt enrollment (#1030)', () => 
     vi.resetModules();
     vi.clearAllMocks();
     delete global.window;
-    delete global.navigator;
+    vi.unstubAllGlobals();
   });
 
   async function loadModule(creds) {
-    global.navigator = { credentials: creds };
+    vi.stubGlobal('navigator', { credentials: creds });
     vi.resetModules();
     const mod = await import('../web.js');
     return mod.webKeyStore;
