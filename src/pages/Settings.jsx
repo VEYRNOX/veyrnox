@@ -575,23 +575,29 @@ export default function Settings() {
           stale-render tap still no-ops. */}
       {!isDeniabilityOrDemoActive() && (
         <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => { openStoreForRating().catch(() => {}); }}
-            data-testid="rate-app-button"
-            className="w-full flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px] text-start"
-          >
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <Star className="h-5 w-5 text-primary" />
+          {/* Rate row is native-only. Web has no store-review API; the URL
+              fallback would open a marketing page (iOS App ID not yet
+              assigned; Android falls through to Play, but not worth the
+              UA-conditional row when the intended surface is the app). */}
+          {isNative && (
+            <button
+              type="button"
+              onClick={() => { openStoreForRating().catch(() => {}); }}
+              data-testid="rate-app-button"
+              className="w-full flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px] text-start"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Star className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Rate Veyrnox</p>
+                  <p className="text-xs text-muted-foreground">Open the store review prompt</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold">Rate Veyrnox</p>
-                <p className="text-xs text-muted-foreground">Open the store review prompt</p>
-              </div>
-            </div>
-            <span className="text-sm text-primary font-medium">Rate</span>
-          </button>
+              <span className="text-sm text-primary font-medium">Rate</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={openFeedback}
