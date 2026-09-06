@@ -95,6 +95,13 @@
       "enable_aria": "Turn on anonymous usage data and crash reports",
       "disable_aria": "Turn off anonymous usage data and crash reports"
     },
+    "advisorConsent": {
+      "label": "AI Security Advisor — online answers",
+      "description": "Opt-in · your typed questions leave the device",
+      "help": "When on, the questions you type in the Advisor are sent to our proxy and answered by a third-party AI model, along with the screen you are on, the selected chain, and a random install ID used only for a per-device daily limit. Turning it off stops that immediately; the Advisor still answers from its built-in knowledge. Turning it back on re-shows the full explanation so you can agree to it with the details in front of you.",
+      "enable_aria": "Review and turn on online AI Security Advisor answers",
+      "disable_aria": "Turn off online AI Security Advisor answers"
+    },
     "delete_account": {
       "title": "Danger Zone",
       "clear_cache_label": "Clear local cache",

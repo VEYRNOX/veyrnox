@@ -100,7 +100,7 @@ export default function TermsLegal() {
         {/* §0 — Privacy policy (mirrors veyrnox.com/privacy) */}
         <Section icon={ShieldCheck} title="Privacy policy">
           <p className="font-medium">
-            Last updated: 6 September 2026.{" "}
+            Last updated: 7 September 2026.{" "}
             <a
               href={PRIVACY_POLICY_URL}
               target="_blank"
@@ -113,9 +113,11 @@ export default function TermsLegal() {
           </p>
           <p className="font-semibold text-foreground">
             There is no account, no user database, and no server-side copy of your wallet, keys,
-            or activity. Your wallet lives on your device, encrypted. The one thing we record is a
-            short list of anonymous usage events — and only if you opt in. Set out in full in
-            section 11.
+            or activity. Your wallet lives on your device, encrypted. Three things can leave it,
+            each only in a specific case: a short list of anonymous usage events — and only if you
+            opt in (section 11); the questions you type into the AI Security Advisor, and only if
+            you enable it (section 9); and the recipient address, and only when the paid pre-send
+            safety check runs (section 10).
           </p>
 
           <div className="mt-2 rounded-lg border border-border bg-secondary/30 px-4 py-1">
@@ -123,8 +125,10 @@ export default function TermsLegal() {
               <p>
                 Veyrnox is a self-custody wallet built so there is as close to nothing to collect as
                 a working app allows. We do not run user accounts, we do not operate a database of
-                users or wallets, and our backend never stores your balances, addresses, or
-                transaction history.
+                users or wallets, and our backend never stores your balances or transaction
+                history. Addresses are the one qualified case: see sections 9 and 10 for the two
+                narrow situations in which one is transmitted, and note that transmitting is not
+                the same as storing.
               </p>
               <p>
                 Everything that could identify you or your holdings is generated and kept on your
@@ -142,7 +146,7 @@ export default function TermsLegal() {
               <ul className="list-disc ps-4 space-y-1">
                 <li><b>No account or sign-up.</b> You don&rsquo;t register, and we never ask for a name or password.</li>
                 <li><b>No private keys or seed phrases.</b> These are generated and encrypted on your device and never leave it.</li>
-                <li><b>No wallet database.</b> Balances, labels, addresses, and transaction history are stored on your device, not on our servers.</li>
+                <li><b>No wallet database.</b> Balances, labels, addresses, and transaction history are stored on your device, not on our servers. Two features can transmit an address without storing a database of them — see sections 9 and 10.</li>
                 <li><b>No behavioural profiling or ad tracking.</b> No advertising IDs, no third-party trackers, no cross-app tracking, and no profiling of you or your holdings. If you opt in, we record a small set of anonymous usage events — see section 11.</li>
                 <li><b>No identity data.</b> No KYC, identity documents, or biometric data.</li>
               </ul>
@@ -165,7 +169,9 @@ export default function TermsLegal() {
               <p>
                 Apart from the anonymous events in section 11 — which exist only if you opted in — we
                 hold no personal data, so there is nothing for us to retain and nothing for us to
-                delete on our side.
+                delete on our side. The Advisor questions in section 9 and the address checks in
+                section 10 pass through our proxy to answer a single request; we do not keep them
+                as records against you, and neither carries your name or wallet.
               </p>
               <p>
                 Those anonymous events are kept for up to 12 months and then deleted. Because they
@@ -203,7 +209,8 @@ export default function TermsLegal() {
                 you already hold and control all of it on your own device.
               </p>
               <p>
-                The one exception is the anonymous usage events in section 11. These are pseudonymous
+                The closest thing to an exception is the anonymous usage events in section 11, and
+                the install identifier that section 9 also uses. These are pseudonymous
                 and are not linked to your identity, so we are unable to connect them to a specific
                 person, including you. Turning the setting off in Settings &rarr; Privacy stops any
                 further events immediately. Deleting the app, clearing its storage, or running a
@@ -226,6 +233,29 @@ export default function TermsLegal() {
                 used to build a profile of you, and we do not attach your identity to them. Those
                 providers operate under their own policies.
               </p>
+              <p>
+                <b>WalletConnect.</b> To connect to decentralised apps, session metadata &mdash; the
+                dApp name, the chain, and the public address you approve for that session &mdash;
+                travels through the WalletConnect relay operated by Reown. The contents of individual
+                signing requests are end-to-end encrypted between your device and the dApp and are
+                not readable by the relay. Reown operates under its own privacy policy.
+              </p>
+              <p>
+                <b>Buying crypto (Transak).</b> If you tap Buy, the app hands off to Transak&rsquo;s
+                hosted flow. Transak performs identity verification (KYC) and collects the personal
+                data financial regulations require in your jurisdiction, and it processes the card
+                payment. Veyrnox never receives that personal data; Transak sends the purchased
+                crypto to the wallet address your device supplies when you continue. Transak operates
+                under its own privacy policy.
+              </p>
+              <p>
+                <b>Subscriptions (RevenueCat).</b> Paid tiers are purchased through the App Store or
+                Google Play. We use RevenueCat to recognise your entitlement across devices. It holds
+                a subscriber record keyed to an Apple or Google purchase identifier, never linked to
+                your wallet address, seed phrase, or in-app activity, and we send it no wallet data.
+                Cancel in your Apple ID or Google Play account &mdash; deleting the app does not
+                cancel a subscription. Apple, Google, and RevenueCat operate under their own policies.
+              </p>
             </TermsSection>
 
             <TermsSection number={9} title="AI Security Advisor" group="privacy">
@@ -238,14 +268,28 @@ export default function TermsLegal() {
               <p>
                 When enabled, each message you type is sent to our Veyrnox-run proxy, which
                 forwards it to a third-party language model provider that produces the reply.
-                Alongside your message we send the name of the screen you are on (for example
-                &ldquo;Dashboard&rdquo; or &ldquo;Send&rdquo;) so answers can be relevant to what
-                you are doing, and a small &ldquo;shell&rdquo; context such as counts and whether
-                the wallet is locked. We never send balances, addresses, seed phrases, private
-                keys, PINs, transaction hashes, or the recipient of any transaction. Before each
-                message is sent, the app runs a local scrubber that strips secret-looking material
-                from the text; if you type a seed phrase or private key into the chat by mistake,
-                the assistant refuses to store or repeat it.
+                Alongside your message we send exactly two pieces of context: the name of the
+                screen you are on (for example &ldquo;Dashboard&rdquo; or &ldquo;Send&rdquo;) and
+                which chain is selected, so answers can be relevant to what you are doing. Nothing
+                else about your wallet&rsquo;s state is sent &mdash; no counts, no balances, no lock
+                status.
+              </p>
+              <p>
+                Each message also carries the same random install identifier described in
+                &sect;11, so a per-device limit on how many questions can be asked in a day can be
+                enforced. It is not linked to your name, wallet, or addresses, and it is removed
+                when you delete the app, clear its storage, or run a panic wipe &mdash; but it does
+                mean advisor messages from one install can be recognised as coming from that
+                install. If you have declined usage events, enabling the advisor will still create
+                this identifier.
+              </p>
+              <p>
+                We never add your balances, addresses, seed phrases, private keys, PINs, or
+                transaction hashes to a message. Anything you type yourself is sent as you typed it,
+                minus secrets a local scrubber catches first: it strips recovery phrases, private
+                keys and PIN-shaped digits before the message leaves the device. The scrubber does
+                not remove wallet addresses, so an address you paste into the chat is sent, and may
+                additionally be checked against the screening sources described in &sect;10.
               </p>
               <p>
                 In decoy (duress) sessions and in demo mode, the AI Security Advisor is hidden and
@@ -263,15 +307,24 @@ export default function TermsLegal() {
               <p>
                 Before you send crypto, the app can check the recipient address against public
                 sanctions lists, known phishing registries, hack-fund trackers and contract-risk
-                signals so you get a warning if the address is a known bad actor. To do this, the
-                recipient address you entered &mdash; and only the recipient address, never yours,
-                never the amount, never the transaction &mdash; is sent to our Veyrnox-run proxy,
-                which queries the aggregators on your behalf.
+                signals so you get a warning if the address is a known bad actor.{" "}
+                <b>This online check runs only on the paid AI Security Protection tier.</b> On
+                every other tier the send screen uses the locally-cached, signed blocklist
+                described below and nothing leaves the device.
               </p>
               <p>
-                This is the exception to the &ldquo;no addresses leave the device&rdquo; rule
-                elsewhere in this policy, and it exists because it is the top defence against
-                sending funds into a scam. If all sources are unavailable the app says
+                When the online check does run, what is sent to our Veyrnox-run proxy is: the
+                recipient address, the chain, the token or contract address when you are sending a
+                token, the amount, the transaction&rsquo;s call data, and &mdash; on Solana only
+                &mdash; the unsigned transaction, so the aggregators can simulate it.{" "}
+                <b>Your own wallet address is never sent</b>; a fixed all-zero address is sent
+                in its place, so the check cannot be tied back to you by the aggregators or by
+                anything reading the request on the way.
+              </p>
+              <p>
+                This is one of two places an address can leave the device &mdash; the other is
+                an address you type into the Advisor yourself (&sect;9) &mdash; and it exists
+                because it is the top defence against sending funds into a scam. If all sources are unavailable the app says
                 &ldquo;unknown&rdquo; rather than defaulting to &ldquo;clean&rdquo; &mdash; a
                 missing check never quietly becomes a green light.
               </p>
@@ -286,7 +339,12 @@ export default function TermsLegal() {
             <TermsSection number={11} title="Cookies & Anonymous Usage Events" group="privacy">
               <p>
                 The Veyrnox app uses no cookies, no third-party analytics SDKs, and no tracking
-                pixels. Our website uses no advertising or third-party tracking cookies.
+                pixels. <b>Our website is different from the app.</b> veyrnox.com uses Google Tag
+                Manager and a Reddit advertising pixel to measure traffic and conversions, and
+                those may set cookies or local storage in your browser. They have no access to your
+                wallet, holdings, or transactions &mdash; the website cannot see any of that. You
+                can decline non-essential cookies in the banner shown on your first visit, and
+                blocking them has no effect on the app.
               </p>
               <p className="font-semibold text-foreground">
                 These events are opt-in and OFF by default. Unless you explicitly turn on{' '}

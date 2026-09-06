@@ -77,3 +77,48 @@ describe('Terms & legal — telemetry disclosure matches the app', () => {
     expect(openCookiesSection()).toMatch(/nothing is recorded in decoy \(duress\) sessions or in demo mode/i);
   });
 });
+
+// Added 2026-09-07. Each of these pins a sentence that was WRONG in the shipped
+// app until this change, found by rendering veyrnox.com and diffing it against
+// the code. They are worded to fail if the old claim comes back, not merely if
+// wording drifts — the point is the fact, not the phrasing.
+// The trigger's accessible name carries the section NUMBER; the panel's does not
+// (TermsSection sets aria-label={title}). Matching one pattern against both is
+// why the first draft of these tests failed.
+function openSection(title) {
+  renderPage();
+  fireEvent.click(screen.getByRole('button', { name: new RegExp('\\d+\\.\\s*' + title, 'i') }));
+  return screen.getByRole('region', { name: new RegExp(title, 'i') }).textContent.replace(/\s+/g, ' ');
+}
+
+describe('Terms & legal — claims that must match what the code actually does', () => {
+  it('does not deny website ad-tracking, and names what the site actually runs', () => {
+    const text = openSection('cookies & anonymous usage events');
+    // The false claim. veyrnox.com runs GTM + a Reddit ad pixel.
+    expect(text).not.toMatch(/website uses no advertising or third-party tracking cookies/i);
+    expect(text).toMatch(/Google Tag Manager/i);
+    expect(text).toMatch(/Reddit advertising pixel/i);
+  });
+
+  it('states that pre-send address screening is paid-tier only', () => {
+    // SendCrypto.jsx gates it on hasAdvisorOnlineAccess(currentTier); the policy
+    // used to read as though every user got the online check.
+    expect(openSection('recipient address screening'))
+      .toMatch(/only on the paid AI Security Protection tier/i);
+  });
+
+  it('discloses the install identifier the Advisor sends', () => {
+    // SecurityAdvisor.jsx sends device_id: getOrCreateDeviceId() on every chat call.
+    expect(openSection('ai security advisor'))
+      .toMatch(/same random install identifier/i);
+  });
+
+  it('does not claim wallet-shell context is sent with Advisor messages', () => {
+    // PR #2349 cut the page snapshot at the egress boundary; only current_screen
+    // and wallet_chain go out. Re-adding that claim without re-adding the payload
+    // would describe an egress that does not happen, and vice versa.
+    const text = openSection('ai security advisor');
+    expect(text).not.toMatch(/counts and whether the wallet is locked/i);
+    expect(text).toMatch(/exactly two pieces of context/i);
+  });
+});
