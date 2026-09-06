@@ -29,10 +29,13 @@ function renderPage() {
   );
 }
 
-/** Expand §9 and return its panel text. */
-function openSection9() {
+// Section number changed 9 → 11 on 2026-09-06 when two new sections
+// (AI Security Advisor, Recipient Address Screening) were inserted before it.
+// The match is loose on the leading number so a future reshuffle doesn't
+// silently re-hide this content behind a stale digit.
+function openCookiesSection() {
   renderPage();
-  const trigger = screen.getByRole('button', { name: /9\.\s*cookies & anonymous usage events/i });
+  const trigger = screen.getByRole('button', { name: /\d+\.\s*cookies & anonymous usage events/i });
   fireEvent.click(trigger);
   const region = screen.getByRole('region', { name: /cookies & anonymous usage events/i });
   return region.textContent.replace(/\s+/g, ' ');
@@ -46,31 +49,31 @@ describe('Terms & legal — telemetry disclosure matches the app', () => {
   });
 
   it('states that declining sends nothing and creates no identifier', () => {
-    expect(openSection9()).toMatch(/no event is sent and no install identifier is even created/i);
+    expect(openCookiesSection()).toMatch(/no event is sent and no install identifier is even created/i);
   });
 
   it('points at the Settings control that exists', () => {
-    expect(openSection9()).toMatch(/Settings\s*→\s*Privacy/i);
+    expect(openCookiesSection()).toMatch(/Settings\s*→\s*Privacy/i);
   });
 
   it('promises balances and amounts are never sent, with no bucketing exception', () => {
-    expect(openSection9()).toMatch(/not bucketed, not rounded, not sent at all/i);
+    expect(openCookiesSection()).toMatch(/not bucketed, not rounded, not sent at all/i);
   });
 
   // Disclosed because referralAttribution.js sends { code, source }. If the
   // code stops being sent this can relax — but it must never be undisclosed
   // while it is being sent.
   it('discloses that an applied referral code itself is transmitted', () => {
-    expect(openSection9()).toMatch(/a referral code was applied, and the code itself/i);
+    expect(openCookiesSection()).toMatch(/a referral code was applied, and the code itself/i);
   });
 
   it('discloses the send-flow and paywall events, not just the original seven', () => {
-    const text = openSection9();
+    const text = openCookiesSection();
     expect(text).toMatch(/a send was started, reached a given step, was abandoned, or completed/i);
     expect(text).toMatch(/a subscription prompt was shown, dismissed, or accepted/i);
   });
 
   it('still states that decoy and demo sessions send nothing at all', () => {
-    expect(openSection9()).toMatch(/nothing is recorded in decoy \(duress\) sessions or in demo mode/i);
+    expect(openCookiesSection()).toMatch(/nothing is recorded in decoy \(duress\) sessions or in demo mode/i);
   });
 });
