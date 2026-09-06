@@ -3001,3 +3001,71 @@ report `r14-…` ("App Store Discovery and Engagement Standard", category
 not produce these numbers. When it generates, it is worth re-reading them from it: the
 console tiles and the report columns are not guaranteed to be the same measure, and a
 mismatch would be the useful finding.
+
+## 2026-09-06 Daily dependency audit — 2 new moderate advisories, and the shrinkwrap that hides them
+
+Audit run at `origin/main` `e976ae17`. Result: **0 critical, 0 high, 4 moderate, 5 low**
+across 2,186 resolved packages. Seven of the nine were the recorded accepted residuals
+(`elliptic` chain 5 low, `stream-json`/`jayson` 2 moderate), unchanged in severity and
+count. Two were new.
+
+| Package | Advisory | Severity | Reach |
+|---|---|---|---|
+| `qs` <6.16.0 | [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) isBuffer DoS | moderate, CVSS 5.3 | dev only |
+| `qs` 6.14.2–6.15.3 | [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx) array-limit bypass | moderate, CVSS 3.7 | dev only |
+| `@xmldom/xmldom` 0.9.0–0.9.11 | [GHSA-6gmq-8vp8-gcm6](https://github.com/advisories/GHSA-6gmq-8vp8-gcm6) XML fragment injection | moderate | dev only |
+
+Both reached the tree solely through the Appium/WebdriverIO E2E harness. Neither is a
+production dependency, and no wallet-core, signing or key-material path is involved.
+
+**FIXED — PR #2384, merged 2026-09-06 14:49 UTC (`a64b5458`).** Lockfile only;
+`package.json` unchanged. Re-derived on `main` at `c53afafd` (after the unrelated
+dependabot merge #2392): `qs 6.16.0` and `@xmldom/xmldom 0.9.12` at **all four** paths,
+and `npm audit` reports 0 critical / 0 high / 2 moderate / 5 low with only the two
+accepted residuals as advisory roots.
+
+### The part worth keeping: a green `npm audit` was compatible with the vulnerable code still installed
+
+The obvious fixes do not work here, and both of them *look* like they do.
+
+Four vulnerable copies existed. The root ones (via `express`/`body-parser` and `plist`)
+bump by ordinary in-range resolution. The copies under
+`node_modules/appium-uiautomator2-driver/node_modules/` do not: that package publishes its
+own `npm-shrinkwrap.json` (`hasShrinkwrap: true` on its lockfile entry), which **outranks
+both our `package-lock.json` and our `package.json` `overrides`**. Two approaches were
+tried and discarded:
+
+- **Deleting the nested lockfile entries** took `npm audit` from 4 moderate to 2 — and a
+  subsequent `npm ci` reinstalled `qs 6.15.3` and `@xmldom/xmldom 0.9.11` on disk anyway,
+  with the nested `express`/`plist` still resolving to them. The advisory went quiet; the
+  code did not move.
+- **An `overrides` pin** to `^6.16.0` / `^0.9.12` was ignored outright by the shrinkwrap.
+
+The working fix is a version bump of the **shrinkwrap owner**:
+`appium-uiautomator2-driver` 8.5.0 → 8.6.1, inside the declared `^8.5.0` range, whose
+shrinkwrap carries the patched versions. Verified on the installed tree after `npm ci`,
+not on the audit — that distinction is the whole finding.
+
+**This also corrects the record for the retired `shell-quote` / `body-parser` residuals.**
+Those entries said the nested subtree cleared "as a side effect of routine lockfile
+regeneration" and that "nothing is pinning this". Both are wrong. Nested `shell-quote`
+tracks the driver version one-to-one at every point in history — `87e9897b` 8.2.0 → 1.10.0;
+`ff78ac99` 8.1.2 → 1.8.4; `0295fd40` 8.2.1 → 1.10.0; `8b3d3fb` 8.4.0 → 1.10.0; `7d28be38`
+8.5.0 → 1.10.0; `e17a200e` 8.6.1 → 1.10.0 — so the "transient regression" of 2026-07-29 was
+a driver **downgrade** and the restore was a bump. The retirement conclusions stand; only
+the explanation was wrong, and the wrong explanation pointed at remediations that cannot
+work. Corrected in `.claude/scheduled-tasks/veyrnox-daily-dep-audit/SKILL.md` and
+`package.json`'s `//overrides-audit-notes` by **PR #2393 — OPEN at time of writing, verify
+before citing.**
+
+### Verification status, stated honestly
+
+- **CI/INTERNAL only.** `npm ci` clean, `npm run build` exit 0, `vitest` 763 files /
+  6417 passed / 9 skipped, and `e2e-emulator-tests (31, google_apis)` SUCCESS — the last
+  of those being the only check that exercises the Appium harness the driver bump touches.
+- **Not verified:** nothing on-device, no on-chain txid, and this is not the outstanding
+  independent audit. A dev-dependency bump does not touch the shipped app.
+- `veyrnox-appium-shellquote-watch` was found **already deleted** from the scheduler
+  (absent by 2026-09-06; exact date unrecoverable, the registry is not in git). Both
+  `SKILL.md` copies were retained. Regression cover is the daily audit itself, which
+  surfaces nested findings unsuppressed — as it did here.
