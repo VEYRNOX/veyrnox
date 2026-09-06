@@ -13,7 +13,7 @@
 // whole suite would stay green.
 //
 // Sibling file rather than a new case in RestoreFromShares.integration.test.jsx:
-// that suite is describe.sequential over module-scoped single-wallet fixtures,
+// that suite runs sequentially over module-scoped single-wallet fixtures,
 // and swapping a two-wallet fixture into it would couple the two. Its stale
 // scope note (which described the pre-#1807 limitation as intentional) is
 // corrected in the same commit.
@@ -132,7 +132,7 @@ afterAll(() => {
   vi.unstubAllEnvs();
 });
 
-describe.sequential('restoreFromRecoveryBundles — full-container preservation (C-2)', () => {
+describe('restoreFromRecoveryBundles — full-container preservation (C-2)', () => {
   it('restores BOTH wallets, not just wallets[0]', async () => {
     renderProvider();
     await waitFor(() => expect(walletContext).toBeTruthy());
