@@ -147,6 +147,21 @@ function DemoDashboard() {
   const animRef = useRef(null);
 
   useEffect(() => {
+    // Prefetch heavy action-row route chunks so first tap on Send/Receive/Buy
+    // doesn't stall on a cold chunk fetch (SendCrypto alone is ~3k LOC).
+    const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 300));
+    const handle = idle(() => {
+      import('./SendCrypto');
+      import('./ReceiveCrypto');
+      import('./BuyCrypto');
+    });
+    return () => {
+      if (window.cancelIdleCallback) window.cancelIdleCallback(handle);
+      else clearTimeout(handle);
+    };
+  }, []);
+
+  useEffect(() => {
     // Re-stamp the "last synced" time whenever the wallets query finishes loading
     // or its data actually refreshes. Depend on react-query's stable `dataUpdatedAt`
     // timestamp rather than the `wallets` array: the `= []` default produces a new

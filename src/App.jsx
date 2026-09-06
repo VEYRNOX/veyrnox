@@ -129,7 +129,7 @@ const AuthenticatedApp = () => {
   useCryptoDiagnostics();
   // Render the main app
   return (
-    <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center"><Spinner size="lg" /></div>}>
+    <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center bg-background"><Spinner size="lg" /></div>}>
     <Routes>
       <Route path="/landing" element={<LandingGuard />} />
       <Route path="/onboarding/restore-shares" element={<RestoreFromShares />} />
