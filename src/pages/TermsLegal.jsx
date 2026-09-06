@@ -219,13 +219,22 @@ export default function TermsLegal() {
               </p>
             </TermsSection>
 
-            <TermsSection number={8} title="Third-Party Networks" group="privacy">
+            <TermsSection number={8} title="Third-Party Networks & Processors" group="privacy">
               <p>
                 To show balances and broadcast transactions, the app connects to public blockchain RPC
                 nodes and price feeds. These requests are necessary to use a blockchain. They are not
-                used to build a profile of you, and we do not attach your identity to them. Those
-                providers operate under their own policies.
+                used to build a profile of you, and we do not attach your identity to them.
               </p>
+              <p>
+                A small number of third-party services are used for specific features. Each one only
+                sees what that feature needs, and each operates under its own policy:
+              </p>
+              <ul className="list-disc ps-4 space-y-1">
+                <li><b>WalletConnect / Reown relay</b> &mdash; used when you approve a dApp session. The relay forwards encrypted session messages; it cannot read wallet balances or transaction contents.</li>
+                <li><b>Transak</b> &mdash; used only if you buy crypto in-app with fiat. Transak is the merchant of record and performs its own KYC on you; VEYRNOX never sees your ID documents or card details.</li>
+                <li><b>RevenueCat</b> &mdash; used to verify Safety Plus (and, once live, AI Security Protection) subscription entitlements with the App Store and Google Play. RevenueCat sees an anonymous app-user ID and the store receipt; it does not see wallet contents.</li>
+                <li><b>Supabase (EU region)</b> &mdash; hosts the anonymous usage events described in &sect;11. Data stays in the EU. Each event payload is capped at 4 KB so a bug cannot accidentally exfiltrate anything larger.</li>
+              </ul>
             </TermsSection>
 
             <TermsSection number={9} title="AI Security Advisor" group="privacy">
@@ -238,14 +247,22 @@ export default function TermsLegal() {
               <p>
                 When enabled, each message you type is sent to our Veyrnox-run proxy, which
                 forwards it to a third-party language model provider that produces the reply.
-                Alongside your message we send the name of the screen you are on (for example
-                &ldquo;Dashboard&rdquo; or &ldquo;Send&rdquo;) so answers can be relevant to what
-                you are doing, and a small &ldquo;shell&rdquo; context such as counts and whether
-                the wallet is locked. We never send balances, addresses, seed phrases, private
-                keys, PINs, transaction hashes, or the recipient of any transaction. Before each
-                message is sent, the app runs a local scrubber that strips secret-looking material
-                from the text; if you type a seed phrase or private key into the chat by mistake,
-                the assistant refuses to store or repeat it.
+                Alongside your message we send two small pieces of context: <code>current_screen</code>
+                (the name of the screen you are on, for example &ldquo;Dashboard&rdquo; or
+                &ldquo;Send&rdquo;) and <code>wallet_chain</code> (which blockchain the current
+                account is on). We also attach the same anonymous install identifier
+                (<code>device_id</code>) used for the usage events in &sect;11, so the model can
+                keep the conversation coherent within a session; it is not linked to your
+                identity.
+              </p>
+              <p>
+                Before each message is sent, a local scrubber strips seed phrases, private keys and
+                PINs from the text: if you type any of those into chat by mistake the model never
+                receives them. <b>Wallet addresses are not stripped</b> &mdash; if you paste or type
+                an address into a chat message, that address goes to the model along with the rest
+                of your text. We do not automatically send balances, transaction hashes, or the
+                recipient of any pending transaction on your behalf, but anything you choose to
+                type is forwarded verbatim after the scrubber runs.
               </p>
               <p>
                 In decoy (duress) sessions and in demo mode, the AI Security Advisor is hidden and
@@ -263,10 +280,17 @@ export default function TermsLegal() {
               <p>
                 Before you send crypto, the app can check the recipient address against public
                 sanctions lists, known phishing registries, hack-fund trackers and contract-risk
-                signals so you get a warning if the address is a known bad actor. To do this, the
-                recipient address you entered &mdash; and only the recipient address, never yours,
-                never the amount, never the transaction &mdash; is sent to our Veyrnox-run proxy,
-                which queries the aggregators on your behalf.
+                signals so you get a warning if the address is a known bad actor. This live check
+                is part of <b>AI Security Protection</b> and only runs for users on that tier;
+                Free and Safety Plus plans use a locally-cached blocklist only.
+              </p>
+              <p>
+                When the live check runs, the request sent to our Veyrnox-run proxy includes: the
+                <b> recipient address</b>, the <b>contract address</b> if the send is a token or
+                contract call, the <b>calldata</b>, the transfer <b>value in wei</b>, and, for
+                Solana, the serialised transaction. Your own address is not sent as a screening
+                subject, but it is present inside the Solana transaction when that is what you are
+                signing. The proxy then queries the screening aggregators on your behalf.
               </p>
               <p>
                 This is the exception to the &ldquo;no addresses leave the device&rdquo; rule
@@ -286,7 +310,11 @@ export default function TermsLegal() {
             <TermsSection number={11} title="Cookies & Anonymous Usage Events" group="privacy">
               <p>
                 The Veyrnox app uses no cookies, no third-party analytics SDKs, and no tracking
-                pixels. Our website uses no advertising or third-party tracking cookies.
+                pixels. Our website (veyrnox.com) uses <b>Google Tag Manager</b> and a
+                <b> Reddit advertising pixel</b> to measure site traffic and marketing
+                conversions; both are gated by a consent banner and only fire after you accept.
+                See the site&rsquo;s <a href="https://veyrnox.com/privacy" className="underline">
+                privacy policy</a> for the full breakdown.
               </p>
               <p className="font-semibold text-foreground">
                 These events are opt-in and OFF by default. Unless you explicitly turn on{' '}
