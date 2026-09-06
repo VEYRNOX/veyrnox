@@ -144,17 +144,36 @@ export default function Settings() {
   const { theme, setTheme } = useTheme();
   const isDark = theme !== 'light';
 
-  const { data: wallets = [], isLoading } = useQuery({
+  // Wallet rows live in the SHARED veyrnox-appdata IndexedDB — one record per
+  // entity name, with no per-session partitioning (it is cleared only by panic
+  // wipe). Same K-2 class as AddressBook / PriceAlerts / NetworkManager: a
+  // decoy/hidden session would otherwise READ the real user's wallet names,
+  // currencies and count (the design system's "never show wallet count/list"
+  // rule) and WRITE to real rows — registerPasskey binds a credential id to a
+  // real wallet. Two chokepoints, matching those files: gate the query and
+  // blank the derived list, then gate each mutation.
+  const deniable = isDecoy || isHidden || isDeniability;
+
+  const { data: walletsRaw = [], isLoading } = useQuery({
     queryKey: ["wallets"],
     queryFn: () => base44.entities.Wallet.list(),
+    enabled: !deniable,
   });
+  const wallets = deniable ? [] : walletsRaw;
 
   const registerPasskey = useMutation({
-    mutationFn: (/** @type {any} */ vars) =>
-      base44.entities.Wallet.update(vars.walletId, {
+    mutationFn: (/** @type {any} */ vars) => {
+      if (deniable) {
+        throw Object.assign(
+          new Error('Wallet passkeys are not available in this session'),
+          { code: 'DENIABILITY_BLOCKED' },
+        );
+      }
+      return base44.entities.Wallet.update(vars.walletId, {
         passkey_registered: true,
         passkey_credential_id: vars.credentialId,
-      }),
+      });
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["wallets"] }),
   });
 
