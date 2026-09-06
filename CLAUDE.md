@@ -209,7 +209,9 @@ chokepoints already use). Regression-tested, BUILT, INTERNAL — not device-veri
 
 **Safety Plus IAP:** Monthly $5.99 + Annual $49.99 (same `safety_plus` entitlement).
 Store-side setup complete (Apple + Google + RevenueCat). iOS sandbox-purchase
-device-verified. **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV) —
+device-verified, and **one real production purchase exists** —
+`safety_plus_monthly_v2` on the App Store, bought 2026-08, still active, full price
+(no offer). Play-side: no purchase, real or otherwise. **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV) —
 verified 2026-07-21; Guideline 3.1.5(b) satisfied**, which unblocked the iOS real-device
 build and the first App Store / IAP submission. **Both HAPPENED — this line read "both
 still to be done" until 2026-09-06, six weeks after the app went live.** `1.0` is
@@ -248,11 +250,14 @@ annual). The two stores are NOT symmetric and code must not treat them as one me
   `introPhase`). Unresolvable → render no price rather than the base price (I4).
 - All offer paths fail CLOSED: a missing or unsigned offer throws `OFFER_UNAVAILABLE`
   rather than falling through to a full-price charge.
-Not verified: no real purchase has been completed on either platform. **⚠️ DOUBTFUL as of
-2026-09-06 — RevenueCat reports 1 active subscription and MRR £5 on a live App Store app.
-Whether that is production or the documented sandbox purchase is unresolved; see the App
-Store section above before relying on this sentence. Left standing rather than flipped,
-because "a purchase happened" is exactly as unverified right now as "none did".**
+**Not verified: no promotional OFFER has ever been exercised by a real purchase, on either
+platform.** None of the 10 store-side offers has been bought end to end, so the signing,
+identifier-matching and `offerPriceInfo` paths above remain code-verified only.
+**Corrected 2026-09-06.** This line read *"no real purchase has been completed on either
+platform"* — false since 2026-08. One production purchase exists (`safety_plus_monthly_v2`,
+App Store, 5.99, still active), but it carries `original_offer_type: "No offer"` — full
+price. The purchase falsified the sentence; it did not verify the offer machinery, which
+is what the sentence was there to guard. See the App Store section for the evidence.
 
 **Anonymous event tracking (PR #1321) — LIVE, and it changed the privacy story.**
 `api/trackEvent.js` writes 7 event types to our own Supabase with a random
@@ -456,16 +461,26 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
   Protection** group is NOT: `ai_security_protection_annual_2` and
   `ai_security_protection_monthly_2` are `READY_TO_SUBMIT`. So "IAP submission" is done
   for one tier and outstanding for the other — do not write either state onto both.
-- **⚠️ "no real purchase has been completed on either platform" (Promotional offers
-  section) is now DOUBTFUL and needs a definitive check — deliberately NOT rewritten.**
-  RevenueCat project `proj82381f44` on 2026-09-06 reports **1 active subscription, MRR
-  £5, 574 new customers and 578 active users in the last 28 days** (revenue in that
-  window: 0, so any purchase predates it). What is NOT established is whether that
-  subscription is production or the sandbox purchase this file already documents as
-  device-verified — the overview endpoint does not separate them, and asserting either
-  way without that split would repeat the mistake this correction is fixing. Settle it
-  by reading the subscription's `environment` for the owning customer, then update the
-  claim. **The user-count figures alone falsify any "not yet launched" framing.**
+- **A REAL PRODUCTION PURCHASE HAS BEEN COMPLETED. Settled 2026-09-06** (RevenueCat
+  project `proj82381f44`). This file said "no real purchase has been completed on either
+  platform"; that is false.
+  - **Safety Plus Monthly v2 (`safety_plus_monthly_v2`), App Store, purchased in the
+    month of 2026-08-01, still active on 2026-09-06.** Revenue chart: **5.99, 1
+    transaction**, `store: App Store`. Overview: 1 active subscription, MRR ~5. Active
+    every week continuously from the week of 2026-08-02 onward.
+  - **Why this is production and not the documented sandbox purchase**, which was the
+    open question: sandbox transactions generate NO revenue, and this one recorded
+    revenue and a counted transaction. Corroborating, an Apple sandbox monthly
+    subscription renews on an accelerated clock and self-expires within about half an
+    hour, so it cannot show as continuously active across five weeks. The `actives`
+    chart also exposes no sandbox dimension at all.
+  - **It was bought at FULL PRICE — `original_offer_type: "No offer"`.** So the claim's
+    *purpose* survives its wording: **no promotional-offer path has ever been exercised
+    by a real purchase.** None of the 10 store-side offers (4 referral tiers + retention
+    50%, monthly and annual) has been verified end to end, on either platform. Correct
+    the sentence; do not delete the caveat it was carrying.
+  - Reach, for scale: **574 new customers and 578 active users in the last 28 days.**
+    Any "not yet launched" framing anywhere in this file is wrong.
 - **iOS build history — corrected 2026-08-08 by querying ASC directly.** This file
   previously said "1.0 (2) uploaded 2026-07-23" and stopped there; the actual state
   is longer and the 1.0 train is now retired.
