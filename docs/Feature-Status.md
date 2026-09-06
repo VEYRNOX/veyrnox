@@ -764,12 +764,31 @@ All BUILT / device-verified on the test iPhone — NOT independently audited.
     statements of intent — it means the word "declared" has been doing work it
     cannot do, and "LIVE on the listing pages" has never been true for any
     declaration, screen recording or otherwise.
-  - **Apple side NOT checked.** `docs/app-store-runbook.md:124` says App Privacy
-    was "republished 2026-08-31" with a list of "current published
-    declarations". That was not verified in this pass — only Play Console was
-    opened — and it must not be corrected by inference from the Play finding.
-    Worth a direct App Store Connect read before anyone relies on it, given the
-    iOS app has also never been released.
+  - **Apple is the OPPOSITE of Play, and the difference is load-bearing.**
+    `docs/app-store-runbook.md:124` says App Privacy was "republished
+    2026-08-31" with a list of "current published declarations". An earlier
+    draft of this very bullet called that unverified and added *"given the iOS
+    app has also never been released"* — **that clause was false**, and it is
+    left quoted here rather than silently deleted because it is the exact
+    failure this file exists to catch: a Play finding generalised into an Apple
+    claim on nothing but symmetry.
+    Checked against App Store Connect on 2026-09-06 (app `6790188660`) and
+    against the PUBLIC iTunes lookup, which needs none of our credentials:
+    * **`1.0` is `READY_FOR_SALE` — Veyrnox is LIVE on the App Store**, seller
+      `Veyrnox LTD`, released 2026-07-28, free, minimum iOS 15.0,
+      https://apps.apple.com/us/app/veyrnox/id6790188660
+    * `1.0.1` is `READY_FOR_REVIEW`, created 2026-07-30 — staged, never
+      submitted. Consistent with the 1.0.1 hold.
+    So the runbook's premise is sound: a released app HAS a public product page
+    carrying App Privacy labels, and "published declarations" is a state Apple
+    has actually been in — unlike Play, where nothing has ever been reviewed.
+    **Still unverified:** the specific label list. App Privacy is not exposed by
+    the App Store Connect API — there is no `appDataUsages` resource and no
+    data-usage relationship on the app — so the content must be read from the
+    console or the product page, not asserted from here.
+  - **⚠️ This contradicts CLAUDE.md, which still says the first App Store
+    submission is "still to be done".** Not corrected here — it is a different
+    file and a wider claim than this entry's scope. Flagged for a separate pass.
 - **PostHog forwarding — 🅿️ PARKED 2026-09-05 (owner decision).** Suggestion was to
   fork the existing `functions/api/rpc/[fn].js` proxy so events routed to the
   `track_event` RPC also POST to PostHog EU (`eu.i.posthog.com/i/v0/e/`),
