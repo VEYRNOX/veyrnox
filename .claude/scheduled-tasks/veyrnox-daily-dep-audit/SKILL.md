@@ -199,11 +199,21 @@ Two consequences worth carrying:
   firing on a dependency key disappearing rather than a version moving, and its step 0
   re-derives the chain from the lockfile before probing. Until that PR it checked the
   Trezor and Ledger chains, which no longer exist — it could not have fired, while
-  still reporting "no upstream movement". **It has not yet RUN under the new brief**
-  (see below for what its 2026-08-25 run actually was); treat the first report under the
-  new brief as the confirmation,
-  per the `brace-expansion` lesson below that a watcher existing is not evidence it
-  watches the thing you care about.
+  still reporting "no upstream movement". Treat the first report under the new brief as
+  the confirmation, per the `brace-expansion` lesson below that a watcher existing is not
+  evidence it watches the thing you care about.
+- **It HAS now run under the new brief — verified 2026-09-06. This bullet said "It has
+  not yet RUN under the new brief" until then, and had been false for five days.**
+  `lastRunAt` is `2026-09-01T08:51:20Z`, seven days after PR #2084 merged
+  (`2026-08-25T09:26:29Z`), so that run resolved the re-pointed runbook. Confirmed the
+  runbook on `origin/main` is the Keystone version: it probes SIGNAL 1 / 2a / 2b / 2c and
+  documents the Ledger and Trezor chains as retired rather than probing them.
+  **What is NOT established: what that run actually reported.** Its output has not been
+  read, so the confirmation this entry asks for is *available* but not yet *collected* —
+  do not upgrade "it ran" into "it reported no movement" without opening the report. The
+  scheduler is enabled and the cron is `30 9 * * 2`; for the next fire time read
+  `nextRunAt` from `list_scheduled_tasks` rather than any date written here (see the
+  bullet below for why).
 - **Its `lastRunAt` moved on 2026-08-25 and that run does NOT count as the
   confirmation.** The scheduler records a run at `2026-08-25T08:52:21Z`; PR #2084 —
   the re-point — merged at `2026-08-25T09:26:29Z`, i.e. **34 minutes later**. The task
@@ -212,8 +222,13 @@ Two consequences worth carrying:
   from the tree. Whatever it reported, it cannot have been evidence about the Keystone
   chain. This bullet exists because a bare `lastRunAt` of today's date is exactly the
   thing a future reader will take as "it ran, we're covered" — check the timestamp
-  against the merge, not the date against the calendar. The next genuine run is
-  Tue 2026-09-01 09:34.
+  against the merge, not the date against the calendar. That check is the whole point of
+  this bullet, and it is what the 2026-09-06 correction above is built on: the
+  2026-09-01 run passes it (7 days after the merge), the 2026-08-25 one fails it by 34
+  minutes. **This bullet used to end "The next genuine run is Tue 2026-09-01 09:34" — a
+  forward-looking date, which is the one kind of claim guaranteed to go stale on its own
+  with nothing to signal it.** Do not write the next scheduled date down here; read
+  `nextRunAt` from `list_scheduled_tasks`, which is the only copy that updates itself.
 - **Note:** the old `@ledgerhq/hw-app-eth@6.40.3` `fixAvailable` warning is retired
   with the Ledger chain. Kept as one line in case Ledger support returns: that version
   is a major *downgrade* and still declares `@ethersproject/*` v5, so it never cleared
