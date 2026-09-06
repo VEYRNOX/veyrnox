@@ -220,7 +220,7 @@ describe('getManifestDeclarations — parser properties the pins depend on', () 
 // the manifest. Nothing checked that the note explaining their absence is still
 // PRESENT — and comments are stripped before matching, so deleting it fails no
 // test. That note is the slice-3 recipe: the exact declarations to re-add, and
-// why they went (see #2363, and docs/app-store-recording-plan.md). Losing it
+// why they went (see #2363, and docs/bug-report-recording-plan.md). Losing it
 // costs a future session the archaeology this one already did.
 //
 // Deliberately asserts BOTH halves. Present-in-a-comment alone would still pass
