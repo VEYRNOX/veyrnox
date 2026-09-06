@@ -69,6 +69,13 @@ function getManifestDeclarations(xml) {
     previous = withoutComments;
     withoutComments = previous.replace(/<!--[\s\S]*?-->/g, '');
   } while (withoutComments !== previous);
+  // `[^>]*` assumes no attribute VALUE contains a literal `>`. True for every
+  // Android attribute we ship, and untrue in general XML — a value like
+  // `android:name="a>b"` truncates the match and the tail of the tag becomes
+  // invisible, which is this file's dangerous failure direction all over again.
+  // Left as-is because a correct XML parser is a dependency this test does not
+  // need; recorded because "the markup is shaped how I assume" is precisely
+  // what defeated the pin twice (#2369, and the single-pass strip above).
   return (withoutComments.match(/<(?:uses-permission|service)\b[^>]*>/g) || []).join('\n');
 }
 
@@ -206,5 +213,31 @@ describe('getManifestDeclarations — parser properties the pins depend on', () 
       '<uses-permission android:name="android.permission.INTERNET" />',
     ].join('\n');
     expect(getRequestedPermissions(xml)).toEqual(['android.permission.INTERNET']);
+  });
+});
+
+// Everything above checks that the mediaProjection declarations are ABSENT from
+// the manifest. Nothing checked that the note explaining their absence is still
+// PRESENT — and comments are stripped before matching, so deleting it fails no
+// test. That note is the slice-3 recipe: the exact declarations to re-add, and
+// why they went (see #2363, and docs/app-store-recording-plan.md). Losing it
+// costs a future session the archaeology this one already did.
+//
+// Deliberately asserts BOTH halves. Present-in-a-comment alone would still pass
+// if someone restored the live declarations and kept the note; absent-from-
+// declarations alone is what the pins above already do. Together they say the
+// one thing that matters: documented, not deployed.
+describe('AndroidManifest.xml — the slice-3 re-add recipe survives as prose', () => {
+  const comments = (manifest.match(/<!--[\s\S]*?-->/g) || []).join('\n');
+  const declarations = getManifestDeclarations(manifest);
+
+  it.each([
+    ['FOREGROUND_SERVICE_MEDIA_PROJECTION', /FOREGROUND_SERVICE_MEDIA_PROJECTION/],
+    ['the service class name', /BugReportRecorderService/],
+    ['the foregroundServiceType value', /foregroundServiceType="mediaProjection"/],
+    ['the flag that gates re-adding them', /VITE_BUG_REPORT_ENABLED/],
+  ])('keeps %s in a comment, and only in a comment', (_label, pattern) => {
+    expect(comments).toMatch(pattern);
+    expect(declarations).not.toMatch(pattern);
   });
 });
