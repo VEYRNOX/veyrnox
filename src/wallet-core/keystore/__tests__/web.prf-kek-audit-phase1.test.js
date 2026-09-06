@@ -110,7 +110,7 @@ describe('PRF KEK audit Phase 1', () => {
       localStorage: mockLocalStorage,
       PublicKeyCredential: true,
     };
-    global.navigator = { credentials: mockCredentials(true, fixedBytes(0xaa)) };
+    vi.stubGlobal('navigator', { credentials: mockCredentials(true, fixedBytes(0xaa)) });
     vi.resetModules();
     const mod = await import('../web.js');
     webKeyStore = mod.webKeyStore;
@@ -123,7 +123,7 @@ describe('PRF KEK audit Phase 1', () => {
   afterEach(() => {
     vi.clearAllMocks();
     delete global.window;
-    delete global.navigator;
+    vi.unstubAllGlobals();
   });
 
   // ── F-01 ──────────────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@
 // "Main" that holds unassigned wallets, reconcile self-heal, and safe deletion
 // (a deleted portfolio's wallets fall back to Main, never orphaned).
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 
 class MemStorage {
   constructor() { this.m = new Map(); }
@@ -13,7 +13,7 @@ class MemStorage {
   removeItem(k) { this.m.delete(k); }
   clear() { this.m.clear(); }
 }
-globalThis.localStorage = new MemStorage();
+vi.stubGlobal('localStorage', new MemStorage());
 
 import {
   MAIN_PORTFOLIO_ID,
@@ -31,6 +31,7 @@ import {
 } from '../portfolios.js';
 
 beforeEach(() => { clearAllPortfolios(); localStorage.clear(); });
+afterAll(() => { vi.unstubAllGlobals(); });
 
 describe('portfolios — Main default', () => {
   it('always has a Main portfolio first', () => {

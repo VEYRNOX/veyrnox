@@ -6,7 +6,7 @@
 // self-heals the localStorage meta against the authoritative seed list so a
 // cleared/lost meta store can never silently mark a wallet "backed up".
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 
 // The vitest/jsdom environment here ships a non-functional localStorage (see the
 // "--localstorage-file" warning in the test run; no existing test relies on it).
@@ -19,7 +19,7 @@ class MemStorage {
   removeItem(k) { this.m.delete(k); }
   clear() { this.m.clear(); }
 }
-globalThis.localStorage = new MemStorage();
+vi.stubGlobal('localStorage', new MemStorage());
 
 import {
   DEFAULT_ENABLED_ASSETS,
@@ -41,6 +41,8 @@ beforeEach(() => {
   clearAllWalletMeta();
   try { localStorage.clear(); } catch { /* noop */ }
 });
+
+afterAll(() => { vi.unstubAllGlobals(); });
 
 describe('walletMeta — defaults', () => {
   it('returns safe defaults for an unknown wallet', () => {

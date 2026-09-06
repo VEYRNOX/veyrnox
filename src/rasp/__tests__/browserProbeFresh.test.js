@@ -11,7 +11,7 @@
 // module-load is reflected. Equality of contents is fine; identity must differ,
 // proving a live re-sample rather than a cached snapshot.
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { browserProbeSource } from '../browserProbe.js';
 
 describe('RASP-A1 — browserProbeSource samples fresh per access (not module-load snapshot)', () => {
@@ -22,12 +22,12 @@ describe('RASP-A1 — browserProbeSource samples fresh per access (not module-lo
     // Provide a minimal browser-shaped environment so the probe returns
     // available:true (so we can compare the sampled signal objects).
     if (!hadWindow) globalThis.window = {};
-    if (!hadNavigator) globalThis.navigator = { webdriver: false };
+    if (!hadNavigator) vi.stubGlobal('navigator', { webdriver: false });
   });
 
   afterEach(() => {
     if (!hadWindow) delete globalThis.window;
-    if (!hadNavigator) delete globalThis.navigator;
+    vi.unstubAllGlobals();
   });
 
   it('two successive reads of .signals yield DISTINCT object references (fresh sample)', () => {
@@ -42,12 +42,12 @@ describe('RASP-A1 — browserProbeSource samples fresh per access (not module-lo
   });
 
   it('reflects a signal that changes AFTER module-load (debugger-attached-late case)', () => {
-    globalThis.navigator = { webdriver: false };
+    vi.stubGlobal('navigator', { webdriver: false });
     expect(browserProbeSource.available).toBe(true);
     expect(browserProbeSource.signals.hooked).toBe(false);
 
     // Attacker/automation flips webdriver on AFTER the module was first imported.
-    globalThis.navigator = { webdriver: true };
+    vi.stubGlobal('navigator', { webdriver: true });
     expect(browserProbeSource.available).toBe(true);
     expect(browserProbeSource.signals.hooked).toBe(true);
   });

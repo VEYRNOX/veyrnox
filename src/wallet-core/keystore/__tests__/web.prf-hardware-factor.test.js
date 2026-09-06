@@ -146,9 +146,9 @@ describe('Web PRF Hardware Factor (Phase 1 — I6)', () => {
       localStorage: mockLocalStorage,
       PublicKeyCredential: true,
     };
-    global.navigator = {
+    vi.stubGlobal('navigator', {
       credentials: mockCredentials(true, fixedBytes(0xaa)),
-    };
+    });
 
     // Reset module cache to pick up new global mocks
     vi.resetModules();
@@ -168,7 +168,7 @@ describe('Web PRF Hardware Factor (Phase 1 — I6)', () => {
   afterEach(() => {
     vi.clearAllMocks();
     delete global.window;
-    delete global.navigator;
+    vi.unstubAllGlobals();
   });
 
   describe('isHardwareKeystoreAvailable — PRF support detection', () => {

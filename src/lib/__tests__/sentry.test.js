@@ -13,6 +13,10 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+const { hasConsentMock } = vi.hoisted(() => ({
+  hasConsentMock: vi.fn(() => true),
+}));
+
 vi.mock('@sentry/react', () => ({
   init: vi.fn(),
   captureException: vi.fn(),
@@ -28,7 +32,7 @@ vi.mock('@/wallet-core/deniabilitySession', () => ({
 vi.mock('@/api/demoClient', () => ({ DEMO: false }));
 
 vi.mock('@/lib/consent', () => ({
-  hasConsent: vi.fn(() => true),
+  hasConsent: hasConsentMock,
 }));
 
 async function loadFresh() {
@@ -55,9 +59,7 @@ beforeEach(() => {
     import('@/wallet-core/deniabilitySession').then((m) => {
       m.isDeniabilityOrDemoActive.mockReturnValue(false);
     }),
-    import('@/lib/consent').then((m) => {
-      m.hasConsent.mockReturnValue(true);
-    }),
+    Promise.resolve(hasConsentMock.mockReturnValue(true)),
   ]);
 });
 
@@ -77,8 +79,7 @@ describe('initSentry guards', () => {
 
   it('does nothing when consent is not granted', async () => {
     const Sentry = await import('@sentry/react');
-    const consent = await import('@/lib/consent');
-    consent.hasConsent.mockReturnValueOnce(false);
+    hasConsentMock.mockReturnValueOnce(false);
     await withEnv({ VITE_SENTRY_DSN: 'https://x@y/1' }, async () => {
       const { initSentry } = await loadFresh();
       initSentry();
