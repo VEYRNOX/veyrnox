@@ -190,3 +190,10 @@ _bmad/
 .claude/skills/redesign-skill/
 .claude/skills/soft-skill/
 .claude/skills/stitch-skill/
+
+# App Store Connect API private keys — NEVER commit these.
+# Key IDs and the Issuer ID are not secret; the .p8 private key is.
+# Canonical location is ~/.appstoreconnect/private_keys/, outside the repo.
+*.p8
+AuthKey_*.p8
+ios/.env.fastlane
