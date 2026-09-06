@@ -59,13 +59,29 @@ Referral tiers on Apple use SIGNED PROMOTIONAL OFFERS keyed by identifier (`APPL
 
 **Account**
 - Team `R54268MWFV` (Veyrnox LTD Organization) — Guideline 3.1.5(b) satisfied.
-- ASC API key: `~/.appstoreconnect/private_keys/AuthKey_JPG8Z9ADUY.p8`, Issuer `2d4c5bd7-1de3-4953-b203-a92e788c2d7c`. App Manager role. Sufficient for uploads and manual profile provisioning; **not sufficient for xcodebuild "cloud signing"** — use `signingStyle: manual` in `ExportOptions.plist` (already pinned).
+- ASC API key: `~/.appstoreconnect/private_keys/AuthKey_4YG883H874.p8`, Issuer `2d4c5bd7-1de3-4953-b203-a92e788c2d7c`. **Admin role since 2026-09-06** — supersedes the App Manager key `JPG8Z9ADUY`. Admin unlocks xcodebuild "cloud signing" (single-step `-exportArchive` with `destination: upload`) and the analytics endpoints. **`ExportOptions.plist` remains pinned to `signingStyle: manual` + `destination: export` (PR #1639) — do not flip it until a real archive proves the cloud path.**
 
-#### Escalating the ASC key to Admin (for cloud signing) — OWNER-ONLY, not yet done
+#### Escalating the ASC key to Admin (for cloud signing) — DONE 2026-09-06
+
+**Completed.** Key `4YG883H874` (Admin) replaces `JPG8Z9ADUY` (App Manager). Kept as the
+rotation procedure — the next rotation follows the same steps.
+
+**Verification performed at escalation, before any config was changed:**
+- both downloaded copies byte-identical (`sha256 78dd5842…`), and different from the old
+  key — i.e. genuinely a new key, not a re-download
+- installed to `~/.appstoreconnect/private_keys/AuthKey_4YG883H874.p8`, `chmod 600`
+- authenticated: `GET /v1/apps` returned `Veyrnox`
+- **role proven by the endpoint that used to fail**: `analyticsReportRequests` returns
+  **200** where the App Manager key returned **403 FORBIDDEN**; `/v1/users` reports
+  `['ACCOUNT_HOLDER','ADMIN']`
+- Issuer ID unchanged, as expected for a key rotation
+
+**Still outstanding:** revoke `JPG8Z9ADUY` in the console. Do it only after the new key
+has done a real upload — a role probe is not an upload.
 
 Owner-approved 2026-09-06 for the **cloud-signing** benefit specifically, not for
-analytics. Recorded here because it cannot be automated: **the App Store Connect API has
-no endpoint for changing an API key's role**, so this is a web-console action, and it is a
+analytics. The escalation itself could not be automated: **the App Store Connect API has
+no endpoint for changing an API key's role**, so it is a web-console action, and it is a
 privilege change on the production Apple account.
 
 **Why it is worth doing:** an App Manager key cannot use xcodebuild's cloud signing —

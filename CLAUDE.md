@@ -499,8 +499,10 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
   `xcodebuild` CLI failed on signing auth; that applied to device *runs*. With an
   App Store Connect API key the whole chain runs unattended:
   `archive` → `-exportArchive` → `xcrun altool --upload-app`. Key lives at
-  `~/.appstoreconnect/private_keys/AuthKey_<KeyID>.p8`, Issuer ID
-  `2d4c5bd7-1de3-4953-b203-a92e788c2d7c`.
+  `~/.appstoreconnect/private_keys/AuthKey_4YG883H874.p8` (Admin, since 2026-09-06;
+  supersedes the App Manager key `JPG8Z9ADUY`), Issuer ID
+  `2d4c5bd7-1de3-4953-b203-a92e788c2d7c` — the Issuer does NOT change when a key is
+  rotated.
 - **App Manager role is NOT sufficient for the "cloud signing" path — corrected
   2026-08-08.** This file used to claim it was; the 2026-08-08 upload session proved
   otherwise. Concretely: an App Manager key CAN mint provisioning profiles and
@@ -518,8 +520,24 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
     + `destination: export` naming the profile explicitly, then upload the resulting
     `.ipa` with `xcrun altool --upload-app`. `ios/App/ExportOptions.plist` is
     already pinned to this shape (PR #1639).
-  Only escalate the key to Admin if the manual path becomes a bottleneck; keeping
-  it at App Manager preserves the least-privilege posture for the checked-in `.p8`.
+  **ESCALATED 2026-09-06 — this bullet is now HISTORY, not current state.** The key is
+  Admin (`4YG883H874`), so the single-step `exportArchive` path above is available.
+  Verified at escalation: `analyticsReportRequests` returns 200 where the App Manager
+  key returned `403 FORBIDDEN`, and `/v1/users` reports `['ACCOUNT_HOLDER','ADMIN']`.
+  The old App Manager key `JPG8Z9ADUY` is superseded.
+  **`ios/App/ExportOptions.plist` is still pinned to `signingStyle: manual` +
+  `destination: export` (PR #1639) and MUST STAY THERE until a real archive proves the
+  cloud path end to end.** Admin makes cloud signing *possible*, not *proven* — flip the
+  plist in its own commit, verified by an actual archive and upload, so a signing
+  regression cannot hide inside a role change.
+  The previous advice read: *"Only escalate the key to Admin if the manual path becomes
+  a bottleneck; keeping it at App Manager preserves the least-privilege posture for the
+  checked-in `.p8`."* Half of that was wrong — **no `.p8` has ever been tracked in this
+  repo**, verified 2026-09-06 by `git ls-tree` on `main` and
+  `git log --all --diff-filter=A -- '*.p8'`, both empty. The least-privilege point stood
+  on its own and was weighed: an Admin key is full account control on a laptop, accepted
+  deliberately for cloud signing. `*.p8` is now gitignored so the phrase cannot become
+  true by accident.
 - **The export-compliance "blocker" was stale.** The locked French declaration was
   NOT blocking submission — uploads and submission were fine. The real gap was
   **Model Reporting Rules for Digital Platforms (MRDP)** sitting at "Missing Info"
