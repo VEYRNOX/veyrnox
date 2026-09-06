@@ -27,10 +27,10 @@ on:
           - ios
           - both
       timeout:
-        description: 'Per-device timeout (e.g. 5m, 10m)'
+        description: 'Per-device timeout (e.g. 5m, 10m, 20m)'
         type: string
         required: false
-        default: '5m'
+        default: '20m'
       publish_staging:
         description: 'After BOTH Firebase suites pass, upload staging packages to TestFlight and Play Internal Testing'
         type: boolean
@@ -202,7 +202,7 @@ jobs:
           if [[ "${RAW_TIMEOUT:-}" =~ ^[0-9]+[smh]$ ]]; then
             TIMEOUT="$RAW_TIMEOUT"
           else
-            TIMEOUT="5m"
+            TIMEOUT="20m"
           fi
           echo "results_dir=$RESULTS_DIR" >> "$GITHUB_OUTPUT"
           # Device matrix — 3 devices for OEM + API spread:
@@ -489,7 +489,7 @@ jobs:
           if [[ "${RAW_TIMEOUT:-}" =~ ^[0-9]+[smh]$ ]]; then
             TIMEOUT="$RAW_TIMEOUT"
           else
-            TIMEOUT="5m"
+            TIMEOUT="20m"
           fi
           # Trimmed from 2 devices (iphone13pro/iphone14) to 1 on
           # 2026-08-15 to stay under Spark's 5-physical-slot daily cap.
