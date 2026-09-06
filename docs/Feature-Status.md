@@ -693,10 +693,14 @@ All BUILT / device-verified on the test iPhone — NOT independently audited.
   sealed-box encryption. Slice 2: iOS ReplayKit + Android MediaProjection
   Capacitor plugins, real-device verification. Slice 3: flag flip, Play Data
   Safety + Apple App Privacy amendments (add "user-triggered screen recording"
-  category — currently declared as "no third-party analytics, no screen
-  capture"), versionCode bump, submit. Owner-approved for the 1.0.1/1.0.2 train
-  ahead of the independent audit; Slice 3 will NOT flip the flag until store
-  disclosures are LIVE on the listing pages.
+  category — the Play Data Safety **draft** currently answers "no third-party
+  analytics, no screen capture"; see the 2026-09-06 console-state note below for
+  what "declared" does and does not mean here), versionCode bump, submit.
+  Owner-approved for the 1.0.1/1.0.2 train ahead of the independent audit;
+  Slice 3 will NOT flip the flag until store disclosures are LIVE on the listing
+  pages. **Read that gate with the console-state note: no Play declaration has
+  ever reached a listing page, so "LIVE" is not a state anything has been in
+  yet — the gate is unmet by default rather than pending.**
   **Android manifest entries REMOVED 2026-09-06 (owner-approved).** Slice 2b had
   landed `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PROJECTION` and the
   `.BugReportRecorderService` declaration
@@ -724,6 +728,48 @@ All BUILT / device-verified on the test iPhone — NOT independently audited.
   ship-guard and Android had none.
   **No versionCode bump in this change** — it rides whatever the next upload
   bumps to, and nothing is submitted under the 1.0.1 hold either way.
+  **Play Console state, read directly 2026-09-06** (developer account
+  `6178387777449533067`, app `4975376912225200470`, `Policy and programs →
+  App content`, URL path `/app-content/overview` — note the bare `/app-content`
+  redirects to the app list, which is why an earlier attempt looked like a
+  missing page):
+  - **Foreground service permissions — OPEN, never answered, marked
+    `Declaration overdue`.** It is the sole entry under `Need attention (1)`.
+    Google's stated reason is *"One or more of your app bundles or APKs includes
+    the Foreground service permissions in its manifest"* — i.e. slice 2b's
+    upload, not a policy change. The Oct 25 2023 / Jan 31 2024 dates on the
+    timeline are Google's GLOBAL policy deadlines, not app-specific ones, which
+    is why it reads as long overdue on an app that first tripped it in 2026.
+  - **This gates UPLOADS, not just review** — *"To keep releasing app updates,
+    complete one of the following required actions"*. It therefore sits AHEAD of
+    the 1.0.1 submission hold: the next internal-testing upload of a bundle
+    carrying the permission is what is at risk, not only a review submission.
+  - Google lists removal FIRST of the two remedies — *"If your use of Foreground
+    service permissions is not permitted according to Google Play policy, remove
+    it from your app"* — which is what the manifest removal above does. The
+    declaration is expected to clear once a bundle without the permission is
+    uploaded. **Not yet confirmed:** no such bundle has been uploaded, so the
+    clearing is predicted, not observed.
+  - **Nothing to withdraw.** The `Actioned` tab holds 10 declarations and
+    Foreground service permissions is NOT among them: Data safety (Aug 6 2026),
+    Sign in details (Aug 6 2026), Financial features (Jul 23 2026), Health apps,
+    Government apps, Advertising ID, Target audience and content, Content
+    ratings, Ads, Privacy policy (all Jul 22 2026).
+  - **⚠️ All ten read `Ready to send for review` — none has ever been
+    submitted.** The app is `Draft`, the dashboard says `Not yet sent for
+    review`, Production is `Inactive`, and it still carries the auto-generated
+    temporary name `com.veyrnox.app (unreviewed)`. So every Play-side statement
+    in this repo phrased as what the listing "declares" is describing a SAVED
+    DRAFT that Google has never reviewed. That does not weaken any of them as
+    statements of intent — it means the word "declared" has been doing work it
+    cannot do, and "LIVE on the listing pages" has never been true for any
+    declaration, screen recording or otherwise.
+  - **Apple side NOT checked.** `docs/app-store-runbook.md:124` says App Privacy
+    was "republished 2026-08-31" with a list of "current published
+    declarations". That was not verified in this pass — only Play Console was
+    opened — and it must not be corrected by inference from the Play finding.
+    Worth a direct App Store Connect read before anyone relies on it, given the
+    iOS app has also never been released.
 - **PostHog forwarding — 🅿️ PARKED 2026-09-05 (owner decision).** Suggestion was to
   fork the existing `functions/api/rpc/[fn].js` proxy so events routed to the
   `track_event` RPC also POST to PostHog EU (`eu.i.posthog.com/i/v0/e/`),
@@ -732,8 +778,10 @@ All BUILT / device-verified on the test iPhone — NOT independently audited.
   deniability / rate-limit gates in [src/api/trackEvent.js](../src/api/trackEvent.js)
   still enforce upstream. **NOT built.** Blocked on: (a) 1.0.1 submission clearing
   both stores; (b) owner-approved amendment of Play Data Safety +
-  Apple App Privacy to declare a third-party analytics destination (currently
-  declared as "no third-party analytics" — see
+  Apple App Privacy to declare a third-party analytics destination (the Play
+  half is a saved draft that has never been submitted — see the 2026-09-06
+  console-state note in the bug-report entry above; the Apple half is
+  unverified. Both currently answer "no third-party analytics" — see
   `docs/play-launch/data-safety-form.md:346` and `docs/SAST-PASS-FULL.md:99`,
   both of which would need updating in the SAME change); (c) in-app privacy
   screen + veyrnox.com/privacy update. Resume trigger is ALL THREE; do not part-ship.
