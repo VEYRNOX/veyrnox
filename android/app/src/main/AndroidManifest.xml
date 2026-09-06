@@ -112,24 +112,32 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
     <!-- DELIBERATELY ABSENT — bug-report screen recording (slice 2b of
-         docs/bug-report-recording-plan.md). Slice 2b landed FOREGROUND_SERVICE,
-         FOREGROUND_SERVICE_MEDIA_PROJECTION and a <service> declaration for
-         .BugReportRecorderService with foregroundServiceType="mediaProjection".
-         All four are removed here and must be re-added by slice 3, in the same
-         commit that flips VITE_BUG_REPORT_ENABLED and restores the native
-         capture implementation.
+         docs/bug-report-recording-plan.md), removed 2026-09-06. Three
+         declarations were stripped:
+           1. <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+           2. <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+           3. <service android:name=".BugReportRecorderService"
+                       android:foregroundServiceType="mediaProjection" />
+         Slice 3 must re-add all three in the same commit that flips
+         VITE_BUG_REPORT_ENABLED and restores the native capture
+         implementation (BugReportRecorderService.kt was deleted alongside
+         these declarations — see git history for the exact shapes).
 
-         WHY: the flag is set nowhere — not in the repo, not in .env.example, not
-         in any workflow — so BugReportButton renders null and getMediaProjection()
-         is unreachable on every shipped build. Meanwhile FOREGROUND_SERVICE_MEDIA_
-         PROJECTION triggers Play's mandatory Foreground Service Permissions
-         declaration, and the current store listing declares no screen capture.
-         Keeping them meant justifying a screen-recording capability no user can
-         invoke, ahead of the feature, against the plan's own ordering. The
-         support key in src/lib/bugReport/encrypt.js is still the all-zero
-         placeholder, so the feature could not be flipped on regardless.
+         RECORD_AUDIO above is NOT part of this removal — it belongs to the
+         Voice Commands feature (VoiceContext.jsx) and stays declared.
 
-         Do NOT re-add these to unblock a build. Nothing in the shipped app needs
-         them: BugReportRecorderService is the only foreground service in the app,
-         and no other feature uses either permission. -->
+         WHY the removal: VITE_BUG_REPORT_ENABLED is set nowhere — not in the
+         repo, not in .env.example, not in any workflow — so BugReportButton
+         renders null and getMediaProjection() is unreachable on every shipped
+         build. Meanwhile FOREGROUND_SERVICE_MEDIA_PROJECTION triggered Play's
+         mandatory Foreground Service Permissions declaration, and the current
+         store listing declares no screen capture. Keeping them meant
+         justifying a screen-recording capability no user can invoke, ahead
+         of the feature, against the plan's own ordering. The support key in
+         src/lib/bugReport/encrypt.js is still the all-zero placeholder, so
+         the feature could not be flipped on regardless.
+
+         Do NOT re-add these to unblock a build. Nothing else in the shipped
+         app needs them: BugReportRecorderService is the only foreground
+         service in the app, and no other feature uses either permission. -->
 </manifest>
