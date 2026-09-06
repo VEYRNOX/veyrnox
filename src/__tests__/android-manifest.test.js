@@ -22,16 +22,35 @@ import { join } from 'node:path';
 const MANIFEST_PATH = join(process.cwd(), 'android/app/src/main/AndroidManifest.xml');
 const manifest = readFileSync(MANIFEST_PATH, 'utf8');
 
+// Returns the <uses-permission> and <service> OPENING TAGS, whole, with prose
+// removed. Two properties matter, they fail in opposite directions, and both are
+// mutation-checked in the tests below:
+//
+//   1. Comments are stripped FIRST. The manifest's own removal note names both
+//      foreground-service permissions, so matching them in prose would fire on
+//      correct code — the absence-check-hits-its-own-comment trap. Fails SAFE
+//      (cries wolf), which is why it is the easier of the two to notice.
+//   2. Tags are matched WHOLE, across newlines — never line by line. Both of
+//      these elements are routinely written across several lines:
+//
+//        <service
+//            android:name=".BugReportRecorderService"
+//            android:exported="false"
+//            android:foregroundServiceType="mediaProjection" />
+//
+//      Under a line filter only `<service` survives; `foregroundServiceType` is
+//      on line four and starts with `android:`, so it is dropped. Restoring that
+//      block verbatim — the single most likely way this pin regresses, since it
+//      is exactly what #2363 removed — would leave the tests green. Fails
+//      DANGEROUS: silent, and a defeated pin reads exactly like a passing one.
+//
+// A line-prefix version of this helper was on main between #2369 and this
+// change. It was replaced after mutation testing showed the multi-line <service>
+// block no longer turned the pin red. Do not reintroduce line-based selection;
+// "select only declaration lines" is the shape of the bug, not the fix.
 function getManifestDeclarations(xml) {
-  // Only XML declaration lines can request a permission or configure a service.
-  // Selecting those lines avoids rewriting XML to remove explanatory comments.
-  return xml
-    .split(/\r?\n/)
-    .filter((line) => {
-      const declaration = line.trimStart();
-      return declaration.startsWith('<uses-permission') || declaration.startsWith('<service');
-    })
-    .join('\n');
+  const withoutComments = xml.replace(/<!--[\s\S]*?-->/g, '');
+  return (withoutComments.match(/<(?:uses-permission|service)\b[^>]*>/g) || []).join('\n');
 }
 
 function getRequestedPermissions(xml) {
@@ -118,5 +137,43 @@ describe('AndroidManifest.xml — Play launch invariants', () => {
     const requested = getRequestedPermissions(manifest);
     expect(requested).toContain('android.permission.CAMERA');
     expect(requested).toContain('android.permission.INTERNET');
+  });
+});
+
+// The pins above are only as good as the parser underneath them, and a parser
+// that quietly stops seeing a declaration turns every `not.toContain` into a
+// pass. These run against fixed strings rather than the real manifest, so they
+// fail for one reason only: the parser regressed.
+describe('getManifestDeclarations — parser properties the pins depend on', () => {
+  it('captures attributes of a multi-line <service> (a line filter sees only the first line)', () => {
+    const xml = [
+      '<application>',
+      '    <service',
+      '        android:name=".BugReportRecorderService"',
+      '        android:exported="false"',
+      '        android:foregroundServiceType="mediaProjection" />',
+      '</application>',
+    ].join('\n');
+    expect(getManifestDeclarations(xml)).toMatch(/android:foregroundServiceType/);
+  });
+
+  it('captures the name of a multi-line <uses-permission>', () => {
+    const xml = [
+      '<uses-permission',
+      '    android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />',
+    ].join('\n');
+    expect(getRequestedPermissions(xml))
+      .toContain('android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION');
+  });
+
+  it('ignores declarations that appear inside comments (so prose cannot fail a build)', () => {
+    const xml = [
+      '<!-- Removed: <uses-permission',
+      '     android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />',
+      '     and its <service android:foregroundServiceType="mediaProjection" /> entry. -->',
+      '<uses-permission android:name="android.permission.INTERNET" />',
+    ].join('\n');
+    expect(getRequestedPermissions(xml)).toEqual(['android.permission.INTERNET']);
+    expect(getManifestDeclarations(xml)).not.toMatch(/foregroundServiceType/);
   });
 });
