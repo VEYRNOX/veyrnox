@@ -100,7 +100,7 @@ export default function TermsLegal() {
         {/* §0 — Privacy policy (mirrors veyrnox.com/privacy) */}
         <Section icon={ShieldCheck} title="Privacy policy">
           <p className="font-medium">
-            Last updated: 6 September 2026.{" "}
+            Last updated: 7 September 2026.{" "}
             <a
               href={PRIVACY_POLICY_URL}
               target="_blank"
@@ -113,9 +113,11 @@ export default function TermsLegal() {
           </p>
           <p className="font-semibold text-foreground">
             There is no account, no user database, and no server-side copy of your wallet, keys,
-            or activity. Your wallet lives on your device, encrypted. The one thing we record is a
-            short list of anonymous usage events — and only if you opt in. Set out in full in
-            section 11.
+            or activity. Your wallet lives on your device, encrypted. Three things can leave it,
+            each only in a specific case: a short list of anonymous usage events — and only if you
+            opt in (section 11); the questions you type into the AI Security Advisor, and only if
+            you enable it (section 9); and the recipient address, and only when the paid pre-send
+            safety check runs (section 10).
           </p>
 
           <div className="mt-2 rounded-lg border border-border bg-secondary/30 px-4 py-1">
@@ -123,8 +125,9 @@ export default function TermsLegal() {
               <p>
                 Veyrnox is a self-custody wallet built so there is as close to nothing to collect as
                 a working app allows. We do not run user accounts, we do not operate a database of
-                users or wallets, and our backend never stores your balances, addresses, or
-                transaction history.
+                users or wallets, and our backend never stores your balances or transaction
+                history. Addresses are the one qualified case: sections 9 and 10 set out the two
+                narrow situations in which one is transmitted, and transmitting is not storing.
               </p>
               <p>
                 Everything that could identify you or your holdings is generated and kept on your
@@ -142,7 +145,7 @@ export default function TermsLegal() {
               <ul className="list-disc ps-4 space-y-1">
                 <li><b>No account or sign-up.</b> You don&rsquo;t register, and we never ask for a name or password.</li>
                 <li><b>No private keys or seed phrases.</b> These are generated and encrypted on your device and never leave it.</li>
-                <li><b>No wallet database.</b> Balances, labels, addresses, and transaction history are stored on your device, not on our servers.</li>
+                <li><b>No wallet database.</b> Balances, labels, addresses, and transaction history are stored on your device, not on our servers. Two features can transmit an address without building a database of them — see sections 9 and 10.</li>
                 <li><b>No behavioural profiling or ad tracking.</b> No advertising IDs, no third-party trackers, no cross-app tracking, and no profiling of you or your holdings. If you opt in, we record a small set of anonymous usage events — see section 11.</li>
                 <li><b>No identity data.</b> No KYC, identity documents, or biometric data.</li>
               </ul>
@@ -165,7 +168,9 @@ export default function TermsLegal() {
               <p>
                 Apart from the anonymous events in section 11 — which exist only if you opted in — we
                 hold no personal data, so there is nothing for us to retain and nothing for us to
-                delete on our side.
+                delete on our side. The Advisor questions in section 9 and the address checks in
+                section 10 pass through our proxy to answer a single request; we do not keep them
+                as records against you, and neither carries your name or wallet.
               </p>
               <p>
                 Those anonymous events are kept for up to 12 months and then deleted. Because they
@@ -203,7 +208,8 @@ export default function TermsLegal() {
                 you already hold and control all of it on your own device.
               </p>
               <p>
-                The one exception is the anonymous usage events in section 11. These are pseudonymous
+                The closest thing to an exception is the anonymous usage events in section 11, and
+                the install identifier section 9 also uses. These are pseudonymous
                 and are not linked to your identity, so we are unable to connect them to a specific
                 person, including you. Turning the setting off in Settings &rarr; Privacy stops any
                 further events immediately. Deleting the app, clearing its storage, or running a
@@ -251,9 +257,11 @@ export default function TermsLegal() {
                 (the name of the screen you are on, for example &ldquo;Dashboard&rdquo; or
                 &ldquo;Send&rdquo;) and <code>wallet_chain</code> (which blockchain the current
                 account is on). We also attach the same anonymous install identifier
-                (<code>device_id</code>) used for the usage events in &sect;11, so the model can
-                keep the conversation coherent within a session; it is not linked to your
-                identity.
+                (<code>device_id</code>) used for the usage events in &sect;11. It is there to
+                enforce a per-device daily limit on how many questions can be asked &mdash; not to
+                personalise answers. It is not linked to your name, wallet, or addresses, and it is
+                removed when you delete the app, clear its storage, or run a panic wipe. If you
+                declined usage events, enabling the Advisor still creates it.
               </p>
               <p>
                 Before each message is sent, a local scrubber strips seed phrases, private keys and
