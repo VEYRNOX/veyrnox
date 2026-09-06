@@ -10,11 +10,19 @@ vi.mock('@capacitor-community/in-app-review', () => ({
   InAppReview: { requestReview: vi.fn(async () => {}) },
 }));
 
+const browserOpen = vi.fn(async () => {});
+vi.mock('@capacitor/browser', () => ({
+  Browser: { open: (...args) => browserOpen(...args) },
+}));
+
 import {
   recordSuccessfulSend,
   shouldPromptForReview,
   markDeclined,
   triggerReviewPromptIfEligible,
+  requestFeature,
+  FEATURE_REQUEST_URL,
+  FEEDBACK_EMAIL,
   MIN_SENDS_BEFORE_PROMPT,
   MIN_INTERVAL_MS,
 } from '@/lib/reviewPrompt';
@@ -99,6 +107,48 @@ describe('reviewPrompt I3 (deniability/demo)', () => {
     const fired = await triggerReviewPromptIfEligible();
     expect(fired).toBe(false);
     expect(localStorage.getItem('veyrnox-review-last-asked-ts')).toBeNull();
+  });
+});
+
+describe('reviewPrompt.requestFeature', () => {
+  it('points at the Featurebase board', () => {
+    expect(FEATURE_REQUEST_URL).toBe('https://veyrnox.featurebase.app');
+  });
+
+  it('opens the board via Capacitor Browser (no mailto when URL is set)', async () => {
+    browserOpen.mockClear();
+    await requestFeature();
+    expect(browserOpen).toHaveBeenCalledWith({ url: FEATURE_REQUEST_URL });
+  });
+
+  it('is a no-op under coercion (no mailto navigation)', async () => {
+    isDeniabilityOrDemoActive.mockReturnValue(true);
+    const spy = vi.spyOn(window, 'location', 'get').mockReturnValue({
+      set href(_) { throw new Error('should not navigate under coercion'); },
+    });
+    await requestFeature();
+    spy.mockRestore();
+  });
+
+  it('mailto fallback carries the triage template when Browser + window.open both fail', async () => {
+    browserOpen.mockRejectedValueOnce(new Error('no browser plugin'));
+    const origOpen = window.open;
+    window.open = () => { throw new Error('blocked'); };
+    let captured = null;
+    const original = window.location;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { set href(v) { captured = v; } },
+    });
+    try {
+      await requestFeature();
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: original });
+      window.open = origOpen;
+    }
+    expect(captured).toContain(`mailto:${FEEDBACK_EMAIL}`);
+    expect(captured).toContain('Veyrnox%20feature%20request');
+    expect(captured).toContain('seed%20phrase');
   });
 });
 

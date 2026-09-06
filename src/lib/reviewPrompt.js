@@ -113,3 +113,40 @@ export function openFeedback() {
   const url = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('Veyrnox feedback')}`;
   try { window.location.href = url; } catch { /* noop */ }
 }
+
+// Request a feature — MetaMask-style: opens an external community board
+// where users post + upvote ideas (MetaMask uses community.metamask.io, a
+// Discourse forum, reachable from Mobile Settings → Request a feature).
+// Veyrnox uses Featurebase (free tier, public board) at the root subdomain.
+// Set FEATURE_REQUEST_URL = null to fall back to the triage-templated
+// mailto — useful if the board is ever temporarily removed.
+//
+// I3: never fires under coercion — a "the primary user wants X" signal
+// leaks that a real user exists behind the decoy.
+export const FEATURE_REQUEST_URL = 'https://veyrnox.featurebase.app';
+
+async function openExternalUrl(url) {
+  try {
+    const { Browser } = await import('@capacitor/browser');
+    await Browser.open({ url });
+    return true;
+  } catch {
+    try { window.open(url, '_blank', 'noopener'); return true; }
+    catch { return false; }
+  }
+}
+
+export async function requestFeature() {
+  if (isDeniabilityOrDemoActive()) return;
+  if (FEATURE_REQUEST_URL) {
+    if (await openExternalUrl(FEATURE_REQUEST_URL)) return;
+  }
+  const subject = encodeURIComponent('Veyrnox feature request');
+  const body = encodeURIComponent(
+    'What would you like Veyrnox to do?\n\n' +
+    'Why is this useful to you?\n\n' +
+    '(Please do not include your seed phrase, PIN, or private keys.)'
+  );
+  const url = `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${body}`;
+  try { window.location.href = url; } catch { /* noop */ }
+}

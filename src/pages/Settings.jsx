@@ -11,8 +11,8 @@ import { useWallet } from "@/lib/WalletProvider";
 import { useTier } from "@/lib/TierProvider";
 import { hasSafetyPlusAccess, tierLabel, TIER } from "@/lib/tier";
 import { getAuthModel } from "@/lib/authModel";
-import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText, FileSignature, BarChart3, Star, MessageSquare } from "lucide-react";
-import { openStoreForRating, openFeedback } from "@/lib/reviewPrompt";
+import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText, FileSignature, BarChart3, Star, MessageSquare, Lightbulb } from "lucide-react";
+import { openStoreForRating, openFeedback, requestFeature } from "@/lib/reviewPrompt";
 import { isMessageSigningEnabled, setMessageSigningEnabled } from "@/lib/messageSigning";
 import { hasConsent, setConsent } from "@/lib/consent";
 import { getAdvisorConsentState, setAdvisorConsent, clearAdvisorConsent } from "@/lib/advisorConsent";
@@ -608,6 +608,23 @@ export default function Settings() {
               </div>
             </div>
             <span className="text-sm text-primary font-medium">Email</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { requestFeature().catch(() => {}); }}
+            data-testid="request-feature-button"
+            className="w-full flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px] text-start"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Lightbulb className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Request a feature</p>
+                <p className="text-xs text-muted-foreground">Suggest an idea for the team to consider</p>
+              </div>
+            </div>
+            <span className="text-sm text-primary font-medium">Suggest</span>
           </button>
           {/* Bug-report screen recording. Self-hides when
               VITE_BUG_REPORT_ENABLED != '1' — currently OFF on every shipped
