@@ -61,6 +61,55 @@ Referral tiers on Apple use SIGNED PROMOTIONAL OFFERS keyed by identifier (`APPL
 - Team `R54268MWFV` (Veyrnox LTD Organization) — Guideline 3.1.5(b) satisfied.
 - ASC API key: `~/.appstoreconnect/private_keys/AuthKey_JPG8Z9ADUY.p8`, Issuer `2d4c5bd7-1de3-4953-b203-a92e788c2d7c`. App Manager role. Sufficient for uploads and manual profile provisioning; **not sufficient for xcodebuild "cloud signing"** — use `signingStyle: manual` in `ExportOptions.plist` (already pinned).
 
+#### Escalating the ASC key to Admin (for cloud signing) — OWNER-ONLY, not yet done
+
+Owner-approved 2026-09-06 for the **cloud-signing** benefit specifically, not for
+analytics. Recorded here because it cannot be automated: **the App Store Connect API has
+no endpoint for changing an API key's role**, so this is a web-console action, and it is a
+privilege change on the production Apple account.
+
+**Why it is worth doing:** an App Manager key cannot use xcodebuild's cloud signing —
+Apple refuses to mint the Distribution certificate server-side, symptom `Cloud signing
+permission error / No signing certificate "iOS Distribution" found`, even with a valid
+cert already in the keychain. Admin collapses today's two-step dance (provision cert +
+profile out-of-band, then `signingStyle: manual` export, then `altool --upload-app`) into
+a single `-exportArchive` with `destination: upload`.
+
+**Why it is not free:** an Admin key is full account control sitting on a laptop. That is
+a real posture change for a project whose whole stance is least privilege. Do not
+escalate for convenience on a one-off task.
+
+**Steps (owner, in App Store Connect):**
+1. **Users and Access → Integrations → App Store Connect API → Team Keys.**
+2. Generate a key with Access = **Admin**. Apple sets a key's role at creation; if the
+   existing key's role cannot be edited in place, this new key replaces it.
+3. **Download the `.p8` immediately — Apple allows exactly one download.** Save to
+   `~/.appstoreconnect/private_keys/AuthKey_<NEWID>.p8` and `chmod 600` it. Note the new
+   Key ID. The Issuer ID does not change.
+4. **Revoke `JPG8Z9ADUY`** once the new key is confirmed working — leaving both live
+   defeats the point.
+
+**Then update these, all of them (the Issuer ID is unchanged; only the Key ID moves):**
+- `docs/app-store-runbook.md` — this bullet
+- `ios/.env.fastlane.example` lines 3 and 6 (`ASC_KEY_ID`, the commented `ASC_KEY_PATH`)
+- `CLAUDE.md` — the `AuthKey_<KeyID>.p8` line and the "App Manager role is NOT sufficient"
+  bullet, which becomes historical rather than current
+- any local `ios/.env.fastlane` (gitignored, not in the repo — easy to miss)
+
+**Do NOT flip `ios/App/ExportOptions.plist` to `signingStyle: automatic` +
+`destination: upload` in the same change.** It is currently pinned to `manual`/`export`
+(PR #1639) and that pinning is load-bearing until a real archive proves the cloud path
+works end to end. Change it in its own commit, verified by an actual archive + upload, so
+a signing regression cannot hide inside a key migration.
+
+**Secrets hygiene:** `*.p8` is now gitignored (added in the same change as this note).
+No `.p8` has ever been tracked on `main` or committed in history — verified 2026-09-06 by
+`git ls-tree` on `main` and `git log --all --diff-filter=A -- '*.p8'`, both empty. The
+ignore rule exists so a key dropped into the working tree cannot be committed by accident,
+which matters more now that an Admin key may exist. Note that CLAUDE.md's phrase "the
+checked-in `.p8`" was never accurate and should be corrected when that file is next
+touched.
+
 **Build**
 - Rebuild web bundle before every archive: `npm run build && npx cap sync ios` (`ios/App/App/public` is gitignored — stale bundle risk, see CLAUDE.md).
 - Verify no dev flags in bundle:
