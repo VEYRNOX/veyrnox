@@ -210,8 +210,12 @@ chokepoints already use). Regression-tested, BUILT, INTERNAL — not device-veri
 **Safety Plus IAP:** Monthly $5.99 + Annual $49.99 (same `safety_plus` entitlement).
 Store-side setup complete (Apple + Google + RevenueCat). iOS sandbox-purchase
 device-verified. **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV) —
-verified 2026-07-21; Guideline 3.1.5(b) satisfied**, unblocking the iOS real-device build
-and the first App Store / IAP submission (both still to be done). Play launch still gated
+verified 2026-07-21; Guideline 3.1.5(b) satisfied**, which unblocked the iOS real-device
+build and the first App Store / IAP submission. **Both HAPPENED — this line read "both
+still to be done" until 2026-09-06, six weeks after the app went live.** `1.0` is
+`READY_FOR_SALE` (released 2026-07-28) and Apple has `APPROVED` the Safety Plus
+subscriptions. Evidence and what is genuinely still pending: the App Store section below.
+Play launch still gated
 on the upload-key reset (pending). Referral system BUILT (4-tier discount model, Supabase server-side codes,
 API-hardened PR #1334 — dedup + rate-limited RPCs, see tracking section below;
 further API-hardened 2026-07-28 by the internal-audit wave: H-1..H-3 identity/access,
@@ -244,7 +248,11 @@ annual). The two stores are NOT symmetric and code must not treat them as one me
   `introPhase`). Unresolvable → render no price rather than the base price (I4).
 - All offer paths fail CLOSED: a missing or unsigned offer throws `OFFER_UNAVAILABLE`
   rather than falling through to a full-price charge.
-Not verified: no real purchase has been completed on either platform.
+Not verified: no real purchase has been completed on either platform. **⚠️ DOUBTFUL as of
+2026-09-06 — RevenueCat reports 1 active subscription and MRR £5 on a live App Store app.
+Whether that is production or the documented sandbox purchase is unresolved; see the App
+Store section above before relying on this sentence. Left standing rather than flipped,
+because "a purchase happened" is exactly as unverified right now as "none did".**
 
 **Anonymous event tracking (PR #1321) — LIVE, and it changed the privacy story.**
 `api/trackEvent.js` writes 7 event types to our own Supabase with a random
@@ -427,7 +435,37 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
 - **Personal** developer account: 12-tester/14-day rule gates **production only**.
 - Data Safety: all 9 owner-decisions resolved (`docs/play-launch/data-safety-form.md`).
 - **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV)** — Guideline
-  3.1.5(b) satisfied. First App Store submission still to do.
+  3.1.5(b) satisfied.
+- **THE APP IS LIVE ON THE APP STORE. Verified 2026-09-06 — this file said "First App
+  Store submission still to do" for six weeks after it shipped.** Two independent
+  sources, one of which needs none of our credentials:
+  - ASC API (app `6790188660`): `1.0` → `appStoreState: READY_FOR_SALE`;
+    `1.0.1` → `READY_FOR_REVIEW`, created 2026-07-30, staged and never submitted
+    (consistent with the 1.0.1 hold, which remains in force).
+  - Public iTunes lookup: `Veyrnox`, seller `Veyrnox LTD`, version `1.0`, released
+    2026-07-28, free, min iOS 15.0 —
+    https://apps.apple.com/us/app/veyrnox/id6790188660
+  **Apple and Play are OPPOSITES, and conflating them is the trap.** Play has never had
+  a declaration reviewed (app is `Draft`, all 10 App content declarations sit at
+  `Ready to send for review`, temporary name `com.veyrnox.app (unreviewed)` — see
+  `docs/Feature-Status.md` 2026-09-06 console-state note). Apple has a live public
+  product page. A finding about one store says nothing about the other; this correction
+  exists because a session inferred the Apple state from the Play state and was wrong.
+- **IAP: Safety Plus is APPROVED by Apple, not pending.** `safety_plus_annual` and
+  `safety_plus_monthly_v2` are both `state: APPROVED`. The newer **AI Security
+  Protection** group is NOT: `ai_security_protection_annual_2` and
+  `ai_security_protection_monthly_2` are `READY_TO_SUBMIT`. So "IAP submission" is done
+  for one tier and outstanding for the other — do not write either state onto both.
+- **⚠️ "no real purchase has been completed on either platform" (Promotional offers
+  section) is now DOUBTFUL and needs a definitive check — deliberately NOT rewritten.**
+  RevenueCat project `proj82381f44` on 2026-09-06 reports **1 active subscription, MRR
+  £5, 574 new customers and 578 active users in the last 28 days** (revenue in that
+  window: 0, so any purchase predates it). What is NOT established is whether that
+  subscription is production or the sandbox purchase this file already documents as
+  device-verified — the overview endpoint does not separate them, and asserting either
+  way without that split would repeat the mistake this correction is fixing. Settle it
+  by reading the subscription's `environment` for the owning customer, then update the
+  claim. **The user-count figures alone falsify any "not yet launched" framing.**
 - **iOS build history — corrected 2026-08-08 by querying ASC directly.** This file
   previously said "1.0 (2) uploaded 2026-07-23" and stopped there; the actual state
   is longer and the 1.0 train is now retired.
