@@ -117,14 +117,13 @@ export function openFeedback() {
 // Request a feature — MetaMask-style: opens an external community board
 // where users post + upvote ideas (MetaMask uses community.metamask.io, a
 // Discourse forum, reachable from Mobile Settings → Request a feature).
-// Veyrnox has no community forum yet, so FEATURE_REQUEST_URL is null and
-// the flow falls back to a triage-templated mailto. Flip the constant to
-// the forum URL (or GitHub Discussions/Canny/Featurebase board) when it
-// exists — no other code change needed.
+// Veyrnox uses Featurebase (free tier, public board) at the root subdomain.
+// Set FEATURE_REQUEST_URL = null to fall back to the triage-templated
+// mailto — useful if the board is ever temporarily removed.
 //
 // I3: never fires under coercion — a "the primary user wants X" signal
 // leaks that a real user exists behind the decoy.
-export const FEATURE_REQUEST_URL = null;
+export const FEATURE_REQUEST_URL = 'https://veyrnox.featurebase.app';
 
 async function openExternalUrl(url) {
   try {
