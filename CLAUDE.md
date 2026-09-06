@@ -294,10 +294,27 @@ Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-0
   pre-consent in-app §9): opt-in wording, Settings → Privacy, the fuller event
   list, and the panic-wipe line. Paste-ready copy:
   `docs/veyrnox-com-privacy-corrections-2026-07-26.md`.
-  The site source is NOT in this repo, not in `aljobson/veyrnox-marketing`
-  (content only) and not in `aljobson/Veyrnox.ai` — it is served by uvicorn on
-  Render behind Cloudflare and the body is client-rendered, so `curl` shows only
-  nav/SEO shell. Find the CMS before promising an edit.
+  **The site source is `aljobson/veyrnox-base44-site` — found 2026-09-06, and it
+  was here all along** (`~/Documents/GitHub/veyrnox-base44-site`). This bullet used
+  to read *"NOT in this repo, not in `aljobson/veyrnox-marketing` (content only)
+  and not in `aljobson/Veyrnox.ai` — find the CMS before promising an edit"*, which
+  is true as far as it goes and sent three sessions hunting for a CMS that does not
+  exist. The list of places it ISN'T never included the place it IS. Two minutes of
+  `find ~/Documents/GitHub -maxdepth 2 -name .git` settles it; the note did not.
+  Layout: React SPA, one page component per legal route
+  (`src/pages/DataDeletion.jsx`, `RefundPolicy.jsx`, `Privacy.jsx`, …) **plus a
+  parallel static file per route in `public/*.html`** — an SEO bypass added in
+  `35fb16b` for all 12 marketing/legal routes.
+  **Fix BOTH copies, and check both independently — neither implies the other.**
+  Verified 2026-09-06 across two pages: the data-deletion page had *both* files
+  wrong in *different* ways (the static one carried its own separate false path,
+  and it is the copy search engines and store reviewers read), while the refund
+  policy had the static file CORRECT and the SPA page stale — the two had
+  contradicted each other since July.
+  The body is client-rendered, so `curl` still shows only the nav/SEO shell —
+  **render the page to read it.** Deploy mechanism is NOT established: no
+  Render/Vercel/Netlify config surfaced at the repo root, so merging a PR there may
+  or may not publish. Confirm before calling a live page fixed.
 - **API security hardening (PR #1334, merged 2026-07-23).** All Supabase writes
   now go through rate-limited SECURITY DEFINER functions — no direct table INSERT
   via the anon key. Controls: `track_event()` 60/device/hour + event allowlist
@@ -549,7 +566,10 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
   requirement is resolved. See `docs/play-launch/export-compliance-counsel-note.md`
   for the counsel rationale.
 - `veyrnox.com` is a client-rendered SPA — `curl` gives **false negatives** when checking
-  page content; verify by rendering the page.
+  page content; verify by rendering the page. Source lives in
+  `aljobson/veyrnox-base44-site` (SPA page components under `src/pages/` **plus** a
+  parallel static copy per route in `public/*.html` — fix both). See the site-source
+  note in the telemetry section above for why that took three sessions to find.
 
 **1.0.1 SUBMISSION HOLD — BOTH stores (owner-locked 2026-08-12).** No submission to
 Play OR App Store review until every check in this section passes. Owner-decided
