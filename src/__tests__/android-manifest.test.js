@@ -75,8 +75,13 @@ describe('AndroidManifest.xml — Play launch invariants', () => {
   // manifest's own removal note names both permissions, so a whole-file match
   // would fire on the comment explaining the removal.
   it('does not request foreground-service permissions (slice 3 re-adds them with the store disclosure)', () => {
-    const declarations = manifest.replace(/<!--[\s\S]*?-->/g, '');
-    const requested = [...declarations.matchAll(/<uses-permission\s+android:name="([^"]+)"/g)]
+    // Inspect declaration lines directly instead of rewriting XML with a
+    // comment-strip regex. Comments cannot be declarations in this manifest.
+    const declarations = manifest
+      .split(/\r?\n/)
+      .filter((line) => line.trimStart().startsWith('<uses-permission'))
+      .join('\n');
+    const requested = [...declarations.matchAll(/android:name="([^"]+)"/g)]
       .map((m) => m[1]);
     expect(requested).not.toContain('android.permission.FOREGROUND_SERVICE');
     expect(requested).not.toContain('android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION');
