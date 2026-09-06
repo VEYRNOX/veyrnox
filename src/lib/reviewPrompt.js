@@ -22,11 +22,10 @@ export const MIN_SENDS_BEFORE_PROMPT = 3;
 export const MIN_INTERVAL_MS = 90 * 24 * 60 * 60 * 1000;
 
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.veyrnox.app';
-// iOS App Store URL populated after first App Store submission (App ID not
-// yet assigned per docs/Feature-Status.md). Until then, iOS web fallback
-// routes to the marketing site; native builds use the plugin, which does not
-// need a URL.
-const APP_STORE_URL = null;
+// Apple App Store product page — app went live 2026-07-28 as id6790188660,
+// seller Veyrnox LTD (verified via public iTunes lookup + ASC API,
+// per CLAUDE.md 2026-09-06 App Store section).
+const APP_STORE_URL = 'https://apps.apple.com/app/id6790188660';
 const WEB_URL = 'https://veyrnox.com';
 export const FEEDBACK_EMAIL = 'feedback@veyrnox.com';
 
@@ -43,6 +42,13 @@ export function recordSuccessfulSend() {
   const current = Number(safeGet(SEND_COUNT_KEY)) || 0;
   safeSet(SEND_COUNT_KEY, String(current + 1));
 }
+
+// Semantic alias — the counter tracks any high-water moment ("smart nudge"),
+// not only sends. Callers on the receive / first-inbound path use this name;
+// storage key stays `veyrnox-review-send-count` to preserve existing users'
+// progress. Threshold + cooldown unchanged; the OS still enforces its own
+// caps on top.
+export const recordMilestone = recordSuccessfulSend;
 
 export function markDeclined() {
   if (isDeniabilityOrDemoActive()) return;
@@ -88,16 +94,17 @@ export async function triggerReviewPromptIfEligible() {
   }
 }
 
-// Manual "Rate app" from Settings — no eligibility gate, always attempts
-// the native prompt; if the plugin is unavailable (web build) open the
-// store page directly.
+// Manual "Rate app" from Settings — opens the store product page directly.
+// Do NOT call SKStoreReviewController / Play ReviewManager here:
+// `requestReview()` silently no-ops (returns void, no error) whenever the OS
+// decides not to show — quota spent, throttling window, or the user's
+// system-wide "In-App Ratings & Reviews" toggle is off. A manual tap that
+// yields no visible response reads as broken. Apple's HIG is explicit:
+// requestReview is for OPPORTUNE auto moments only; a manual "Rate app"
+// button should open the store product page. Auto-trigger (SendDoneView)
+// keeps using requestReview() and is unchanged.
 export async function openStoreForRating() {
   if (isDeniabilityOrDemoActive()) return;
-  try {
-    const mod = await import('@capacitor-community/in-app-review');
-    await mod.InAppReview.requestReview();
-    return;
-  } catch { /* fall through to URL */ }
   const url = getFallbackStoreUrl();
   if (!url) return;
   try {

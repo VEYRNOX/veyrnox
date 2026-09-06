@@ -72,6 +72,7 @@ import { emit, FunnelEvent } from "@/lib/analytics";
 import { assignHoldout } from "@/lib/holdout";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { DEMO } from "@/api/demoClient";
+import { recordMilestone, triggerReviewPromptIfEligible } from "@/lib/reviewPrompt";
 
 /**
  * Must this session leave no local trace? Fails CLOSED — every read inside
@@ -156,6 +157,13 @@ export function useFirstInbound(balance) {
     firedRef.current = true;
     fireOnce("veyrnox-first-inbound-fired", () => {
       safeEmit(FunnelEvent.FIRST_INBOUND_DETECTED);
+      // Smart nudge — first inbound is a genuine high-water moment. Bumps the
+      // shared milestone counter (recordMilestone is an alias of the send
+      // counter; storage key unchanged) and attempts the OS-native prompt
+      // if threshold + cooldown allow. Both calls I3-gated inside the
+      // reviewPrompt module. fireOnce means this runs at most once ever.
+      recordMilestone();
+      triggerReviewPromptIfEligible().catch(() => {});
     });
   }, [balance]);
 }
