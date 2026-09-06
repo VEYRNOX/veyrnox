@@ -24,6 +24,10 @@ export function shouldShowReferralPrompt() {
 }
 
 function dismissPrompt() {
+  // I3 second chokepoint. The render-time re-check above cannot cover this:
+  // flipping to a decoy session triggers no re-render, so the already-mounted
+  // dismiss/share handlers stay live. Gating here covers both callers.
+  if (isDeniabilityOrDemoActive()) return;
   try {
     localStorage.setItem(DISMISSED_KEY, '1');
   } catch {

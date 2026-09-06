@@ -38,7 +38,13 @@ export default function BackupPaywallNudge({ currentTier }) {
   if (!visible) return null;
 
   const handleDismiss = () => {
-    try { localStorage.setItem(KEY, '1'); } catch {}
+    // I3 second chokepoint. Gating shouldShowBackupNudge is not enough: `visible`
+    // is seeded once at mount, so a session that flips to decoy while this nudge
+    // is on screen still reaches this handler. Writing here would leave a
+    // real-session tell in shared localStorage. Same rule as lib/consent.js.
+    if (!isDeniabilityOrDemoActive()) {
+      try { localStorage.setItem(KEY, '1'); } catch {}
+    }
     setVisible(false);
     void trackEvent(EVENT.PAYWALL_DISMISSED, { trigger: 'post_backup' }).catch(() => {});
   };
