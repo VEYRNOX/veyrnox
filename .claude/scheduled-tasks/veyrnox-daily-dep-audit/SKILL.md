@@ -325,9 +325,24 @@ justified each retirement is on file rather than in a PR description.
   states "WATCHER RETIRED: veyrnox-appium-shellquote-watch deleted 2026-08-03". **Both
   halves were out of step with reality:** this file kept both entries under
   `## Accepted residuals` for three more weeks, and the watcher was never deleted — it
-  is still registered and enabled. A retirement recorded in one file and not the other
-  is indistinguishable from no retirement at all to whichever reader opens the other
-  file. If you retire a residual, change every place that names it in the same commit.
+  was still registered and enabled on 2026-08-23. A retirement recorded in one file and
+  not the other is indistinguishable from no retirement at all to whichever reader opens
+  the other file. If you retire a residual, change every place that names it in the same
+  commit.
+- **The watcher IS gone now — verified 2026-09-06, and that makes three different states
+  this one line has claimed.** `veyrnox-appium-shellquote-watch` is absent from the
+  scheduler registry. First this file's sibling note said it was deleted when it was not
+  (2026-08-03), then this bullet said it was still registered when that was true
+  (2026-08-23), and then it kept saying so after the deletion actually happened. The date
+  of the deletion is unrecoverable — the scheduler registry is not in git — so it is
+  recorded here as "gone by 2026-09-06" rather than guessed. Both `SKILL.md` copies
+  survive as intended: the loader at
+  `~/.claude/scheduled-tasks/veyrnox-appium-shellquote-watch/SKILL.md` and the real
+  runbook on `origin/main` under `.claude/scheduled-tasks/`.
+  **The general lesson is about the shape of the claim, not this watcher.** "X is
+  registered" is state living somewhere this repo cannot see, so it decays with no
+  signal and no diff. Re-derive it from `list_scheduled_tasks` before acting on it, the
+  same way a claim about another PR's status has to be re-read rather than trusted.
 - **If it comes back:** *we* are not pinning this — no `overrides` entry holds the nested
   subtree at patched versions, and it could regress (it already did once, transiently, on
   2026-07-29: patched at `87e9897b`, back to `1.8.4` at `ff78ac99` 12 minutes later,
@@ -339,10 +354,14 @@ justified each retirement is on file rather than in a PR description.
   if this regresses, an `overrides` entry CANNOT fix it and a lockfile edit only quiets
   `npm audit`; the fix is a driver version bump. Confirm with `npm ci` and an on-disk
   version check, not with the audit.
-- **Watcher:** `veyrnox-appium-shellquote-watch` produced this retirement and is now
-  redundant. Recommend deleting the scheduled task; this task may not delete scheduled
-  tasks itself (see Constraints), so the owner acts. Its `SKILL.md` should be retained
-  the way `veyrnox-extract-zip-watch`'s was, in case the prompt is wanted back.
+- **Watcher:** `veyrnox-appium-shellquote-watch` produced this retirement, became
+  redundant, and is now **DELETED** — confirmed absent from the scheduler on 2026-09-06.
+  Both `SKILL.md` copies were retained, the way `veyrnox-extract-zip-watch`'s were, in
+  case the prompt is wanted back. Nothing further is owed here; the daily audit is what
+  covers a regression now, and it surfaces nested findings unsuppressed (it did exactly
+  that for `qs` / `@xmldom/xmldom` on 2026-09-06). This bullet read "recommend deleting
+  the scheduled task ... so the owner acts" after the deletion had already happened —
+  see the corrected drift bullet above.
 - Dependabot alert #12 was dismissed as `tolerable_risk` and should now resolve.
 
 ### `body-parser` — accepted 2026-07-21, reinstated 2026-07-27, RETIRED 2026-08-23
@@ -358,7 +377,7 @@ justified each retirement is on file rather than in a PR description.
   be a new finding rather than a reinstatement. Same correction as `shell-quote`
   (2026-09-06): the nested copy is pinned by `appium-uiautomator2-driver`'s published
   shrinkwrap, so the fix for a regression is a driver bump, not an `overrides` entry.
-- **Watcher:** same `veyrnox-appium-shellquote-watch`, same deletion recommendation.
+- **Watcher:** same `veyrnox-appium-shellquote-watch` — deleted, confirmed 2026-09-06.
 - Dependabot alert #14 was auto-dismissed (low-severity dev dependency) and should now
   resolve. That dismissal was never the reason for suppression, and is not the reason for
   retirement either.
