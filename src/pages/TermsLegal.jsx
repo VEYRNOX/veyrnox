@@ -100,7 +100,7 @@ export default function TermsLegal() {
         {/* §0 — Privacy policy (mirrors veyrnox.com/privacy) */}
         <Section icon={ShieldCheck} title="Privacy policy">
           <p className="font-medium">
-            Last updated: 26 July 2026.{" "}
+            Last updated: 6 September 2026.{" "}
             <a
               href={PRIVACY_POLICY_URL}
               target="_blank"
@@ -115,7 +115,7 @@ export default function TermsLegal() {
             There is no account, no user database, and no server-side copy of your wallet, keys,
             or activity. Your wallet lives on your device, encrypted. The one thing we record is a
             short list of anonymous usage events — and only if you opt in. Set out in full in
-            section 9.
+            section 11.
           </p>
 
           <div className="mt-2 rounded-lg border border-border bg-secondary/30 px-4 py-1">
@@ -143,7 +143,7 @@ export default function TermsLegal() {
                 <li><b>No account or sign-up.</b> You don&rsquo;t register, and we never ask for a name or password.</li>
                 <li><b>No private keys or seed phrases.</b> These are generated and encrypted on your device and never leave it.</li>
                 <li><b>No wallet database.</b> Balances, labels, addresses, and transaction history are stored on your device, not on our servers.</li>
-                <li><b>No behavioural profiling or ad tracking.</b> No advertising IDs, no third-party trackers, no cross-app tracking, and no profiling of you or your holdings. If you opt in, we record a small set of anonymous usage events — see section 9.</li>
+                <li><b>No behavioural profiling or ad tracking.</b> No advertising IDs, no third-party trackers, no cross-app tracking, and no profiling of you or your holdings. If you opt in, we record a small set of anonymous usage events — see section 11.</li>
                 <li><b>No identity data.</b> No KYC, identity documents, or biometric data.</li>
               </ul>
             </TermsSection>
@@ -163,7 +163,7 @@ export default function TermsLegal() {
 
             <TermsSection number={4} title="Retention & Deletion" group="privacy">
               <p>
-                Apart from the anonymous events in section 9 — which exist only if you opted in — we
+                Apart from the anonymous events in section 11 — which exist only if you opted in — we
                 hold no personal data, so there is nothing for us to retain and nothing for us to
                 delete on our side.
               </p>
@@ -203,7 +203,7 @@ export default function TermsLegal() {
                 you already hold and control all of it on your own device.
               </p>
               <p>
-                The one exception is the anonymous usage events in section 9. These are pseudonymous
+                The one exception is the anonymous usage events in section 11. These are pseudonymous
                 and are not linked to your identity, so we are unable to connect them to a specific
                 person, including you. Turning the setting off in Settings &rarr; Privacy stops any
                 further events immediately. Deleting the app, clearing its storage, or running a
@@ -228,7 +228,62 @@ export default function TermsLegal() {
               </p>
             </TermsSection>
 
-            <TermsSection number={9} title="Cookies & Anonymous Usage Events" group="privacy">
+            <TermsSection number={9} title="AI Security Advisor" group="privacy">
+              <p>
+                The AI Security Advisor (also shown as &ldquo;Vigil&rdquo; in the app) is a chat
+                surface that answers wallet, crypto, and security questions in context. It is
+                opt-in and OFF by default: the chat panel does nothing and sends no data until you
+                explicitly enable it the first time you open it.
+              </p>
+              <p>
+                When enabled, each message you type is sent to our Veyrnox-run proxy, which
+                forwards it to a third-party language model provider that produces the reply.
+                Alongside your message we send the name of the screen you are on (for example
+                &ldquo;Dashboard&rdquo; or &ldquo;Send&rdquo;) so answers can be relevant to what
+                you are doing, and a small &ldquo;shell&rdquo; context such as counts and whether
+                the wallet is locked. We never send balances, addresses, seed phrases, private
+                keys, PINs, transaction hashes, or the recipient of any transaction. Before each
+                message is sent, the app runs a local scrubber that strips secret-looking material
+                from the text; if you type a seed phrase or private key into the chat by mistake,
+                the assistant refuses to store or repeat it.
+              </p>
+              <p>
+                In decoy (duress) sessions and in demo mode, the AI Security Advisor is hidden and
+                makes no calls whatsoever &mdash; the same &ldquo;no trace&rdquo; principle applied
+                to usage events (see &sect;11).
+              </p>
+              <p>
+                The advisor is advisory only. It never holds keys, never signs, and never sends
+                transactions. You can turn it off again at any time and revoke consent from
+                <b> Settings &rarr; Privacy</b>; the chat then goes back to sending nothing.
+              </p>
+            </TermsSection>
+
+            <TermsSection number={10} title="Recipient Address Screening (Send)" group="privacy">
+              <p>
+                Before you send crypto, the app can check the recipient address against public
+                sanctions lists, known phishing registries, hack-fund trackers and contract-risk
+                signals so you get a warning if the address is a known bad actor. To do this, the
+                recipient address you entered &mdash; and only the recipient address, never yours,
+                never the amount, never the transaction &mdash; is sent to our Veyrnox-run proxy,
+                which queries the aggregators on your behalf.
+              </p>
+              <p>
+                This is the exception to the &ldquo;no addresses leave the device&rdquo; rule
+                elsewhere in this policy, and it exists because it is the top defence against
+                sending funds into a scam. If all sources are unavailable the app says
+                &ldquo;unknown&rdquo; rather than defaulting to &ldquo;clean&rdquo; &mdash; a
+                missing check never quietly becomes a green light.
+              </p>
+              <p>
+                In decoy (duress) sessions and in demo mode, no address ever leaves the device: a
+                locally-cached, signed blocklist is used instead so screening still runs, but the
+                screen makes no network calls of this kind and no address is ever seen by our
+                servers or by the aggregators.
+              </p>
+            </TermsSection>
+
+            <TermsSection number={11} title="Cookies & Anonymous Usage Events" group="privacy">
               <p>
                 The Veyrnox app uses no cookies, no third-party analytics SDKs, and no tracking
                 pixels. Our website uses no advertising or third-party tracking cookies.
@@ -268,9 +323,12 @@ export default function TermsLegal() {
                 <li>that you granted these permissions</li>
               </ul>
               <p>
-                <b>Never included:</b> wallet addresses, balances, amounts, transaction hashes, seed
-                phrases, recovery data, contacts, or location. Balances and amounts are excluded with
-                no exception — not bucketed, not rounded, not sent at all.
+                <b>Never included in these usage events:</b> wallet addresses, balances, amounts,
+                transaction hashes, seed phrases, recovery data, contacts, or location. Balances
+                and amounts are excluded with no exception &mdash; not bucketed, not rounded, not
+                sent at all. Recipient addresses can leave the device in one narrow, pre-transaction
+                context only &mdash; the safety screening described in &sect;10 &mdash; and never
+                as part of these usage events.
               </p>
               <p className="font-semibold text-foreground">
                 Never sent at all: nothing is recorded in decoy (duress) sessions or in demo mode.
@@ -279,14 +337,14 @@ export default function TermsLegal() {
               </p>
             </TermsSection>
 
-            <TermsSection number={10} title="Changes to This Policy" group="privacy">
+            <TermsSection number={12} title="Changes to This Policy" group="privacy">
               <p>
                 We may update this Privacy Policy from time to time. Any changes will be posted on the
                 published policy with a new &ldquo;last updated&rdquo; date.
               </p>
             </TermsSection>
 
-            <TermsSection number={11} title="Contact Us" group="privacy">
+            <TermsSection number={13} title="Contact Us" group="privacy">
               <p>
                 Questions about this Privacy Policy or our data practices: privacy@veyrnox.com
               </p>
