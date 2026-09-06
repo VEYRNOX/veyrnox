@@ -23,10 +23,13 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Play permanently reserves a version code after an upload attempt, even
-        // when that edit is not released. 42 is already consumed by Internal
-        // testing; 43 is the next unused code, required for the Closed testing
-        // (Alpha) upload that generates the Pre-launch report (#1960).
-        versionCode 43
+        // when that edit is not released. 42 is consumed by Internal testing, and
+        // 43 goes to Internal too: the CI upload carrying it merges with #2363
+        // while the publish job still targets the internal track, and this PR's
+        // track change only takes effect on the NEXT bundle. 44 is therefore the
+        // first code that can reach Closed testing (Alpha) and generate the
+        // Pre-launch report (#1960).
+        versionCode 44
         // Customer-facing version for the public Play launch. versionCode is internal
         // bookkeeping (monotonic, permanently consumed per upload, never shown to users);
         // versionName is what appears on the store listing.
