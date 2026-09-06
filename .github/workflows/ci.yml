@@ -679,7 +679,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # --------------------------------------------------------------------------
-  # Publish the signed release AAB to Play's INTERNAL track.
+  # Publish the signed release AAB to Play's CLOSED TESTING (alpha) track.
   #
   # INERT by default. The `if:` gate reads a REPOSITORY VARIABLE (not a
   # secret) so it can be evaluated at job level without leaking a secret
@@ -692,16 +692,24 @@ jobs:
   #      com.veyrnox.app on Play Console → Users & permissions → API access)
   # With either missing, this job skips — no red X, no accidental partial
   # publish. Once both are set, every main-branch merge that produces a
-  # new AAB auto-publishes to Internal testing.
+  # new AAB auto-publishes to Closed testing.
   #
-  # Track is 'internal' by design — Internal Testing is the CLAUDE.md
-  # "Pre-submission verification for 1.0.1" step. Any promotion beyond
-  # this (closed/open/production) stays a manual owner action in the
-  # Play Console, matching the 1.0.1 SUBMISSION HOLD.
+  # Track is 'alpha' — the API name for the "Closed testing – Alpha" track.
+  # This was 'internal' until 2026-09-06. It moved because Play generates a
+  # Pre-launch report from uploads to the CLOSED track, and no PLR has ever
+  # been generated for this app across 40+ Internal-testing uploads (#1960) —
+  # a clean PLR is a mandatory 1.0.1 submission gate, so the old target could
+  # never satisfy it. Internal testing is still reachable by promoting a
+  # bundle in the console; closed testing is the one CI cannot substitute.
   #
-  # status: 'completed' means "fully released to the internal track" —
-  # internal testers get the update. It is NOT a production rollout.
-  publish-to-play-internal:
+  # This does NOT loosen the 1.0.1 SUBMISSION HOLD. Closed testing is a
+  # tester-facing track, not a review submission; open/production promotion
+  # remains a manual owner action, and `changesNotSentForReview` below still
+  # keeps every edit out of Google's review queue.
+  #
+  # status: 'completed' means "fully released to the closed track" — Alpha
+  # testers get the update. It is NOT a production rollout.
+  publish-to-play-closed:
     runs-on: ubuntu-latest
     needs: android-release
     # Same trigger scope as android-release: main pushes only, never PRs.
@@ -721,7 +729,7 @@ jobs:
         run: |
           ls -l aab-artifact/
           test -s aab-artifact/app-google-release.aab
-      - name: Upload to Play internal track
+      - name: Upload to Play closed testing track
         # r0adkll/upload-google-play — pinned by SHA per repo convention.
         # v1.1.3 (2024-08 vintage) — the most recent stable tag on the
         # action's repo. Bump the SHA (and this comment) if a newer
@@ -731,17 +739,28 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.veyrnox.app
           releaseFiles: aab-artifact/app-google-release.aab
-          track: internal
+          # 'alpha' is the Play API name for the Closed testing track that the
+          # console labels "Closed testing – Alpha". Not a Play Console string
+          # — the API takes internal/alpha/beta/production only.
+          track: alpha
           status: completed
           # Play refuses to auto-commit an edit while the app has unresolved
           # review state (first submission still pending; 1.0.1 SUBMISSION
-          # HOLD). Internal Testing does NOT need Google review, so tell the
-          # API not to send the changes for review — the edit still commits
-          # and the AAB reaches testers. Removing this flag re-breaks the
-          # publish step until the first store review clears.
+          # HOLD). This tells the API not to send the changes for review, so
+          # the edit still commits. Removing this flag re-breaks the publish
+          # step until the first store review clears.
+          #
+          # Whether Play requires a review before an alpha release reaches
+          # testers on an app with no completed first review is UNVERIFIED.
+          # What is known: versionCode 41 was released to Closed testing –
+          # Alpha at full rollout on 2026-09-04, so the track accepts a
+          # release in this app's current state. If a closed upload lands as
+          # pending-review instead of live, that is the SUBMISSION HOLD
+          # boundary — stop and escalate, do not clear it by dropping this
+          # flag.
           changesNotSentForReview: true
-          # No release notes here — internal testers see the versionCode
-          # in Play; leave prose to closed/open-track promotions.
+          # No release notes here — closed testers see the versionCode
+          # in Play; leave prose to open/production promotions.
 
   # --------------------------------------------------------------------------
   # Does this change need the release-cert guard regression test?
