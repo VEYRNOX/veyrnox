@@ -61,4 +61,48 @@ describe('AndroidManifest.xml — Play launch invariants', () => {
     expect(lastComment, 'comment block immediately above CAMERA').toBeTruthy();
     expect(lastComment[0]).toMatch(/QR|barcode/i);
   });
+
+  // Enforces the removal made by #2363. The manifest already says "Do NOT re-add
+  // these to unblock a build" — this is the check behind that instruction, so a
+  // re-add fails CI instead of relying on a reader noticing the comment.
+  //
+  // Why it matters: FOREGROUND_SERVICE_MEDIA_PROJECTION triggers Play's mandatory
+  // Foreground service permissions declaration, which blocks EVERY pending change
+  // on the app — not just the release that reintroduced it. The capability is
+  // unreachable regardless (VITE_BUG_REPORT_ENABLED is set nowhere, so
+  // BugReportButton renders null), and the live store listing declares no screen
+  // capture.
+  //
+  // Slice 3 of docs/bug-report-recording-plan.md is the named un-pin condition:
+  // the commit that flips VITE_BUG_REPORT_ENABLED and publishes the Play Data
+  // Safety / Apple App Privacy amendments re-adds all four manifest lines and
+  // deletes this test. BugReportPlugin.kt carries the exact declarations to
+  // restore. Do not weaken this to make an unrelated build pass.
+  //
+  // Asserted against DECLARATIONS ONLY, with comments stripped first. The
+  // manifest's removal note names both permissions, so a whole-file match would
+  // fire on the comment explaining the removal and this pin would fail on
+  // correct code.
+  it('does not request foreground-service permissions (slice 3 re-adds them with the store disclosure)', () => {
+    const declarations = manifest.replace(/<!--[\s\S]*?-->/g, '');
+    const requested = [...declarations.matchAll(/<uses-permission\s+android:name="([^"]+)"/g)]
+      .map((m) => m[1]);
+    expect(requested).not.toContain('android.permission.FOREGROUND_SERVICE');
+    expect(requested).not.toContain('android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION');
+    // The <service> entry is the other half — without it the permissions are
+    // pointless, and with it Play still reads the app as using media projection.
+    expect(declarations).not.toMatch(/android:foregroundServiceType/);
+  });
+
+  // Guards the pin above against passing vacuously. If the manifest were ever
+  // emptied, truncated, or read from the wrong path, every `not.toContain`
+  // assertion would pass on an empty string. This asserts the parse actually
+  // found the permissions the app genuinely ships.
+  it('the stripped-comment parse still sees the real permissions (guards the pin above)', () => {
+    const declarations = manifest.replace(/<!--[\s\S]*?-->/g, '');
+    const requested = [...declarations.matchAll(/<uses-permission\s+android:name="([^"]+)"/g)]
+      .map((m) => m[1]);
+    expect(requested).toContain('android.permission.CAMERA');
+    expect(requested).toContain('android.permission.INTERNET');
+  });
 });
