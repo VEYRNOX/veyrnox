@@ -2958,3 +2958,46 @@ Solana / multi-asset send (gated on per-asset verification). AI advisor/assistan
 ### Cut (removed on principle — security + positioning §4)
 Leaderboard, public profiles (targeting/identity exposure). Shared portfolio → keep only as
 signed local export. Referral tracker → only if fully serverless.
+
+## 2026-09-06 App Store acquisition funnel — first traffic numbers on record
+
+First time store-side reach has been written down. Recorded because the repo previously
+had no top-of-funnel figure at all, and CLAUDE.md's post-install counts were being read as
+if they described reach.
+
+| Stage | 28 days to 2026-09-06 | Step rate | Source |
+|---|---|---|---|
+| Impressions (seen in search/browse) | **3,847** | — | App Store Connect → App Analytics → Metrics |
+| Product Page Views (opened the listing) | **1,204** | **31.3%** | App Store Connect → App Analytics → Metrics |
+| New customers (first app open) | **574** | **47.7%** | RevenueCat `proj82381f44` overview |
+| End-to-end impression → first open | | **14.9%** | derived |
+
+Also from RevenueCat in the same window: **578 active users**, 1 active subscription,
+MRR ~£5 (the single production purchase — see the CLAUDE.md App Store section).
+
+**Read the third row carefully — it is not a store conversion rate.** RevenueCat counts a
+customer when the SDK first initialises, which is a **first app open**, not a download.
+The true page-view → download rate is therefore HIGHER than 47.7%, and download → first
+open is some fraction below 100%. Closing that gap needs App Store **Total Downloads** for
+the same window, which sits between the two and has not been captured. Until it is, treat
+47.7% as a floor on store conversion, not as the number.
+
+**The first two rows are Apple's, the third is RevenueCat's.** Different systems, different
+attribution windows, no shared identifier — directionally sound, not reconciled. Do not
+present the end-to-end 14.9% as a measured funnel in anything external.
+
+**What the numbers say, stated plainly:** both step rates are strong — ~31% impression →
+page view and a page-view → open rate that is high for the category. 630 people opened the
+listing in 28 days without the app reaching a first open. On these figures the constraint
+is impression volume, not the listing.
+
+**Provenance, and an honest note on it.** Owner read both Apple figures from the App
+Analytics console and supplied them; they are NOT machine-pulled and are not independently
+verified here. An API route now exists — the ASC key was escalated to Admin on 2026-09-06
+(`4YG883H874`), which lifted the `403 FORBIDDEN` on `analyticsReportRequests` — and a
+`ONE_TIME_SNAPSHOT` request `c1a6ff94-696a-4229-bbde-b3da6d30596f` was created against
+report `r14-…` ("App Store Discovery and Engagement Standard", category
+`APP_STORE_ENGAGEMENT`). It had **0 generated instances** for over 15 minutes, so it did
+not produce these numbers. When it generates, it is worth re-reading them from it: the
+console tiles and the report columns are not guaranteed to be the same measure, and a
+mismatch would be the useful finding.
