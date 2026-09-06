@@ -49,7 +49,26 @@ const manifest = readFileSync(MANIFEST_PATH, 'utf8');
 // block no longer turned the pin red. Do not reintroduce line-based selection;
 // "select only declaration lines" is the shape of the bug, not the fix.
 function getManifestDeclarations(xml) {
-  const withoutComments = xml.replace(/<!--[\s\S]*?-->/g, '');
+  // Strip to a FIXED POINT, not in one pass. A single replace can reassemble the
+  // sequence it removes — `<!<!-- -->-- x -->` leaves a live `<!-- x -->` behind —
+  // which is what CodeQL's js/incomplete-multi-character-sanitization flags
+  // (alerts 30 and 31 on #2369, alert 32 on this branch's first revision).
+  //
+  // The security framing does not apply here: the input is our own checked-in
+  // manifest, not attacker-controlled markup, and nothing downstream is an HTML
+  // sink. The CORRECTNESS one does. A declaration that survives one pass and
+  // disappears on the next would be invisible to the pins below, and that
+  // direction fails silently.
+  //
+  // #2369 answered the same alerts by dropping comment-stripping for a line
+  // filter. That cleared the alert and defeated the pin (see the note above).
+  // Looping clears the alert and keeps the pin.
+  let withoutComments = xml;
+  let previous;
+  do {
+    previous = withoutComments;
+    withoutComments = previous.replace(/<!--[\s\S]*?-->/g, '');
+  } while (withoutComments !== previous);
   return (withoutComments.match(/<(?:uses-permission|service)\b[^>]*>/g) || []).join('\n');
 }
 
@@ -175,5 +194,17 @@ describe('getManifestDeclarations — parser properties the pins depend on', () 
     ].join('\n');
     expect(getRequestedPermissions(xml)).toEqual(['android.permission.INTERNET']);
     expect(getManifestDeclarations(xml)).not.toMatch(/foregroundServiceType/);
+  });
+
+  it('strips comments to a fixed point (one pass can reassemble a comment)', () => {
+    // `<!<!-- -->-- ... -->` : removing the inner `<!-- -->` splices the outer
+    // opener back together, so a single-pass strip leaves a live comment behind
+    // and everything inside it stays visible to the matcher.
+    const xml = [
+      '<!<!-- -->-- <uses-permission',
+      '    android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" /> -->',
+      '<uses-permission android:name="android.permission.INTERNET" />',
+    ].join('\n');
+    expect(getRequestedPermissions(xml)).toEqual(['android.permission.INTERNET']);
   });
 });
