@@ -697,6 +697,33 @@ All BUILT / device-verified on the test iPhone — NOT independently audited.
   capture"), versionCode bump, submit. Owner-approved for the 1.0.1/1.0.2 train
   ahead of the independent audit; Slice 3 will NOT flip the flag until store
   disclosures are LIVE on the listing pages.
+  **Android manifest entries REMOVED 2026-09-06 (owner-approved).** Slice 2b had
+  landed `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PROJECTION` and the
+  `.BugReportRecorderService` declaration
+  (`foregroundServiceType="mediaProjection"`) in
+  [android/app/src/main/AndroidManifest.xml](../android/app/src/main/AndroidManifest.xml).
+  All four lines are gone; **slice 3 re-adds them in the same commit that flips
+  the flag**, and a `DELIBERATELY ABSENT` block at the end of the manifest plus
+  the `STORE DISCLOSURE` comment in
+  [BugReportPlugin.kt](../android/app/src/main/java/com/veyrnox/app/BugReportPlugin.kt)
+  carry the exact declarations so nothing has to be re-derived.
+  Why they went, in the order that actually decided it: (1) the capability is
+  unreachable — the ship flag is set nowhere, so `BugReportButton` returns `null`
+  and `getMediaProjection()` cannot be called on any build; (2)
+  `FOREGROUND_SERVICE_MEDIA_PROJECTION` triggers Play's **mandatory Foreground
+  Service Permissions declaration**, which is a release gate rather than a
+  listing field — so keeping it meant justifying screen recording to Play, for a
+  path no user can invoke, *before* the slice-3 disclosure the plan puts first;
+  (3) `src/lib/bugReport/encrypt.js:48` is still the all-zero placeholder support
+  key marked `DO NOT SHIP`, so the flag could not have been flipped regardless.
+  Nothing else in the app needs either permission — `BugReportRecorderService` is
+  the only foreground service in the manifest. The Kotlin service, the plugin,
+  and the whole JS chain are untouched; only the manifest half was removed.
+  Note the asymmetry this closes: `ios/fastlane/Fastfile:110` already fails an
+  archive whose bundle contains `VITE_BUG_REPORT_ENABLED:"1"`. iOS had a
+  ship-guard and Android had none.
+  **No versionCode bump in this change** — it rides whatever the next upload
+  bumps to, and nothing is submitted under the 1.0.1 hold either way.
 - **PostHog forwarding — 🅿️ PARKED 2026-09-05 (owner decision).** Suggestion was to
   fork the existing `functions/api/rpc/[fn].js` proxy so events routed to the
   `track_event` RPC also POST to PostHog EU (`eu.i.posthog.com/i/v0/e/`),

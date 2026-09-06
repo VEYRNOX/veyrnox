@@ -18,11 +18,17 @@ package com.veyrnox.app
 // deserialises and binds the MediaProjection.
 //
 // STORE DISCLOSURE:
-//   AndroidManifest.xml adds:
+//   NOT IN THE MANIFEST TODAY. Slice 2b added these and they were removed
+//   again — the ship flag is set nowhere, so this whole path is unreachable
+//   on every build, and the permission triggered a Play declaration for a
+//   capability no user could invoke. Slice 3 must re-add ALL THREE to
+//   AndroidManifest.xml in the same commit that flips the flag:
 //     - FOREGROUND_SERVICE (already-present in most Capacitor apps)
 //     - FOREGROUND_SERVICE_MEDIA_PROJECTION (API 34+ requirement)
 //     - <service android:name=".BugReportRecorderService"
+//                android:exported="false"
 //                android:foregroundServiceType="mediaProjection" />
+//   Without them getMediaProjection() throws SecurityException on API 34+.
 //   Play sensitive-permissions form asks about screen capture — must be
 //   answered as part of Slice 3 store-disclosure amend. Camera / mic
 //   permissions are NOT used here; they are already in the manifest
