@@ -15,6 +15,8 @@ import {
   shouldPromptForReview,
   markDeclined,
   triggerReviewPromptIfEligible,
+  requestFeature,
+  FEEDBACK_EMAIL,
   MIN_SENDS_BEFORE_PROMPT,
   MIN_INTERVAL_MS,
 } from '@/lib/reviewPrompt';
@@ -99,6 +101,34 @@ describe('reviewPrompt I3 (deniability/demo)', () => {
     const fired = await triggerReviewPromptIfEligible();
     expect(fired).toBe(false);
     expect(localStorage.getItem('veyrnox-review-last-asked-ts')).toBeNull();
+  });
+});
+
+describe('reviewPrompt.requestFeature', () => {
+  it('is a no-op under coercion (no mailto navigation)', async () => {
+    isDeniabilityOrDemoActive.mockReturnValue(true);
+    const spy = vi.spyOn(window, 'location', 'get').mockReturnValue({
+      set href(_) { throw new Error('should not navigate under coercion'); },
+    });
+    await requestFeature();
+    spy.mockRestore();
+  });
+
+  it('mailto fallback carries the triage template and the feedback address', async () => {
+    let captured = null;
+    const original = window.location;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { set href(v) { captured = v; } },
+    });
+    try {
+      await requestFeature();
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: original });
+    }
+    expect(captured).toContain(`mailto:${FEEDBACK_EMAIL}`);
+    expect(captured).toContain('Veyrnox%20feature%20request');
+    expect(captured).toContain('seed%20phrase');
   });
 });
 

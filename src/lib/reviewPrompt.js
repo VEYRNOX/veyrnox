@@ -113,3 +113,41 @@ export function openFeedback() {
   const url = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('Veyrnox feedback')}`;
   try { window.location.href = url; } catch { /* noop */ }
 }
+
+// Request a feature — MetaMask-style: opens an external community board
+// where users post + upvote ideas (MetaMask uses community.metamask.io, a
+// Discourse forum, reachable from Mobile Settings → Request a feature).
+// Veyrnox has no community forum yet, so FEATURE_REQUEST_URL is null and
+// the flow falls back to a triage-templated mailto. Flip the constant to
+// the forum URL (or GitHub Discussions/Canny/Featurebase board) when it
+// exists — no other code change needed.
+//
+// I3: never fires under coercion — a "the primary user wants X" signal
+// leaks that a real user exists behind the decoy.
+export const FEATURE_REQUEST_URL = null;
+
+async function openExternalUrl(url) {
+  try {
+    const { Browser } = await import('@capacitor/browser');
+    await Browser.open({ url });
+    return true;
+  } catch {
+    try { window.open(url, '_blank', 'noopener'); return true; }
+    catch { return false; }
+  }
+}
+
+export async function requestFeature() {
+  if (isDeniabilityOrDemoActive()) return;
+  if (FEATURE_REQUEST_URL) {
+    if (await openExternalUrl(FEATURE_REQUEST_URL)) return;
+  }
+  const subject = encodeURIComponent('Veyrnox feature request');
+  const body = encodeURIComponent(
+    'What would you like Veyrnox to do?\n\n' +
+    'Why is this useful to you?\n\n' +
+    '(Please do not include your seed phrase, PIN, or private keys.)'
+  );
+  const url = `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${body}`;
+  try { window.location.href = url; } catch { /* noop */ }
+}
