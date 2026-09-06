@@ -15,6 +15,7 @@ import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle
 import { openStoreForRating, openFeedback } from "@/lib/reviewPrompt";
 import { isMessageSigningEnabled, setMessageSigningEnabled } from "@/lib/messageSigning";
 import { hasConsent, setConsent } from "@/lib/consent";
+import { getAdvisorConsentState, setAdvisorConsent, clearAdvisorConsent } from "@/lib/advisorConsent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { publishAdvisorContext } from "@/lib/advisorBridge";
 import { usePortfolioHealthInputs } from "@/lib/usePortfolioHealthInputs";
@@ -59,6 +60,9 @@ export default function Settings() {
   // session from disclosing a preference the primary wallet set (I3).
   const [telemetry, setTelemetry] = useState(
     () => !isDeniabilityOrDemoActive() && hasConsent(),
+  );
+  const [advisorOnline, setAdvisorOnline] = useState(
+    () => !isDeniabilityOrDemoActive() && getAdvisorConsentState() === 'granted',
   );
 
   useEffect(() => {
@@ -315,6 +319,54 @@ export default function Settings() {
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
           {t("settings.telemetry.help")}
+        </p>
+      </div>
+
+      {/* AI Security Advisor — online answers. The privacy policy (§9) tells the
+          user they can "revoke consent from Settings → Privacy". That sentence
+          shipped in #2362 before this control existed — the same defect the
+          telemetry comment above warns about, a promise no surface delivers.
+          lib/advisorConsent.js already had the writers; clearAdvisorConsent had
+          zero callers, and the in-panel prompt only renders while the stored
+          answer is null, so a granted consent was unrevocable short of a panic
+          wipe.
+
+          Asymmetric on purpose. OFF records an explicit denial and stops egress
+          on the next call (sendMessage re-reads consent per call, so there is
+          nothing to flush). ON does NOT grant — it CLEARS the stored answer, so
+          the Advisor re-shows its full disclosure and the grant is made there,
+          with the explanation in front of the user. Granting from a toggle
+          would be consent without disclosure, which is what §9 exists to
+          prevent.
+
+          Both writers are I3-gated inside lib/advisorConsent.js, so a decoy or
+          demo session moves the switch without touching the shared key. */}
+      <div className="p-5 rounded-xl border border-border bg-card">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{t("settings.advisorConsent.label")}</p>
+              <p className="text-xs text-muted-foreground">{t("settings.advisorConsent.description")}</p>
+            </div>
+          </div>
+          <Switch
+            checked={advisorOnline}
+            data-testid="advisor-consent-switch"
+            aria-label={advisorOnline
+              ? t("settings.advisorConsent.disable_aria")
+              : t("settings.advisorConsent.enable_aria")}
+            onCheckedChange={(checked) => {
+              setAdvisorOnline(checked);
+              if (checked) clearAdvisorConsent(); else setAdvisorConsent(false);
+              recordAudit('settings_changed');
+            }}
+          />
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          {t("settings.advisorConsent.help")}
         </p>
       </div>
 
