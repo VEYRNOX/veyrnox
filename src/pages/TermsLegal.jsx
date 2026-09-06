@@ -226,12 +226,11 @@ export default function TermsLegal() {
               </p>
             </TermsSection>
 
-            <TermsSection number={8} title="Third-Party Networks" group="privacy">
+            <TermsSection number={8} title="Third-Party Networks & Processors" group="privacy">
               <p>
                 To show balances and broadcast transactions, the app connects to public blockchain RPC
                 nodes and price feeds. These requests are necessary to use a blockchain. They are not
-                used to build a profile of you, and we do not attach your identity to them. Those
-                providers operate under their own policies.
+                used to build a profile of you, and we do not attach your identity to them.
               </p>
               <p>
                 <b>WalletConnect.</b> To connect to decentralised apps, session metadata &mdash; the
