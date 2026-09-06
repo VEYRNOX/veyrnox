@@ -87,17 +87,23 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
-        <!-- Bug-report screen recording (slice 2b of docs/bug-report-recording-plan.md).
-             MediaProjection on Android 14+ (API 34+) REQUIRES a running foreground
-             service of type mediaProjection at the moment getMediaProjection() is
-             called, or the framework throws SecurityException. This service exists
-             only to satisfy that requirement — the plugin owns the MediaRecorder +
-             VirtualDisplay lifecycle. Zero runtime effect on shipped builds because
-             the calling JS is gated behind VITE_BUG_REPORT_ENABLED (default OFF). -->
-        <service
-            android:name=".BugReportRecorderService"
-            android:exported="false"
-            android:foregroundServiceType="mediaProjection" />
+        <!-- REMOVED 2026-09-06: the <service> entry for BugReportRecorderService
+             (foregroundServiceType="mediaProjection"), together with the
+             FOREGROUND_SERVICE and FOREGROUND_SERVICE_MEDIA_PROJECTION permissions
+             below. Slice 3 of docs/bug-report-recording-plan.md restores all four
+             in the same change that flips VITE_BUG_REPORT_ENABLED and publishes the
+             matching Play Data Safety / Apple App Privacy disclosures.
+             Why they went: requesting FOREGROUND_SERVICE_MEDIA_PROJECTION forced a
+             Play "Foreground service permissions" declaration that blocked EVERY
+             pending change on the app, for a capability no build can invoke — the
+             ship flag is set nowhere in the repo or in any workflow, so
+             BugReportButton renders null everywhere. Declaring screen capture now
+             would also put the store disclosure ahead of the feature, while the
+             live listing still says "no screen capture".
+             The Kotlin (BugReportRecorderService.kt, BugReportPlugin.kt) is left in
+             place; only the manifest wiring is gone. Starting the service without
+             this entry throws at runtime, which is unreachable while the gate is
+             closed and is exactly what slice 3 must re-wire before flipping it. -->
     </application>
 
     <!-- Permissions -->
@@ -122,13 +128,8 @@
          USE_BIOMETRIC covers API 28+; USE_FINGERPRINT covers API 23–27. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
-    <!-- Bug-report screen recording (slice 2b).
-         FOREGROUND_SERVICE: legal from Android 9; needed to run the recorder service.
-         FOREGROUND_SERVICE_MEDIA_PROJECTION: required from Android 14 (API 34) to
-           declare mediaProjection as the service's type.
-         Zero-effect on shipped builds — the calling JS is gated behind
-         VITE_BUG_REPORT_ENABLED (default OFF). Slice 3 store-disclosure amend
-         answers the Play sensitive-permissions form for these. -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <!-- Bug-report screen recording permissions (FOREGROUND_SERVICE +
+         FOREGROUND_SERVICE_MEDIA_PROJECTION) REMOVED 2026-09-06 — see the comment
+         at the end of <application> for the reasoning and for what slice 3 of
+         docs/bug-report-recording-plan.md has to restore. -->
 </manifest>

@@ -61,4 +61,27 @@ describe('AndroidManifest.xml — Play launch invariants', () => {
     expect(lastComment, 'comment block immediately above CAMERA').toBeTruthy();
     expect(lastComment[0]).toMatch(/QR|barcode/i);
   });
+
+  // Removed 2026-09-06. Requesting FOREGROUND_SERVICE_MEDIA_PROJECTION forces a
+  // Play "Foreground service permissions" declaration that blocks EVERY pending
+  // change on the app — including the Closed testing (Alpha) rollout — for a
+  // capability no shipped build can invoke (VITE_BUG_REPORT_ENABLED is set
+  // nowhere, so BugReportButton renders null). Slice 3 of
+  // docs/bug-report-recording-plan.md re-adds these in the same change that
+  // flips the flag and publishes the store disclosures; un-pin then, do not
+  // relax this to make an unrelated build pass.
+  //
+  // Asserted against DECLARATIONS ONLY, with comments stripped first: the
+  // manifest's own removal note names both permissions, so a whole-file match
+  // would fire on the comment explaining the removal.
+  it('does not request foreground-service permissions (slice 3 re-adds them with the store disclosure)', () => {
+    const declarations = manifest.replace(/<!--[\s\S]*?-->/g, '');
+    const requested = [...declarations.matchAll(/<uses-permission\s+android:name="([^"]+)"/g)]
+      .map((m) => m[1]);
+    expect(requested).not.toContain('android.permission.FOREGROUND_SERVICE');
+    expect(requested).not.toContain('android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION');
+    // The <service> entry is the other half — without it the permissions are
+    // pointless, and with it Play still reads the app as using media projection.
+    expect(declarations).not.toMatch(/android:foregroundServiceType/);
+  });
 });
