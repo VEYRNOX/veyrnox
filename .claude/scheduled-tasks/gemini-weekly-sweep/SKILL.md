@@ -113,7 +113,13 @@ if [ "$BYTES" -gt 3000000 ]; then
   exit 1
 fi
 
-CORPUS=$(mktemp -t gemini-corpus.XXXXXX)
+# The corpus is handed to Gemini as an `@corpus.txt` FILE REFERENCE, never on
+# stdin — see the "Never pipe the corpus on stdin" note below. It therefore
+# needs a real directory of its own, outside the worktree so it can never be
+# picked up by `git add`.
+CORPUSDIR="/tmp/veyrnox-gemini-corpus-$DATE"
+rm -rf "$CORPUSDIR" && mkdir -p "$CORPUSDIR"
+CORPUS="$CORPUSDIR/corpus.txt"
 
 # NOTE: do NOT write `for f in $FILES` — this box's shell is zsh, which does
 # not word-split unquoted parameters, so `cat` receives all N paths as ONE
@@ -132,7 +138,7 @@ HEADERS=$(grep -c '^=== ' "$CORPUS")
   exit 1
 }
 
-PROMPT="You are the weekly Veyrnox subsystem auditor. Every file under $TARGET is in this prompt. Look for:
+PROMPT="You are the weekly Veyrnox subsystem auditor. @corpus.txt contains every file under $TARGET, concatenated, each preceded by a '=== path ===' header. Read it fully. Look for:
 
 1. Drift between related files (two components implementing the same guard differently, a helper called with mismatched signatures, dead code paths a per-diff review would never see together).
 2. Missing coverage of shared invariants across the subsystem (every file that reads seed state must gate on isDeniabilityOrDemoActive; every file that writes to shared localStorage must check the same; every file that logs must not log I3-sensitive state).
@@ -143,13 +149,16 @@ Report findings only, in the format:
 [SEVERITY] file:line (cross-ref file:line if drift) — what breaks — how to fix
 Severities: CRITICAL, HIGH, MEDIUM, LOW. No praise, no summary. If no findings, say exactly: no defects found."
 
-# `--skip-trust` is REQUIRED: the worktree lives under /tmp, which is outside
+# `--skip-trust` is REQUIRED: the corpus dir lives under /tmp, which is outside
 # any trusted-folder root, and gemini refuses to run headless in an untrusted
-# directory (exit 55). Safe here — the model only reads piped stdin.
+# directory (exit 55). Safe here — the model only reads the corpus file.
 FINDINGS=$(mktemp -t gemini-findings.XXXXXX)
-trap 'rm -f "$CORPUS" "$FINDINGS"' EXIT
+trap 'rm -rf "$CORPUSDIR"; rm -f "$FINDINGS"' EXIT
 
-gemini --skip-trust -m gemini-3.1-pro-preview -p "$PROMPT" < "$CORPUS" > "$FINDINGS" || {
+# NEVER pipe the corpus on stdin — see the note below. `cd` into the corpus dir
+# so `@corpus.txt` resolves; `timeout -s KILL` because gemini ignores SIGTERM.
+( cd "$CORPUSDIR" && timeout -s KILL 900 \
+    gemini --skip-trust -m gemini-3.1-pro-preview -p "$PROMPT" ) > "$FINDINGS" || {
   echo "ERROR: gemini call failed (exit $?). No report written." >&2
   exit 1
 }
@@ -178,6 +187,46 @@ REPORT="docs/audit-gemini-sweep-$DATE.md"
 
 echo "Report: $REPORT"
 ```
+
+### Never pipe the corpus on stdin — it hangs forever
+
+This step used `gemini ... < "$CORPUS"` until 2026-09-06. **That form is broken**
+and cost two consecutive failed runs (one burned 55 minutes at 100% CPU and
+produced zero bytes) before the cause was found.
+
+gemini CLI 0.54.4 hangs when *source code* arrives on stdin. It is not total
+size — it is code content, and the cliff is ~2.5 KB, three orders of magnitude
+below a real corpus. Measured on this machine, same byte count each row:
+
+| stdin payload | result |
+|---|---|
+| 5,000 bytes plain prose | returns in 4s |
+| 5,000 bytes JSX | hangs, SIGKILLed at 90s |
+| 2,000 bytes JSX | returns in 7s |
+| 2,500 bytes JSX | hangs |
+
+Passing the same content as an `@corpus.txt` file reference uses a different
+code path and works — the full 1.5 MB `src/components/` corpus returned in
+under a minute.
+
+Notes for whoever debugs this next:
+
+- **The failure is silent.** No error, no partial output, no stderr beyond the
+  usual `256-color` / `Ripgrep is not available` warnings. It looks exactly like
+  a slow model call, which is why the first run was allowed to reach 55 minutes.
+- **`gemini` ignores SIGTERM.** A plain `kill` or bare `timeout` will not stop
+  it; `timeout -s KILL` / `pkill -9` are required. A bare `timeout` hangs too,
+  waiting on a process that never dies.
+- **These do NOT help** — all three were tried and all three still hang:
+  `--approval-mode plan`, `-o json`, and a deny-all `--policy` file. So it is
+  not the agent's tool loop, whatever the `GrepTool` warning suggests.
+- **Verify comprehension before trusting a run.** Ask a question whose answer is
+  only in the corpus (e.g. "name the identifier assigned from
+  `import.meta.env.VITE_TIP_BASE_URL`" → `TIP_CONFIGURED`). A model that never
+  read the file still answers a bare "reply OK" prompt correctly.
+
+If a future CLI version fixes the stdin path, that is not a reason to switch
+back — `@file` works on both.
 
 ## Step 4 — Commit, push, PR, merge
 
@@ -235,7 +284,12 @@ Always remove the worktree, including when the run aborts.
 ```bash
 cd /Users/aljobson/Documents/GitHub/veyrnox
 git worktree remove --force "$WT" 2>/dev/null || true
+rm -rf "/tmp/veyrnox-gemini-corpus-$DATE" 2>/dev/null || true
+pkill -9 -f "gemini-3.1-pro-preview" 2>/dev/null || true
 ```
+
+The `pkill -9` is not paranoia: gemini ignores SIGTERM, so an aborted run can
+leave a node process pegging a core indefinitely.
 
 ## Spending cap — £10, owner-locked 2026-08-16
 
@@ -267,6 +321,12 @@ all times** by owner instruction. The cap is structural, not a policy note:
 - Do NOT `git checkout`/`git switch` in the primary working directory.
 - Verify Gemini's `file:line` refs before treating a finding as actionable —
   Gemini can hallucinate line numbers. Report is a triage input, not a fix list.
+  **Observed 2026-09-06: EVERY line number in that run was a corpus offset, not
+  a file line** (findings cited line 8939 of a 229-line file). Expect the whole
+  column to be wrong rather than the odd stray, use the file names, and check
+  each claim against the file before repeating it. In that same run one finding
+  ("dead file, no imports") was flat false — the file had six importers and a
+  test.
 - This is an INTERNAL audit — never describe it as "independent" in the report.
 
 # ponytail: rotation via ISO week % 4 — deterministic, no config file,
