@@ -209,9 +209,15 @@ chokepoints already use). Regression-tested, BUILT, INTERNAL — not device-veri
 
 **Safety Plus IAP:** Monthly $5.99 + Annual $49.99 (same `safety_plus` entitlement).
 Store-side setup complete (Apple + Google + RevenueCat). iOS sandbox-purchase
-device-verified. **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV) —
-verified 2026-07-21; Guideline 3.1.5(b) satisfied**, unblocking the iOS real-device build
-and the first App Store / IAP submission (both still to be done). Play launch still gated
+device-verified, and **one real production purchase exists** —
+`safety_plus_monthly_v2` on the App Store, bought 2026-08, still active, full price
+(no offer). Play-side: no purchase, real or otherwise. **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV) —
+verified 2026-07-21; Guideline 3.1.5(b) satisfied**, which unblocked the iOS real-device
+build and the first App Store / IAP submission. **Both HAPPENED — this line read "both
+still to be done" until 2026-09-06, six weeks after the app went live.** `1.0` is
+`READY_FOR_SALE` (released 2026-07-28) and Apple has `APPROVED` the Safety Plus
+subscriptions. Evidence and what is genuinely still pending: the App Store section below.
+Play launch still gated
 on the upload-key reset (pending). Referral system BUILT (4-tier discount model, Supabase server-side codes,
 API-hardened PR #1334 — dedup + rate-limited RPCs, see tracking section below;
 further API-hardened 2026-07-28 by the internal-audit wave: H-1..H-3 identity/access,
@@ -244,7 +250,14 @@ annual). The two stores are NOT symmetric and code must not treat them as one me
   `introPhase`). Unresolvable → render no price rather than the base price (I4).
 - All offer paths fail CLOSED: a missing or unsigned offer throws `OFFER_UNAVAILABLE`
   rather than falling through to a full-price charge.
-Not verified: no real purchase has been completed on either platform.
+**Not verified: no promotional OFFER has ever been exercised by a real purchase, on either
+platform.** None of the 10 store-side offers has been bought end to end, so the signing,
+identifier-matching and `offerPriceInfo` paths above remain code-verified only.
+**Corrected 2026-09-06.** This line read *"no real purchase has been completed on either
+platform"* — false since 2026-08. One production purchase exists (`safety_plus_monthly_v2`,
+App Store, 5.99, still active), but it carries `original_offer_type: "No offer"` — full
+price. The purchase falsified the sentence; it did not verify the offer machinery, which
+is what the sentence was there to guard. See the App Store section for the evidence.
 
 **Anonymous event tracking (PR #1321) — LIVE, and it changed the privacy story.**
 `api/trackEvent.js` writes 7 event types to our own Supabase with a random
@@ -427,7 +440,47 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
 - **Personal** developer account: 12-tester/14-day rule gates **production only**.
 - Data Safety: all 9 owner-decisions resolved (`docs/play-launch/data-safety-form.md`).
 - **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV)** — Guideline
-  3.1.5(b) satisfied. First App Store submission still to do.
+  3.1.5(b) satisfied.
+- **THE APP IS LIVE ON THE APP STORE. Verified 2026-09-06 — this file said "First App
+  Store submission still to do" for six weeks after it shipped.** Two independent
+  sources, one of which needs none of our credentials:
+  - ASC API (app `6790188660`): `1.0` → `appStoreState: READY_FOR_SALE`;
+    `1.0.1` → `READY_FOR_REVIEW`, created 2026-07-30, staged and never submitted
+    (consistent with the 1.0.1 hold, which remains in force).
+  - Public iTunes lookup: `Veyrnox`, seller `Veyrnox LTD`, version `1.0`, released
+    2026-07-28, free, min iOS 15.0 —
+    https://apps.apple.com/us/app/veyrnox/id6790188660
+  **Apple and Play are OPPOSITES, and conflating them is the trap.** Play has never had
+  a declaration reviewed (app is `Draft`, all 10 App content declarations sit at
+  `Ready to send for review`, temporary name `com.veyrnox.app (unreviewed)` — see
+  `docs/Feature-Status.md` 2026-09-06 console-state note). Apple has a live public
+  product page. A finding about one store says nothing about the other; this correction
+  exists because a session inferred the Apple state from the Play state and was wrong.
+- **IAP: Safety Plus is APPROVED by Apple, not pending.** `safety_plus_annual` and
+  `safety_plus_monthly_v2` are both `state: APPROVED`. The newer **AI Security
+  Protection** group is NOT: `ai_security_protection_annual_2` and
+  `ai_security_protection_monthly_2` are `READY_TO_SUBMIT`. So "IAP submission" is done
+  for one tier and outstanding for the other — do not write either state onto both.
+- **A REAL PRODUCTION PURCHASE HAS BEEN COMPLETED. Settled 2026-09-06** (RevenueCat
+  project `proj82381f44`). This file said "no real purchase has been completed on either
+  platform"; that is false.
+  - **Safety Plus Monthly v2 (`safety_plus_monthly_v2`), App Store, purchased in the
+    month of 2026-08-01, still active on 2026-09-06.** Revenue chart: **5.99, 1
+    transaction**, `store: App Store`. Overview: 1 active subscription, MRR ~5. Active
+    every week continuously from the week of 2026-08-02 onward.
+  - **Why this is production and not the documented sandbox purchase**, which was the
+    open question: sandbox transactions generate NO revenue, and this one recorded
+    revenue and a counted transaction. Corroborating, an Apple sandbox monthly
+    subscription renews on an accelerated clock and self-expires within about half an
+    hour, so it cannot show as continuously active across five weeks. The `actives`
+    chart also exposes no sandbox dimension at all.
+  - **It was bought at FULL PRICE — `original_offer_type: "No offer"`.** So the claim's
+    *purpose* survives its wording: **no promotional-offer path has ever been exercised
+    by a real purchase.** None of the 10 store-side offers (4 referral tiers + retention
+    50%, monthly and annual) has been verified end to end, on either platform. Correct
+    the sentence; do not delete the caveat it was carrying.
+  - Reach, for scale: **574 new customers and 578 active users in the last 28 days.**
+    Any "not yet launched" framing anywhere in this file is wrong.
 - **iOS build history — corrected 2026-08-08 by querying ASC directly.** This file
   previously said "1.0 (2) uploaded 2026-07-23" and stopped there; the actual state
   is longer and the 1.0 train is now retired.
