@@ -152,7 +152,7 @@ afterAll(() => {
   vi.unstubAllEnvs();
 });
 
-describe('RestoreFromShares — real WalletProvider integration', { sequential: true }, () => {
+describe('RestoreFromShares — real WalletProvider integration', () => {
   it('fails closed for a short passphrase before any vault is created', async () => {
     renderRestorePage();
     const fields = loadBundles();

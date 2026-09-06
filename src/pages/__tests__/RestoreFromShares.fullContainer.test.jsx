@@ -132,7 +132,7 @@ afterAll(() => {
   vi.unstubAllEnvs();
 });
 
-describe('restoreFromRecoveryBundles — full-container preservation (C-2)', { sequential: true }, () => {
+describe('restoreFromRecoveryBundles — full-container preservation (C-2)', () => {
   it('restores BOTH wallets, not just wallets[0]', async () => {
     renderProvider();
     await waitFor(() => expect(walletContext).toBeTruthy());
