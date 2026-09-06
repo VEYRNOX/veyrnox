@@ -22,6 +22,23 @@ import { join } from 'node:path';
 const MANIFEST_PATH = join(process.cwd(), 'android/app/src/main/AndroidManifest.xml');
 const manifest = readFileSync(MANIFEST_PATH, 'utf8');
 
+function getManifestDeclarations(xml) {
+  // Only XML declaration lines can request a permission or configure a service.
+  // Selecting those lines avoids rewriting XML to remove explanatory comments.
+  return xml
+    .split(/\r?\n/)
+    .filter((line) => {
+      const declaration = line.trimStart();
+      return declaration.startsWith('<uses-permission') || declaration.startsWith('<service');
+    })
+    .join('\n');
+}
+
+function getRequestedPermissions(xml) {
+  return [...getManifestDeclarations(xml).matchAll(/<uses-permission\s+android:name="([^"]+)"/g)]
+    .map((match) => match[1]);
+}
+
 describe('AndroidManifest.xml — Play launch invariants', () => {
   it('declares android.permission.CAMERA (QR scanner won\'t work without it)', () => {
     expect(manifest).toMatch(/<uses-permission\s+android:name="android\.permission\.CAMERA"\s*\/>/);
@@ -84,9 +101,8 @@ describe('AndroidManifest.xml — Play launch invariants', () => {
   // fire on the comment explaining the removal and this pin would fail on
   // correct code.
   it('does not request foreground-service permissions (slice 3 re-adds them with the store disclosure)', () => {
-    const declarations = manifest.replace(/<!--[\s\S]*?-->/g, '');
-    const requested = [...declarations.matchAll(/<uses-permission\s+android:name="([^"]+)"/g)]
-      .map((m) => m[1]);
+    const declarations = getManifestDeclarations(manifest);
+    const requested = getRequestedPermissions(manifest);
     expect(requested).not.toContain('android.permission.FOREGROUND_SERVICE');
     expect(requested).not.toContain('android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION');
     // The <service> entry is the other half — without it the permissions are
@@ -98,10 +114,8 @@ describe('AndroidManifest.xml — Play launch invariants', () => {
   // emptied, truncated, or read from the wrong path, every `not.toContain`
   // assertion would pass on an empty string. This asserts the parse actually
   // found the permissions the app genuinely ships.
-  it('the stripped-comment parse still sees the real permissions (guards the pin above)', () => {
-    const declarations = manifest.replace(/<!--[\s\S]*?-->/g, '');
-    const requested = [...declarations.matchAll(/<uses-permission\s+android:name="([^"]+)"/g)]
-      .map((m) => m[1]);
+  it('the declaration parse still sees the real permissions (guards the pin above)', () => {
+    const requested = getRequestedPermissions(manifest);
     expect(requested).toContain('android.permission.CAMERA');
     expect(requested).toContain('android.permission.INTERNET');
   });
