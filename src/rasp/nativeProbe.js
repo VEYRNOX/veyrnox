@@ -74,9 +74,102 @@ const UNAVAILABLE = Object.freeze({ available: false });
 export async function nativeProbeSource() {
   // Web / non-native: this leg cannot inspect the OS. Fail closed — the web build
   // uses browserProbeSource instead, and detect() over this is INTEGRITY_UNAVAILABLE.
+  // Checked BEFORE the latch wrapper so a web session can never inherit one.
   if (!Capacitor.isNativePlatform()) {
     return UNAVAILABLE;
   }
+  return applyHardSignalLatch(await sampleNativeProbe());
+}
+
+// Audit 2026-09-07 M-1 — session latch for HARD signals only.
+//
+// The hole: a well-formed verdict reporting hooked/tampered/emulator drives
+// BLOCK, which compose.js makes non-overridable precisely because a hostile
+// runtime can forge the confirmation. Every failure path in this file returns
+// UNAVAILABLE, which detect() maps to INTEGRITY_UNAVAILABLE → WARN — and WARN
+// IS overridable (biometric + ack, SendCrypto.jsx). So an attacker who had
+// already been caught only had to MUTE the bridge on the next presign — kill
+// the plugin, stall past FRESH_PROBE_TIMEOUT_MS, return a partial shape — to
+// demote their own BLOCK to a re-confirm-and-continue prompt. "Detect once,
+// warn forever."
+//
+// WHY THIS IS NOT THE ATTESTATION LATCH, and why #2276's DoS does not follow.
+// The 2026-09-07 audit flagged that copying attestation.js's latch here would
+// import the self-renewing-BLOCK failure that keeps #2276 pinned at WARN. That
+// risk comes from WHAT ARMS the latch, not from latching itself: attestation
+// arms on `attestationFailed`, which a stale root pinset can assert on a
+// perfectly genuine device, so the latch then re-arms itself forever.
+//
+// This latch arms ONLY on a positive hard detection from an available,
+// shape-valid verdict — the device itself saying hooked/tampered/emulator. It
+// can never be armed by an absence: not by a timeout, not by a throw, not by a
+// partial shape, not by `available:false`. A genuine device produces `false` on
+// all three and therefore never arms it, so there is no state for a mute to
+// renew. That is the whole difference, and it is load-bearing — do not widen
+// the arming set to include an "unavailable" or "unknown" case.
+//
+// Scope is deliberately the three BLOCK-tier signals. `rooted`, `elevated` and
+// `screenCapture` are WARN already (degrade.js), so muting the probe moves them
+// WARN → WARN and there is no downgrade to prevent. Latching them would buy
+// nothing and would strand the false-positive-prone axis (custom ROMs, OEM
+// quirks) in a sticky state.
+//
+// Cleared by a fresh well-formed verdict with all three false — a real PASS,
+// which requires the attacker to defeat the probe rather than silence it — and
+// on APP_LOCK_EVENT, so a rebooted-to-clean device starts a new session clean.
+// Same two-key discipline as attestation.js's latch.
+// The `@type` annotation is required, not decorative: `let x = null` infers as
+// type `null` under checkJS, so both the arming assignment and the spread below
+// fail typecheck without it (TS2322 / TS2698).
+/** @type {{ hooked: boolean, tampered: boolean, emulator: boolean } | null} */
+let _sessionHardSignals = null;
+if (typeof window !== 'undefined' && !(/** @type {any} */ (window)).__veyrnoxNativeLatchHook) {
+  /** @type {any} */ (window).__veyrnoxNativeLatchHook = true;
+  window.addEventListener('veyrnox:app-lock', () => { _sessionHardSignals = null; });
+}
+
+function applyHardSignalLatch(source) {
+  const available = source?.available === true;
+  const signals = available ? source.signals : null;
+
+  if (signals) {
+    // Arm or clear from a REAL verdict only.
+    if (signals.hooked === true || signals.tampered === true || signals.emulator === true) {
+      _sessionHardSignals = {
+        hooked: signals.hooked === true,
+        tampered: signals.tampered === true,
+        emulator: signals.emulator === true,
+      };
+    } else {
+      _sessionHardSignals = null;
+    }
+    return source;
+  }
+
+  // Unavailable / malformed. If this session already caught a hard signal, the
+  // absence of a verdict must not walk it back — re-assert the latched one so
+  // the tier stays BLOCK. Otherwise pass the fail-closed UNAVAILABLE through
+  // unchanged (WARN), which is the correct verdict for "never saw anything".
+  if (_sessionHardSignals) {
+    return {
+      available: true,
+      signals: {
+        rooted: false,
+        elevated: false,
+        screenCapture: false,
+        ..._sessionHardSignals,
+      },
+    };
+  }
+  return source;
+}
+
+// Exported for tests only — reset the session latch without dispatching a lock.
+export function _resetNativeHardSignalLatchForTests() {
+  _sessionHardSignals = null;
+}
+
+async function sampleNativeProbe() {
 
   let verdict;
   try {

@@ -11,6 +11,18 @@ Branch audited: `security-audit/2026-09-07`, pinned to `origin/main` @ **`d0c442
 Status: **Findings only — nothing fixed at the time of writing. Do not mark
 anything verified without on-chain txid or on-device evidence.**
 
+> **Update, same day — M-1 and M-2 are also FIXED in code** (branch
+> `fix/audit-2026-09-07-m1-m2`). M-1's downgrade is closed for the three
+> BLOCK-tier signals by a session latch in `nativeProbe.js` that arms **only on a
+> positive hard detection** and can never arm from an absence — which is what
+> keeps #2276's self-renewing-BLOCK failure out of this leg; the soft axes are
+> deliberately not latched (they are WARN either way, so a mute downgrades
+> nothing), and the contradictory `getFreshRaspArtifact.js` header is corrected.
+> M-2 is closed by AND-ing the WC sign path's remote screen with
+> `hasAdvisorOnlineAccessCached()`, matching the three call sites that already
+> gated. Both carry regression guards mutation-checked in **both** directions.
+> **BUILT, INTERNAL — unit-tested only, not device-verified.**
+>
 > **Update, same day — H-1 and H-2 are FIXED in code.** Both were remediated in a
 > follow-up PR off `main` (see `fix/audit-2026-09-07-fail-honest`): the three WC
 > signing handlers now `throw` instead of `return`, and the send 2FA gate uses
@@ -257,7 +269,26 @@ from the recovered DEK path, or gate the send UI on `isVerifierReady()`.
 
 ## MEDIUM
 
-### M-1 — [RASP] The OS-probe leg still has no session latch: a muted probe downgrades a would-be BLOCK to an overridable WARN — **[VERIFIED]** · STILL PRESENT
+### M-1 — [RASP] The OS-probe leg still has no session latch: a muted probe downgrades a would-be BLOCK to an overridable WARN — **[VERIFIED]** · ~~STILL PRESENT~~ **FIXED (partial, by design)**
+
+> **Fixed same day, and the scope is narrower than the finding — read this before
+> assuming it is fully closed.** The three BLOCK-tier signals (hooked, tampered,
+> emulator) now latch for the session in `nativeProbe.js`, so a later mute
+> re-asserts them instead of degrading to WARN. The soft axes (rooted, elevated,
+> screenCapture) are **deliberately not latched**: they are WARN in both
+> directions, so a mute downgrades nothing there, and latching them would strand
+> the false-positive-prone axis in a sticky state.
+>
+> The owner escalation this finding called for was resolved by narrowing rather
+> than deciding: the latch arms **only on a positive detection from an available,
+> shape-valid verdict** and can never be armed by a timeout, throw, partial shape
+> or `available:false`. A genuine device reports false on all three and so never
+> arms it — there is no state for a mute to renew. That is precisely what makes
+> it structurally different from the attestation latch, which arms on
+> `attestationFailed` and can therefore be asserted on a genuine device by a
+> stale root pinset. **#2276's reasoning is untouched and its WARN posture
+> stands.** The sub-defect (the header claiming BLOCK where the code yields WARN)
+> is also corrected.
 
 **Files:** latch present only on the attestation leg `src/rasp/attestation.js:216-237,298`;
 absent from the native leg (`src/rasp/nativeProbe.js`, `src/rasp/getFreshRaspArtifact.js:48-60`).
@@ -295,7 +326,17 @@ the code — independent, land either way; (b) escalate to owner for the latch
 decision, and record the #2276 tension in `compose.js`/`attestation.js` so the
 next session does not re-derive it.
 
-### M-2 — [WC] The sign-path TIP remote screen is not tier-gated and fires with no disclosure — **[VERIFIED]** · I2
+### M-2 — [WC] The sign-path TIP remote screen is not tier-gated and fires with no disclosure — **[VERIFIED]** · I2 · **FIXED**
+
+> **Fixed same day.** The WC send path now ANDs `remoteScreenEnabled` with
+> `hasAdvisorOnlineAccessCached()`, matching the three call sites that already
+> gated. The cached reader (not `useTier()`) because this is a `useCallback`
+> outside the render path; it is fail-closed to `free` before TierProvider
+> resolves **and** forced to `free` on the deniability flip, so both defaults
+> deny. The fix took the gate-the-code option rather than removing the modal's
+> gate — but the note below still stands: **the two must not disagree.** If the
+> product ever wants screening on every tier, remove both, because the real
+> defect was behaviour the disclosure did not describe, not the tier itself.
 
 **Files:** `src/lib/WalletConnectProvider.jsx:1075` vs
 `src/components/walletconnect/RequestApprovalModal.jsx:65-70`; egress at
