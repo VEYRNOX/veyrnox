@@ -171,24 +171,46 @@ INSERT INTO storage.buckets (id, name, public)
   VALUES ('bug-reports', 'bug-reports', false)
   ON CONFLICT (id) DO NOTHING;
 
--- Only service_role can read or write. anon and authenticated are locked
--- out at the RLS layer; the Pages Function uses service_role for both.
--- No public read policy — recordings must never be listable or fetchable
--- without server mediation.
-DROP POLICY IF EXISTS bug_reports_service_role_all ON storage.objects;
-CREATE POLICY bug_reports_service_role_all
-  ON storage.objects
-  FOR ALL
-  USING (bucket_id = 'bug-reports')
-  WITH CHECK (bucket_id = 'bug-reports');
--- The policy above is TO service_role only in effect: Supabase Storage
--- policies do not need an explicit role clause because service_role
--- bypasses RLS entirely. The policy exists to document intent AND to
--- deny all other roles (RLS with no matching policy = deny by default).
+-- No RLS policy on storage.objects for this bucket. service_role bypasses
+-- RLS entirely, so it can read/write regardless. RLS-with-no-matching-policy
+-- denies by default for anon and authenticated — which is what we want.
 --
--- Sanity check for the reviewer: after applying, this query must return
--- zero rows for anon and authenticated:
---   SELECT * FROM storage.objects WHERE bucket_id = 'bug-reports';
+-- A prior version of this file DEFINED bug_reports_service_role_all with no
+-- TO clause, which grants FOR ALL to PUBLIC (anon + authenticated). That
+-- inverted the intent: it opened the bucket to every role instead of locking
+-- it down. Removed 2026-09-07 (issue #2417). Never re-add a policy on this
+-- bucket without an explicit TO clause naming the role.
+DROP POLICY IF EXISTS bug_reports_service_role_all ON storage.objects;
+
+-- Authorization test (run as postgres in Supabase SQL editor after applying):
+--
+--   -- Seed as service_role authority (bypasses RLS).
+--   INSERT INTO storage.objects (bucket_id, name, owner, metadata)
+--     VALUES ('bug-reports', 'test-object.br1', NULL, '{}'::jsonb);
+--
+--   -- anon must see and touch nothing.
+--   SET LOCAL ROLE anon;
+--   SELECT count(*) FROM storage.objects WHERE bucket_id = 'bug-reports';  -- 0
+--   INSERT INTO storage.objects (bucket_id, name) VALUES ('bug-reports','x'); -- denied
+--   UPDATE storage.objects SET name = 'y' WHERE bucket_id = 'bug-reports';    -- 0 rows
+--   DELETE FROM storage.objects WHERE bucket_id = 'bug-reports';              -- 0 rows
+--   RESET ROLE;
+--
+--   -- authenticated must see and touch nothing.
+--   SET LOCAL ROLE authenticated;
+--   SELECT count(*) FROM storage.objects WHERE bucket_id = 'bug-reports';  -- 0
+--   INSERT INTO storage.objects (bucket_id, name) VALUES ('bug-reports','x'); -- denied
+--   UPDATE storage.objects SET name = 'y' WHERE bucket_id = 'bug-reports';    -- 0 rows
+--   DELETE FROM storage.objects WHERE bucket_id = 'bug-reports';              -- 0 rows
+--   RESET ROLE;
+--
+--   -- service_role still sees the seeded row (the Pages Function upload path).
+--   SET LOCAL ROLE service_role;
+--   SELECT count(*) FROM storage.objects WHERE bucket_id = 'bug-reports';  -- 1
+--   RESET ROLE;
+--
+--   -- Cleanup.
+--   DELETE FROM storage.objects WHERE bucket_id = 'bug-reports' AND name = 'test-object.br1';
 
 -- ============================================================================
 -- 4. Retention sweep (manual invocation for now; slice 1e-3 or 2 wires cron)
