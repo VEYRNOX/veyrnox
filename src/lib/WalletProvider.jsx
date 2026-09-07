@@ -1401,7 +1401,7 @@ export function WalletProvider({ children }) {
 
   // STEP-UP: is re-auth required before a send (or seed reveal)? True when the
   // recent-auth window has lapsed (or no session). Resets only on unlock +
-  // successful verifyActiveCredential. Defined ABOVE revealWalletMnemonic so its
+  // successful verifyActiveCredentialDetailed. Defined ABOVE revealWalletMnemonic so its
   // dependency reference is not in the temporal dead zone.
   const isSendReauthRequired = useCallback(
     () => sendReauthRequired({ lastAuthAt: lastAuthAtRef.current, now: Date.now(), windowMs: REAUTH_WINDOW_MS }),
@@ -1521,16 +1521,21 @@ export function WalletProvider({ children }) {
     setExploreMode(true);
   }, []);
 
-  // STEP-UP: verify a re-entered credential against the ACTIVE session's verifier. Never
-  // calls unlock()/resolveDeniabilityUnlock — so it can NEVER trigger panic/decoy. A
-  // successful verify refreshes the recent-auth window. Returns false (never throws) if
-  // there is no session/verifier (fail closed).
-  const verifyActiveCredential = useCallback(async (entered) => {
-    const ok = await verifyCredential(verifierRef.current, entered);
-    if (ok) lastAuthAtRef.current = Date.now();
-    return ok;
-  }, []);
-
+  // STEP-UP: verify a re-entered credential against the ACTIVE session's verifier.
+  // Never calls unlock()/resolveDeniabilityUnlock — so it can NEVER trigger
+  // panic/decoy. A successful verify refreshes the recent-auth window.
+  //
+  // 2026-09-07 (audit M-3): the plain `verifyActiveCredential` that used to sit
+  // here is DELETED, and deliberately so — it is the API that caused H-2. It
+  // collapsed "wrong credential" and "there is no verifier to check against"
+  // into the same bare `false`, which the send 2FA gate then reported as an
+  // incorrect PIN and punished with an attempt, five times, then a lock. Every
+  // step-up surface now uses the Detailed variant below and branches on
+  // `bricked`: useActionGuard, useRevealWithReauth, HiddenWallet2faGate and both
+  // SendCrypto gates. Leaving the lossy one exported is how a sixth surface
+  // reintroduces H-2 by picking the shorter name.
+  //
+  // If you need a boolean, call this and read `.ok`.
   const verifyActiveCredentialDetailed = useCallback(async (entered) => {
     try {
       const result = await verifyCredentialDetailed(verifierRef.current, entered);
@@ -1545,11 +1550,23 @@ export function WalletProvider({ children }) {
     }
   }, []);
 
-  // audit-H5: expose whether the step-up verifier was captured successfully. Returns
-  // false when captureVerifierSafe returned null (Argon2id OOM at unlock time), so
-  // callers can surface a "please re-lock" message rather than silently returning
-  // wrong-password failures until the attempt cap locks the user out.
-  const isVerifierReady = useCallback(() => verifierRef.current !== null, []);
+  // audit-H5 note (2026-09-07, audit M-3): `isVerifierReady` used to sit here —
+  // a readiness probe whose docstring described exactly the failure the app was
+  // shipping ("surface a 'please re-lock' message rather than silently returning
+  // wrong-password failures until the attempt cap locks the user out") and which
+  // had no caller anywhere in src/. The remediation primitive was built,
+  // exported and typed, and never wired.
+  //
+  // Deleted rather than wired, because the failure it described is now handled
+  // at the point that actually matters: verifyActiveCredentialDetailed returns
+  // `bricked` for an absent verifier, and all five step-up surfaces branch on it
+  // (audit H-2, PR #2422). A separate readiness probe would be a second, weaker
+  // way to ask the same question — weaker because it is a snapshot a caller can
+  // read and then act on stale, where `bricked` comes back from the verify
+  // attempt itself.
+  //
+  // If a surface ever wants to disclose the state BEFORE the user types
+  // anything, re-add it deliberately with that caller in the same change.
 
 
   // PHASE 2 (create): atomically create the real wallet + both chaff slots under the
@@ -1845,7 +1862,27 @@ export function WalletProvider({ children }) {
       } else {
         // M-4 equalizer: a total miss spends the same verifier-capture KDF the success
         // path spends below, so a wrong guess remains timing-equal with a real secret.
-        await captureVerifierSafe(password); // equalize miss vs success; discard result
+        //
+        // NOT AWAITED — audit M-4 (2026-09-07), and the ordering is the whole point.
+        // This used to be `await captureVerifierSafe(password)` before the throw,
+        // which made the two outcomes equal in KDF *count* but not in time-to-
+        // VISIBLE-outcome:
+        //   success — setUnlocked(true) fires, then the fifth KDF runs; React
+        //             flushes the pending render at that first yield, so the
+        //             dashboard paints WHILE Argon2id runs.
+        //   miss    — the fifth KDF ran BEFORE the error surfaced, so the failure
+        //             appeared one whole Argon2id later than the success did.
+        // At the current parameters (96 MiB / t=6 on v2 vaults, 192 MiB / t=3 on
+        // v1) that is the same order of magnitude H-1 exists to flatten, and an
+        // attacker with a stopwatch measures the SCREEN, not promise resolution.
+        //
+        // `void` keeps the work — the KDF still runs to completion, so the count
+        // and memory-parameter profile a ledger-based test observes are unchanged
+        // — while moving it after the visible outcome, mirroring the success path
+        // (which spends its equalizing work in a `void (async () => {...})()` for
+        // the same reason). captureVerifierSafe never throws, so there is no
+        // unhandled rejection to catch.
+        void captureVerifierSafe(password); // equalize miss vs success; discard result
         throw primaryErr; // total miss (PIN or password): same visible KDF profile as a hit
       }
     }
@@ -2827,9 +2864,7 @@ export function WalletProvider({ children }) {
     importWalletForPendingPin,
     clearPendingPin,
     // SEND STEP-UP RE-AUTH (see lib/sendReauth.js + wallet-core/credentialVerifier.js).
-    verifyActiveCredential,
     verifyActiveCredentialDetailed,
-    isVerifierReady,
     isSendReauthRequired,
     // ACTION PASSWORD (2FA second factor) — PRIMARY set this phase. See twoFactorGate.js
     // for the PIN+password verdict the critical-action gate composes from these.

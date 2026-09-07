@@ -38,9 +38,7 @@ export interface WalletContextValue {
   createWalletFromPendingPin: any;
   importWalletForPendingPin: any;
   clearPendingPin: any;
-  verifyActiveCredential: any;
   verifyActiveCredentialDetailed: any;
-  isVerifierReady: any;
   isSendReauthRequired: any;
   actionPasswordConfigured: any;
   hasActionPassword: any;

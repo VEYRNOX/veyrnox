@@ -373,7 +373,23 @@ exposure depends on that value, **stated rather than assumed.**
 hygiene, the modal's gate must be removed so disclosure matches behaviour — the
 two must not disagree.
 
-### M-3 — [Auth] `isVerifierReady` is a dead export whose docstring names exactly the failure the app is shipping — **[VERIFIED]**
+### M-3 — [Auth] `isVerifierReady` is a dead export whose docstring names exactly the failure the app is shipping — **[VERIFIED]** · **FIXED (by deletion)**
+
+> **Fixed same day, by deleting it rather than wiring it.** The finding offered
+> both. Wiring was the right call when it was written, because the failure the
+> docstring described was live — but H-2's fix closed that failure by a different
+> and better route: `verifyActiveCredentialDetailed` returns `bricked` for an
+> absent verifier, and all five step-up surfaces now branch on it
+> (`useActionGuard`, `useRevealWithReauth`, `HiddenWallet2faGate`, and both
+> SendCrypto gates). A separate readiness probe would be a second, weaker way to
+> ask the same question — weaker because it is a snapshot a caller can read and
+> then act on stale, where `bricked` comes back from the verify attempt itself.
+>
+> **The bare `verifyActiveCredential` was deleted with it, and that is the more
+> valuable half.** H-2's fix removed its last caller, leaving the exact API that
+> *caused* H-2 sitting exported next to the safe one, differing only by being
+> shorter to type. It collapsed "wrong credential" and "no verifier to check
+> against" into one `false`. Leaving it is how a sixth surface reintroduces H-2.
 
 **File:** `src/lib/WalletProvider.jsx:1550`, `:2816`; `src/lib/WalletProvider.d.ts:43`.
 
@@ -388,7 +404,31 @@ an unwired control that reads as coverage on the context surface.
 **Fix:** wire it at the SendCrypto 2FA gate (which also resolves H-2's honesty
 half), or delete it. An uncalled readiness probe reports nothing.
 
-### M-4 — [Auth] The unlock timing equalizer is KDF-count-equal but not equal to the *visible* outcome — **[VERIFIED]** (ordering) / **[UNVERIFIED]** (paint timing not benched) · re-rated from prior L-12
+### M-4 — [Auth] The unlock timing equalizer is KDF-count-equal but not equal to the *visible* outcome — **[VERIFIED]** (ordering) / **[UNVERIFIED]** (paint timing not benched) · re-rated from prior L-12 · **FIXED**
+
+> **Fixed same day.** The miss path's fifth KDF is now fire-and-forget
+> (`void captureVerifierSafe(password)`) before the throw, mirroring the success
+> path, so both outcomes spend it AFTER their visible surface. `void` keeps the
+> work — the derivation still runs, so count and param-profile parity are
+> unchanged — and only stops the error waiting on it.
+>
+> **A finding about the existing test came out of this, and it explains why M-4
+> survived two audits.** `unlockTimingEqualizer.h1.test.jsx` mocks
+> `captureVerifierSafe` to `async () => null`, so the fifth derivation never
+> enters its argon2id ledger at all. Its success/miss count parity therefore holds
+> **whether or not the equalizing call exists** — confirmed by deleting the call
+> and watching the suite stay green, on the pre-fix code as well as the fixed
+> code. It pins the four real KDFs correctly; it simply cannot see this one, and
+> it is the suite a reader would assume covers it.
+>
+> The new `unlockTimingEqualizer.m4Ordering.test.jsx` pins the ordering
+> deterministically — it holds the capture open and asserts the rejection still
+> arrives — plus that the capture is still invoked, so the fix cannot decay into
+> silently deleting the equalizing work. Mutation-checked both ways.
+>
+> **Still UNVERIFIED, unchanged:** paint timing is not benched. The ordering is
+> now provably right; that React paints inside the KDF window on a real device
+> remains reasoned, not measured.
 
 **Files:** `src/lib/WalletProvider.jsx:2009` vs `:2059`; `:1845-1847`;
 `src/wallet-core/deniabilityUnlock.js:213`, `:232-236`;

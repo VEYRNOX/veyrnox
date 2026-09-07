@@ -160,7 +160,6 @@ vi.mock('@/lib/WalletProvider', () => ({
     withBtcPrivateKey: vi.fn(),
     withSolPrivateKey: vi.fn(),
     lock: vi.fn(),
-    verifyActiveCredential: vi.fn(),
     verifyActiveCredentialDetailed: vi.fn(),
     isSendReauthRequired: () => false,
     actionPasswordConfigured: false,
