@@ -350,7 +350,9 @@ Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-0
     (`sql/referral-rc-webhook.sql`, **deployed 2026-08-10 evening; the SQL
     setter and the webhook function are both live on both envs**, but nothing
     yet CALLS the setter until the RC dashboard is configured to POST to it
-    and #1703 + #1704 are resolved). Removing `record_attribution` from the
+    (#1703 + #1704 code bugs are FIXED — see "First-referral bonus" section
+    below; only the RC-dashboard webhook config + end-to-end trip remain).
+    Removing `record_attribution` from the
     allowlist before that end-to-end chain works would silently stop
     attribution being recorded at all.
   - **New standing rule:** once the service-role key is set, `ALLOWED_RPCS` in
@@ -927,7 +929,7 @@ today via PRs #1435..#1461 plus #1462 (M-10) stacked-merged via #1442 (M-4).
   RC webhook (skeleton in `sql/referral-rc-webhook.sql`, wiring is a TODO — chain does
   not function end-to-end until it lands). **UPDATED 2026-08-10 evening:** SQL landed
   and both Edge Functions (`first-referral-bonus`, `rc-webhook`) deployed on both envs.
-  Chain still inert end-to-end due to two open bugs (#1703 P0, #1704 P1) — see the
+  Chain still unexercised end-to-end (code bugs #1703 + #1704 fixed; RC webhook config + real trip remain) — see the
   "First-referral bonus + RC webhook chain — DEPLOYED both envs 2026-08-10" section
   below for the full state. `register_referral_code` requires
   `p_device_id` with rate-limit hoisted above the NULL check (H-2). `record_attribution`
@@ -1033,7 +1035,7 @@ LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
   `increment_referral` renamed from `ref_code` to `p_code` (DROP+recreate in
   `sql/api-security-hardening.sql`, client updated in `referralApi.js`). Run the
   updated SQL in Supabase before deploying the matching client build.
-- **First-referral bonus + RC webhook chain — DEPLOYED both envs 2026-08-10, LOGICALLY INERT because of 2 known bugs (#1703 P0, #1704 P1).** Full history in
+- **First-referral bonus + RC webhook chain — DEPLOYED both envs 2026-08-10, code bugs #1703 + #1704 are FIXED in current code (see the two entries below); chain remains unexercised end-to-end.** Full history in
   `docs/Feature-Status.md` 2026-08-10 H-1 chain entry. Snapshot:
   - **SQL:** 9 migrations landed on Staging EU (`nszlbcmcysftwyudthjz`) and Production
     (`jwstkrtslotnjyerzzsi`) via Supabase MCP `apply_migration` — `first_referral_bonus`,
@@ -1067,23 +1069,24 @@ LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
     the Edge Function URL (`https://<project>.supabase.co/functions/v1/rc-webhook`),
     subscribe to `INITIAL_PURCHASE` + `NON_RENEWING_PURCHASE`, set the same value
     as `REVENUECAT_WEBHOOK_AUTHORIZATION` in the Authorization field.
-  - **⚠️ [#1703 P0 wrong-recipient bug.](https://github.com/VEYRNOX/veyrnox/issues/1703)**
-    `Subscription.jsx:321` sets the REFERRER'S code as an RC attribute on the
-    REFEREE'S subscriber. Webhook (if it read the attribute) would bind referee's
-    `rc_user_id` to referrer's `referrals` row and grant the promotional entitlement
-    to the REFEREE, not the REFERRER. Contradicts `sql/first-referral-bonus.sql:6-7`
-    intent. Owner ruling required on three options (A: fix client to send OWN
-    code + add referrer-side binding path; B: reinterpret intent as "referee gets
-    bonus"; C: schema change to track both rc_ids). See issue for full trace.
-  - **⚠️ [#1704 P1 attribute-name mismatch.](https://github.com/VEYRNOX/veyrnox/issues/1704)**
-    Client writes attribute key `referralCode` (`purchases.js:299`); webhook reads
-    `veyrnox_referral_code` (`rc-webhook/index.ts:131`). Every event returns 200
-    `no_code`, binds nothing. **This is why #1703 has never fired in production
-    despite the code shipping 8 hours before the deploy.**
-  - **Interaction:** DO NOT fix #1704 in isolation — that ACTIVATES the wrong-recipient
-    grant path. Fix #1703 first, then land #1704 + client attribute change in the same
-    coordinated release. Today's shipped state — inert because of #1704 — is
-    intentional and safe (I4 fail-closed by construction).
+  - **✅ [#1703 P0 wrong-recipient bug — FIXED in current code.](https://github.com/VEYRNOX/veyrnox/issues/1703)**
+    Client now writes the SUBSCRIBER'S OWN referral code (not the referrer's) as
+    an RC attribute at `src/lib/purchases.js:328`
+    (`Purchases.setAttributes({ veyrnox_referral_code: code })` where `code` is
+    the caller's own code). Webhook binds the subscriber's `rc_user_id` to
+    their own `referrals` row via `set_referral_rc_user`, matching
+    `sql/first-referral-bonus.sql:6-7` intent (referrer's paid conversion → their
+    own row → bonus). Do not reintroduce the referrer-code write path.
+  - **✅ [#1704 P1 attribute-name mismatch — FIXED in current code.](https://github.com/VEYRNOX/veyrnox/issues/1704)**
+    Client writes attribute key `veyrnox_referral_code` at
+    `src/lib/purchases.js:328`; webhook reads `veyrnox_referral_code` at
+    `supabase/functions/rc-webhook/index.ts:131`. Keys match. Do not rename
+    either end without renaming both in the same PR.
+  - **Chain remains unexercised end-to-end.** Code bugs above are fixed but no
+    real referral purchase has ever flowed through `rc-webhook` → attribution
+    grant. Verification still gated on RC dashboard webhook config plus a real
+    end-to-end sandbox trip (referrer creates code → referee purchases with
+    code → RC fires INITIAL_PURCHASE → attribution row + bonus grant land).
   - **Ceremonial notes worth retaining for the next reader:**
     - The client sends `edgeFn('first-referral-bonus', …)` via the Cloudflare Pages
       proxy at `functions/api/edge/[fn].js` — the app never talks to Supabase Edge
