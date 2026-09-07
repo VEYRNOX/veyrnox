@@ -134,11 +134,12 @@ describe('issue #950 — WC pre-sign gate is native-aware (H-1 fail-open closed)
       signals: { rooted: true, hooked: false, emulator: false, tampered: false },
     });
     const { _handlePersonalSign } = await import('../WalletConnectProvider.jsx');
-    await _handlePersonalSign(
+    // Audit 2026-09-07 H-1: rejection must THROW so the modal shows it.
+    await expect(_handlePersonalSign(
       { withPrivateKey, evmAddress: WALLET_ADDR },
       'topicR', 1,
       ['0xdeadbeef', WALLET_ADDR],
-    );
+    )).rejects.toThrow('RASP_WARN_REJECTED');
     expect(withPrivateKeySpy).not.toHaveBeenCalled();
     expect(respondToRequest).not.toHaveBeenCalled();
     expect(rejectRequest).toHaveBeenCalledWith('topicR', 1, 'RASP_WARN_REJECTED');
@@ -151,11 +152,12 @@ describe('issue #950 — WC pre-sign gate is native-aware (H-1 fail-open closed)
     });
     attestationProbeSource.mockResolvedValue({ available: true, attestationFailed: true });
     const { _handlePersonalSign } = await import('../WalletConnectProvider.jsx');
-    await _handlePersonalSign(
+    // Audit 2026-09-07 H-1: rejection must THROW so the modal shows it.
+    await expect(_handlePersonalSign(
       { withPrivateKey, evmAddress: WALLET_ADDR },
       'topicI', 2,
       ['0xdeadbeef', WALLET_ADDR],
-    );
+    )).rejects.toThrow('RASP_BLOCK');
     expect(withPrivateKeySpy).not.toHaveBeenCalled();
     expect(respondToRequest).not.toHaveBeenCalled();
     expect(rejectRequest).toHaveBeenCalledWith('topicI', 2, 'RASP_BLOCK');
@@ -169,8 +171,10 @@ describe('issue #950 — WC pre-sign gate is native-aware (H-1 fail-open closed)
     // Attestation also unavailable; composed condition stays INTEGRITY_UNAVAILABLE.
     attestationProbeSource.mockResolvedValue({ available: false });
     const { _handleSendTransaction } = await import('../WalletConnectProvider.jsx');
-    await _handleSendTransaction({ withPrivateKey }, 'topicU', 3,
-      [{ to: '0xrecipient', value: '0x0', data: '0x' }], 'eip155:11155111');
+    // Audit 2026-09-07 H-1: rejection must THROW so the modal shows it.
+    await expect(_handleSendTransaction({ withPrivateKey }, 'topicU', 3,
+      [{ to: '0xrecipient', value: '0x0', data: '0x' }], 'eip155:11155111'),
+    ).rejects.toThrow('RASP_WARN_REJECTED');
     expect(withPrivateKeySpy).not.toHaveBeenCalled();
     expect(respondToRequest).not.toHaveBeenCalled();
     expect(rejectRequest).toHaveBeenCalledWith('topicU', 3, 'RASP_WARN_REJECTED');

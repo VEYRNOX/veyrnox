@@ -176,7 +176,12 @@ describe('WalletConnectProvider — C3: dApp signing handlers obey the RASP pre-
 
     it('handlePersonalSign rejects and does not respond', async () => {
       const h = captureHandlers();
-      await act(async () => { await h.signPersonal('topic1', 1, ['0xdeadbeef', '0xabc']); });
+      // Audit 2026-09-07 H-1: the handler must THROW, not return. A plain return
+      // reached RequestApprovalModal's success branch (successHaptic + close).
+      await act(async () => {
+        await expect(h.signPersonal('topic1', 1, ['0xdeadbeef', '0xabc']))
+          .rejects.toThrow('RASP_BLOCK');
+      });
       expect(rejectRequest).toHaveBeenCalledWith('topic1', 1, 'RASP_BLOCK');
       expect(respondToRequest).not.toHaveBeenCalled();
       expect(withPrivateKey).not.toHaveBeenCalled();
@@ -184,7 +189,10 @@ describe('WalletConnectProvider — C3: dApp signing handlers obey the RASP pre-
 
     it('handleSignTypedData rejects and does not respond', async () => {
       const h = captureHandlers();
-      await act(async () => { await h.signTypedData('topic2', 2, ['0xabc', '{}']); });
+      await act(async () => {
+        await expect(h.signTypedData('topic2', 2, ['0xabc', '{}']))
+          .rejects.toThrow('RASP_BLOCK');
+      });
       expect(rejectRequest).toHaveBeenCalledWith('topic2', 2, 'RASP_BLOCK');
       expect(respondToRequest).not.toHaveBeenCalled();
       expect(withPrivateKey).not.toHaveBeenCalled();
@@ -193,7 +201,9 @@ describe('WalletConnectProvider — C3: dApp signing handlers obey the RASP pre-
     it('handleSendTransaction rejects and does not respond', async () => {
       const h = captureHandlers();
       await act(async () => {
-        await h.sendTransaction('topic3', 3, [{ from: '0xabc', to: '0xdef', value: '0x0' }], 'eip155:11155111');
+        await expect(
+          h.sendTransaction('topic3', 3, [{ from: '0xabc', to: '0xdef', value: '0x0' }], 'eip155:11155111'),
+        ).rejects.toThrow('RASP_BLOCK');
       });
       expect(rejectRequest).toHaveBeenCalledWith('topic3', 3, 'RASP_BLOCK');
       expect(respondToRequest).not.toHaveBeenCalled();
