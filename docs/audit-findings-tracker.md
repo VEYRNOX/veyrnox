@@ -20,7 +20,9 @@ pin, the largest window this tracker has ever spanned.
 The window contains the corpus's **first CRITICAL that was live in production** (a Shamir
 threshold break, since fixed) and a complete rise-and-fall of a new attack surface (the
 bug-report screen-recording feature, introduced 09-02 and deleted 09-07) — which left one
-regression behind that deletion does **not** close.
+regression behind that the deletion did not close. **That regression was closed later the
+same day** (#2418 plus a three-project live audit); this section is left as written, with
+the outcome noted, rather than rewritten.
 
 ## Sources synthesised
 
@@ -53,12 +55,13 @@ That is an improvement on the previous window's four-day hole.
 
 - Total findings catalogued: **~300** (dedup across the corpus; MEDIUM/LOW grouped — the
   count is approximate by construction and the delta matters more than the absolute)
-- Fixed (code-confirmed): **~236** — **~37 closed this run**, of which **9 were
+- Fixed (code-confirmed): **~237** — **~38 closed this run**, of which **9 were
   re-verified by grep** against the pinned snapshot rather than taken from a doc
 - Still open / accepted-residual: **~46**
-- **Regressed: 1** — the bug-report storage RLS policy, and it is the one item on this
-  page that deleting a feature did not close
-- Needs on-device / on-chain / live-backend verification: **25**
+- **Regressed: 0** — was 1 (the bug-report storage RLS policy). Closed 2026-09-07 by #2418
+  plus a live audit of **all three** Supabase projects, which established the negative the
+  issue existed to prove: the migration was never applied anywhere
+- Needs on-device / on-chain / live-backend verification: **24**
 
 ---
 
@@ -93,9 +96,13 @@ Verified at this pin: `functions/api/bug-report/` absent, `src/components/bugRep
 (grep). That closes DIFF-0906-BUGREPORT-UPLOAD-NOAUTH (an unauthenticated 52 MiB
 service-role write path) and DIFF-0906-BUGREPORT-NOWATCHDOG by deletion.
 
-**It does not close the SQL policy, and the deletion is exactly why that matters** — see
-Regressed below. A migration already applied to a live project is not revoked by removing
-the client that called it.
+**The deletion did not close the SQL policy** — a migration already applied to a live
+project is not revoked by removing the client that called it, so the file's defect and the
+live projects' state were two separate questions. **Both are now answered and the finding is
+closed** (2026-09-07, after this section was first written): #2418 dropped the policy from
+the file, and a live audit found the migration was never applied on any of the three
+Supabase projects. Details, including a method gap in the audit's first pass, under
+Regressed below.
 
 ### The right fix pattern finally propagated — after being rediscovered five times
 
@@ -107,7 +114,8 @@ closed** (grep):
 - `WalletPortfolioPage.jsx:659` — identical predicate
 
 Both regressions from `46c5faf0` (#1929) are therefore **CLOSED**, and the regressed count
-drops from 2 to 1. `TierProvider.jsx` remains the demo-blind holdout (below).
+drops from 2 to 1 — and to **0** later the same day when the bug-report SQL policy closed
+(see Regressed). `TierProvider.jsx` remains the demo-blind holdout (below).
 
 ### Closed this run
 
@@ -132,6 +140,7 @@ drops from 2 to 1. `TierProvider.jsx` remains the demo-blind holdout (below).
 | **DIFF-0905-FLAGSECURE-CLEARABLE** | REGRESSION | `setSecureFlag(false)` cleared FLAG_SECURE with **zero** gate and no restore on crash/background — "needs no attacker at all" | `0fb35004` | (doc) — grant-gated, self-healing on pause/resume/destroy |
 | **DIFF-0905-REVIEWPROMPT-RESIDUE** | REGRESSION | 3 review-prompt localStorage keys survived panic wipe **and** `inspectKeyMaterial()` still reported clean | #2336 | (doc) — added to `METADATA_RESIDUE_KEYS` + tests |
 | **DIFF-0906-BUGREPORT-UPLOAD-NOAUTH** | REGRESSION | Upload endpoint never checked a reservation existed, was `reserved`, or matched size — any caller could write 52 MiB via the service-role key | `826bd1c8` | **grep**: `functions/api/bug-report/` absent; RPC allowlist entry gone |
+| **DIFF-0906-BUGREPORT-SQL-POLICY** — [#2417](https://github.com/VEYRNOX/veyrnox/issues/2417) | REGRESSION | Storage RLS policy `FOR ALL` with no `TO` clause ⇒ applied to PUBLIC on the `bug-reports` bucket, where the intent was denial | #2418 (`56e2f07b`) | **live**: bucket, policy and tables absent on **all three** Supabase projects — the migration was never applied. See Regressed for the audit table and the two-vs-three enumeration gap |
 | **DIFF-0831-HUAWEIRECEIPT** | NEEDS-REVIEW | HMS IAP receipts never signature-verified; entitlements granted from unverified JSON | #2191 | (doc) — new `HuaweiReceiptVerifier.kt`, SHA256withRSA, fail-closed, both purchase and restore paths |
 | **DIFF-0831-WEBHOOKLOG** | NEEDS-REVIEW | Transak webhook log injection via unsanitised `eventID`/`orderId`/`status`, unbounded | #2190 | (doc) — `logSafe()` strips control chars, truncates to 64 |
 | **DIFF-0903-WEBHOOK-HMAC-ORACLE** | NEEDS-REVIEW | Webhook HMAC verify in `warn` mode logged the full 64-char computed digest — a signing oracle the moment it flipped to `strict` | #2289 | (doc) — 8-char prefix, both sides |
@@ -252,7 +261,6 @@ test). Every line number in that sweep was a corpus byte-offset, not a file line
 
 | ID | Finding | Why verification is needed |
 |---|---|---|
-| **Bug-report SQL policy, as applied** | **The single most urgent row.** Whether `sql/bug-report-upload.sql` was ever executed against Staging or Production is dashboard state this analysis cannot read — and that question, not the file, is the finding. See Regressed |
 | **H-3 PRODUCTION REVOKEs** | The database every prior analysis queried was *staging* (`nszlbcmcysftwyudthjz`, which is **named** `veyrnox-prod`). Production is `jwstkrtslotnjyerzzsi`. STAGE 1 of `sql/live-project-hardening-2026-08-07.sql` was applied; **STAGE 2 remains commented out.** Whether `SUPABASE_SERVICE_ROLE_KEY` is set on the Pages project, and in which scope, is dashboard state. Re-verify against the ref the shipped bundle connects to, never a project name |
 | **`ENVIRONMENT` / service-role scope** | `wrangler.toml` declares the variable and `[fn].js` 503s in production without the key, but the canary lane publishes a **third standing public deployment** on the same Pages project. If the key is bound outside the Production scope, the allowlisted RPCs are callable without RLS from an extra hostname. `ALLOWED_RPCS` is closed and rate-limits fail closed — an open question, not a demonstrated defect |
 | **`register_referral_code` / `ai-referral-attribution-plan-family.sql`** | Return-type change `void`→`text` read by `referralApi.js`, and a `CREATE OR REPLACE` preserving the H-3 REVOKEs — both **CODE only, not yet run against either project**, per the standing rule that production DDL follows the merge |
@@ -280,39 +288,62 @@ test). Every line number in that sweep was a corpus byte-offset, not a file line
 
 ## Regressed 🔴
 
-**One finding is currently in a regressed state**, down from two. Both prior Base44
-regressions closed (above).
+**No finding is currently in a regressed state**, down from two at the start of this
+window and one at first writing. Both prior Base44 regressions closed (above), and
+DIFF-0906-BUGREPORT-SQL-POLICY closed 2026-09-07 — see below.
 
-| ID | Finding | What broke |
-|---|---|---|
-| **DIFF-0906-BUGREPORT-SQL-POLICY** — [#2417](https://github.com/VEYRNOX/veyrnox/issues/2417) | Storage RLS policy grants `FOR ALL` to **PUBLIC** on the `bug-reports` bucket | `sql/bug-report-upload.sql:179-183` creates `bug_reports_service_role_all ON storage.objects FOR ALL USING (bucket_id='bug-reports') WITH CHECK (bucket_id='bug-reports')` — **with no `TO service_role` clause.** A Postgres policy with no `TO` applies to PUBLIC, so anon and authenticated receive a *permissive* policy over that bucket rather than being denied. The comment immediately below (`:184-187`) argues the opposite — "the policy above is TO service_role only in effect … RLS with no matching policy = deny by default" — which is true only when no policy matches. One does. And `service_role` bypassing RLS is correct but irrelevant: *because* it bypasses, this policy's only observable effect is on the roles it was meant to exclude. **The comment defending it is the hazard**, because it is what a future reader will weigh the change against (grep, lines read in full) |
+### DIFF-0906-BUGREPORT-SQL-POLICY — CLOSED 2026-09-07
 
-**Deleting the feature did not close this, and that is the whole point.** The 09-07 removal
-took out the client, the Pages endpoint, the tests and the plan doc — verified absent at
-this pin — but **it never touched the SQL file**: `git log -- sql/bug-report-upload.sql`
-shows a single commit, `c1cf8203` (#2334), which is the one that added it. A migration
-already applied to a live Supabase project is not revoked by deleting its caller. The
-finding therefore has two halves and only one is answerable from source: **the file is
-wrong** (confirmed), and **whether it was ever executed against Staging
-(`nszlbcmcysftwyudthjz`) or Production (`jwstkrtslotnjyerzzsi`)** is dashboard state. Until
-someone checks, the honest position is that a bucket may be publicly readable and writable
-on a live project for a feature that no longer exists — with no client left to make the
-exposure visible in traffic. Note the ordering risk: the missing client makes this *less*
-discoverable, not more.
+[#2417](https://github.com/VEYRNOX/veyrnox/issues/2417), closed. `sql/bug-report-upload.sql`
+created `bug_reports_service_role_all ON storage.objects FOR ALL USING
+(bucket_id='bug-reports') WITH CHECK (bucket_id='bug-reports')` with **no `TO service_role`
+clause**, so it applied to PUBLIC — a *permissive* policy over that bucket for anon and
+authenticated, where the intent was denial. `service_role` bypassing RLS was correct but
+irrelevant: *because* it bypasses, the policy's only observable effect was on the roles it
+was meant to exclude. **The comment defending it (`:184-187`) was the hazard**, because it
+is what a future reader would have weighed a change against.
 
-**Tracked as [#2417](https://github.com/VEYRNOX/veyrnox/issues/2417).** Its definition of
-done separates the two halves deliberately — fix the file, then audit both live projects —
-and requires the outcome of the audit to be recorded explicitly, *including* "it was never
-applied" if that is what the check finds. That negative is the fact the issue exists to
-establish, and it is the one nobody writes down.
+**Closed by [#2418](https://github.com/VEYRNOX/veyrnox/pull/2418)** (merged `56e2f07b`),
+which drops the policy rather than adding `TO service_role` — deny-by-default is the
+stronger control. **[#2421](https://github.com/VEYRNOX/veyrnox/pull/2421) proposes deleting
+the file outright; it is OPEN at this pin and this row does not depend on it.**
 
-**The sanity check the file offers cannot detect this.** `SELECT * FROM storage.objects
-WHERE bucket_id = 'bug-reports'` (`:189-191`) returns zero rows for `anon` on an empty
-bucket whether or not the policy is correct, so it passes vacuously — plausibly why the
-defect shipped past review. Same class as the vacuous-test findings this corpus keeps
-producing (08-25's `spyOn` that patched an object CI did not resolve; 08-26's
-`fastpathButtonVisible = false`): **a check that cannot fail reads as coverage and is
-not.**
+**Live-project audit: the migration was never applied. Anywhere.** This is the negative the
+issue existed to establish, recorded here because the previous version of this row
+predicted it was "the one nobody writes down":
+
+| Project | Ref | Bucket | Policy | Tables | `storage.objects` RLS |
+|---|---|---|---|---|---|
+| Veyrnox PRODUCTION (live) | `jwstkrtslotnjyerzzsi` | absent | absent | absent | enabled |
+| veyrnox-STAGING (not production) | `nszlbcmcysftwyudthjz` | absent | absent | absent | enabled |
+| veyrnox-staging (us-east-2) | `yrqzwqywxfesmbvhzjgj` | absent | absent | absent | enabled |
+
+The vulnerable policy existed only in repo source. No corrective DDL was needed against any
+project, and no bucket contents exist to purge.
+
+**The audit's first pass enumerated two projects; the account has three.** #2417's audit
+comment, #2418 and #2421 all say "both projects" / "either live project", naming only
+`nszlbcmcysftwyudthjz` and `jwstkrtslotnjyerzzsi`. `yrqzwqywxfesmbvhzjgj` — ACTIVE_HEALTHY,
+created 2026-07-29 — was never queried until the 09-07 branch review queried it. **The
+conclusion survived the widening; the method did not.** Two of the three projects carry
+"staging" in their name and one is *named* `veyrnox-STAGING (not production)`, so a
+hand-listed pair reads as exhaustive when it is not. Standing rule for any future
+live-backend audit: **enumerate projects from the API, never from memory or from a prior
+report's ref list.** Same failure as the grep-list findings in this corpus — a search list
+is a floor, not a ceiling — applied to infrastructure instead of source.
+
+**The sanity check the file offered could not detect the defect.** `SELECT * FROM
+storage.objects WHERE bucket_id = 'bug-reports'` (`:189-191`) returns zero rows for `anon`
+on an empty bucket whether or not the policy is correct, so it passed vacuously — plausibly
+why the defect shipped past review. Same class as 08-25's `spyOn` that patched an object CI
+did not resolve and 08-26's `fastpathButtonVisible = false`: **a check that cannot fail
+reads as coverage and is not.**
+[#2420](https://github.com/VEYRNOX/veyrnox/pull/2420) rewrote that block to assert
+`relrowsecurity` first and wrap the role switches in `BEGIN`/`ROLLBACK` (`SET LOCAL` outside
+a transaction warns and is discarded, so the switches were no-ops and the assertions ran as
+the editor's own role). **That PR is OPEN and conflicts with #2421 — whichever lands second
+is a modify/delete conflict.** If the file is deleted, the fix is lost with it; the lesson
+is preserved in this row deliberately, not in the file.
 
 Both regressions in the previous window (`WalletConnectProvider` and `WalletPortfolioPage`
 Base44 seals) are closed. Historical regressions on record (re-fixed; preserved, not swept
@@ -338,6 +369,11 @@ bug-report findings died with the feature; the SQL policy did not, because it ma
 live in a database. A removal is not a rollback. **Anything a feature applied to an
 external system — a migration, a bucket, a webhook, a dashboard setting — survives the
 commit that removes the feature**, and the deletion makes it *less* visible, not more.
+The audit this forced came back negative — the migration had never run on any project — but
+**the negative is the result of asking, not a reason not to ask.** The lesson stands on the
+question being mandatory, not on which way it resolved; and the first pass at answering it
+checked two of three projects, so the widening mattered even though the verdict did not
+change.
 
 **3. A fabricated finding is now the majority output of one tool.** The 08-23 Gemini sweep
 produced 4 findings, 1 fabricated. The 09-06 sweep produced 6, of which **4 are fabricated

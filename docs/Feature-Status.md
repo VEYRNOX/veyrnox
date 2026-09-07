@@ -660,72 +660,101 @@ All BUILT / device-verified on the test iPhone — NOT independently audited.
 - AI portfolio advisor — 💡 advisory-only allowed; auto-executing ❌ out of scope
 
 ## 10. Niceties / analytics / utilities — 💡 mostly parking-lot
-- **Opt-in bug-report screen recording — 🎯 TARGET / HONEST-DISABLED 2026-09-05.**
+- **Opt-in bug-report screen recording — ❌ REMOVED 2026-09-07 (`826bd1c8`).** Was
+  🎯 TARGET / HONEST-DISABLED 2026-09-05. **Every file this entry links below is
+  gone from `main`** — the paths are kept as plain text, not links, because a
+  dangling link reads as a live feature. Verified absent: `docs/bug-report-recording-plan.md`,
+  `src/lib/bugReport/recordableRoutes.js`, `src/lib/bugReport/bugReportEnabled.js`,
+  `src/components/bugReport/BugReportButton.jsx`, `functions/api/bug-report/`, and
+  `create_bug_report_upload` is no longer in the `ALLOWED_RPCS` allowlist.
+  **Why it was removed:** it accumulated four security findings in five days —
+  an unauthenticated 52 MiB service-role write path, a missing watchdog, no
+  upload-reservation check, and a storage RLS policy that applied to PUBLIC.
+  See `docs/audit-findings-tracker.md` (2026-09-07) for all four.
+  **The last of those outlived the deletion and was closed separately.** The SQL
+  migration `sql/bug-report-upload.sql` was not touched by the feature removal;
+  #2418 dropped the bad policy from it, and a live audit of all three Supabase
+  projects established the migration had never been applied anywhere.
+  [#2421](https://github.com/VEYRNOX/veyrnox/pull/2421) proposes deleting the file
+  outright and is OPEN at the time of writing — do not read this entry as saying
+  the file is gone.
+  **The design rationale is retained below because it is the reason not to build
+  this the obvious way, and that outlives the feature.** It was deliberately NOT
+  session replay: session replay on a self-custody wallet would record seed reveal
+  and PIN entry as pixels (I1 break), and automatic capture would break I2/I3.
   User-initiated, ≤30s, previewable, E2E-encrypted to an OFFLINE support keypair.
-  Deliberately NOT session replay (session replay on a self-custody wallet would
-  record seed reveal + PIN entry as pixels — I1 break; automatic capture would
-  break I2/I3). Slice 1a landed 2026-09-05 as pure foundations: design doc at
-  [docs/bug-report-recording-plan.md](bug-report-recording-plan.md), route
-  allowlist at [src/lib/bugReport/recordableRoutes.js](../src/lib/bugReport/recordableRoutes.js)
-  (fail-closed, denylist-wins, segment-boundary matched — no `/settingsomething`
-  substring leak), composed enable gate at
-  [src/lib/bugReport/bugReportEnabled.js](../src/lib/bugReport/bugReportEnabled.js)
-  (ship flag `VITE_BUG_REPORT_ENABLED` default OFF + deniability + native-only,
-  I4 fail-closed everywhere).
-  **Corrected 2026-09-05:** this entry originally read *"Zero runtime effect — no
-  application code imports either module yet, so Slice 1a is safe to merge under
-  the 1.0.1 submission hold."* The second half was false in the very commit that
-  wrote it. That same commit shipped
-  [BugReportButton.jsx](../src/components/bugReport/BugReportButton.jsx) — whose own
-  header calls itself Slice 1b — and wired it into `Settings.jsx`, so
-  `isBugReportEnabled()` is evaluated on every Settings render.
-  What is actually true, and what the merge-safety claim should have rested on:
-  `VITE_BUG_REPORT_ENABLED` is set nowhere in the repo or in any workflow, the
-  comparison is strict-equal `'1'`, and `BugReportButton` returns `null` when the
-  gate is closed — so the button renders on no current build and there is no
-  visible or behavioural effect. `canRecordOnRoute` genuinely has no runtime
-  caller. The distinction matters because a future reader who flips the ship flag
-  believing nothing is wired would get a live Settings entry whose handler is a
-  placeholder `window.alert`. Correction rather than rewrite (I4): the original
+  Slice 1a landed 2026-09-05 as foundations: a design doc, a fail-closed route
+  allowlist (denylist-wins, segment-boundary matched — no `/settingsomething`
+  substring leak), and a composed enable gate (ship flag
+  `VITE_BUG_REPORT_ENABLED` default OFF + deniability + native-only).
+  **Corrected 2026-09-05, retained as a record of the correction:** this entry
+  originally read *"Zero runtime effect — no application code imports either
+  module yet, so Slice 1a is safe to merge under the 1.0.1 submission hold."* The
+  second half was false in the very commit that wrote it. That same commit shipped
+  `BugReportButton.jsx` — whose own header calls itself Slice 1b — and wired it
+  into `Settings.jsx`, so `isBugReportEnabled()` was evaluated on every Settings
+  render.
+  What was actually true, and what the merge-safety claim should have rested on:
+  `VITE_BUG_REPORT_ENABLED` was set nowhere in the repo or in any workflow, the
+  comparison was strict-equal `'1'`, and `BugReportButton` returned `null` when the
+  gate was closed — so the button rendered on no build that ever shipped and there
+  was no visible or behavioural effect. `canRecordOnRoute` genuinely had no runtime
+  caller. The distinction mattered because a future reader who flipped the ship flag
+  believing nothing was wired would have got a live Settings entry whose handler was
+  a placeholder `window.alert`. Correction rather than rewrite (I4): the original
   wording is quoted above rather than quietly replaced.
+  **The slice plan below never got past 1b and is recorded as history, not roadmap.**
   Slice 1b: React screens (explainer/consent/playback), mock
   capture, Supabase Storage bucket + `create_bug_report_upload` RPC, libsodium
   sealed-box encryption. Slice 2: iOS ReplayKit + Android MediaProjection
   Capacitor plugins, real-device verification. Slice 3: flag flip, Play Data
   Safety + Apple App Privacy amendments (add "user-triggered screen recording"
-  category — the Play Data Safety **draft** currently answers "no third-party
-  analytics, no screen capture"; see the 2026-09-06 console-state note below for
-  what "declared" does and does not mean here), versionCode bump, submit.
-  Owner-approved for the 1.0.1/1.0.2 train ahead of the independent audit;
-  Slice 3 will NOT flip the flag until store disclosures are LIVE on the listing
-  pages. **Read that gate with the console-state note: no Play declaration has
-  ever reached a listing page, so "LIVE" is not a state anything has been in
-  yet — the gate is unmet by default rather than pending.**
+  category), versionCode bump, submit.
+  It was owner-approved for the 1.0.1/1.0.2 train ahead of the independent audit,
+  gated on store disclosures being LIVE on the listing pages — a gate nothing ever
+  met, since no Play declaration has ever reached a listing page. **The flag was
+  never flipped and no build ever shipped this feature enabled.** The store
+  disclosures therefore need no amendment for it; the Play Data Safety draft's
+  "no screen capture" answer was correct throughout and stays correct.
   **Android manifest entries REMOVED 2026-09-06 (owner-approved).** Slice 2b had
   landed `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PROJECTION` and the
   `.BugReportRecorderService` declaration
   (`foregroundServiceType="mediaProjection"`) in
   [android/app/src/main/AndroidManifest.xml](../android/app/src/main/AndroidManifest.xml).
-  All four lines are gone; **slice 3 re-adds them in the same commit that flips
-  the flag**, and a `DELIBERATELY ABSENT` block at the end of the manifest plus
-  the `STORE DISCLOSURE` comment in
-  [BugReportPlugin.kt](../android/app/src/main/java/com/veyrnox/app/BugReportPlugin.kt)
-  carry the exact declarations so nothing has to be re-derived.
-  Why they went, in the order that actually decided it: (1) the capability is
-  unreachable — the ship flag is set nowhere, so `BugReportButton` returns `null`
-  and `getMediaProjection()` cannot be called on any build; (2)
+  All four lines are gone. **Superseded 2026-09-07:** this originally continued
+  *"slice 3 re-adds them in the same commit that flips the flag, and a
+  `DELIBERATELY ABSENT` block at the end of the manifest plus the `STORE
+  DISCLOSURE` comment in `BugReportPlugin.kt` carry the exact declarations so
+  nothing has to be re-derived."* There is no slice 3 — the feature was removed the
+  next day, and `BugReportPlugin.kt` went with it. The manifest's `DELIBERATELY
+  ABSENT` block survives at `android/app/src/main/AndroidManifest.xml:114` and was
+  rewritten by the removal commit to say the feature is gone rather than pending;
+  it is now the only place these permissions are discussed, and it says do not add
+  them.
+  Why they went, in the order that actually decided it: (1) the capability was
+  unreachable — the ship flag was set nowhere, so `BugReportButton` returned `null`
+  and `getMediaProjection()` could not be called on any build; (2)
   `FOREGROUND_SERVICE_MEDIA_PROJECTION` triggers Play's **mandatory Foreground
   Service Permissions declaration**, which is a release gate rather than a
   listing field — so keeping it meant justifying screen recording to Play, for a
-  path no user can invoke, *before* the slice-3 disclosure the plan puts first;
-  (3) `src/lib/bugReport/encrypt.js:48` is still the all-zero placeholder support
+  path no user could invoke, *before* the slice-3 disclosure the plan put first;
+  (3) `src/lib/bugReport/encrypt.js:48` was still the all-zero placeholder support
   key marked `DO NOT SHIP`, so the flag could not have been flipped regardless.
-  Nothing else in the app needs either permission — `BugReportRecorderService` is
-  the only foreground service in the manifest. The Kotlin service, the plugin,
-  and the whole JS chain are untouched; only the manifest half was removed.
-  Note the asymmetry this closes: `ios/fastlane/Fastfile:110` already fails an
-  archive whose bundle contains `VITE_BUG_REPORT_ENABLED:"1"`. iOS had a
-  ship-guard and Android had none.
+  Nothing else in the app needs either permission.
+  **Superseded 2026-09-07:** this block ended *"The Kotlin service, the plugin, and
+  the whole JS chain are untouched; only the manifest half was removed. Note the
+  asymmetry this closes: `ios/fastlane/Fastfile:110` already fails an archive whose
+  bundle contains `VITE_BUG_REPORT_ENABLED:"1"`. iOS had a ship-guard and Android
+  had none."* All of that is now stale in both halves. The next day's removal took
+  the Kotlin service, the plugin and the JS chain as well — verified absent:
+  `BugReportPlugin.kt`, `src/lib/bugReport/`, `src/components/bugReport/`,
+  `functions/api/bug-report/`. **And the Fastfile guard is gone too:**
+  `VITE_BUG_REPORT_ENABLED` no longer appears anywhere in `ios/fastlane/Fastfile`,
+  so the asymmetry closed by both sides losing the guard rather than Android
+  gaining one. That is the correct end state for a deleted feature — there is no
+  flag left to leak — but it means **re-introducing this feature re-opens the
+  ship-guard gap on both platforms**, and the iOS guard would have to be rebuilt,
+  not merely re-enabled.
   **No versionCode bump in this change** — it rides whatever the next upload
   bumps to, and nothing is submitted under the 1.0.1 hold either way.
   **Play Console state, read directly 2026-09-06** (developer account
