@@ -2208,10 +2208,24 @@ export function WalletProvider({ children }) {
   // I3: this method never runs in decoy/hidden — keyStore.unlockBiometricOnly
   // throws FASTPATH_DENIABILITY_BLOCKED first, which surfaces as { ok:false }.
   //
-  // Trade-off (documented, safe): the fast path has no plaintext PIN to feed
-  // `captureVerifierSafe()`, so the send-step-up verifier and
-  // `sessionUnlockSecretRef` stay null. A subsequent send will require the user to
-  // type their PIN at the step-up gate — a UX cost, never a security regression.
+  // Trade-off: the fast path has no plaintext PIN to feed `captureVerifierSafe()`,
+  // so the send-step-up verifier and `sessionUnlockSecretRef` stay null.
+  //
+  // CORRECTED 2026-09-07 (audit H-2). This read "a subsequent send will require the
+  // user to type their PIN at the step-up gate — a UX cost, never a security
+  // regression." The first half was wrong, which made the second half wrong.
+  // Typing the PIN CANNOT satisfy that gate: with a null verifier,
+  // `verifyCredential` returns false for every input (credentialVerifier.js), so
+  // the send 2FA gate read it as a wrong PIN, burned an attempt, and locked the
+  // wallet after five. It was a UX cost only in the sense that a forced lock is
+  // one. The send stayed blocked throughout — I4's fail-closed half held; the
+  // fail-honest half did not.
+  //
+  // The gate now uses `verifyActiveCredentialDetailed` and surfaces the absent
+  // verifier as `oom:true` (SendCrypto.jsx, TwoFactorGate) — blocked, no attempt
+  // burned, honest remedy shown. Anything else added to this file that consumes a
+  // step-up verifier must handle the null the same way; do not restore the claim
+  // above.
   const unlockBiometricOnly = useCallback(async () => {
     const gen = ++unlockGenRef.current;
     const assertUnlockCurrent = () => {

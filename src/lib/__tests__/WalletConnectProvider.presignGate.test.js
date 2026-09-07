@@ -181,11 +181,13 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
     it('B — calls rejectRequest with RASP_BLOCK and does NOT call withPrivateKey when gate blocks', async () => {
       presignGate.mockReturnValue({ proceedAllowed: false, signerReachable: false, decision: 'block', owner: 'rasp' });
       const { _handlePersonalSign } = await import('../WalletConnectProvider.jsx');
-      await _handlePersonalSign(
+      // Audit 2026-09-07 H-1: rejection must THROW (the modal treats a plain
+      // return as success and fires successHaptic).
+      await expect(_handlePersonalSign(
         { withPrivateKey, evmAddress: WALLET_ADDR },
         'topic1', 1,
         ['0xdeadbeef', WALLET_ADDR],
-      );
+      )).rejects.toThrow('RASP_BLOCK');
       expect(presignGate).toHaveBeenCalled();
       expect(withPrivateKeySpy).not.toHaveBeenCalled();
       expect(rejectRequest).toHaveBeenCalledWith('topic1', 1, 'RASP_BLOCK');
@@ -259,7 +261,10 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
     it('B — calls rejectRequest with RASP_BLOCK and does NOT call withPrivateKey when gate blocks', async () => {
       presignGate.mockReturnValue({ proceedAllowed: false, signerReachable: false, decision: 'block', owner: 'rasp' });
       const { _handleSignTypedData } = await import('../WalletConnectProvider.jsx');
-      await _handleSignTypedData({ withPrivateKey, evmAddress: '0xabc' }, 'topic2', 2, ['0xabc', typedDataJson]);
+      // Audit 2026-09-07 H-1: rejection must THROW.
+      await expect(
+        _handleSignTypedData({ withPrivateKey, evmAddress: '0xabc' }, 'topic2', 2, ['0xabc', typedDataJson]),
+      ).rejects.toThrow('RASP_BLOCK');
       expect(presignGate).toHaveBeenCalled();
       expect(withPrivateKeySpy).not.toHaveBeenCalled();
       expect(rejectRequest).toHaveBeenCalledWith('topic2', 2, 'RASP_BLOCK');
@@ -331,7 +336,10 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
     it('B — calls rejectRequest with RASP_BLOCK and does NOT call withPrivateKey when gate blocks', async () => {
       presignGate.mockReturnValue({ proceedAllowed: false, signerReachable: false, decision: 'block', owner: 'rasp' });
       const { _handleSendTransaction } = await import('../WalletConnectProvider.jsx');
-      await _handleSendTransaction({ withPrivateKey, evmAddress: WALLET_ADDR }, 'topic3', 3, txParams, 'eip155:11155111');
+      // Audit 2026-09-07 H-1: rejection must THROW.
+      await expect(
+        _handleSendTransaction({ withPrivateKey, evmAddress: WALLET_ADDR }, 'topic3', 3, txParams, 'eip155:11155111'),
+      ).rejects.toThrow('RASP_BLOCK');
       expect(presignGate).toHaveBeenCalled();
       expect(withPrivateKeySpy).not.toHaveBeenCalled();
       expect(rejectRequest).toHaveBeenCalledWith('topic3', 3, 'RASP_BLOCK');

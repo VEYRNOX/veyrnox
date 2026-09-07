@@ -312,7 +312,7 @@ export default function SendCrypto() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, verifyActiveCredentialDetailed, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = useWallet();
+  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredentialDetailed, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = useWallet();
 
   // A persisted demo flag must not exempt a session that has a real wallet.
   const demoActive = DEMO && wallets.length === 0;
@@ -2730,7 +2730,29 @@ export default function SendCrypto() {
                         // the logic into lib/stepUpFactorOutcome.js.
                         return evaluateBiometricSecondFactor(verifyBiometric2fa);
                       }
-                      const pinOk = await verifyActiveCredential(pin);        // refreshes the auth window on success
+                      // Audit 2026-09-07 H-2 — use the DETAILED variant, as submitReauth
+                      // already does. The bare `verifyActiveCredential` returns a plain
+                      // `false` when the session verifier is ABSENT, which TwoFactorGate
+                      // cannot tell from a wrong PIN: it captioned it "Incorrect PIN or
+                      // Action Password" and burned an attempt, so five taps locked the
+                      // wallet. That is not an edge case — `unlockBiometricOnly` (the
+                      // default-ON fast path, #2055) mounts a session WITHOUT capturing a
+                      // verifier, so every warm-cache biometric unlock lands here and no
+                      // credential the user types can ever satisfy it.
+                      // `oom:true` is TwoFactorGate's audit-H5 flag for exactly this
+                      // condition (verifier never captured): BLOCKED, but not a guess, so
+                      // no attempt is burned and the honest remedy is shown. Fail closed
+                      // is unchanged — `allowed` is false either way; this restores the
+                      // fail-honest half (I4).
+                      const pinResult = await verifyActiveCredentialDetailed(pin); // refreshes the auth window on success
+                      if (pinResult.bricked) {
+                        return {
+                          allowed: false,
+                          oom: true,
+                          message: tw("send.reauth.errors.unavailable"),
+                        };
+                      }
+                      const pinOk = pinResult.ok;
                       if (send2faMethod === SEND_2FA.PASSKEY) {
                         // Factor 2: a WebAuthn assertion bound to this device's passkey.
                         // FAIL CLOSED (I4) — any cancel/timeout/error counts as NOT verified.
