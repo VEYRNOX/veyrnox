@@ -324,3 +324,48 @@ describe('BuyCrypto — the Transak iframe is sandboxed', () => {
     }
   });
 });
+
+// ── Native path opens the system browser, does NOT render the iframe ───────
+//
+// On mobile the Capacitor WebView origin (`capacitor://localhost/` on iOS,
+// `http://localhost/` on Android) is not on Transak's Referer allowlist and
+// their partner-side mechanism cannot accept those origins, so the iframe
+// integration returns HTTP 403 T-INF-103. Confirmed with Transak support
+// 2026-09-07. Fix: on native, hand off to SFSafariViewController /
+// Chrome Custom Tabs via @capacitor/browser — the widget then loads at
+// `global.transak.com`'s own origin and no cross-origin Referer check
+// applies.
+//
+// Source-scan tests rather than a full render + mock — the surrounding
+// blocks in this file already scan source for the same reason, and this
+// property is a one-branch decision that a source assertion pins precisely.
+//
+// Mutation checks:
+//   1. delete the `@capacitor/browser` import → red
+//   2. remove the `Capacitor.isNativePlatform()` branch → red
+//   3. call `setWidgetUrl(url)` unconditionally (i.e. on native too) → red
+describe('BuyCrypto — native uses Browser.open, not the iframe', () => {
+  const src = read('../BuyCrypto.jsx');
+
+  it('imports Browser from @capacitor/browser', () => {
+    expect(src).toMatch(/from ['"]@capacitor\/browser['"]/);
+    expect(src).toMatch(/\bimport\s*\{[^}]*\bBrowser\b/);
+  });
+
+  it('branches on Capacitor.isNativePlatform() before setWidgetUrl', () => {
+    // The native branch must gate `setWidgetUrl(url)` — otherwise the iframe
+    // renders on native too and the T-INF-103 block returns.
+    const nativeBlock = src.match(
+      /if\s*\(\s*Capacitor\.isNativePlatform\s*\(\s*\)\s*\)\s*\{[\s\S]*?\}\s*else\s*\{[\s\S]*?setWidgetUrl\s*\(\s*url\s*\)/,
+    );
+    expect(nativeBlock, 'expected `if (Capacitor.isNativePlatform()) { … } else { setWidgetUrl(url) }`')
+      .not.toBeNull();
+  });
+
+  it('calls Browser.open with the minted url inside the native branch', () => {
+    const nativeBody = src.match(
+      /if\s*\(\s*Capacitor\.isNativePlatform\s*\(\s*\)\s*\)\s*\{([\s\S]*?)\}\s*else\b/,
+    )?.[1] ?? '';
+    expect(nativeBody).toMatch(/Browser\.open\s*\(\s*\{\s*url\s*\}\s*\)/);
+  });
+});

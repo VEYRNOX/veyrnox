@@ -14,6 +14,8 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { CreditCard, ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CoinLogo from '@/components/CoinLogo';
@@ -94,7 +96,24 @@ export default function BuyCrypto() {
         network: TRANSAK_NETWORK_MAP[selectedAsset],
         address,
       });
-      setWidgetUrl(url);
+      // Native (Capacitor): open Transak in SFSafariViewController /
+      // Chrome Custom Tabs. The in-app iframe path hits Transak's
+      // T-INF-103 WAF rule on mobile because the Capacitor WebView origin
+      // (`capacitor://localhost/` on iOS, `http://localhost/` on Android)
+      // is not on Transak's Referer allowlist for our prod key and the
+      // partner-side allowlist mechanism cannot accept those origins.
+      // System-browser hand-off sends no cross-origin Referer, sidesteps
+      // the rule entirely, and matches the intent already documented in
+      // src/lib/featureClassification.js:98. Return trip is handled by
+      // the existing /buy/return universal link (DeepLinkHandler.jsx).
+      if (Capacitor.isNativePlatform()) {
+        const listener = await Browser.addListener('browserFinished', () => {
+          listener.remove();
+        });
+        await Browser.open({ url });
+      } else {
+        setWidgetUrl(url);
+      }
     } catch (err) {
       if (err.code === 'I3_DENIABILITY_ACTIVE') {
         setError(t('buy.route.session_unavailable', { defaultValue: 'Buy is not available in this session.' }));
