@@ -355,8 +355,9 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Tax Report',
+        displayName: 'Tax Export',
         status: 'verified',
-        summary: 'Honest raw-transaction export for tax software',
+        summary: 'Raw transaction CSV export for third-party tax software — does not calculate taxes',
         explanation: 'Built (/tax). Exports raw transaction data (date, type, asset, amount, fee, tx_hash) as CSV — no invented prices, no fabricated cost-basis or gain figures. Explicit disclaimer that this is not tax advice; directs users to Koinly / CoinTracker for real computation. All FIFO/historicalRate fabrications removed.',
       },
     ],
@@ -492,13 +493,13 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Live Phishing Domain Feed',
-        status: 'built',
+        status: 'roadmap',
         summary: 'Remote-updatable dApp domain blocklist, layered over the local seed',
         explanation: 'A phishing-domain list downloaded over https, cached in IndexedDB, and layered over the in-bundle seed list that screens dApp domains on WalletConnect connect and request. The seed is never replaced, so a missing feed URL, a failed fetch or an empty payload degrades to exactly the pre-feed behaviour rather than to "no list" (I4) — an empty payload is treated as a failed refresh, so a compromised feed cannot switch coverage off by serving []. A feed older than seven days is treated as absent rather than silently trusted. The domain being checked NEVER leaves the device (I2): the list is downloaded and matched locally. Feed text is length-capped and control-character-stripped before it can reach a warning dialog. I3: no fetch and no feed matches in deniability/demo — the local seed still runs, so screening never goes dark — and the cache database is erased by panic wipe, since its presence alone is a tell. STATUS: the implementation is complete, wired at app init and unit-tested, but it has NOT been observed running on a device or in a browser, and no feed URL is configured by default — so it stays roadmap rather than claiming to work. Coverage today is the seed list unless VITE_PHISHING_FEED_URL is set. This is a blocklist, not a classifier: it catches listed domains only and never asserts a site is safe.',
       },
       {
         name: 'Approval Monitor',
-        status: 'built',
+        status: 'roadmap',
         summary: 'Periodic in-app check for new approvals and risky transfers',
         explanation: 'While the app is open and unlocked, a 60-second poll re-reads the local approval and transaction rows and raises an alert for a newly-seen approval to a flagged spender, a newly-seen unlimited approval, or an incoming transfer from a flagged address. Alerts surface on the Token Approvals page; they are held in memory only (max 50, never persisted) and are cleared on lock and on entering deniability/demo, because they name real counterparties. It reads the same local entity stores the pages already read: no new backend surface and no new egress. A flagged verdict comes from the local threat-intel store, which returns matches only; an empty result is never treated as a hit. This is NOT a push-notification service — nothing is checked while the app is closed, and no alert is not evidence that nothing happened (I4). STATUS: the implementation is complete, wired in Layout via useBackgroundSecurity and unit-tested, but it has NOT been observed running on a device or in a browser, so it stays roadmap rather than claiming to work. Deleting the useBackgroundSecurity call would silently disable it with no test going red.',
       },
