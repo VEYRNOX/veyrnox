@@ -113,6 +113,26 @@ describe('appleOfferIdFor — offering id + package → App Store offer identifi
     expect(appleOfferIdFor('referral-gold', {})).toBeNull();
     expect(appleOfferIdFor('referral-gold', null)).toBeNull();
   });
+
+  it('maps AI Security Protection referral tiers to the same Apple identifiers as Safety Plus', () => {
+    // The 10 AI referral offers minted on the AI subs 2026-09-07 deliberately
+    // reuse the Safety Plus offer identifiers (Apple's uniqueness rule is
+    // per-subscription, not per-account). The RC offering lookup_keys stay
+    // distinct (`ai-referral-bronze` vs `referral-bronze`), so both keys map
+    // to the same identifier — the values collide by design.
+    const m = (id) => appleOfferIdFor(id, { identifier: '$rc_monthly' });
+    const a = (id) => appleOfferIdFor(id, { identifier: '$rc_annual' });
+    expect(m('ai-referral-bronze')).toBe('referral_bronze_m2');
+    expect(m('ai-referral-silver')).toBe('referral_silver_m2');
+    expect(m('ai-referral-gold')).toBe('referral_gold_m2');
+    expect(m('ai-referral-platinum')).toBe('referral_platinum_m2');
+    expect(m('ai-retention')).toBe('retention_50_m2');
+    expect(a('ai-referral-bronze')).toBe('referral_bronze_annual');
+    expect(a('ai-referral-silver')).toBe('referral_silver_annual');
+    expect(a('ai-referral-gold')).toBe('referral_gold_annual');
+    expect(a('ai-referral-platinum')).toBe('referral_platinum_annual');
+    expect(a('ai-retention')).toBe('retention_50_annual');
+  });
 });
 
 describe('findAppleDiscount', () => {

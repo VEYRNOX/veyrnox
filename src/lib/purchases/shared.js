@@ -16,12 +16,25 @@ export function findOfferOption(pkg, offerTag) {
   ) ?? null;
 }
 
+// Keys are RC offering lookup_keys, values are the Apple promotional-offer
+// identifiers minted on both the Safety Plus subs and the AI Security
+// Protection subs. Apple's uniqueness rule is per-subscription, not per-
+// account, so the SAME identifier lives on both product families — the
+// resolver below picks the right one via the RC package identifier the
+// caller passes in (both families use the same `$rc_monthly`/`$rc_annual`
+// RC package lookup_keys, so no per-family branch is needed here).
+const SP_REFERRAL_TIER = (monthly, annual) => ({ monthly, annual });
 export const APPLE_OFFER_IDS = {
-  'referral-bronze':   { monthly: 'referral_bronze_m2',   annual: 'referral_bronze_annual' },
-  'referral-silver':   { monthly: 'referral_silver_m2',   annual: 'referral_silver_annual' },
-  'referral-gold':     { monthly: 'referral_gold_m2',     annual: 'referral_gold_annual' },
-  'referral-platinum': { monthly: 'referral_platinum_m2', annual: 'referral_platinum_annual' },
-  'retention':         { monthly: 'retention_50_m2',      annual: 'retention_50_annual' },
+  'referral-bronze':      SP_REFERRAL_TIER('referral_bronze_m2',   'referral_bronze_annual'),
+  'referral-silver':      SP_REFERRAL_TIER('referral_silver_m2',   'referral_silver_annual'),
+  'referral-gold':        SP_REFERRAL_TIER('referral_gold_m2',     'referral_gold_annual'),
+  'referral-platinum':    SP_REFERRAL_TIER('referral_platinum_m2', 'referral_platinum_annual'),
+  'retention':            SP_REFERRAL_TIER('retention_50_m2',      'retention_50_annual'),
+  'ai-referral-bronze':   SP_REFERRAL_TIER('referral_bronze_m2',   'referral_bronze_annual'),
+  'ai-referral-silver':   SP_REFERRAL_TIER('referral_silver_m2',   'referral_silver_annual'),
+  'ai-referral-gold':     SP_REFERRAL_TIER('referral_gold_m2',     'referral_gold_annual'),
+  'ai-referral-platinum': SP_REFERRAL_TIER('referral_platinum_m2', 'referral_platinum_annual'),
+  'ai-retention':         SP_REFERRAL_TIER('retention_50_m2',      'retention_50_annual'),
 };
 
 export function appleOfferIdFor(offeringId, pkg) {
