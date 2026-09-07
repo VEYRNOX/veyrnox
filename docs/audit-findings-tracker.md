@@ -351,6 +351,64 @@ other way. **The net effect is that the better check existed on `main` for a mat
 minutes and then was deleted, which is the correct outcome for a migration whose feature is
 gone but a poor place to leave a durable lesson.** Hence this paragraph.
 
+### This section replaced #2424, which had closed the same finding 30 minutes earlier
+
+**[#2424](https://github.com/VEYRNOX/veyrnox/pull/2424) merged 2026-09-07 17:54:55
+(`8397057c`) and its content is no longer in this file.** It was a 29-line `ADDENDUM` block
+above the Regressed table, written by a different session, marking DIFF-0906-BUGREPORT-SQL-POLICY
+closed. [#2423](https://github.com/VEYRNOX/veyrnox/pull/2423) (`71b24ca8`) merged 30 minutes
+later, rewrote the same region, and dropped it. **Recorded because a merged change vanishing
+one commit later, unremarked, is indistinguishable from an accident.**
+
+What was in #2424 and where it went:
+
+| #2424 said | Status here |
+|---|---|
+| The finding is closed; #2418 dropped the policy rather than adding `TO service_role`, which is right because `service_role` bypasses RLS | Kept — above, in this section's opening |
+| `DROP POLICY IF EXISTS` was retained, which is what corrects a project that had already applied the old version | Dropped as moot — #2421 deleted the whole file |
+| Verified on `origin/main`: open policy 0 occurrences, `relrowsecurity` and `BEGIN`/`ROLLBACK` present | Dropped as moot — same reason; that file no longer exists |
+| **"Both live projects were queried … absent on Staging and Production"** | **Superseded, and this is the point.** The account has three projects. #2423 replaced this with the three-project table above |
+| Keep the pinned analysis intact; a later fix does not make a finding retrospectively wrong | Kept as a convention — every correction in this file appends with the superseded wording quoted |
+
+So nothing durable was lost, and the one claim that was **wrong** — two projects, not three —
+did not survive into `main`. But the resolution was a wholesale replacement rather than a
+merge of the two, and no conflict was raised, because the two sessions edited overlapping
+prose that git reconciled without complaint.
+
+**Third instance of the concurrent-duplicate-work pattern**, after #1414/#1415 (92 seconds
+apart) and the 2026-09-03 S-2 collision (~30 minutes). Here the gap was 60 seconds between
+#2424 and #2421 merging. The standing rule from those — *when your change collides with one
+that just landed, read the other one before resolving* — held: #2424 was read, and the parts
+worth keeping were kept. **The rule that is still missing is a way to notice the collision
+before writing**, since nothing in `git status`, the PR list at the time of branching, or CI
+surfaces "another session is editing this file right now."
+
+**A related near-miss worth naming, since it cost nothing only by luck.** At 18:57 —
+**33 minutes after #2423 merged** — a session pushed `3ce9577c` to that PR's branch, merging
+`origin/main` into an already-merged branch. The push succeeded, because pushing to the
+branch of a merged PR is not an error. That is the exact shape of the #1774 failure this
+tracker already records: **a successful push is not evidence the change shipped.** Confirm by
+reading content back out of `origin/main`, never from the push output or a green check.
+
+Nothing was orphaned here, but establishing that took two attempts and the first one was
+wrong, which is the more useful half of the story. `git diff origin/main 3ce9577c` lists
+seven differing files including RASP source, and read through a truncating pipe
+(`--stat | tail -5`) it looks like a small unrelated delta. **Neither reading answers the
+question.** A diff between a branch tip and `main` conflates "the branch has work `main`
+lacks" with "`main` has moved on" — and here it was entirely the latter (#2425 and #2426
+landed after the push). The question is reachability, and only a reachability command
+answers it:
+
+```
+git log origin/main..3ce9577c --oneline   # commits in the branch, absent from main
+```
+
+That returned only the branch's own two commits, both already in `main` by content via the
+squash. **Use `git log <base>..<tip>` to ask what is orphaned; `git diff` answers a
+different question and a truncated `git diff` answers none.** Same family as this file's
+`grep -F` entry: a command that returns a confident, wrong answer is worse than one that
+returns nothing.
+
 Both regressions in the previous window (`WalletConnectProvider` and `WalletPortfolioPage`
 Base44 seals) are closed. Historical regressions on record (re-fixed; preserved, not swept
 away): the release/debug cert guard (**four** regressions, survived ~15 merges because its
