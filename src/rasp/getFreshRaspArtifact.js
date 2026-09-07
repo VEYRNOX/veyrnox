@@ -14,8 +14,28 @@
 // I3 preserved. attestationProbeSource() checks isDeniabilityOrDemoActive()
 // FIRST inside its own body — no new egress in decoy/hidden/demo.
 //
-// I4 fail-closed. On timeout, exception, or shape drift anywhere in the chain,
-// the returned artifact has tier === TIER.BLOCK (never a fabricated CLEAN).
+// I4 fail-closed. No failure anywhere in this chain can fabricate a CLEAN or an
+// ALLOW. What it degrades TO differs by where the failure happens, and saying so
+// precisely matters:
+//
+//   - A PER-LEG failure (timeout, throw, or shape drift inside one probe) makes
+//     that leg UNAVAILABLE, which detect()/detectAttestation() map to
+//     INTEGRITY_UNAVAILABLE and degrade() maps to **WARN** — not BLOCK. WARN is
+//     overridable on the interactive send path (biometric + ack).
+//   - A failure of the CHAIN ITSELF (the catch below, or an artifact with no
+//     tier) returns **BLOCK**.
+//
+// CORRECTED 2026-09-07 (audit M-1). This block previously read "On timeout,
+// exception, or shape drift anywhere in the chain, the returned artifact has
+// tier === TIER.BLOCK", which contradicted withFailClosedTimeout's own comment
+// twenty lines below and, worse, described away the exact downgrade M-1 was
+// about: mute one leg, and a BLOCK becomes an overridable WARN. A comment
+// asserting the hole is already closed is how a hole survives an audit.
+//
+// The hard-signal half of that downgrade is now closed in nativeProbe.js, whose
+// session latch re-asserts a previously observed hooked/tampered/emulator
+// verdict through a later mute. The soft axes (rooted/elevated/screenCapture)
+// are WARN in both directions, so muting them downgrades nothing.
 //
 // The function is deliberately module-level (not a hook, no React state) so
 // it can be awaited from mutationFn / WalletConnect handlers / any async

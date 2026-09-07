@@ -54,6 +54,7 @@ import { scoreWcTypedDataLevel } from '@/lib/wcTypedLevel';
 import { buildWcTransactionIntelligence } from '@/risk/walletConnectIntel.js';
 import { buildReviewContributor } from '@/risk/reviewContributor.js';
 import { readRemoteScreenPreference } from '@/lib/remoteScreenPreference.js';
+import { hasAdvisorOnlineAccessCached } from '@/lib/tierCache.js';
 
 // #1093 — WC pre-sign tx-risk plane. Risk-signal modules (`@/risk/signals` and
 // `@/risk/calldata`) instantiate an ethers Interface at MODULE INIT time, so a
@@ -1102,7 +1103,31 @@ export function WalletConnectProvider({ children }) {
         knownAddresses,
         whitelist,
         usdRates: USD_RATES,
-        remoteScreenEnabled: readRemoteScreenPreference(!!import.meta.env.VITE_TIP_BASE_URL),
+        // Audit 2026-09-07 M-2 (I2) — tier-gate the remote screen, as the other
+        // THREE call sites already do (SendCrypto.jsx:858 and :873,
+        // RequestApprovalModal.jsx:68 all AND with advisorOnline). This one did
+        // not, and `readRemoteScreenPreference` DEFAULTS to the configured state
+        // when no preference is stored — so a Free or Safety Plus user's WC send
+        // POSTed recipient address, calldata, value and chain to tip-screen at
+        // sign time, carrying a stable X-Rc-User-Id (tipClient.js).
+        //
+        // The disclosure made it silent rather than merely ungated: the modal is
+        // where the remote-screening notice renders, and it computes its own
+        // `remoteScreenEnabled` WITH the tier gate. For that cohort both notices
+        // suppressed — the "screening is on" one and the "screening unavailable"
+        // one — so the egress had no user-visible surface at all.
+        //
+        // `hasAdvisorOnlineAccessCached()` rather than useTier(): this is a
+        // useCallback outside the render path, and the cache is fail-closed to
+        // 'free' before TierProvider resolves AND forced to 'free' on the
+        // deniability flip (tierCache.js). Both defaults deny.
+        //
+        // Keep this gate and the modal's in agreement. If the product ever wants
+        // screening for every tier, remove BOTH — a behaviour the disclosure does
+        // not describe is the actual defect here, not the tier itself.
+        remoteScreenEnabled:
+          hasAdvisorOnlineAccessCached()
+          && readRemoteScreenPreference(!!import.meta.env.VITE_TIP_BASE_URL),
       },
       topic, id, params, boundCaip2,
     );
