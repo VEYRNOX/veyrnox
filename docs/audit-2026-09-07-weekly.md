@@ -475,6 +475,41 @@ caller passes explicit `kekEnrolled:true`, mirroring the JS contract at the brid
 
 ## LOW
 
+> **Update, same day — 13 of 15 LOW findings are FIXED in code; TWO are closed
+> as by-design and were deliberately NOT changed** (branch
+> `fix/audit-2026-09-07-lows`). Read the two exceptions before assuming the
+> section is clear:
+>
+> - **L-2 is NOT a defect.** The attempt counter and 10-strike auto-wipe live on
+>   `runPinUnlock` and not `runUnlock` because those serve different COHORTS: an
+>   8-digit PIN (small keyspace, guessable online → counter + backoff + wipe) and
+>   a ≥12-character vault password (Argon2id is the control; online guessing is
+>   not the threat). Adding a wipe to the password path would destroy a wallet
+>   when its owner mistypes a long passphrase ten times — irreversible fund loss
+>   from a typo. The reasoning is now recorded at `runUnlock` so this stops being
+>   re-filed; if a limit is ever wanted there, the honest shape is a timed
+>   backoff, not a wipe.
+> - **L-3 is fixed on its SECURITY half only.** The per-chain fee ceiling now
+>   applies when the dApp names no fee (previously the cheapest way past
+>   F-02-GASCAP was to send nothing). The DISCLOSURE half — the modal rendering
+>   no fee row for those requests — is NOT closed: the modal would have to
+>   receive a resolved fee it is not given today, and inventing one risks showing
+>   a number different from what gets signed. Stated rather than quietly counted
+>   as done.
+>
+> Everything else below is remediated. Behaviour changes (L-3, L-4, L-5, L-6,
+> L-7, L-11, L-13, L-14) carry regression guards where they are testable, each
+> mutation-checked by reintroducing the exact defect. L-1, L-10 and L-12 are
+> comment corrections; L-8, L-9 and L-15 are deletions of dead code that read as
+> coverage. **BUILT, INTERNAL — unit-tested only, none device-verified.**
+>
+> One correction found while fixing: **L-7's first regression test passed
+> vacuously.** It asserted that a recursion guard stopped a cyclic type graph;
+> such a graph never reaches that code at all, because H-4's root reconciliation
+> rejects it first (no single unreferenced struct). The test was rewritten to
+> assert the real defence, and the code comment claiming the guard was "required"
+> was corrected to say it is belt-and-braces for a future caller.
+
 - **L-1 — [Auth] Prior M-3 STILL PRESENT: the biometric cache's documented
   Keychain protection class is not the one the code sets.**
   `biometricUnlock.js:188` sets `whenUnlockedThisDeviceOnly`; `:524` claims

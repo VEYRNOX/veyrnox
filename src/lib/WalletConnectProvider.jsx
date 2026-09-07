@@ -56,31 +56,16 @@ import { buildReviewContributor } from '@/risk/reviewContributor.js';
 import { readRemoteScreenPreference } from '@/lib/remoteScreenPreference.js';
 import { hasAdvisorOnlineAccessCached } from '@/lib/tierCache.js';
 
-// #1093 — WC pre-sign tx-risk plane. Risk-signal modules (`@/risk/signals` and
-// `@/risk/calldata`) instantiate an ethers Interface at MODULE INIT time, so a
-// static top-level import would crash sibling test files that fully-mock ethers
-// without `Interface`. `scoreWcTxLevel` therefore lazy-imports the risk stack
-// only when the SEND handler actually runs; a load or scoring failure falls
-// back to LEVEL.CAUTION (I4 fail-closed).
+// #1093 — WC pre-sign tx-risk plane. `_handleSendTransaction` calls
+// `buildWcTransactionIntelligence` directly (see below).
 //
-// Signal subset (MINIMUM VIABLE for the WC surface): the WC handler has no
-// recipientCode (S7), ENS (S5), UTXO (S6), send-history (S1/S8), or whitelist
-// (S3) inputs — feeding empty/undefined would fail-closed CAUTION on every
-// plain send. So we run only the two signals the audit brief called out:
-//   S2 unlimited-approval — pure calldata; catches approve(_, MAX_UINT256).
-//   S4 address-poisoning  — needs `counterparties`; empty today so always OK,
-//                           but wired for a future address-book pass.
-// A non-approve, non-lookalike send composes txLevel=LEVEL.OK, and the RASP
-// env plane is the sole determinant (previous behaviour preserved).
-export async function scoreWcTxLevel(txParams, caip2ChainId, evmAddress = null, remoteScreenEnabled = false) {
-  const intel = await buildWcTransactionIntelligence({
-    txParams,
-    caip2ChainId,
-    evmAddress,
-    remoteScreenEnabled,
-  });
-  return intel?.txLevel ?? LEVEL.CAUTION;
-}
+// 2026-09-07 (audit L-9): the `scoreWcTxLevel` wrapper that used to sit here is
+// deleted. It had no caller, and its comment documented an architecture that had
+// already moved on twice: it described a LAZY import of the risk stack (the
+// import is static, line ~54) and named the live signal registry as "S2 + S4"
+// when the registry is S2 + S4 + S9 (walletConnectIntel.js). A dead wrapper
+// carrying two stale claims about live behaviour is worse than no wrapper.
+
 import {
   detect,
   degrade,
@@ -129,22 +114,15 @@ function withFailClosedTimeout(promise, ms) {
   });
 }
 
-// audit-H8: pure address validator for personal_sign. Exported for unit tests.
-// personal_sign params are [hexMessage, address]; some legacy dApps reverse the
-// order. Signing params[0] without verifying params[1] = wallet address would sign
-// address bytes as the message if the order is flipped.
-export function assertPersonalSignAddress(addrParam, walletAddress) {
-  if (!addrParam || !walletAddress) {
-    throw new Error(
-      `personal_sign address mismatch: request targets ${addrParam ?? '(none)'} but active address is ${walletAddress ?? '(none)'}. Refusing to sign.`,
-    );
-  }
-  if (addrParam.toLowerCase() !== walletAddress.toLowerCase()) {
-    throw new Error(
-      `personal_sign address mismatch: request targets ${addrParam} but active address is ${walletAddress}. Refusing to sign.`,
-    );
-  }
-}
+// audit-H8 note (2026-09-07, audit L-8): `assertPersonalSignAddress` used to live
+// here — a pure validator exported "for unit tests" with a 10-case suite and NO
+// production caller. The live H8 rule is `resolvePersonalSignMessage` below
+// (used at the pre-modal check and covered by
+// WalletConnectProvider.personalSignAddress.test.js), and the two had DIVERGED:
+// the dead one hard-required params[1] to equal the wallet address, while the
+// live one accepts either argument order and resolves which is the message.
+// Deleted rather than reconciled — a validator nothing calls cannot enforce
+// anything, and its suite read as coverage of the signing path.
 
 const WalletConnectCtx = createContext(null);
 
@@ -573,7 +551,7 @@ export async function _handleSignTypedData({ withPrivateKey, evmAddress }, topic
 }
 
 export async function _handleSendTransaction(
-  { withPrivateKey, evmAddress, send2faMethod = SEND_2FA.NONE, txLimits = [], history = [], knownAddresses = [], whitelist = [], usdRates = USD_RATES, remoteScreenEnabled = false },
+  { withPrivateKey, evmAddress, send2faMethod = SEND_2FA.NONE, txLimits = [], history = [], knownAddresses = [], whitelist = [], usdRates = USD_RATES, remoteScreenEnabled = false, limitsUnavailable = false },
   topic, id, params, caip2ChainId,
 ) {
   const txParams = params[0] ?? {};
@@ -657,7 +635,18 @@ export async function _handleSendTransaction(
   // unknown decimals means unknown magnitude AND unknown currency, so any
   // enabled cap could be the one it breaches. It is never scored as $0.
   let limitRejectCode = null;
+  // L-6 (audit 2026-09-07): a FAILED READ of the caps is not "no caps set".
+  // Both used to collapse to `txLimits = []`, and every fail-closed branch below
+  // is guarded by hasEnabledSpendLimit(txLimits) — false for an empty list — so a
+  // storage failure silently disabled the whole limit axis. The handler already
+  // refuses the strictly LESS severe case (a transfer it cannot value) while any
+  // cap is configured; refusing when it cannot tell WHETHER a cap exists is the
+  // same call, and the one the PIN counter's storageDegraded path already makes.
+  // The WC surface has no acknowledgement affordance, so refuse and route the
+  // user to the in-app Send screen.
+  if (limitsUnavailable) limitRejectCode = 'WC_SEND_LIMITS_UNAVAILABLE';
   try {
+    if (limitRejectCode) throw new Error('limits unreadable');
     const spend = resolveWcSpendAmount(txParams, net);
     if (!spend.valued) {
       if (hasEnabledSpendLimit(txLimits)) limitRejectCode = 'WC_SEND_UNVALUED_TOKEN';
@@ -676,16 +665,19 @@ export async function _handleSendTransaction(
     // rather than silently allow. (This path used to be unconditionally
     // fail-open on the limit axis.) With no cap configured there is nothing to
     // breach and nothing to fail closed about.
-    if (hasEnabledSpendLimit(txLimits)) limitRejectCode = 'WC_SEND_UNVALUED_TOKEN';
+    if (!limitRejectCode && hasEnabledSpendLimit(txLimits)) limitRejectCode = 'WC_SEND_UNVALUED_TOKEN';
   }
   if (limitRejectCode) {
     await rejectRequest(topic, id, limitRejectCode).catch(() => {});
     throw new Error(
       `Rejected transaction [${limitRejectCode}]: ` +
-      (limitRejectCode === 'WC_SEND_UNVALUED_TOKEN'
-        ? `this request moves a token Veyrnox cannot value on this chain, so it ` +
-          `cannot be checked against your spending caps. `
-        : `this send would exceed a configured spending cap. `) +
+      (limitRejectCode === 'WC_SEND_LIMITS_UNAVAILABLE'
+        ? `your spending caps could not be read on this device, so this request ` +
+          `cannot be checked against them. `
+        : limitRejectCode === 'WC_SEND_UNVALUED_TOKEN'
+          ? `this request moves a token Veyrnox cannot value on this chain, so it ` +
+            `cannot be checked against your spending caps. `
+          : `this send would exceed a configured spending cap. `) +
       `Complete the send from the in-app Send screen so the limit can be ` +
       `reviewed and acknowledged.`,
     );
@@ -699,6 +691,14 @@ export async function _handleSendTransaction(
 
     const wallet = new ethers.Wallet(pk, provider);
     const tx = {
+      // L-4 (audit 2026-09-07): `from` was absent, so every sender-dependent
+      // call (onlyOwner, allowance- or balance-gated transfers, anything reading
+      // msg.sender) REVERTED during estimation and fell through to the 1,000,000
+      // gas fallback below — which is also the main feeder for L-3, since an
+      // over-estimate multiplies whatever fee ends up applied. The from-binding
+      // check above has already proven txParams.from matches the active wallet,
+      // so the signer's own address is the honest sender to estimate with.
+      from: wallet.address,
       to: txParams.to,
       value: txParams.value ? BigInt(txParams.value) : 0n,
       data: txParams.data ?? '0x',
@@ -726,6 +726,37 @@ export async function _handleSendTransaction(
       if (cappedGasPrice != null) {
         tx.gasPrice = cappedGasPrice;
         tx.type = 0;
+      }
+    } else {
+      // L-3 (audit 2026-09-07): the per-chain ceiling used to apply ONLY when the
+      // dApp named a fee. Omitting both fields skipped resolveMaxFeePerGas
+      // entirely, after which ethers populated fees from the RPC's feeData with
+      // no cap at all — so the cheapest way past F-02-GASCAP was to send nothing.
+      // Resolve the fee ourselves and clamp it through the SAME helper, so the
+      // ceiling is a property of the send path rather than of the request shape.
+      try {
+        const feeData = await provider.getFeeData();
+        const cappedMaxFee = resolveMaxFeePerGas(feeData?.maxFeePerGas, net.key);
+        if (cappedMaxFee != null) {
+          tx.maxFeePerGas = cappedMaxFee;
+          tx.maxPriorityFeePerGas = resolveMaxPriorityFeePerGas(
+            feeData?.maxPriorityFeePerGas,
+            cappedMaxFee,
+          );
+          tx.type = 2;
+        } else {
+          const cappedGasPrice = resolveMaxFeePerGas(feeData?.gasPrice, net.key);
+          if (cappedGasPrice != null) {
+            tx.gasPrice = cappedGasPrice;
+            tx.type = 0;
+          }
+        }
+      } catch {
+        // RESIDUAL, stated rather than hidden: if feeData cannot be read we leave
+        // the fields unset and ethers populates them uncapped, exactly as before.
+        // Not escalated to a refusal — a fee-oracle hiccup should not block a send
+        // the user asked for — but it is the one remaining path where the ceiling
+        // does not apply, and it is now narrow and deliberate instead of default.
       }
     }
 
@@ -1088,11 +1119,20 @@ export function WalletConnectProvider({ children }) {
     // the entities are only needed at sign-time, not at provider mount.
     let txLimits = [];
     let history = [];
+    // L-6: track a FAILED read distinctly from an empty result. `history` is not
+    // part of this — it feeds risk signals, not the cap gate, and an empty history
+    // is a legitimate state for a new wallet.
+    let limitsUnavailable = false;
     try {
       const { base44 } = await import('@/api/base44Client');
-      try { txLimits = await base44.entities.TransactionLimit.list(); } catch { txLimits = []; }
+      try {
+        txLimits = await base44.entities.TransactionLimit.list();
+      } catch { txLimits = []; limitsUnavailable = true; }
       try { history = await base44.entities.Transaction.list('-created_date', 100); } catch { history = []; }
-    } catch { /* base44 unavailable in this test surface — fail open on limit axis */ }
+    } catch {
+      // base44 itself unavailable — the caps are unreadable, not absent.
+      limitsUnavailable = true;
+    }
     await _handleSendTransaction(
       {
         withPrivateKey,
@@ -1103,6 +1143,7 @@ export function WalletConnectProvider({ children }) {
         knownAddresses,
         whitelist,
         usdRates: USD_RATES,
+        limitsUnavailable,
         // Audit 2026-09-07 M-2 (I2) — tier-gate the remote screen, as the other
         // THREE call sites already do (SendCrypto.jsx:858 and :873,
         // RequestApprovalModal.jsx:68 all AND with advisorOnline). This one did

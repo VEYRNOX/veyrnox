@@ -245,20 +245,22 @@ export function assertRevealReauthFresh({ lastAuthAt, now = Date.now(), windowMs
   }
 }
 
-/**
- * M3 — Passkey UNAVAILABLE must NOT silently downgrade 2FA→1FA.
- * When the passkey is enrolled as a REQUIRED second factor and becomes
- * UNAVAILABLE, fail CLOSED (I4) — never proceed with only the password.
- * @param {{ gateStatus: string, twoFactorConfigured: boolean }} args
- */
-export function assertPasskeyFactorSatisfied({ gateStatus, twoFactorConfigured }) {
-  if (twoFactorConfigured && gateStatus === PASSKEY_GATE.UNAVAILABLE) {
-    throw new Error(
-      'PASSKEY_REQUIRED: this wallet requires both PIN and passkey to unlock, '
-      + 'but the passkey is unavailable on this device',
-    );
-  }
-}
+// M3 note (2026-09-07, audit L-15): `assertPasskeyFactorSatisfied` used to live
+// here. It threw PASSKEY_REQUIRED when a REQUIRED passkey factor reported
+// UNAVAILABLE, and it had no caller in src/ — only its own test file.
+//
+// It was DELETED rather than wired in, and that is a deliberate decision worth
+// keeping: the shipped unlock path does the opposite on purpose. On UNAVAILABLE
+// it records `passkeySkipped = 'unavailable'` and PROCEEDS, disclosing the
+// bypass to the UI (see runPasskeyGate's caller below). Wiring the assert would
+// have made an unlock that currently succeeds throw — permanently, for anyone
+// whose authenticator was lost, wiped, or replaced. That is not a security win;
+// it is unrecoverable fund loss wearing a security costume, the same trade the
+// PIN backoff clamp already refuses in pinAttemptGuard.js.
+//
+// If the product ever does want a hard passkey requirement, it needs a recovery
+// path FIRST (re-enrolment against the vault, or an explicit owner-acknowledged
+// "this wallet is passkey-locked" enrolment choice) — not a bare throw.
 
 export function WalletProvider({ children }) {
   // MULTI-SEED CONTAINER (LIVE SECRETS while unlocked). Holds the parsed vault
