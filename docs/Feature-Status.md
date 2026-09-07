@@ -675,9 +675,11 @@ All BUILT / device-verified on the test iPhone — NOT independently audited.
   migration `sql/bug-report-upload.sql` was not touched by the feature removal;
   #2418 dropped the bad policy from it, and a live audit of all three Supabase
   projects established the migration had never been applied anywhere.
-  [#2421](https://github.com/VEYRNOX/veyrnox/pull/2421) proposes deleting the file
-  outright and is OPEN at the time of writing — do not read this entry as saying
-  the file is gone.
+  [#2420](https://github.com/VEYRNOX/veyrnox/pull/2420) then hardened that file's
+  verification block, and [#2421](https://github.com/VEYRNOX/veyrnox/pull/2421)
+  deletes the file outright — in flight at the time of writing. **Check whether
+  `sql/bug-report-upload.sql` exists before citing it either way; this line is
+  about a PR, and a PR's state is perishable.**
   **The design rationale is retained below because it is the reason not to build
   this the obvious way, and that outlives the feature.** It was deliberately NOT
   session replay: session replay on a self-custody wallet would record seed reveal

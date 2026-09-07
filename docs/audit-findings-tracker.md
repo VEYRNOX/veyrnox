@@ -305,8 +305,8 @@ is what a future reader would have weighed a change against.
 
 **Closed by [#2418](https://github.com/VEYRNOX/veyrnox/pull/2418)** (merged `56e2f07b`),
 which drops the policy rather than adding `TO service_role` — deny-by-default is the
-stronger control. **[#2421](https://github.com/VEYRNOX/veyrnox/pull/2421) proposes deleting
-the file outright; it is OPEN at this pin and this row does not depend on it.**
+stronger control. **[#2421](https://github.com/VEYRNOX/veyrnox/pull/2421) deletes the file
+outright and is in flight at this pin; this row does not depend on it either way.**
 
 **Live-project audit: the migration was never applied. Anywhere.** This is the negative the
 issue existed to establish, recorded here because the previous version of this row
@@ -341,9 +341,15 @@ reads as coverage and is not.**
 [#2420](https://github.com/VEYRNOX/veyrnox/pull/2420) rewrote that block to assert
 `relrowsecurity` first and wrap the role switches in `BEGIN`/`ROLLBACK` (`SET LOCAL` outside
 a transaction warns and is discarded, so the switches were no-ops and the assertions ran as
-the editor's own role). **That PR is OPEN and conflicts with #2421 — whichever lands second
-is a modify/delete conflict.** If the file is deleted, the fix is lost with it; the lesson
-is preserved in this row deliberately, not in the file.
+the editor's own role). It **merged** 2026-09-07 (`c0178ff5`).
+
+**The lesson is recorded here, not in the file, because the file does not survive.** #2420
+improved the verification block and #2421 deletes the file that contains it — the two PRs
+edited and removed the same 250 lines. #2420 landed first, so #2421 simply deletes the
+improved version; there was no conflict to resolve, and no reason to sequence them the
+other way. **The net effect is that the better check existed on `main` for a matter of
+minutes and then was deleted, which is the correct outcome for a migration whose feature is
+gone but a poor place to leave a durable lesson.** Hence this paragraph.
 
 Both regressions in the previous window (`WalletConnectProvider` and `WalletPortfolioPage`
 Base44 seals) are closed. Historical regressions on record (re-fixed; preserved, not swept
