@@ -182,9 +182,25 @@ INSERT INTO storage.buckets (id, name, public)
 -- bucket without an explicit TO clause naming the role.
 DROP POLICY IF EXISTS bug_reports_service_role_all ON storage.objects;
 
--- Authorization test (run as postgres in Supabase SQL editor after applying):
+-- Authorization test (run as postgres in Supabase SQL editor after applying).
 --
---   -- Seed as service_role authority (bypasses RLS).
+-- Run the WHOLE block as one statement. The BEGIN/ROLLBACK wrapper is not
+-- cosmetic: SET LOCAL scopes to the current transaction, and outside a
+-- transaction block Postgres emits "SET LOCAL can only be used in transaction
+-- blocks" and DISCARDS the setting. The role switches would then be no-ops and
+-- every query below would run as the editor's own role — typically postgres,
+-- which bypasses RLS — so the anon/authenticated assertions would be measuring
+-- nothing. ROLLBACK also removes the need for a cleanup step.
+--
+--   BEGIN;
+--
+--   -- Step 0 — the assumption everything else rests on. With no policy on this
+--   -- bucket, "deny by default" holds ONLY while RLS is enabled; if this comes
+--   -- back f, the bucket is wide open and every result below is meaningless
+--   -- rather than reassuring. Assert it FIRST.
+--   SELECT relrowsecurity FROM pg_class WHERE oid = 'storage.objects'::regclass;  -- t
+--
+--   -- Seed as the session role (bypasses RLS).
 --   INSERT INTO storage.objects (bucket_id, name, owner, metadata)
 --     VALUES ('bug-reports', 'test-object.br1', NULL, '{}'::jsonb);
 --
@@ -204,13 +220,14 @@ DROP POLICY IF EXISTS bug_reports_service_role_all ON storage.objects;
 --   DELETE FROM storage.objects WHERE bucket_id = 'bug-reports';              -- 0 rows
 --   RESET ROLE;
 --
---   -- service_role still sees the seeded row (the Pages Function upload path).
+--   -- Positive control: service_role still sees the seeded row (the Pages
+--   -- Function upload path). Without this, a configuration that denied EVERY
+--   -- role would pass all the assertions above.
 --   SET LOCAL ROLE service_role;
 --   SELECT count(*) FROM storage.objects WHERE bucket_id = 'bug-reports';  -- 1
 --   RESET ROLE;
 --
---   -- Cleanup.
---   DELETE FROM storage.objects WHERE bucket_id = 'bug-reports' AND name = 'test-object.br1';
+--   ROLLBACK;  -- discards the seeded row; no cleanup step needed
 
 -- ============================================================================
 -- 4. Retention sweep (manual invocation for now; slice 1e-3 or 2 wires cron)
