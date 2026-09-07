@@ -1418,6 +1418,23 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
     or read the specific line number. Concretely, the merge watcher for the webhook fix
     counted `oldform=1` and cried CONTENT-WRONG on a perfectly good merge — line 188 had
     the fix, line 66 was the comment explaining it.
+    **A fourth instance on 2026-09-07 says the naming above is not preventing this.** A
+    merge watcher for PR #2427 asserted a retired phrase was absent from
+    `docs/audit-findings-tracker.md`, and matched the table row that exists to record the
+    phrase as superseded. Held the branch, cried CONTENT-WRONG on a correct merge — the
+    same shape as the webhook watcher four days earlier. Two things make it worth adding
+    rather than filing under the existing count:
+    - **It recurred in the same session that had just written a PR describing this exact
+      failure family.** Knowing the pattern, and having written it down an hour before,
+      did not stop it being written again. Treat "I know about this one" as no defence;
+      the only defence is scoping the assertion when you type it.
+    - **The target was MARKDOWN, and the remedy above is code-shaped.** "Strip `//` lines"
+      has nothing to strip in a prose document, where the quotation *is* the content and
+      the retired phrase legitimately appears forever. For docs, **assert an expected
+      count rather than zero** (`grep -cF` equals 1, and flag drift in either direction),
+      or scope to the structural container — the heading, the blockquote marker, the
+      addendum block — never to the phrase alone. A doc that records a correction will
+      always contain the thing it corrected.
   - **Note which way each failure points.** The `-F` bug fails DANGEROUS: it stays silent
     and reports a clean result that is wrong. The absence-check-hits-its-own-comment bug
     fails SAFE: it cries wolf on correct work. Both come from a check that cannot tell
