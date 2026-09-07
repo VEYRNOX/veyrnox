@@ -30,7 +30,15 @@ anything verified without on-chain txid or on-device evidence.**
 > non-attempt `oom` verdict. Both fixes carry new regression guards, each
 > mutation-checked by reintroducing the exact defect. **BUILT, INTERNAL —
 > unit-tested only; neither is device-verified, and no status tag advances on
-> this.** Every other finding below remains open.
+> this.**
+>
+> **Correction, same day:** this sentence used to end "Every other finding below
+> remains open." That was true when written and false a few hours later — every
+> H, M and L finding was remediated over the course of the day (#2422, #2426,
+> #2428, #2430, #2431), with L-2 and the disclosure half of L-3 deliberately left
+> as recorded by-design decisions rather than fixed. Each finding's own heading
+> carries its status; trust those over this banner, which is written once and
+> ages.
 
 ---
 
@@ -125,7 +133,7 @@ no new finding below originates in it.
 
 ## HIGH
 
-### H-1 — [WC] Every pre-sign gate rejection returns silently, and the modal answers it with a SUCCESS haptic — **[VERIFIED]**
+### H-1 — [WC] Every pre-sign gate rejection returns silently, and the modal answers it with a SUCCESS haptic — **[VERIFIED]** · **FIXED** (#2422)
 
 **Files:** `src/lib/WalletConnectProvider.jsx:439-442`, `:495-498`, `:579-582`
 (the three rejections); `:1003`, `:1022`, `:1079` (dequeued regardless);
@@ -199,7 +207,7 @@ fails is the one RASP exists to deliver.
 `successHaptic` is not called and `err` is rendered — the existing handler-level
 tests structurally cannot see this.
 
-### H-2 — [Auth] The fast-path biometric unlock mounts a session with no step-up verifier; the send 2FA gate reads that as five wrong PINs, then locks — **[VERIFIED]** (code path; on-device **[UNVERIFIED]**)
+### H-2 — [Auth] The fast-path biometric unlock mounts a session with no step-up verifier; the send 2FA gate reads that as five wrong PINs, then locks — **[VERIFIED]** (code path; on-device **[UNVERIFIED]**) · **FIXED** (#2422, unit-tested only — the fix is not device-verified either)
 
 **Files:** `src/lib/WalletProvider.jsx:2215-2257`, `:2213`, `:1550`;
 `src/components/WalletEntry.jsx:863-866`, `:1817`;
