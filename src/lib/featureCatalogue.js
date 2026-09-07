@@ -355,8 +355,9 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Tax Report',
+        displayName: 'Tax Export',
         status: 'verified',
-        summary: 'Honest raw-transaction export for tax software',
+        summary: 'Raw transaction CSV export for third-party tax software — does not calculate taxes',
         explanation: 'Built (/tax). Exports raw transaction data (date, type, asset, amount, fee, tx_hash) as CSV — no invented prices, no fabricated cost-basis or gain figures. Explicit disclaimer that this is not tax advice; directs users to Koinly / CoinTracker for real computation. All FIFO/historicalRate fabrications removed.',
       },
     ],
