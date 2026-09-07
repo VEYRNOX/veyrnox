@@ -33,16 +33,44 @@ const PERMIT_PRIMARY_TYPES = new Set([
 // nothing.
 const AUTHORISING_FIELD_NAMES = new Set(['spender', 'operator', 'delegate']);
 
-/** Does the primary struct hand an address-typed spender/operator/delegate away? */
-function grantsAddressAuthority(types, primaryType) {
+/**
+ * Does this struct — or anything it NESTS — hand an address-typed
+ * spender/operator/delegate away?
+ *
+ * L-7 (audit 2026-09-07): this used to be a flat `fields.some(...)` over the
+ * primary struct only, so the backstop was blind to exactly the shape it exists
+ * to catch: a wrapper. `SignedOrder { order: OrderComponents, sig: bytes }` has
+ * no authorising field of its own and scored LEVEL.OK, and Safe's
+ * `SafeTx { to, value, data, operation, ... }` keeps its authority one level
+ * down. The named allowlists still cover the Permit2 family (a usable Permit2
+ * digest requires the exact primary type), which is why this was LOW and not
+ * higher — but the whole point of a structural backstop is to survive a name
+ * nobody enumerated, and a wrapper defeated it with no lying about the graph.
+ *
+ * Now walks the declared type graph. Array suffixes are stripped so `Order[]`
+ * resolves to `Order`; unknown or primitive types have no entry in `types` and
+ * end that branch.
+ *
+ * `visited` is belt-and-braces, and the honest description matters: it is NOT
+ * what stops a hostile dApp sending a cyclic graph. H-4's root reconciliation in
+ * parseTypedData already rejects one — a cycle leaves no single unreferenced
+ * struct, so `primaryType does not match the declared type graph` fires and this
+ * function is never reached (pinned in typed-data.nestedAuthority.test.js).
+ * The guard exists so a FUTURE caller that skips that reconciliation cannot
+ * turn this into unbounded recursion; it is not load-bearing today.
+ */
+function grantsAddressAuthority(types, primaryType, visited = new Set()) {
   const fields = types?.[primaryType];
-  if (!Array.isArray(fields)) return false;
-  return fields.some(
-    (f) => f
-      && typeof f.name === 'string'
-      && f.type === 'address'
-      && AUTHORISING_FIELD_NAMES.has(f.name.toLowerCase()),
-  );
+  if (!Array.isArray(fields) || visited.has(primaryType)) return false;
+  visited.add(primaryType);
+  return fields.some((f) => {
+    if (!f || typeof f.name !== 'string' || typeof f.type !== 'string') return false;
+    if (f.type === 'address' && AUTHORISING_FIELD_NAMES.has(f.name.toLowerCase())) return true;
+    const base = f.type.replace(/(\[\d*\])+$/, '');
+    return base !== f.type || Object.prototype.hasOwnProperty.call(types ?? {}, base)
+      ? grantsAddressAuthority(types, base, visited)
+      : false;
+  });
 }
 const SEAPORT_PRIMARY_TYPES = new Set(['OrderComponents', 'BulkOrder']);
 

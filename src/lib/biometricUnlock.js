@@ -18,9 +18,20 @@
 // │                                                                            │
 // │ HOW THE BIOMETRIC GATE IS ENFORCED (read this — it is precise on purpose) │
 // │   The underlying secure-storage plugin (@aparajita/capacitor-secure-      │
-// │   storage) can pin an item's *accessibility* (whenPasscodeSetThisDevice-  │
-// │   Only — Keychain/Keystore platform secure store, device-only, passcode-  │
-// │   required) but it does NOT                                               │
+// │   storage) can pin an item's *accessibility* — we set                     │
+// │   whenUnlockedThisDeviceOnly (see setDefaultKeychainAccess below):        │
+// │   platform secure store, device-only, readable while unlocked.            │
+// │   CORRECTED 2026-09-07 (audit L-1): these three prose sites said          │
+// │   whenPasscodeSetThisDeviceOnly, a STRONGER class than the code sets —    │
+// │   it additionally requires a device passcode and drops the item if the    │
+// │   passcode is removed. Claiming it while setting the weaker one is an I4  │
+// │   violation, so the prose now matches the code. Moving the CODE up to     │
+// │   whenPasscodeSetThisDeviceOnly is a real available hardening and is NOT  │
+// │   done here: it changes runtime behaviour on a security path (an item     │
+// │   cannot be stored at all with no passcode set) and this repo does not    │
+// │   ship unlock-path changes without real-device verification. If you take  │
+// │   it, verify enrol → lock → unlock on both platforms first.               │
+// │   The plugin does NOT                                                     │
 // │   expose the iOS access-control / SecAccessControl biometry flags         │
 // │   (kSecAccessControlBiometryCurrentSet / .userPresence) nor the Android   │
 // │   Keystore setUserAuthenticationRequired equivalent. So the Keychain      │
@@ -56,7 +67,8 @@
 // │ clearly-labelled SIMULATION (see BiometricPrompt.jsx) — NOT real OS       │
 // │ security, and NOT an OS authenticate(). On a real native device the cache │
 // │ lives in the platform secure store (iOS Keychain / Android Keystore),     │
-// │ ThisDeviceOnly, passcode-gated                                            │
+// │ ThisDeviceOnly, readable while unlocked (audit L-1: NOT passcode-gated —  │
+// │ see the accessibility note above)                                         │
 // │ (same store class as keystore/native.js), and the real OS biometric sheet │
 // │ gates the release as described above.                                     │
 // └─────────────────────────────────────────────────────────────────────────┘
@@ -521,9 +533,11 @@ export async function hasStoredUnlockSecret() {
  *   'app-gate'  — biometric requirement enforced at the JS chokepoint (the
  *                 current retrieveUnlockSecret() / retrieveUnlockSecretDirect()
  *                 gate). Keychain/Keystore accessibility is
- *                 `whenPasscodeSetThisDeviceOnly`, NOT a biometry-ACL bound
- *                 key. Biometric-enrollment change does NOT auto-invalidate.
- *                 This is what ships today.
+ *                 `whenUnlockedThisDeviceOnly` (audit L-1 2026-09-07 — this
+ *                 said `whenPasscodeSetThisDeviceOnly`, which is a stronger
+ *                 class than the code sets; see setDefaultKeychainAccess),
+ *                 NOT a biometry-ACL bound key. Biometric-enrollment change
+ *                 does NOT auto-invalidate. This is what ships today.
  *   'key-bound' — Keychain item pinned to `kSecAccessControlBiometryCurrentSet`
  *                 (iOS) / `setUserAuthenticationRequired`+
  *                 `setInvalidatedByBiometricEnrollment` (Android). Biometric-

@@ -62,6 +62,15 @@ class AndroidBiometricCachePlugin : Plugin() {
             call.reject("Plugin context unavailable", "NO_CONTEXT")
             return
         }
+        // L-13 (audit 2026-09-07): gate WRITES on block tier too, not just reads.
+        // The three get* methods already do this; the three put* methods did not,
+        // so on a hooked/tampered runtime the plugin would still persist a secret
+        // to a Keystore alias. Low severity by itself — an attacker on a BLOCK-tier
+        // runtime already holds the plaintext being cached, and the JS populate
+        // path fail-closes on non-ALLOW before reaching here — but a read/write
+        // asymmetry is exactly what a later refactor mis-reads as "writes are safe
+        // by design", so the two halves are made symmetric.
+        if (rejectIfBlockTier(ctx, call)) return
         if (!isSupported(ctx)) {
             call.reject("Android biometric cache requires Android 11+ with BIOMETRIC_STRONG enrolled", "ANDROID_BIOMETRIC_CACHE_UNSUPPORTED")
             return
@@ -151,6 +160,15 @@ class AndroidBiometricCachePlugin : Plugin() {
             call.reject("Plugin context unavailable", "NO_CONTEXT")
             return
         }
+        // L-13 (audit 2026-09-07): gate WRITES on block tier too, not just reads.
+        // The three get* methods already do this; the three put* methods did not,
+        // so on a hooked/tampered runtime the plugin would still persist a secret
+        // to a Keystore alias. Low severity by itself — an attacker on a BLOCK-tier
+        // runtime already holds the plaintext being cached, and the JS populate
+        // path fail-closes on non-ALLOW before reaching here — but a read/write
+        // asymmetry is exactly what a later refactor mis-reads as "writes are safe
+        // by design", so the two halves are made symmetric.
+        if (rejectIfBlockTier(ctx, call)) return
         if (!isSupported(ctx)) {
             call.reject("Android biometric cache requires Android 11+ with BIOMETRIC_STRONG enrolled", "ANDROID_BIOMETRIC_CACHE_UNSUPPORTED")
             return
@@ -198,7 +216,15 @@ class AndroidBiometricCachePlugin : Plugin() {
                 GCMParameterSpec(128, Base64.decode(ivB64, Base64.NO_WRAP)),
             )
             val plaintext = cipher.doFinal(Base64.decode(ctB64, Base64.NO_WRAP))
-            call.resolve(JSObject().put("secret", String(plaintext, StandardCharsets.UTF_8)))
+            // L-11 (audit 2026-09-07): scrub the decrypted buffer, matching
+            // HardwareKekPlugin.kt's treatment of the H buffer. The String copy
+            // below is immutable and cannot be wiped — that residual is
+            // architectural — but the ByteArray can be, so it is.
+            try {
+                call.resolve(JSObject().put("secret", String(plaintext, StandardCharsets.UTF_8)))
+            } finally {
+                java.util.Arrays.fill(plaintext, 0)
+            }
         } catch (e: Exception) {
             call.reject("getSecretUnauth failed: ${e.message}", "ANDROID_BIOMETRIC_CACHE_READ_FAILED")
         }
@@ -259,6 +285,15 @@ class AndroidBiometricCachePlugin : Plugin() {
             call.reject("Plugin context unavailable", "NO_CONTEXT")
             return
         }
+        // L-13 (audit 2026-09-07): gate WRITES on block tier too, not just reads.
+        // The three get* methods already do this; the three put* methods did not,
+        // so on a hooked/tampered runtime the plugin would still persist a secret
+        // to a Keystore alias. Low severity by itself — an attacker on a BLOCK-tier
+        // runtime already holds the plaintext being cached, and the JS populate
+        // path fail-closes on non-ALLOW before reaching here — but a read/write
+        // asymmetry is exactly what a later refactor mis-reads as "writes are safe
+        // by design", so the two halves are made symmetric.
+        if (rejectIfBlockTier(ctx, call)) return
         if (!isSupported(ctx)) {
             call.reject("Android biometric cache requires Android 11+ with BIOMETRIC_STRONG enrolled", "ANDROID_BIOMETRIC_CACHE_UNSUPPORTED")
             return
@@ -310,7 +345,15 @@ class AndroidBiometricCachePlugin : Plugin() {
                 GCMParameterSpec(128, Base64.decode(ivB64, Base64.NO_WRAP)),
             )
             val plaintext = cipher.doFinal(Base64.decode(ctB64, Base64.NO_WRAP))
-            call.resolve(JSObject().put("wrappedDek", String(plaintext, StandardCharsets.UTF_8)))
+            // L-11 (audit 2026-09-07): scrub. This buffer is the RAW DEK since the
+            // 2026-08-28 fastpath refactor (the `wrappedDek` key name is historical
+            // — see AndroidBiometricCachePlugin's header note and audit M-5), so a
+            // lingering heap copy here is the vault key itself, not a wrapped blob.
+            try {
+                call.resolve(JSObject().put("wrappedDek", String(plaintext, StandardCharsets.UTF_8)))
+            } finally {
+                java.util.Arrays.fill(plaintext, 0)
+            }
         } catch (_: KeyPermanentlyInvalidatedException) {
             // Design mandate: on biometric enrollment change, clear + fall
             // through silently. No oracle.
@@ -522,7 +565,12 @@ class AndroidBiometricCachePlugin : Plugin() {
             GCMParameterSpec(128, Base64.decode(ivB64, Base64.NO_WRAP)),
         )
         val plaintext = cipher.doFinal(Base64.decode(ctB64, Base64.NO_WRAP))
-        return String(plaintext, StandardCharsets.UTF_8)
+        // L-11 (audit 2026-09-07): scrub before returning.
+        try {
+            return String(plaintext, StandardCharsets.UTF_8)
+        } finally {
+            java.util.Arrays.fill(plaintext, 0)
+        }
     }
 
     private fun isInvalidationKeyStillValid(): Boolean {

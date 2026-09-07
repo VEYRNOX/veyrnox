@@ -106,8 +106,22 @@ class HardwareKekPlugin : Plugin() {
      *   We do NOT weaken the auth strength to run on old APIs (fail honest, fail closed).
      * L3 (audit): generateKey() on the fixed KEY_ALIAS silently RE-KEYS an existing
      *   enrollment, permanently bricking the current kekWrap (H changes → old wrap is
-     *   undecryptable). We refuse to overwrite: if KEY_ALIAS already exists, reject with
-     *   KEK_ALREADY_ENROLLED so re-enroll is explicit (caller must clearCredential first).
+     *   undecryptable).
+     *
+     *   CORRECTED 2026-09-07 (audit L-12). This said we "reject with
+     *   KEK_ALREADY_ENROLLED so re-enroll is explicit (caller must clearCredential
+     *   first)". No such reject exists — the constant appeared nowhere but in this
+     *   sentence. enrollApi30 does the OPPOSITE on purpose: a stale alias is
+     *   force-deleted and enrollment proceeds (see its inline comment), which is
+     *   what unsticks the reinstall+restore loop, since stale aliases survive an
+     *   uninstall and a best-effort JS clearCredential() can silently fail. It
+     *   rejects only when the stale key cannot be REMOVED (KEK_CLEAR_STALE_FAILED).
+     *
+     *   The real guard against re-keying a LIVE enrollment is therefore in JS, not
+     *   here: the caller checks `blob.kekWrap` before calling enroll (native.js,
+     *   web.js). Native is deliberately permissive because by the time it is
+     *   reached the vault is known to be bare. If you ever make native the guard,
+     *   that JS check is the thing to move, not to duplicate.
      */
     @PluginMethod
     fun enroll(call: PluginCall) {

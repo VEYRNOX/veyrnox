@@ -10,8 +10,9 @@
 // nothing on the WC surface looked at it.
 //
 // `scoreWcTypedDataLevel` scores that body so `presignGateOrReject` can
-// compose it into the pre-sign gate. It mirrors `scoreWcTxLevel`'s shape —
-// pure, lazy import-free, fail-closed on parse failure:
+// compose it into the pre-sign gate. Pure, lazy import-free, fail-closed on
+// parse failure (it used to be described as mirroring `scoreWcTxLevel`, deleted
+// 2026-09-07 as a dead wrapper — audit L-9):
 //   - Permit2 primary type detected                           → LEVEL.RISK
 //   - EIP-2612 Permit carrying an unlimited/near-max value    → LEVEL.RISK
 //   - Any other asset-authorising typed data (Permit, Seaport)→ LEVEL.CAUTION

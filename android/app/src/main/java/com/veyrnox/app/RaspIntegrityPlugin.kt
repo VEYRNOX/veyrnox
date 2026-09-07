@@ -545,8 +545,17 @@ class RaspIntegrityPlugin : Plugin() {
     // separate threat model). False-positive: USB-C DisplayPort connections create
     // a presentation display; the WARN/BLOCK is appropriate for a wallet send flow.
     //
-    // nativeProbe.js item 16 maps verdict.screenCapture:true → signals.hooked →
-    // BLOCK with no additional JS changes required.
+    // GRADING (authority is nativeProbe.js — do not restate a tier here, link to it).
+    // CORRECTED 2026-09-07 (audit L-10). This said "item 16 maps
+    // verdict.screenCapture:true → signals.hooked → BLOCK", which has been wrong
+    // since #1108/#2065: screenCapture is NOT Frida-severity and is explicitly
+    // kept off the hooked axis (nativeProbe.js:204). It is graded PER PLATFORM —
+    // on Android it folds into `elevated` (WARN, seed backup still allowed)
+    // because MainActivity applies FLAG_SECURE unconditionally, so the OS itself
+    // blocks the capture; on iOS it gets its own CONDITION.SCREEN_CAPTURE, which
+    // blocks seed reveal only. The method KDoc was fixed by an earlier sweep and
+    // this inline comment was missed, so a reader standing at the function body
+    // still got the retired mapping.
 
     @JvmSynthetic
     private fun checkScreenCapture(): Boolean = runCatching {
@@ -562,9 +571,15 @@ class RaspIntegrityPlugin : Plugin() {
     // tapjacking risk during PIN entry as iOS AssistiveTouch.
     //
     // Honest scope: also fires for legitimate accessibility users (TalkBack, Voice
-    // Access, Switch Access). The WARN tier (nativeProbe.js item 19 maps
-    // overlayActive → signals.rooted → WARN) means the send flow is not blocked
-    // but the user sees a caution notice — consistent with the iOS behaviour.
+    // Access, Switch Access).
+    //
+    // CORRECTED 2026-09-07 (audit L-10). This said "item 19 maps overlayActive →
+    // signals.rooted → WARN", i.e. that the field drives a caution notice. It
+    // drives nothing: overlayActive was DROPPED by #1104 and feeds no signal at
+    // all (nativeProbe.js:116), because AssistiveTouch is a first-class iOS
+    // accessibility feature many people leave permanently on and treating it as
+    // adversarial punished them for using it. The field is still reported for
+    // platform symmetry; the JS side ignores it.
     //
     // NOT added to the early gate: overlayActive is WARN-tier, not BLOCK-tier.
     // Only BLOCK signals (hook + tamper + screenCapture) gate app launch.

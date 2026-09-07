@@ -908,6 +908,28 @@ export default function WalletEntry() {
   // opts: { skipPasskey, skipBiometric } — escape hatches, each only ever set by
   // the explicit "Unlock with password only" buttons surfaced AFTER the matching
   // gate has failed. Both still require the correct vault password below.
+  //
+  // NO ATTEMPT COUNTER / AUTO-WIPE HERE, AND THAT IS DELIBERATE — audit L-2
+  // (2026-09-07) and M-4 (2026-08-25) both flagged the asymmetry against
+  // runPinUnlock, so the reasoning is recorded here to stop it being re-filed as
+  // a gap, or worse, "fixed".
+  //
+  // The two handlers serve different COHORTS with different threat models:
+  //   runPinUnlock — an 8-digit PIN, entered on the PinPad. The keyspace is small
+  //     enough to guess online, so it gets the localStorage attempt counter, the
+  //     timed backoff, and the 10-strike irreversible panic wipe.
+  //   runUnlock (here) — the vault password, minimum 12 characters (H-A). Online
+  //     guessing is not the threat; an offline attacker with the vault blob is,
+  //     and Argon2id (96 MiB / t=6) is the control that answers them. A wipe here
+  //     would not raise an attacker's cost meaningfully.
+  //
+  // What it WOULD do is destroy a wallet because its owner mistyped a long
+  // passphrase ten times — irreversible fund loss triggered by a typo, on the
+  // screen where a user is already stressed. That is data loss wearing a security
+  // costume, the same trade pinAttemptGuard's backoff clamp already refuses.
+  //
+  // If a limit is ever wanted on this path, the honest shape is a timed backoff
+  // (raising guessing cost, losing nothing), NOT a wipe.
   const runUnlock = async (opts = {}) => {
     setError(""); setBusy(true);
     try {

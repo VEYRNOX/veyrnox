@@ -32,7 +32,6 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
   const { signPersonal, signTypedData, sendTransaction, rejectRequest, isSendReauthRequired, evmAddress, sessions } = useWalletConnect();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
-  const [permitAcknowledged, setPermitAcknowledged] = useState(false);
   const [txAcknowledged, setTxAcknowledged] = useState(false);
   const [riskVerdict, setRiskVerdict] = useState(null);
   const [txIntelVerdict, setTxIntelVerdict] = useState(null);
@@ -212,9 +211,28 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
     type === REQUEST_TYPES.SEND_TRANSACTION &&
     (codePending || !txIntelPolicy.canProceed);
 
+  // L-5 (audit 2026-09-07). Two affordances that could never succeed:
+  //
+  //  (a) isAssetAuth was gated on ticking `permitAcknowledged`, which ENABLED
+  //      Approve — but the WC signing path calls presignGateOrReject with
+  //      `acknowledged` hardcoded false, and every asset-authorising payload
+  //      scores CAUTION or RISK, so composeGate returns WARN/CONFIRM and
+  //      proceedAllowed is false no matter what the user ticks. The checkbox
+  //      offered a permission this surface structurally does not grant. It is
+  //      now an unconditional block with a plain explanation instead.
+  //  (b) an INVALID typed-data payload is deliberately left queued so the
+  //      handler can reject with the real parse error, but it arrived here with
+  //      Approve enabled.
+  //
+  // Both fail closed either way — nothing could ever have been signed. This is
+  // the honesty half: do not render a control whose only outcome is an error.
+  const typedDataUnparseable =
+    type === REQUEST_TYPES.SIGN_TYPED_DATA && typedDataMeta?.parsed?.valid !== true;
+
   const approveBlocked =
     needsReauth ||
-    (isAssetAuth && !permitAcknowledged) ||
+    isAssetAuth ||
+    typedDataUnparseable ||
     (type === REQUEST_TYPES.SEND_TRANSACTION && !txAcknowledged) ||
     type === REQUEST_TYPES.UNKNOWN ||
     riskBlocks;
@@ -364,14 +382,9 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
               <div className={styles.permitWarning}>
                 <p className={styles.permitTitle}>{t('wc.request_approval.permit_title')}</p>
                 <p className={styles.permitBody}>{typedDataMeta.assetAuthorising.reason}</p>
-                <label className={styles.permitCheck}>
-                  <input
-                    type="checkbox"
-                    checked={permitAcknowledged}
-                    onChange={(e) => setPermitAcknowledged(e.target.checked)}
-                  />
-                  {t('wc.request_approval.permit_ack')}
-                </label>
+                <p className={styles.permitBody} data-testid="wc-permit-unapprovable">
+                  {t('wc.request_approval.permit_unapprovable')}
+                </p>
               </div>
             )}
           </>

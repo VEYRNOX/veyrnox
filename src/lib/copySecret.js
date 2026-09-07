@@ -46,6 +46,8 @@
 // WIPE_EXHAUSTED_EVENT (I4 — fail honest) rather than swallowed like a
 // transient retry.
 
+import { toast } from '@/lib/toast';
+
 // The event WalletProvider.lock() dispatches on window to force an immediate
 // clipboard wipe the moment the wallet locks.
 export const APP_LOCK_EVENT = 'veyrnox:app-lock';
@@ -112,13 +114,37 @@ export async function copySecret(text) {
         inFlight = false;
         // Give up only after MAX_WIPE_ATTEMPTS so a permanently unwritable
         // clipboard cannot keep listeners alive for the life of the page.
-        if (outcome === WIPE_FAILED && attempts < MAX_WIPE_ATTEMPTS) return;
+        if (outcome === WIPE_FAILED && attempts < MAX_WIPE_ATTEMPTS) {
+          // L-14 (audit 2026-09-07): RE-ARM the timer. Previously a failed
+          // attempt just returned, leaving retries to depend entirely on a
+          // visibility/blur/focus event arriving. On a page that simply sits
+          // there — the common case for a seed-reveal screen left open — no
+          // such event ever comes, so the secret stayed on the clipboard with
+          // no further attempt and no notice. The event triggers remain; this
+          // only guarantees the clock keeps trying up to MAX_WIPE_ATTEMPTS.
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(wipe, WIPE_MS);
+          return;
+        }
         done = true;
         cleanup();
         // I4: a wipe that never landed is reported, not swallowed — the
         // secret is still sitting on the clipboard when this fires.
         if (outcome === WIPE_FAILED && typeof window !== 'undefined' && typeof CustomEvent === 'function') {
           window.dispatchEvent(new CustomEvent(WIPE_EXHAUSTED_EVENT));
+          // L-14 (audit 2026-09-07): tell the USER, not just the event bus.
+          // WIPE_EXHAUSTED_EVENT had a definition, a dispatch and one test
+          // listener — and no production consumer, so the "fail honest" half of
+          // this control did not exist: the clipboard still held the secret and
+          // nothing anywhere said so. Toasting from this single exhaustion point
+          // rather than from each of the seven copySecret call sites keeps it one
+          // chokepoint (the K-2 lesson: three guarded writers is how the fourth
+          // ships unguarded). The event stays for programmatic consumers.
+          try {
+            toast.error(
+              'Could not clear the clipboard automatically. Paste somewhere harmless or copy something else to overwrite it.',
+            );
+          } catch { /* toast host absent (tests, headless) — the event still fired */ }
         }
       });
   };
