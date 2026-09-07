@@ -111,7 +111,11 @@ describe('RASP-A3 — WalletConnect signing path is fail-closed on WARN/CONFIRM'
   it('WARN tier → rejects the WC request with RASP_WARN_REJECTED and does NOT sign', async () => {
     raspState.tier = 'warn-before-sign';
     const { _handlePersonalSign } = await import('../WalletConnectProvider.jsx');
-    await _handlePersonalSign({ withPrivateKey }, 'topicW', 9, ['0xdeadbeef', '0xabc']);
+    // Audit 2026-09-07 H-1: must THROW so the modal renders the refusal instead
+    // of treating a plain return as a completed signature.
+    await expect(
+      _handlePersonalSign({ withPrivateKey }, 'topicW', 9, ['0xdeadbeef', '0xabc']),
+    ).rejects.toThrow('RASP_WARN_REJECTED');
     expect(withPrivateKeySpy).not.toHaveBeenCalled();
     expect(respondToRequest).not.toHaveBeenCalled();
     expect(rejectRequest).toHaveBeenCalledWith('topicW', 9, 'RASP_WARN_REJECTED');

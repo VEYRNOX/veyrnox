@@ -8,7 +8,17 @@
 Conducted: 2026-09-07
 Method: Static code analysis via parallel specialist agents (4 agents × 4 surfaces)
 Branch audited: `security-audit/2026-09-07`, pinned to `origin/main` @ **`d0c4423c`**
-Status: **Findings only — nothing fixed. Do not mark anything verified without on-chain txid or on-device evidence.**
+Status: **Findings only — nothing fixed at the time of writing. Do not mark
+anything verified without on-chain txid or on-device evidence.**
+
+> **Update, same day — H-1 and H-2 are FIXED in code.** Both were remediated in a
+> follow-up PR off `main` (see `fix/audit-2026-09-07-fail-honest`): the three WC
+> signing handlers now `throw` instead of `return`, and the send 2FA gate uses
+> `verifyActiveCredentialDetailed` and surfaces an absent verifier as a
+> non-attempt `oom` verdict. Both fixes carry new regression guards, each
+> mutation-checked by reintroducing the exact defect. **BUILT, INTERNAL —
+> unit-tested only; neither is device-verified, and no status tag advances on
+> this.** Every other finding below remains open.
 
 ---
 
@@ -82,10 +92,22 @@ no new finding below originates in it.
 - **Orphan check, resolved with a non-grep signal.** `sql/bug-report-upload.sql`
   survives in the repo. It was **never applied to either database** — `list_tables`
   on production (`jwstkrtslotnjyerzzsi`) and staging (`nszlbcmcysftwyudthjz`)
-  shows no `bug_reports` or `bug_report_upload_rate_limit`. The file is also
-  correctly locked down on its own terms (RLS enabled, `REVOKE ALL FROM PUBLIC,
-  anon, authenticated`, service_role-only EXECUTE). **Repo residue, not live
-  surface.** This closes an item previously recorded as an open storage-schema orphan.
+  shows no `bug_reports` or `bug_report_upload_rate_limit`. **Repo residue, not
+  live surface.** This closes an item previously recorded as an open
+  storage-schema orphan.
+  - **CORRECTION, same day.** This bullet also said the file was *"correctly
+    locked down on its own terms (RLS enabled, `REVOKE ALL FROM PUBLIC, anon,
+    authenticated`, service_role-only EXECUTE)."* **The second half of that was
+    wrong, and #2417/#2418 caught it, not this audit.** The function grants were
+    as described, but the storage policy `bug_reports_service_role_all` carried
+    **no `TO service_role` clause**, so `USING (bucket_id = 'bug-reports')`
+    applied to *every* role — anon included. The audit read the policy's NAME and
+    the function's REVOKE block and generalised "locked down" across both.
+    Nothing was ever exposed, because the never-applied finding above is
+    independently true and was verified directly against both databases. But the
+    characterisation was wrong: **a policy named for a role is not scoped to that
+    role — only a `TO` clause does that.** Fixed on `main` in `56e2f07b`, which
+    drops the policy entirely (service_role bypasses RLS and needs none).
 
 ---
 

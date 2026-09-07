@@ -438,7 +438,17 @@ export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic,
   const gate = await presignGateOrReject();
   if (!gate.proceedAllowed) {
     await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
-    return;
+    // Audit 2026-09-07 H-1 — THROW, never `return`. RequestApprovalModal wraps
+    // this call in try/catch and treats a plain return as success: it fired
+    // successHaptic() and closed, so a RASP block on a hooked device looked to
+    // the user exactly like a completed signature, while the dApp was told the
+    // USER rejected it (EIP-1193 4001). Every sibling chokepoint in this file
+    // already throws (STEP_UP_REQUIRED, the address/chain binds,
+    // handleApproveSession) — this plane was the only one that returned.
+    // I4's "fail closed" half was never broken; this restores "fail honest".
+    throw new Error(
+      `Signing refused [${gate.rejectCode}]: Veyrnox blocked this request and did not sign.`,
+    );
   }
   // H-1 (#745) — a null/absent wallet address means we CANNOT bind the signing
   // address to our own wallet, so we must not sign at all. Reject before touching
@@ -494,7 +504,17 @@ export async function _handleSignTypedData({ withPrivateKey, evmAddress }, topic
   const gate = await presignGateOrReject(typedLevel);
   if (!gate.proceedAllowed) {
     await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
-    return;
+    // Audit 2026-09-07 H-1 — THROW, never `return`. RequestApprovalModal wraps
+    // this call in try/catch and treats a plain return as success: it fired
+    // successHaptic() and closed, so a RASP block on a hooked device looked to
+    // the user exactly like a completed signature, while the dApp was told the
+    // USER rejected it (EIP-1193 4001). Every sibling chokepoint in this file
+    // already throws (STEP_UP_REQUIRED, the address/chain binds,
+    // handleApproveSession) — this plane was the only one that returned.
+    // I4's "fail closed" half was never broken; this restores "fail honest".
+    throw new Error(
+      `Signing refused [${gate.rejectCode}]: Veyrnox blocked this request and did not sign.`,
+    );
   }
 
   // #1092 — bind params[0] (the signer address per eth_signTypedData_v4) to
@@ -578,7 +598,17 @@ export async function _handleSendTransaction(
   const gate = await presignGateOrReject(txLevel);
   if (!gate.proceedAllowed) {
     await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
-    return;
+    // Audit 2026-09-07 H-1 — THROW, never `return`. RequestApprovalModal wraps
+    // this call in try/catch and treats a plain return as success: it fired
+    // successHaptic() and closed, so a RASP block on a hooked device looked to
+    // the user exactly like a completed signature, while the dApp was told the
+    // USER rejected it (EIP-1193 4001). Every sibling chokepoint in this file
+    // already throws (STEP_UP_REQUIRED, the address/chain binds,
+    // handleApproveSession) — this plane was the only one that returned.
+    // I4's "fail closed" half was never broken; this restores "fail honest".
+    throw new Error(
+      `Signing refused [${gate.rejectCode}]: Veyrnox blocked this request and did not sign.`,
+    );
   }
 
   // #1091 — bind txParams.from to the active EVM address. A dApp requesting a
