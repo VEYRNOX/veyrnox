@@ -17,9 +17,11 @@ vi.mock('@capacitor/browser', () => ({
 
 import {
   recordSuccessfulSend,
+  recordMilestone,
   shouldPromptForReview,
   markDeclined,
   triggerReviewPromptIfEligible,
+  openStoreForRating,
   requestFeature,
   FEATURE_REQUEST_URL,
   FEEDBACK_EMAIL,
@@ -149,6 +151,51 @@ describe('reviewPrompt.requestFeature', () => {
     expect(captured).toContain(`mailto:${FEEDBACK_EMAIL}`);
     expect(captured).toContain('Veyrnox%20feature%20request');
     expect(captured).toContain('seed%20phrase');
+  });
+});
+
+describe('reviewPrompt.recordMilestone', () => {
+  it('is an alias of recordSuccessfulSend — three receives cross the threshold', () => {
+    for (let i = 0; i < MIN_SENDS_BEFORE_PROMPT; i += 1) recordMilestone();
+    expect(shouldPromptForReview()).toBe(true);
+  });
+
+  it('mixed send + receive milestones accumulate', () => {
+    recordSuccessfulSend();
+    recordMilestone();
+    recordSuccessfulSend();
+    expect(shouldPromptForReview()).toBe(true);
+  });
+
+  it('is a no-op under coercion (receive path)', () => {
+    isDeniabilityOrDemoActive.mockReturnValue(true);
+    recordMilestone();
+    recordMilestone();
+    recordMilestone();
+    isDeniabilityOrDemoActive.mockReturnValue(false);
+    expect(shouldPromptForReview()).toBe(false);
+  });
+});
+
+describe('reviewPrompt.openStoreForRating (manual)', () => {
+  it('opens the store URL directly and does NOT call SKStoreReview', async () => {
+    browserOpen.mockClear();
+    const inApp = await import('@capacitor-community/in-app-review');
+    inApp.InAppReview.requestReview.mockClear();
+    await openStoreForRating();
+    expect(browserOpen).toHaveBeenCalledTimes(1);
+    const arg = browserOpen.mock.calls[0][0];
+    // Web UA in vitest → falls through to WEB_URL; the point is that the
+    // manual path opens SOMETHING visible instead of the silent native prompt.
+    expect(arg.url).toMatch(/^https?:\/\//);
+    expect(inApp.InAppReview.requestReview).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op under coercion', async () => {
+    browserOpen.mockClear();
+    isDeniabilityOrDemoActive.mockReturnValue(true);
+    await openStoreForRating();
+    expect(browserOpen).not.toHaveBeenCalled();
   });
 });
 
