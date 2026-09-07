@@ -56,8 +56,10 @@ That is an improvement on the previous window's four-day hole.
 - Fixed (code-confirmed): **~236** — **~37 closed this run**, of which **9 were
   re-verified by grep** against the pinned snapshot rather than taken from a doc
 - Still open / accepted-residual: **~46**
-- **Regressed: 1** — the bug-report storage RLS policy, and it is the one item on this
-  page that deleting a feature did not close
+- **Regressed: 0 at the time of writing this line; 1 as analysed at the pin.** The
+  bug-report storage RLS policy was the one item on this page that deleting a feature did
+  not close — it was closed separately, hours after the pin. See Regressed below; the
+  original count and its reasoning are left standing there rather than edited away
 - Needs on-device / on-chain / live-backend verification: **25**
 
 ---
@@ -279,6 +281,31 @@ test). Every line number in that sweep was a corpus byte-offset, not a file line
 ---
 
 ## Regressed 🔴
+
+> **ADDENDUM 2026-09-07, after the pin — the one finding below is now CLOSED.**
+> [#2417](https://github.com/VEYRNOX/veyrnox/issues/2417) closed `COMPLETED`.
+> **[#2418](https://github.com/VEYRNOX/veyrnox/pull/2418) (`56e2f07b`)** dropped the
+> policy outright rather than adding `TO service_role` — the right call, since
+> `service_role` bypasses RLS and the policy therefore granted no legitimate capability
+> while inverting the intent. `DROP POLICY IF EXISTS` was retained, which is what
+> corrects a project that had already applied the old version.
+> **[#2420](https://github.com/VEYRNOX/veyrnox/pull/2420) (`c0178ff5`)** then made the
+> verification block able to fail: a `relrowsecurity` assertion placed first, and a
+> `BEGIN`/`ROLLBACK` wrapper so the `SET LOCAL ROLE` switches are not silently discarded.
+> Verified on `origin/main`: open policy 0 occurrences, `relrowsecurity` present,
+> `BEGIN`/`ROLLBACK` present.
+>
+> **And the second half of the finding — the half source could not answer — was answered
+> too.** Both live projects were queried: bucket, policy and metadata tables **absent on
+> Staging (`nszlbcmcysftwyudthjz`) and Production (`jwstkrtslotnjyerzzsi`)**. The
+> migration was **never applied**, so no corrective DDL was needed anywhere. That negative
+> is recorded in #2418 rather than left implied — it is the fact the issue existed to
+> establish, and the one nobody writes down.
+>
+> **Everything below is left exactly as analysed at `d0c4423c`.** It was true at the pin
+> and is the record of what the scan found; the fix landing afterwards does not make the
+> finding retrospectively wrong. Same convention as the 08-25 weekly's perishable
+> merge-state line.
 
 **One finding is currently in a regressed state**, down from two. Both prior Base44
 regressions closed (above).
