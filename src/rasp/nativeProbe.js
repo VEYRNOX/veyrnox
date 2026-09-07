@@ -118,6 +118,10 @@ export async function nativeProbeSource() {
 // which requires the attacker to defeat the probe rather than silence it — and
 // on APP_LOCK_EVENT, so a rebooted-to-clean device starts a new session clean.
 // Same two-key discipline as attestation.js's latch.
+// The `@type` annotation is required, not decorative: `let x = null` infers as
+// type `null` under checkJS, so both the arming assignment and the spread below
+// fail typecheck without it (TS2322 / TS2698).
+/** @type {{ hooked: boolean, tampered: boolean, emulator: boolean } | null} */
 let _sessionHardSignals = null;
 if (typeof window !== 'undefined' && !(/** @type {any} */ (window)).__veyrnoxNativeLatchHook) {
   /** @type {any} */ (window).__veyrnoxNativeLatchHook = true;
