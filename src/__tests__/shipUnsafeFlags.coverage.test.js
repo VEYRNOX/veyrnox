@@ -134,13 +134,4 @@ describe('verify_ipa covers every ship-unsafe build flag', () => {
     expect(src).toContain('Refusing to call the IPA clean');
   });
 
-  it('VITE_BUG_REPORT_ENABLED is gated on the store disclosure, not treated as a dev flag', () => {
-    // It is a real ship flag Slice 3 flips on purpose, so it must NOT be in the
-    // dev-flag list (that would make an intended release fail). It must still be
-    // blocked while the screen-recording disclosure is absent from the listings.
-    expect(laneBooleanFlags()).not.toContain('VITE_BUG_REPORT_ENABLED');
-    const src = readFileSync(FASTFILE, 'utf8');
-    expect(src).toContain('VITE_BUG_REPORT_ENABLED:"1"');
-    expect(src).toContain('ALLOW_BUG_REPORT_FLAG');
-  });
 });

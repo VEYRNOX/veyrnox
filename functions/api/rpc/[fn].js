@@ -4,9 +4,7 @@
 // with the anon key injected server-side. The anon key never ships in the
 // client bundle.
 //
-// Allowlist — only these RPCs are proxied (no raw table access):
-//   track_event, generate_referral_code, register_referral_code,
-//   increment_referral, get_referral_count, get_referral_paid_count
+// Allowlist — see ALLOWED_RPCS below.
 //
 // Edge functions (first-referral-bonus, tip-screen) are proxied separately
 // via /api/edge/[fn].js if needed in the future.
@@ -20,11 +18,6 @@ const ALLOWED_RPCS = new Set([
   'increment_referral',
   'get_referral_count',
   'get_referral_paid_count',
-  // Bug-report upload reservation (slice 1e-3). RPC defined in
-  // sql/bug-report-upload.sql. The Settings button that would trigger it
-  // self-hides when VITE_BUG_REPORT_ENABLED != '1' (default OFF), so
-  // adding here is inert on shipped builds until slice 3 flips the flag.
-  'create_bug_report_upload',
 ]);
 
 // SQLSTATEs our own SECURITY DEFINER functions RAISE on purpose. Only an error
@@ -45,10 +38,8 @@ const ALLOWED_RPCS = new Set([
 // 22004 is a standard Postgres code (null_value_not_allowed) that our SQL
 // reuses deliberately, so in principle Postgres could raise it itself. Kept
 // because our own use is live and PG's own 22004 text names a column at worst.
-// P0004 sourced from sql/bug-report-upload.sql — every user-facing RAISE in
-// create_bug_report_upload uses P0004 ('report_id required', 'size out of
-// range', 'unsupported platform', 'app_version out of range',
-// 'client_meta out of range', 'bug report rate limit exceeded'). Slice 1e-3.
+// P0004 sourced from sql/track-event-ip-rate-limit.sql and
+// sql/telemetry-events-allowlist.sql ('Metadata too large').
 const APP_ERRCODES = new Set(['P0001', 'P0003', 'P0004', 'P0006', 'P0007', 'P0008', '22004']);
 
 function err(status, message) {

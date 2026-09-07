@@ -34,7 +34,7 @@ const manifest = readFileSync(MANIFEST_PATH, 'utf8');
 //      these elements are routinely written across several lines:
 //
 //        <service
-//            android:name=".BugReportRecorderService"
+//            android:name=".ExampleService"
 //            android:exported="false"
 //            android:foregroundServiceType="mediaProjection" />
 //
@@ -124,28 +124,12 @@ describe('AndroidManifest.xml — Play launch invariants', () => {
     expect(lastComment[0]).toMatch(/QR|barcode/i);
   });
 
-  // Enforces the removal made by #2363. The manifest already says "Do NOT re-add
-  // these to unblock a build" — this is the check behind that instruction, so a
-  // re-add fails CI instead of relying on a reader noticing the comment.
-  //
-  // Why it matters: FOREGROUND_SERVICE_MEDIA_PROJECTION triggers Play's mandatory
-  // Foreground service permissions declaration, which blocks EVERY pending change
-  // on the app — not just the release that reintroduced it. The capability is
-  // unreachable regardless (VITE_BUG_REPORT_ENABLED is set nowhere, so
-  // BugReportButton renders null), and the live store listing declares no screen
-  // capture.
-  //
-  // Slice 3 of docs/bug-report-recording-plan.md is the named un-pin condition:
-  // the commit that flips VITE_BUG_REPORT_ENABLED and publishes the Play Data
-  // Safety / Apple App Privacy amendments re-adds all four manifest lines and
-  // deletes this test. BugReportPlugin.kt carries the exact declarations to
-  // restore. Do not weaken this to make an unrelated build pass.
-  //
-  // Asserted against DECLARATIONS ONLY, with comments stripped first. The
-  // manifest's removal note names both permissions, so a whole-file match would
-  // fire on the comment explaining the removal and this pin would fail on
-  // correct code.
-  it('does not request foreground-service permissions (slice 3 re-adds them with the store disclosure)', () => {
+  // FOREGROUND_SERVICE_MEDIA_PROJECTION triggers Play's mandatory Foreground
+  // Service Permissions declaration and would block every pending change on
+  // the app. The screen-capture feature that once needed it has been removed
+  // entirely; the store listing declares no screen capture. Asserted against
+  // DECLARATIONS ONLY so the comment naming these permissions cannot fail.
+  it('does not request foreground-service permissions', () => {
     const declarations = getManifestDeclarations(manifest);
     const requested = getRequestedPermissions(manifest);
     expect(requested).not.toContain('android.permission.FOREGROUND_SERVICE');
@@ -175,7 +159,7 @@ describe('getManifestDeclarations — parser properties the pins depend on', () 
     const xml = [
       '<application>',
       '    <service',
-      '        android:name=".BugReportRecorderService"',
+      '        android:name=".ExampleService"',
       '        android:exported="false"',
       '        android:foregroundServiceType="mediaProjection" />',
       '</application>',
@@ -216,28 +200,3 @@ describe('getManifestDeclarations — parser properties the pins depend on', () 
   });
 });
 
-// Everything above checks that the mediaProjection declarations are ABSENT from
-// the manifest. Nothing checked that the note explaining their absence is still
-// PRESENT — and comments are stripped before matching, so deleting it fails no
-// test. That note is the slice-3 recipe: the exact declarations to re-add, and
-// why they went (see #2363, and docs/bug-report-recording-plan.md). Losing it
-// costs a future session the archaeology this one already did.
-//
-// Deliberately asserts BOTH halves. Present-in-a-comment alone would still pass
-// if someone restored the live declarations and kept the note; absent-from-
-// declarations alone is what the pins above already do. Together they say the
-// one thing that matters: documented, not deployed.
-describe('AndroidManifest.xml — the slice-3 re-add recipe survives as prose', () => {
-  const comments = (manifest.match(/<!--[\s\S]*?-->/g) || []).join('\n');
-  const declarations = getManifestDeclarations(manifest);
-
-  it.each([
-    ['FOREGROUND_SERVICE_MEDIA_PROJECTION', /FOREGROUND_SERVICE_MEDIA_PROJECTION/],
-    ['the service class name', /BugReportRecorderService/],
-    ['the foregroundServiceType value', /foregroundServiceType="mediaProjection"/],
-    ['the flag that gates re-adding them', /VITE_BUG_REPORT_ENABLED/],
-  ])('keeps %s in a comment, and only in a comment', (_label, pattern) => {
-    expect(comments).toMatch(pattern);
-    expect(declarations).not.toMatch(pattern);
-  });
-});
