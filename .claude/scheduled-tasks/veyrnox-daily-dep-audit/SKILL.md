@@ -20,7 +20,7 @@ Check the Veyrnox wallet project at `/Users/aljobson/Documents/GitHub/veyrnox` f
 
    ```bash
    cd "/Users/aljobson/Documents/GitHub/veyrnox" && git fetch origin main
-   SCRATCH="${TMPDIR:-/tmp}/veyrnox-dep-audit"; rm -rf "$SCRATCH"; mkdir -p "$SCRATCH"
+   SCRATCH="${TMPDIR:-/tmp}/veyrnox-daily-dep-audit"; rm -rf "$SCRATCH"; mkdir -p "$SCRATCH"
    git show origin/main:package.json      > "$SCRATCH/package.json"
    git show origin/main:package-lock.json > "$SCRATCH/package-lock.json"
    git cat-file -s origin/main:package-lock.json   # must be non-zero, and must match
@@ -29,6 +29,16 @@ Check the Veyrnox wallet project at `/Users/aljobson/Documents/GitHub/veyrnox` f
                                                    # vulnerabilities and looks like good news
    cd "$SCRATCH" && npm audit --json
    ```
+
+   **`SCRATCH` must not be `${TMPDIR}/veyrnox-dep-audit` — that path belongs to the
+   WEEKLY task (`veyrnox-dependency-audit`), which uses it as a git WORKTREE.** Renamed
+   2026-09-07 after the collision fired. It breaks both ways, and the `rm -rf` above is
+   the dangerous direction: if this task runs while a weekly worktree is live there, it
+   deletes that worktree — including an uncommitted audit report, which is the exact
+   loss the weekly runbook's "push, don't just commit" step exists to prevent. The other
+   direction is merely noisy: leftover scratch here makes the weekly `git worktree add`
+   fail with `already exists` (observed 2026-09-07, that run aborted at its Step 0).
+   Keep the two paths distinct; do not shorten this one back.
 
    **This block was Windows/Git-Bash until 2026-09-03** and carried an
    `export MSYS_NO_PATHCONV=1` guard, because MSYS rewrote the `:` in
