@@ -285,16 +285,34 @@ regressions closed (above).
 
 | ID | Finding | What broke |
 |---|---|---|
-| **DIFF-0906-BUGREPORT-SQL-POLICY** | Storage RLS policy grants `FOR ALL` to **PUBLIC** on the `bug-reports` bucket | `sql/bug-report-upload.sql:179-184` creates `bug_reports_service_role_all ON storage.objects FOR ALL USING (bucket_id='bug-reports') WITH CHECK (bucket_id='bug-reports')` — **with no `TO service_role` clause.** A Postgres policy with no `TO` applies to PUBLIC, so anon and authenticated receive a *permissive* policy over that bucket rather than being denied. The comment immediately below (`:185-188`) argues the opposite — "the policy above is TO service_role only in effect … RLS with no matching policy = deny by default" — which is true only when no policy matches. One does. **The comment defending it is the hazard**, because it is what a future reader will weigh the change against (grep, lines read in full) |
+| **DIFF-0906-BUGREPORT-SQL-POLICY** — [#2417](https://github.com/VEYRNOX/veyrnox/issues/2417) | Storage RLS policy grants `FOR ALL` to **PUBLIC** on the `bug-reports` bucket | `sql/bug-report-upload.sql:179-183` creates `bug_reports_service_role_all ON storage.objects FOR ALL USING (bucket_id='bug-reports') WITH CHECK (bucket_id='bug-reports')` — **with no `TO service_role` clause.** A Postgres policy with no `TO` applies to PUBLIC, so anon and authenticated receive a *permissive* policy over that bucket rather than being denied. The comment immediately below (`:184-187`) argues the opposite — "the policy above is TO service_role only in effect … RLS with no matching policy = deny by default" — which is true only when no policy matches. One does. And `service_role` bypassing RLS is correct but irrelevant: *because* it bypasses, this policy's only observable effect is on the roles it was meant to exclude. **The comment defending it is the hazard**, because it is what a future reader will weigh the change against (grep, lines read in full) |
 
 **Deleting the feature did not close this, and that is the whole point.** The 09-07 removal
-(`826bd1c8`) took out the client, the Pages endpoint and the RPC allowlist entry — verified
-absent at this pin — but a migration already applied to a live Supabase project is not
-revoked by deleting its caller. The finding therefore has two halves and only one is
-answerable from source: **the file is wrong** (confirmed), and **whether it was ever
-executed against Staging or Production** is dashboard state. Until someone checks, the
-honest position is that a bucket may be publicly writable on a live project for a feature
-that no longer exists — with no client left to make the exposure visible in traffic.
+took out the client, the Pages endpoint, the tests and the plan doc — verified absent at
+this pin — but **it never touched the SQL file**: `git log -- sql/bug-report-upload.sql`
+shows a single commit, `c1cf8203` (#2334), which is the one that added it. A migration
+already applied to a live Supabase project is not revoked by deleting its caller. The
+finding therefore has two halves and only one is answerable from source: **the file is
+wrong** (confirmed), and **whether it was ever executed against Staging
+(`nszlbcmcysftwyudthjz`) or Production (`jwstkrtslotnjyerzzsi`)** is dashboard state. Until
+someone checks, the honest position is that a bucket may be publicly readable and writable
+on a live project for a feature that no longer exists — with no client left to make the
+exposure visible in traffic. Note the ordering risk: the missing client makes this *less*
+discoverable, not more.
+
+**Tracked as [#2417](https://github.com/VEYRNOX/veyrnox/issues/2417).** Its definition of
+done separates the two halves deliberately — fix the file, then audit both live projects —
+and requires the outcome of the audit to be recorded explicitly, *including* "it was never
+applied" if that is what the check finds. That negative is the fact the issue exists to
+establish, and it is the one nobody writes down.
+
+**The sanity check the file offers cannot detect this.** `SELECT * FROM storage.objects
+WHERE bucket_id = 'bug-reports'` (`:189-191`) returns zero rows for `anon` on an empty
+bucket whether or not the policy is correct, so it passes vacuously — plausibly why the
+defect shipped past review. Same class as the vacuous-test findings this corpus keeps
+producing (08-25's `spyOn` that patched an object CI did not resolve; 08-26's
+`fastpathButtonVisible = false`): **a check that cannot fail reads as coverage and is
+not.**
 
 Both regressions in the previous window (`WalletConnectProvider` and `WalletPortfolioPage`
 Base44 seals) are closed. Historical regressions on record (re-fixed; preserved, not swept
