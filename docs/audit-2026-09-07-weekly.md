@@ -426,7 +426,14 @@ artifact is one whole Argon2id at the exact observable H-1 was built to flatten.
 success. Pair with a test measuring **time-to-visible-outcome**; the existing
 count test cannot catch a regression here, which is why this survived two audits.
 
-### M-5 — [KEK] The fast-path stores the RAW DEK; the plugin's safety comment still describes the pre-refactor wrapped model — **[VERIFIED]** · STILL PRESENT (prior M-2)
+### M-5 — [KEK] The fast-path stores the RAW DEK; the plugin's safety comment still describes the pre-refactor wrapped model — **[VERIFIED]** · **FIXED**
+
+> **Fixed same day.** The comment now states what the slot actually holds: the
+> raw DEK, gated solely by the 30 s `BIOMETRIC_STRONG` Keystore window, with the
+> `wrappedDek` field name flagged as historical. The retired claim is quoted in
+> place and marked false rather than deleted, because "useless without H" is
+> exactly the reasoning a future reader would otherwise reconstruct from the
+> field name. The runtime residual is unchanged and remains owner-accepted.
 
 **Files:** `android/app/src/main/java/com/veyrnox/app/AndroidBiometricCachePlugin.kt:241-247`
 vs `src/wallet-core/keystore/native.js:626`, `:648-653`, `:1372-1385`.
@@ -450,7 +457,39 @@ the code abandoned.
 the raw DEK, gated solely by the 30 s `BIOMETRIC_STRONG` window, and that
 confidentiality no longer rests on H.
 
-### M-6 — [KEK] `getSecretUnauth` is an auth-free secret read whose only native gate is RASP block-tier — **[AGENT]** · STILL PRESENT (prior M-5, severity nuance added)
+### M-6 — [KEK] `getSecretUnauth` is an auth-free secret read whose only native gate is RASP block-tier — **[AGENT]** · **FIXED, but NOT by the recommended fix**
+
+> **Fixed same day — and the recommended remedy was deliberately not taken.**
+> This finding proposed requiring the caller to pass `kekEnrolled: true`. That
+> would have been decoration: the threat model is injected in-page JS on a
+> compromised runtime calling the plugin directly, and such a caller controls
+> every argument it passes. `biometricUnlock.js` had already reached that
+> conclusion in as many words — *"a caller-attested isEnrolled flag would not be
+> trustworthy here"* — so implementing it would have contradicted a documented
+> decision in the same code and shipped a gate that gates nothing.
+>
+> The guard is a **Keystore fact** instead, which a caller cannot forge:
+> `getSecretUnauth` and `putSecretUnauth` both require the hardware KEK key alias
+> to exist, and the read purges any stale entry and reports a miss (which routes
+> JS to the auth-gated read — biometric-gated, so the miss is the safe outcome).
+>
+> **This turned out to be load-bearing rather than defence in depth**, which the
+> finding did not establish: `clearHardwareCredential()` deletes the KEK key and
+> does **not** purge this cache, so "entry present, KEK absent" is reachable —
+> and in that state the cached PIN is no longer a C-factor but the vault password
+> itself, released with no prompt. The write side is gated too, because on a null
+> read the JS migration fallback re-persists the entry immediately; a read-only
+> guard would have been undone on the very next unlock.
+>
+> **Residual, unchanged and stated:** on a runtime that is already compromised
+> *while a KEK exists*, injected JS can still read the cached C-factor without a
+> prompt. C alone opens nothing without H, and H needs the StrongBox-gated op.
+> Closing that would mean putting auth on the unauth alias, which removes the
+> only reason the alias exists.
+>
+> Verified by static pins only (`androidBiometricCache.kekPrecondition.test.js`),
+> each mutation-checked. **The guard itself has never run on a device** — it
+> depends on AndroidKeyStore and needs an instrumented run to be exercised.
 
 **File:** `AndroidBiometricCachePlugin.kt:176-205`, key built at `:448-459` with
 `REQUIRES_USER_AUTH_UNAUTH = false`. Only in-plugin gate: `rejectIfBlockTier` (`:182`).

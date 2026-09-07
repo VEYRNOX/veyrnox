@@ -36,6 +36,8 @@ class AndroidBiometricCachePlugin : Plugin() {
     private val storageAlias = AndroidBiometricCacheConfig.STORAGE_ALIAS
     private val invalidationAlias = AndroidBiometricCacheConfig.INVALIDATION_ALIAS
     private val storageUnauthAlias = AndroidBiometricCacheConfig.STORAGE_UNAUTH_ALIAS
+    // HardwareKekPlugin.KEY_ALIAS — see hardwareKekPresent() for why it is copied.
+    private val HARDWARE_KEK_ALIAS = "veyrnox_kek_hmac_v1"
     // Issue #2019 — fast-path DEK cache alias + pref keys. Separate
     // ciphertext/IV pair so a partial write cannot cross-contaminate the
     // legacy / unauth blobs.
@@ -169,6 +171,20 @@ class AndroidBiometricCachePlugin : Plugin() {
         // asymmetry is exactly what a later refactor mis-reads as "writes are safe
         // by design", so the two halves are made symmetric.
         if (rejectIfBlockTier(ctx, call)) return
+        // M-6 (audit 2026-09-07): do not CREATE an unauth entry unless the
+        // hardware KEK exists. Without it the cached PIN is not a C-factor, it is
+        // the vault password, and this alias is read with no biometric prompt.
+        // Enforced on the write as well as the read because the JS migration
+        // fallback re-persists here immediately after a null read
+        // (biometricUnlock.js nativeReadSecretUnauth) — a read-only guard would
+        // be undone on the very next unlock.
+        if (!hardwareKekPresent()) {
+            call.reject(
+                "Refusing to cache an unauth secret with no hardware KEK enrolled",
+                "ANDROID_BIOMETRIC_CACHE_NO_KEK",
+            )
+            return
+        }
         if (!isSupported(ctx)) {
             call.reject("Android biometric cache requires Android 11+ with BIOMETRIC_STRONG enrolled", "ANDROID_BIOMETRIC_CACHE_UNSUPPORTED")
             return
@@ -198,6 +214,21 @@ class AndroidBiometricCachePlugin : Plugin() {
             return
         }
         if (rejectIfBlockTier(ctx, call)) return
+        // M-6 (audit 2026-09-07): the KEK is the whole justification for reading
+        // this alias without a biometric prompt. If the hardware key is gone the
+        // invariant is gone with it, so purge the entry and report a miss rather
+        // than release it. A miss is the SAFE outcome, not a degradation: the JS
+        // layer falls through to the auth-gated legacy read (biometricUnlock.js),
+        // which is biometric-gated. Resolving null rather than rejecting keeps
+        // that fall-through on its existing, tested path.
+        if (!hardwareKekPresent()) {
+            try {
+                prefs(ctx).edit().remove(dataUnauthKey).remove(ivUnauthKey).commit()
+                deleteAliasIfPresent(storageUnauthAlias)
+            } catch (_: Exception) { /* best-effort purge; the miss below is the gate */ }
+            call.resolve(JSObject().put("secret", null))
+            return
+        }
         try {
             val p = prefs(ctx)
             val ctB64 = p.getString(dataUnauthKey, null)
@@ -265,12 +296,37 @@ class AndroidBiometricCachePlugin : Plugin() {
     // after a full slow-path unlock, using the H that unlock's own
     // getHardwareFactor() prompt just produced.
     //
-    // No secret is disclosed by a stale-but-successful decrypt here: the
-    // wrapped DEK is useless without H (KEK = HKDF(H ‖ C)), and the real
-    // hardware-gated prompt still fires later in the JS flow for H itself.
-    // The consequence is a hit-rate one, not a confidentiality one — see
-    // docs/kek-fast-path-design.md for the tradeoff this buys and its
-    // (unmeasured, statically-reasoned) cost.
+    // WHAT THIS SLOT HOLDS — corrected 2026-09-07 (audit M-5). Read this before
+    // reasoning about the fast path; the paragraph it replaces was describing an
+    // architecture the code had already left behind.
+    //
+    // It used to say: "No secret is disclosed by a stale-but-successful decrypt
+    // here: the wrapped DEK is useless without H (KEK = HKDF(H ‖ C)), and the
+    // real hardware-gated prompt still fires later in the JS flow for H itself.
+    // The consequence is a hit-rate one, not a confidentiality one."
+    //
+    // Every clause of that is now false. The 2026-08-28 silent-fastpath refactor
+    // removed the wrapped-DEK envelope: populateFastpathBestEffort stores the RAW
+    // DEK as base64 (native.js — `btoa` of the 32 bytes), and unlockBiometricOnly
+    // decodes it straight back and calls decryptVaultWithDek with NO combineKek,
+    // NO H and NO C. `deriveFastpathKek`/`wrapForFastpath` still exist in
+    // fastpathDekCache.js but are explicitly OFF the hot path.
+    //
+    // So a stale-but-successful decrypt here yields a key that opens the real
+    // vault outright, with no PIN and no H. The consequence IS a confidentiality
+    // one. The field name `wrappedDek` is historical and is kept only because
+    // renaming it would churn the JS bridge; it is not wrapped.
+    //
+    // What actually bounds this is the Keystore gating described above and
+    // nothing else: the alias is BIOMETRIC_STRONG-required with a 30 s validity
+    // window, so a caller needs a device-wide strong-biometric auth inside that
+    // window. That residual (a coerced or recent unrelated biometric within 30 s)
+    // is owner-accepted and separately gated — opt-in OFF by default, a
+    // disclosure card, isDuressConfigured write+read gates in native.js, and
+    // RASP-ALLOW required. See docs/kek-fast-path-design.md.
+    //
+    // Do not restore the "useless without H" reasoning unless the wrapping is
+    // restored with it.
     //
     // ponytail: 30 s validity window trades one class of freshness for less
     // Kotlin plumbing. Upgrade path is CryptoObject + per-use auth
@@ -421,6 +477,43 @@ class AndroidBiometricCachePlugin : Plugin() {
     private fun isCacheStructurallyPresent(ctx: Context): Boolean {
         val p = prefs(ctx)
         return !p.getString(dataKey, null).isNullOrEmpty() && !p.getString(ivKey, null).isNullOrEmpty()
+    }
+
+    // M-6 (audit 2026-09-07) — the precondition that makes the unauth alias safe,
+    // enforced HERE rather than trusted from the caller.
+    //
+    // The unauth alias exists to be read WITHOUT a biometric prompt. The only
+    // reason that is acceptable is the KEK invariant: on a KEK-wrapped vault the
+    // cached PIN is the C-factor of DEK = HKDF(H ‖ C), and H is producible only
+    // inside a StrongBox/TEE-gated op, so C alone opens nothing. On a NON-KEK
+    // vault the same cached PIN IS the vault password, and an unauth read would
+    // strip the sole biometric gate.
+    //
+    // The JS layer checks that invariant with keyStore.hasVaultKekWrap() at write
+    // time, and biometricUnlock.js says in as many words that "a caller-attested
+    // isEnrolled flag would not be trustworthy here". That is exactly right and is
+    // why this does NOT take a `kekEnrolled` argument: injected in-page JS on a
+    // compromised runtime controls every argument it passes, so a caller-supplied
+    // flag would be decoration, not a gate.
+    //
+    // A Keystore fact is not caller-controlled. If the hardware KEK key is gone —
+    // cleared via clearHardwareCredential(), or wiped by the OS on a biometric
+    // enrollment change — then H can never be produced again, the invariant that
+    // justified the unauth alias no longer holds, and any entry still sitting
+    // there must not be released without auth. Note clearHardwareCredential()
+    // deletes the KEK key and does NOT purge this cache, so "entry present, KEK
+    // absent" is genuinely reachable rather than theoretical.
+    //
+    // Alias string is duplicated from HardwareKekPlugin.KEY_ALIAS (private there)
+    // rather than exported: this is a read-only existence probe across a plugin
+    // boundary, and widening that field's visibility to share one constant would
+    // give more away than it buys. If it is ever renamed, this must follow — the
+    // regression test pins the literal for that reason.
+    private fun hardwareKekPresent(): Boolean = try {
+        keyStore().containsAlias(HARDWARE_KEK_ALIAS)
+    } catch (_: Exception) {
+        // Fail closed: a Keystore we cannot query is not evidence of a KEK.
+        false
     }
 
     private fun keyStore(): KeyStore =
