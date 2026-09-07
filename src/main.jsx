@@ -24,6 +24,16 @@ if (typeof globalThis.Buffer === 'undefined') {
 if (typeof globalThis.process === 'undefined') {
   globalThis.process = { env: {}, browser: true, versions: {}, platform: 'browser' }
 }
+// bs58check@2.1.2's bundled readable-stream reads `process.version.slice(0, 5)`
+// at module init to pick setImmediate vs nextTick. A missing string threw
+// `Cannot read properties of undefined (reading 'slice')` during the Send chunk's
+// cold parse (keystone-sdk → bc-ur-registry → bs58check), blanking the Send page
+// on first visit after onboarding. Additive: another polyfill may have defined
+// `process` without `version`, so the previous `undefined` guard skipped this
+// field. Set it unconditionally when missing.
+if (typeof globalThis.process.version !== 'string') {
+  globalThis.process.version = ''
+}
 
 import { applyRpcEnvOverrides } from '@/wallet-core/rpcConfig.js'
 applyRpcEnvOverrides()
