@@ -32,9 +32,6 @@ import SessionSettings from "../components/security/SessionSettings";
 import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Spinner from "@/components/Spinner";
-import BugReportButton from "@/components/bugReport/BugReportButton";
-import BugReportFlow from "@/components/bugReport/BugReportFlow";
-
 export default function Settings() {
   const { t } = useTranslation("wallet");
   const queryClient = useQueryClient();
@@ -49,7 +46,6 @@ export default function Settings() {
   const isSafetyPlus = hasSafetyPlusAccess(currentTier);
   const planLabel = tierLabel(currentTier);
   const [showDelete, setShowDelete] = useState(false);
-  const [bugReportOpen, setBugReportOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [auditLog, setAuditLog] = useState(() => getAuditLogEnabled());
@@ -632,14 +628,8 @@ export default function Settings() {
             </div>
             <span className="text-sm text-primary font-medium">Suggest</span>
           </button>
-          {/* Bug-report screen recording. Self-hides when
-              VITE_BUG_REPORT_ENABLED != '1' — currently OFF on every shipped
-              build. Flow state machine lives in BugReportFlow; capture +
-              upload land in slices 1d + 1e. */}
-          <BugReportButton onStart={() => setBugReportOpen(true)} />
         </div>
       )}
-      <BugReportFlow open={bugReportOpen} onClose={() => setBugReportOpen(false)} />
 
       {/* Danger Zone */}
       <div className="p-5 rounded-xl border border-destructive/30 bg-destructive/5 space-y-3">

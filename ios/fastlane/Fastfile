@@ -101,21 +101,7 @@ platform :ios do
 
     UI.user_error!("Dev flag in shipped IPA: #{hits.join(', ')}") unless hits.empty?
 
-    # VITE_BUG_REPORT_ENABLED is a genuine SHIP flag, not a dev flag — Slice 3
-    # flips it deliberately. So it is not in the list above. It is still checked,
-    # because the store disclosures for screen recording are not live yet and a
-    # build with it on must not reach review before they are. Slice 3 sets
-    # ALLOW_BUG_REPORT_FLAG=1 once Play Data Safety and Apple App Privacy are
-    # updated, rather than editing this lane.
-    if bundle.include?(%(VITE_BUG_REPORT_ENABLED:"1")) && ENV["ALLOW_BUG_REPORT_FLAG"] != "1"
-      UI.user_error!(
-        "VITE_BUG_REPORT_ENABLED is ON in this IPA, but screen recording is not " \
-        "declared on the store listings. Update Play Data Safety + Apple App " \
-        "Privacy first, then re-run with ALLOW_BUG_REPORT_FLAG=1."
-      )
-    end
-
-    UI.success("IPA clean — #{SHIP_UNSAFE_BOOLEAN_FLAGS.length + 1} ship-unsafe flags checked, none set")
+    UI.success("IPA clean — #{SHIP_UNSAFE_BOOLEAN_FLAGS.length} ship-unsafe flags checked, none set")
   end
 
   desc "Full build + verify + TestFlight upload"
