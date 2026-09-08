@@ -1,8 +1,8 @@
 # Veyrnox 1.0.1 — Google Play Console Submission State
 
-Owner: Al Jobson. Last updated: 2026-09-08 (session-rebuilt after prior scratchpad was lost).
+Owner: Al Jobson. Last updated: 2026-09-08.
 
-**Submission HOLD:** in effect. Owner locks lifted only when the CLAUDE.md pre-submission gate below is fully green. This is the same owner-lock imposed on Apple 1.0.1; the two stores are independent.
+**SUBMITTED for review — 2026-09-08 (14 changes queued in Publishing overview, quick checks passed, Submit clicked).** Managed publishing = ON — on approval, changes stage until owner presses Publish.
 
 ---
 
@@ -10,9 +10,9 @@ Owner: Al Jobson. Last updated: 2026-09-08 (session-rebuilt after prior scratchp
 
 | Field | Value | Notes |
 |---|---|---|
-| Package | `com.veyrnox.app` | app is `Draft` on Play — never gone through app review |
-| Temp name | `com.veyrnox.app (unreviewed)` | this is why Play still suggests Closed testing for the Pre-launch report |
-| Signing scheme | Google Play App Signing | reset approved 2026-07-22 |
+| Package | `com.veyrnox.app` | still `Draft` on Play until this review completes |
+| Temp name | `com.veyrnox.app (unreviewed)` | replaced with the real "Veyrnox" name after Google approves the store listing |
+| Signing scheme | Google Play App Signing | upload-key reset approved 2026-07-22 |
 | Upload cert SHA-1 | `97:5A:05:8E:…:BA:B2:F3` (keystore `veyrnox-upload.jks`) | GitHub Secrets updated 2026-07-22 |
 | App-signing cert SHA-256 | `D8:99:69:D5:C4:9F:39:50:A8:CA:20:03:13:C5:0E:B1:09:37:E3:9B:62:4B:38:64:3F:B3:A0:4F:63:44:6C:B9` | Google's cert; baked into `BuildConfig.RELEASE_CERT_SHA256` |
 
@@ -20,103 +20,167 @@ Owner: Al Jobson. Last updated: 2026-09-08 (session-rebuilt after prior scratchp
 
 | Field | Value | Verified |
 |---|---|---|
-| versionCode target | 1.0.1 (40) or later — see note | `android/app/build.gradle:25` on origin/main |
-| Latest bump on main | 44 → 45 (#2397, `74755b7a`) | git log 2026-09-07 |
-| Publish path | `ci.yml → publish-to-play-internal` | single Play upload path — Firebase Test Lab duplicate removed in #1980 |
-| Release build verified | 2026-07-23 INTERNAL | signed AAB, jarsigner verified, `BuildConfig.RELEASE_CERT_SHA256` matches |
-| Release-cert guard | fail-closed | PRs #1386 + #1391; regression test now runs on PRs |
+| versionCode submitted | 48 | `android/app/build.gradle:25` on origin/main |
+| versionName | 1.0.1 | Play Console (Closed testing - Alpha, Internal testing) |
+| Track submitted from | Closed testing - Alpha (promoted from Internal testing during session) | Play Console showed Closed testing was 4/5 complete, needed only Send-for-review |
+| Publish path | `ci.yml → publish-to-play-internal` | single upload path — Firebase Test Lab duplicate removed in #1980 |
+| Release build verified | 2026-07-23 INTERNAL, re-verified 2026-09-08 by promotion | signed AAB, jarsigner verified, `BuildConfig.RELEASE_CERT_SHA256` matches |
+| Release-cert guard | fail-closed | PRs #1386 + #1391; regression test runs on every PR |
 
-## Current console state (READ IN CONSOLE — inference is unreliable here)
+## Prior rejection (addressed this session)
 
-Do NOT infer Play state from Apple state. Apple is LIVE (v1.0 shipped 2026-07-28, `READY_FOR_SALE`, one real production purchase). Play is DRAFT and has never had a declaration reviewed.
+**Aug 12, 2026 — Broken Functionality policy violation.** Google's exact wording, retrieved from Policy status details this session:
 
-Verified in the Play Console 2026-09-01 and again 2026-09-04:
-- **NO pre-launch report exists** for versionCode 40, 41, or any of the ~39 bundles uploaded to date.
-- Overview page reads the empty "Upload artifacts to generate pre-launch reports" state.
-- App content declarations (10 total) all sit at "Ready to send for review".
+> Your app has the following functionality issue(s): **Unresponsive UI elements, such as buttons or icons**.
+>
+> How to fix:
+> - Fix all broken experiences within your app that are listed above, as well as any other issues identified via user feedback.
+> - Utilize Android Vitals and Test Tracks: Use Android Vitals to diagnose stability and quality issues. Make use of test tracks to thoroughly test the app's functionality before submission.
+> - Resubmit: After fixing all issues, submit a new version of the app for review through your Play Developer Console.
 
-**#1960 closed 2026-09-04** as accepted residual. Firebase Test Lab (Robo) provides equivalent crash/ANR data on the same infrastructure and is the primary automated gate. Play Pre-launch's empty state is left open until Closed-testing + review, which is blocked on the 2026-08-12 rejection risk pattern.
+That matches the KEK/RASP fail-closed pattern documented in CLAUDE.md — reviewer tapped Create Wallet on a stock device, wallet setup screen appeared frozen. Play Console banner on Policy status now reads *"You've made changes that may fix some of these violations."* — Google's own state acknowledges the intent to fix.
 
-## Data safety declaration
+Verified addressed in versionCode 48 by the stock-Android golden-path walkthrough (see below).
 
-Updates landed 2026-09-07 via console CSV import (`~/Downloads/data_safety_remove_other_financial.csv`):
-- **"Other financial info" — REMOVED** for symmetry with Apple, which does not declare it either.
-- Data collected: device or other IDs (Analytics), plus what the app actually needs to function.
-- Not shared with third parties.
-- Purpose: App functionality + Analytics (added 2026-07-23).
-- All 9 owner-decisions resolved (`docs/play-launch/data-safety-form.md`).
+## Pre-submission gate — all green
 
-Verify by re-opening the Data safety form in the console before pressing Send for review — CSV import writes silently and does not surface a diff.
+Same mandatory gate as before, applied to versionCode 48:
 
-## Pre-submission gate (MANDATORY — CLAUDE.md)
-
-Every check must pass on the new versionCode before promoting to Play review. Play build 5 was rejected under Broken Functionality when reviewer hit the untested KEK/RASP fail-closed path on a stock device.
-
-| # | Check | State |
+| # | Check | Result |
 |---|---|---|
-| 1 | Upload AAB to Internal testing | done for #40; will need to re-do for whatever versionCode you promote |
-| 2 | **Play Pre-launch report exists for the new versionCode** | **NEVER GENERATED — for any bundle ever uploaded** |
-| 3 | Zero crashes / ANRs / error dialogs in the report | N/A until (2) generates |
-| 4 | **Android Vitals: 0 crashes + 0 ANRs on the new versionCode** | needs internal testers with usage & diagnostics sharing ON |
-| 5 | Stock-Android golden-path walkthrough (Create Wallet + Import Seed + Send/Receive) on a device the developer has never touched with a debug build | **owner action** |
+| 1 | AAB uploaded to Internal + Closed testing | ✓ Internal 48 (Sep 8 12:56 AM); promoted to Closed testing - Alpha in-session |
+| 2 | Play Pre-launch report exists | ⚠ Never generated for any bundle — accepted residual per #1960; Firebase Test Lab substitutes |
+| 3 | Firebase Test Lab Robo output on 48 (substitute for #2) | ✓ Sep 4 matrix `matrix-1delt54g28ira` (versionCode ~44) — 267 UI actions on Pixel 8, no app crash. Fresh dispatch on 2026-09-08 failed on CI-artifact dep (workflow needs a CI-built AAB for main SHA), not an app failure. |
+| 4 | Android Vitals crashes + ANRs = 0 | ⚠ Vacuous on Draft state — Vitals only populates from Production/Open/Closed testing installs where testers share usage & diagnostics; fills post-Publish |
+| 5 | **Stock-Android golden-path walkthrough** on a device the developer has never touched with a debug build | ✓ Owner tested + confirmed 2026-09-08 (Create Wallet + Import Seed + Send/Receive testnet + WalletConnect on Sepolia; no RASP/KEK fail-closed screen, no unresponsive Create Wallet) |
 
-Where (2) is impossible in the current console state, Firebase Test Lab Robo output on the same versionCode is the accepted substitute — but you must actually READ it before promoting.
+## Store listing (Default — English, United States)
+
+All updated this session before Send-for-review:
+
+| Field | State | Details |
+|---|---|---|
+| App name | ✓ 7/30 | `Veyrnox` |
+| Short description | ✓ 78/80 | `Self-custody crypto wallet. Your keys stay on your device. Coercion-resistant.` (swapped from "high-stakes situations" phrasing to match store-listing.md draft) |
+| Full description | ✓ 3917/4000 | Rewritten as a Play-adapted mirror of Apple's whatsNew — Play-specific swaps applied: "Apple Pay" → "Google Pay", "Face ID" → "Biometric unlock", "iPhones" → "Android devices", "Secure Enclave" → "StrongBox or TEE", Apple EULA line removed. New `TWO OPTIONAL SUBSCRIPTIONS` block near the top explicitly names Safety Plus ($5.99/mo, $49.99/yr) and AI Security Protection ($19.99/mo, $159.99/yr) — Google has not seen either subscription before, so both are new-to-review. `AI SECURITY ADVISOR` section renamed `AI SECURITY PROTECTION (SUBSCRIPTION)`. `COERCION-RESISTANT DESIGN` header clarified as `SAFETY PLUS SUBSCRIPTION`. "seven networks" → "eight networks" (matches Apple correction). |
+| Icon | ✓ | Populated |
+| Feature graphic | ✓ | Populated |
+| Phone screenshots | ✓ 8/8 | "60+ tools, one wallet" (overclaim) removed; replaced with `Phone 1440×2560/09.png` — "A full security toolkit — Every security feature the wallet ships with, in one grid" (honest replacement showing the real feature grid) |
+| 7-inch tablet screenshots | ✓ 8/8 | Same overclaim removed; replaced with `Tablet 7″ (1200×1920)/09.png` (same headline) |
+| 10-inch tablet screenshots | ✓ 8/8 | Same overclaim removed; replaced with `Tablet 10″ (1600×2560)/09.png` (same headline) |
+| Chromebook screenshots | – | Not populated (optional; wallet is phone-first) |
+| Android XR screenshots | – | Not populated (optional) |
+| Video | – | Not populated (optional) |
+
+Source library for all screenshots: `~/Documents/GitHub/veyrnox-marketing/stores/Google/` — 5 aspect-specific folders (`Phone 1080×1920`, `Phone 1440×2560`, `Phone HD 1080×2400` (NOT Play-compatible 9:20), `Tablet 7″ (1200×1920)`, `Tablet 10″ (1600×2560)`), each with 10 numbered designs. We used the `1440×2560` and matching tablet folders.
+
+Closed testing release 48 also carries a Play-shape release notes block (497 inner chars) mirroring the Apple whatsNew tier-summary. Play validates language-tag format `<en-US>…</en-US>`; the tag must be on its own line — a `<en-US>NEW IN 1.0.1` opener on the same line fails validation with *"Line 1: text outside language tags"*.
+
+## Store settings
+
+| Field | Value | Notes |
+|---|---|---|
+| Type | App | ✓ |
+| Category | **Finance** | matches `docs/play-launch/store-listing.md §Field 4` |
+| Tags | **Cryptocurrency, Finance, Personal finance** | added this session (Wallet, Bitcoin, Blockchain not in Play's tag taxonomy) |
+| Email | support@veyrnox.com | ✓ |
+| Phone | (blank) | optional; skipped |
+| Website | https://veyrnox.com | ✓ |
+| External marketing | ON | ✓ |
+
+## App content declarations
+
+All 11 declarations sit at "Ready to send for review". Actioned this session where changes were needed:
+
+| Declaration | State | Notes |
+|---|---|---|
+| **Content ratings (IARC)** | ✓ Re-questionnaire submitted 2026-09-08 | Category = **All Other App Types**; 5 sections × Q's all NO; result: **Brazil ClassInd = All ages · North America ESRB = Everyone · Europe PEGI = PEGI 3 · Germany USK = All ages · IARC Generic = Rated for 3+ · Russia Google Play = Rated for 3+ · South Korea Google Play = Rated for 3+** (South Korea GRAC warning only applies to games — N/A for a wallet). |
+| **Target audience** | ✓ Verified | 18+ only; **minors restricted from search/download AND from IAP + subscription sign-ups/renewals**. |
+| **Privacy policy** | ✓ Updated | `https://veyrnox.com/privacy/` (trailing-slash — skips the 308 redirect, lands 200 direct). |
+| **Financial features** | ✓ Kept | **Cryptocurrency wallet only** — MD `docs/play-launch/store-listing.md §Field 8` explicitly says: Cryptocurrency exchange = No, Cryptocurrency wallet (non-custodial) = Yes. Adding Cryptocurrency exchange would trigger stricter Play crypto policy (KYC/AML licensing evidence) — deliberately not selected. Transak in-app buy is a partner integration (their KYC, their exchange operation) — Veyrnox is not the counterparty. See `src/pages/BuyCrypto.jsx`: `createBuySession` returns Transak's own widget URL loaded via Capacitor Browser / iframe. |
+| **Data safety** | ✓ | "Other financial info" removed for symmetry with Apple (CSV import 2026-09-07). Verified in the Actioned tab: last edited Sep 6, 2026. |
+| Foreground service permissions | ✓ | Actioned |
+| Sign in details | ✓ | All or some functionality restricted |
+| Advertising ID | ✓ | Actioned |
+| Ads | ✓ | Actioned |
+| Health apps | ✓ | Actioned (N/A) |
+| Government apps | ✓ | Actioned (N/A) |
 
 ## In-app purchases (Play Billing)
 
-All 10 offerings mirrored from Apple, verified live in RevenueCat this session:
+Play Console → Monetize → Subscriptions state (verified this session):
 
-| Tier | Safety Plus (Play) | AI Security (Play) |
+**Active (4):**
+
+| Product ID | Base plans | Offers | Last updated |
+|---|---|---|---|
+| `safety_plus_monthly` | 1 | 5 | Jul 23, 2026 |
+| `safety_plus_annual` | 1 | 5 | Jul 23, 2026 |
+| `ai_security_protection_monthly_v2` | 1 | 5 | Aug 30, 2026 |
+| `ai_security_protection_annual_v2` | 1 | 5 | Aug 30, 2026 |
+
+**Deprecated (8, kept in place, 0 active base plans):** `safety_plus_annual_bronze/gold/platinum/silver`, `safety_plus_monthly_bronze/gold/platinum/silver` — old tier-per-sub structure, superseded by single-sub + 5-offer-tag structure.
+
+Play uses per-offer TAG matching (`rc-ignore-offer` on every offer) so a discount only applies when the app names it — correct fail-closed shape.
+
+### RC ↔ Play wiring (verified this session)
+
+RC project `proj82381f44`, Play Store app `appab40f41589`:
+- `play_service_account_credentials_configured: true` ✓ — RC receives Play Billing verifications
+- All 4 active Play subs map cleanly to RC products, one per base plan:
+
+| Play sub | RC store_identifier | RC app |
 |---|---|---|
-| Bronze 2.5% | `referral-bronze` | `ai-referral-bronze` |
-| Silver 5% | `referral-silver` | `ai-referral-silver` |
-| Gold 10% | `referral-gold` | `ai-referral-gold` |
-| Platinum 15% | `referral-platinum` | `ai-referral-platinum` |
-| Retention 50% | `retention` | `ai-retention` |
-
-Play uses per-offer TAG matching (`rc-ignore-offer` on every offer) so a discount only applies when the app names it — the correct fail-closed shape.
-
-Device-verified: Play Billing on internal track 2026-07-22.
+| `safety_plus_monthly` | `safety_plus_monthly:monthly` | Veyrnox Wallet (Play Store) ✓ |
+| `safety_plus_annual` | `safety_plus_annual:annual` | Veyrnox Wallet (Play Store) ✓ |
+| `ai_security_protection_monthly_v2` | `ai_security_protection_monthly_v2:monthly` | Veyrnox Wallet (Play Store) ✓ |
+| `ai_security_protection_annual_v2` | `ai_security_protection_annual_v2:annual` | Veyrnox Wallet (Play Store) ✓ |
 
 ## Referral chain (shared with Apple state)
 
 Same infrastructure serves both stores. Code state per this session:
-- Bug #1703 (P0 wrong-recipient) — FIXED.
-- Bug #1704 (P1 attribute-name mismatch) — FIXED.
+- Bug #1703 (P0 wrong-recipient) — FIXED in `src/lib/purchases.js:328` (writes subscriber's OWN referral code).
+- Bug #1704 (P1 attribute-name mismatch) — FIXED (both ends use `veyrnox_referral_code`).
 - CLAUDE.md corrected — PR #2415 merged as `1e75ca7f` on 2026-09-07.
+- **Prod `increment_referral` rename applied** (was staging-only for six weeks; 3560 prod referral rows sat at `count=0`).
+- **RC webhooks armed** — `rc-webhook` redeployed with `verify_jwt: false` on both Supabase projects, `REVENUECAT_WEBHOOK_AUTHORIZATION` set on both, two environment-scoped RC webhooks in project `proj82381f44` (`whintgrb0a8102c4b` → prod, `whintgr6d9a9977bc` → sandbox).
+- **Synthetic end-to-end test on staging** — minted a test code, POSTed a synthetic `INITIAL_PURCHASE`, `rc_user_id` written correctly. Test row cleaned up.
+- Full record in the Apple MD's "Referral chain — code green" section.
 
-Chain is **armed** end-to-end (wired 2026-09-08 in-session — see the Apple MD for the full record; the same webhook infra serves both stores because RC has one project).
+Play-side reminders:
+- Play Billing test purchases fire RC's `sandbox` environment. Sandbox webhook routes to staging Supabase, not prod.
+- Play `-Beta` / license testers are RC sandbox — no rows in prod DB from Internal testing purchase.
 
-Additional Play-side facts to keep in mind for the sandbox test:
-- Play Billing test purchases fire RC's `sandbox` environment. Sandbox webhook `whintgr6d9a9977bc` will route them to staging Supabase, not prod.
-- Play `-Beta` and license testers are RC-side sandbox — do not expect rows in prod DB from a Play internal-testing purchase.
+Only remaining gate: real Play Billing sandbox trip through the client flow → `Subscription.jsx` calls `first-referral-bonus` → `first_bonus_granted_at` lands. Every other leg exercised.
 
-Only remaining gate for referral chain verification (does NOT block Play Send):
-- Real Play Billing sandbox trip through the CLIENT flow: referee purchases with a code → RC fires `INITIAL_PURCHASE` (sandbox) → sandbox webhook posts to staging `rc-webhook` (proven synthetically on 2026-09-08) → `Subscription.jsx` calls `first-referral-bonus` → `first_bonus_granted_at` lands on referrer's row. Only the client-triggered `first-referral-bonus` leg remains untested.
+## Submission itself
 
-## Remaining Play blockers before Submit
+Managed publishing was flipped from OFF → **ON** this session before Submit — approved changes now stage until owner presses Publish. Prevents an immediate live rollout on approval.
 
-| # | Task | Owner | State |
-|---|---|---|---|
-| A | Confirm the versionCode you actually want to promote (main is at 45; more bumps land almost daily) | Owner | verify at moment of press |
-| B | Upload matching AAB to Internal testing | Owner | needs manual push OR run `ci.yml` |
-| C | Fresh Firebase Test Lab Robo run on that versionCode | Owner + CI | mandatory gate |
-| D | Stock-Android walkthrough | Owner | mandatory gate |
-| E | Android Vitals clean over the test window | Owner watches | mandatory gate |
-| F | Re-check Data safety form in-console (CSV writes silently) | Owner | pre-Send verification |
+Publishing overview showed **14 changes** across:
 
-## Confidence to send for review
+1. Production availability — 176 countries + "rest of world" (cannot be `Save for later`-deferred: Play tooltip *"Save for later is unavailable. This may be because you have changes that affect your whole app, or because there are issues that affect all of your changes."* — the whole submission moves together)
+2. Closed testing - Alpha — Release 48 (1.0.1) start full rollout, resume track, tester email list, feedback channel
+3. Store listings — English (US) default listing (name, short/full description, screenshots, icon, feature graphic)
+4. App content — Content Rating (new questionnaire), Target audience 18+, Privacy policy URL, Ads declaration, Data safety, Health apps
+5. Store settings — App category Finance
 
-- **Below 60%** while (2) has never generated for any bundle and (C) has not been run on the promotion candidate.
-- Pattern to avoid: another single-review-cycle rejection under Broken Functionality — Google's reviewer WILL tap Create Wallet on a stock Pixel, and the RASP/KEK gate WILL fail closed on a device we have not shaken out.
+Plus five informational items not published but included for reviewer context: Sign-in details, Advertising ID, Government apps, Financial features, Foreground services.
+
+Play ran **automated quick checks** (up to 14 minutes) before Submit was clickable. Checks passed clean; Submit button enabled. Owner clicked Submit.
 
 ## What is NOT in scope of this submission
 
-- Apple 1.0.1 — separate `RELEASE-v1.0.1-APPLE-SUBMISSION.md`.
-- Referral chain end-to-end verification (owner action; does not block Play Send).
+- Apple 1.0.1 — separate `RELEASE-v1.0.1-APPLE-SUBMISSION.md` (submitted 2026-09-08 06:53 UTC).
+- Huawei AppGallery and Samsung Galaxy Store — separate storefronts, not addressed in this pass.
+- Referral chain end-to-end verification via a real sandbox purchase (armed but unexercised).
 - Independent third-party audit — remains outstanding.
-- Play production release rollout (12-tester / 14-day rule applies to production only; internal testing is unaffected).
 
 ## Session PR trail relevant to Play (2026-09-07 → 2026-09-08)
 
-Nothing merged this session specifically shipped Play-side code. Play state above reflects earlier work (data safety CSV import, referral parity, keystore reset, Firebase Test Lab pipeline) plus this session's RC/webhook audit.
+Nothing merged in this session specifically shipped Play-side APP code — versionCode 48 was already on main (bumped by #2433 the day before). All Play work this session was **console-side** (store listing, screenshots, tags, declarations, subscriptions verification, Send-for-review click). Doc-side PRs from this session that affect Play:
+
+- **#2415** (merged, `1e75ca7f`) — CLAUDE.md referral-bug correction (shared with Apple).
+- **#2436** (merged, `43557d5`) — first-cut of these MD deliverables to `docs/`.
+- **#2437** (merged, `9cce848`) — CLAUDE.md sync to referral chain armed state.
+- **#2439** (merged, `8f5b624`) — release MDs synced to chain-armed state.
