@@ -222,7 +222,8 @@ on the upload-key reset (pending). Referral system BUILT (4-tier discount model,
 API-hardened PR #1334 — dedup + rate-limited RPCs, see tracking section below;
 further API-hardened 2026-07-28 by the internal-audit wave: H-1..H-3 identity/access,
 M-6..M-8 rate-limit + idempotency, L-8..L-10 dedup + IP dimension, see the 07-28
-entry — CODE only, SQL still pending run in Supabase);
+entry — SQL deployed 2026-08-10, both Edge Functions live, RC dashboard webhook
+armed 2026-09-08 with sandbox/production split per environment);
 deniability-hardened 2026-07-20 (PR #1262, K-2): `syncCount` no longer coerces a failed API
 read into a fake "synced" success state written to shared localStorage, and the tracker
 page now renders a neutral empty state (gated on `isDeniabilityOrDemoActive()`) instead of
@@ -348,13 +349,12 @@ Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-0
     client-INITIATED — just no longer anon-callable via PostgREST. H-3's intent
     is server-AUTHORED attribution via the RC webhook
     (`sql/referral-rc-webhook.sql`, **deployed 2026-08-10 evening; the SQL
-    setter and the webhook function are both live on both envs**, but nothing
-    yet CALLS the setter until the RC dashboard is configured to POST to it
-    (#1703 + #1704 code bugs are FIXED — see "First-referral bonus" section
-    below; only the RC-dashboard webhook config + end-to-end trip remain).
-    Removing `record_attribution` from the
-    allowlist before that end-to-end chain works would silently stop
-    attribution being recorded at all.
+    setter and the webhook function are both live on both envs**; RC dashboard
+    webhooks configured 2026-09-08 with sandbox/production split; #1703 + #1704
+    code bugs FIXED — see "First-referral bonus" section below. Only a real
+    end-to-end sandbox purchase remains as verification.) Removing
+    `record_attribution` from the allowlist before a real purchase has proved
+    that chain would silently stop attribution being recorded at all.
   - **New standing rule:** once the service-role key is set, `ALLOWED_RPCS` in
     `functions/api/rpc/[fn].js` is the ONLY boundary in front of it, because
     service_role bypasses RLS. Never add a table-proxy route, a passthrough
@@ -929,7 +929,7 @@ today via PRs #1435..#1461 plus #1462 (M-10) stacked-merged via #1442 (M-4).
   RC webhook (skeleton in `sql/referral-rc-webhook.sql`, wiring is a TODO — chain does
   not function end-to-end until it lands). **UPDATED 2026-08-10 evening:** SQL landed
   and both Edge Functions (`first-referral-bonus`, `rc-webhook`) deployed on both envs.
-  Chain still unexercised end-to-end (code bugs #1703 + #1704 fixed; RC webhook config + real trip remain) — see the
+  Chain armed end-to-end 2026-09-08 (RC webhook config + shared secret set + rc-webhook verify_jwt=false); only a real sandbox purchase remains as verification — see the
   "First-referral bonus + RC webhook chain — DEPLOYED both envs 2026-08-10" section
   below for the full state. `register_referral_code` requires
   `p_device_id` with rate-limit hoisted above the NULL check (H-2). `record_attribution`
@@ -1031,11 +1031,19 @@ LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
   `kekEnrolled` assertion. None of these ran before #2278 either — no coverage was
   removed — but the block reads as covered and is not. This issue is the named un-skip
   condition; keep it open until the markers are gone.
-- **Referral RPC arg rename — DONE (pre-publish window, 2026-07-24).**
+- **Referral RPC arg rename — DONE on prod 2026-09-08; had been staging-only since 2026-07-24.**
   `increment_referral` renamed from `ref_code` to `p_code` (DROP+recreate in
-  `sql/api-security-hardening.sql`, client updated in `referralApi.js`). Run the
-  updated SQL in Supabase before deploying the matching client build.
-- **First-referral bonus + RC webhook chain — DEPLOYED both envs 2026-08-10, code bugs #1703 + #1704 are FIXED in current code (see the two entries below); chain remains unexercised end-to-end.** Full history in
+  `sql/api-security-hardening.sql`, client updated in `referralApi.js`). Discovered
+  2026-09-08 that the SQL had never been applied to production
+  (`jwstkrtslotnjyerzzsi`): every prod client call to `increment_referral` had been
+  failing at PostgREST for six weeks — 3560 referral rows on prod all sitting at
+  `count=0`. Migration `increment_referral_rename_arg_ref_code_to_p_code` applied
+  live via MCP; grants (anon/authenticated/service_role EXECUTE) preserved
+  explicitly since DROP+CREATE resets ACLs. **Lesson: "SQL migration DONE" needs to
+  mean "applied to prod AND staging" — CLAUDE.md read as DONE for six weeks while
+  prod was silently broken.** Verify signatures across both projects before
+  writing off a rename PR as landed.
+- **First-referral bonus + RC webhook chain — ARMED end-to-end 2026-09-08. Code bugs #1703 + #1704 FIXED in current code, SQL live on both envs since 2026-08-10, RC dashboard webhook and Supabase shared secret configured 2026-09-08. Chain still unexercised by a real purchase — that is the only remaining verification step.** Full history in
   `docs/Feature-Status.md` 2026-08-10 H-1 chain entry. Snapshot:
   - **SQL:** 9 migrations landed on Staging EU (`nszlbcmcysftwyudthjz`) and Production
     (`jwstkrtslotnjyerzzsi`) via Supabase MCP `apply_migration` — `first_referral_bonus`,
@@ -1043,17 +1051,29 @@ LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
     `definer_search_path_pin_re_run`, `referral_rc_webhook_set_referral_rc_user`,
     `first_referral_bonus_attempts` (H-1 chain) plus `track_event_ip_rate_limit_*` and
     `definer_search_path_pin_post_track_event_replace` (Slice C, earlier the same day).
-  - **Edge Functions:** `first-referral-bonus` and `rc-webhook` both v1 ACTIVE on both
-    envs, `verify_jwt=true`, **comment-stripped source** (trimmed to fit MCP
-    call-payload ceiling; runtime identical to commits `6488d7c7` and `4d29d6c1`
-    respectively). Recommend a terminal redeploy via `npx supabase@latest functions
-    deploy <name> --project-ref <ref>` to restore the commentary when convenient.
+  - **Edge Functions:** `first-referral-bonus` and `rc-webhook` both ACTIVE on both
+    envs, **comment-stripped source** (trimmed to fit MCP call-payload ceiling;
+    runtime identical to commits `6488d7c7` and `4d29d6c1` respectively). Recommend a
+    terminal redeploy via `npx supabase@latest functions deploy <name> --project-ref
+    <ref>` to restore the commentary when convenient. **`rc-webhook` runs with
+    `verify_jwt=false` since 2026-09-08 (prod v14, staging v5)** — RC's Authorization
+    header carries the shared `REVENUECAT_WEBHOOK_AUTHORIZATION` secret, not a
+    Supabase JWT, so the Supabase platform gate would reject legitimate deliveries.
+    In-function timing-safe compare against `REVENUECAT_WEBHOOK_AUTHORIZATION` is the
+    sole authentication and it is enough — the RPC the function calls
+    (`set_referral_rc_user`) is SECURITY DEFINER and grants nothing to `anon`.
+    `first-referral-bonus` still runs with `verify_jwt=true` because that function is
+    called from the client via the Pages proxy, which carries the Supabase anon key.
   - **Secrets:** `REVENUECAT_V1_SECRET_KEY` set on both Supabase Edge Function stores
     (identical digest — v2-generation `sk_` key working against the v1 REST endpoint;
     v1 issuance is no longer available in the RC UI).
-    `REVENUECAT_WEBHOOK_AUTHORIZATION` **NOT SET** — owner action needed via
-    `npx supabase@latest secrets set REVENUECAT_WEBHOOK_AUTHORIZATION=<value>
-    --project-ref <ref>` on both projects, same value.
+    `REVENUECAT_WEBHOOK_AUTHORIZATION` **set on both projects 2026-09-08** (64-char
+    random secret, sha256 `8d56050d5177fcfa39b227f4f2329093c5d509f436bc2a46453278b6792a3733`).
+    Persisted at `~/.veyrnox/rc-webhook-secret` (mode 600) on the dev machine. To
+    rotate: `openssl rand -base64 48 > ~/.veyrnox/rc-webhook-secret`, then
+    `SECRET=$(cat ~/.veyrnox/rc-webhook-secret); npx supabase@latest secrets set
+    REVENUECAT_WEBHOOK_AUTHORIZATION="$SECRET" --project-ref <ref>` on both, then
+    update the two RC webhook `authorization_header` fields to match.
   - **Cloudflare Pages:** `SUPABASE_ANON_KEY` aligned to publishable
     (`sb_publishable_…`) on both `veyrnox-prod` and `veyrnox-staging` via
     `wrangler pages secret put`. Necessary because Supabase Edge auto-injects
@@ -1065,10 +1085,19 @@ LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
     resolved by a coincidental unrelated CI merge to main). On any secret rotation
     that must take effect immediately: trigger a manual redeploy
     (`wrangler pages deploy dist --project-name veyrnox-prod --branch main`).
-  - **RC dashboard webhook:** NOT configured (owner action). Point RC's webhook at
-    the Edge Function URL (`https://<project>.supabase.co/functions/v1/rc-webhook`),
-    subscribe to `INITIAL_PURCHASE` + `NON_RENEWING_PURCHASE`, set the same value
-    as `REVENUECAT_WEBHOOK_AUTHORIZATION` in the Authorization field.
+  - **RC dashboard webhooks: configured 2026-09-08** in project `proj82381f44` as
+    two environment-scoped integrations (single-webhook `environment: null` would
+    have sent sandbox events to prod Supabase):
+    * `whintgrb0a8102c4b` — "Veyrnox rc-webhook (Supabase prod)" — URL
+      `https://jwstkrtslotnjyerzzsi.supabase.co/functions/v1/rc-webhook`,
+      `environment: production`.
+    * `whintgr6d9a9977bc` — "Veyrnox rc-webhook (Supabase staging)" — URL
+      `https://nszlbcmcysftwyudthjz.supabase.co/functions/v1/rc-webhook`,
+      `environment: sandbox`.
+    Both subscribe to `INITIAL_PURCHASE` + `NON_RENEWING_PURCHASE` only, and both
+    carry the shared `REVENUECAT_WEBHOOK_AUTHORIZATION` as their Authorization
+    header. Smoke-tested at configuration time: wrong secret → 401, right secret →
+    200, on both endpoints.
   - **✅ [#1703 P0 wrong-recipient bug — FIXED in current code.](https://github.com/VEYRNOX/veyrnox/issues/1703)**
     Client now writes the SUBSCRIBER'S OWN referral code (not the referrer's) as
     an RC attribute at `src/lib/purchases.js:328`
@@ -1082,11 +1111,13 @@ LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
     `src/lib/purchases.js:328`; webhook reads `veyrnox_referral_code` at
     `supabase/functions/rc-webhook/index.ts:131`. Keys match. Do not rename
     either end without renaming both in the same PR.
-  - **Chain remains unexercised end-to-end.** Code bugs above are fixed but no
-    real referral purchase has ever flowed through `rc-webhook` → attribution
-    grant. Verification still gated on RC dashboard webhook config plus a real
-    end-to-end sandbox trip (referrer creates code → referee purchases with
-    code → RC fires INITIAL_PURCHASE → attribution row + bonus grant land).
+  - **Chain remains unexercised by a real purchase.** All plumbing armed
+    (verify_jwt=false on rc-webhook, shared secret set, RC webhooks scoped by
+    environment) and smoke-tested with synthetic no-code events (200 ok reason=no_code).
+    A real sandbox trip is the last verification step: referrer creates code →
+    referee purchases with code → RC fires INITIAL_PURCHASE (sandbox env) → sandbox
+    webhook posts to staging `rc-webhook` → `set_referral_rc_user` writes on staging
+    DB → attribution row + bonus grant land.
   - **Ceremonial notes worth retaining for the next reader:**
     - The client sends `edgeFn('first-referral-bonus', …)` via the Cloudflare Pages
       proxy at `functions/api/edge/[fn].js` — the app never talks to Supabase Edge
