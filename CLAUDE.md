@@ -762,7 +762,16 @@ before concluding anything about what gates a merge —
   left alone rather than quietly loosened". That reasoning missed the mechanism:
   **GitHub's auto-merge does NOT update a behind branch — it only waits.** So on a repo
   merging 10+ times a day, any merge landing inside a PR's check cycle re-blocked it, and
-  `unit-tests` alone is ~14 min. The failure is SILENT and reads as success: the PR shows
+  `unit-tests` alone is **~25 min** (measured 2026-09-08 over 29 successful runs: median
+  24.9, min 17.4, max 26.3 — this line said "~14 min" until then, understating the real
+  cost by roughly eleven minutes, and the figure had been carried unmeasured since
+  2026-08-08). **The correction strengthens the decision it sits under rather than
+  weakening it:** the wider the check cycle, the more merges land inside it, so a 25-minute
+  gate makes `strict: true` worse on this repo than the number originally argued.
+  Re-derive rather than trusting this line — CI duration drifts with the suite:
+  `gh run list --workflow=ci.yml --limit 40 --json databaseId -q '.[].databaseId'`, then
+  `gh run view <id> --json jobs` and read `startedAt`/`completedAt` on the `unit-tests`
+  job. The failure is SILENT and reads as success: the PR shows
   every check green and simply never merges, with no red anywhere to explain it.
   PR #1620 needed three manual `gh pr update-branch` calls and still lost the race to its
   own follow-up PR merging first. Turned off to match the ruleset, which was ALREADY
