@@ -44,12 +44,20 @@ to 2026-08-25 should be read as covering SIGNAL 1 only.
 
 **The surviving chain, and it reaches `src/wallet-core/`:**
 ```
-@keystonehq/keystone-sdk 0.12.3
-  └─ @keystonehq/bc-ur-registry-eth 0.22.1   (hdkey ^2.0.1)
-     └─ hdkey 2.1.0                          (secp256k1 ^4.0.0)
-        └─ secp256k1 4.0.5                   (elliptic ^6.5.7)
-           └─ elliptic 6.6.1                 GHSA-848j-6mx2-7j84
+(root package.json)                          exact pins, both direct:
+  ├─ @keystonehq/bc-ur-registry-eth 0.22.1   (also required by keystone-sdk ^0.22.0)
+  └─ @keystonehq/keystone-sdk 0.12.3
+        └─ @keystonehq/bc-ur-registry-eth 0.22.1   (hdkey ^2.0.1)
+           └─ hdkey 2.1.0                          (secp256k1 ^4.0.0)
+              └─ secp256k1 4.0.5                   (elliptic ^6.5.7)
+                 └─ elliptic 6.6.1                 GHSA-848j-6mx2-7j84
 ```
+`@keystonehq/bc-ur-registry-eth@0.22.1` enters the tree as an EXACT DIRECT root
+dependency as well as transitively under `@keystonehq/keystone-sdk`. That matters for
+remediation: bumping only `keystone-sdk` leaves the root's exact `0.22.1` pin in place,
+and npm resolves the root pin regardless of what the SDK's `^0.22.0` range would admit —
+so `elliptic` stays resolved with no visible cause. Any 2a/2b/2c remediation must move
+the direct root pin, not only the SDK.
 `src/wallet-core/hw/digitalShield.js` imports `ETHSignature` from
 `@keystonehq/bc-ur-registry-eth`, so this is no longer the "off the signing path" story
 the retired chains had. What keeps it low is a reachability argument, not the old slogan:
@@ -148,9 +156,14 @@ partial signal only reduced the count — do not carry the old "PARTIAL fix" wor
   relevant direct dependency (`@keystonehq/bc-ur-registry-eth` and/or
   `@keystonehq/keystone-sdk`), regenerate with `npm install --package-lock-only`, then
   `npm audit` to confirm, and verify the resolved tree contains no `elliptic` at all.
-  Note that `src/wallet-core/hw/__tests__/digitalShield.deps.test.js` asserts EXACT
-  Keystone versions, so any bump there is a deliberate test change, not incidental churn.
-  Keep the lockfile diff surgical.
+  `@keystonehq/bc-ur-registry-eth` is BOTH a direct root pin and a transitive under
+  `keystone-sdk` (see the chain diagram in Background) — the direct root pin must move,
+  bumping only `keystone-sdk` leaves `elliptic` resolved. And
+  `src/wallet-core/hw/__tests__/digitalShield.deps.test.js:10` pins these as EXACT
+  direct dependencies (`bc-ur-registry-eth` → `0.22.1`, `keystone-sdk` → `0.12.3`, plus
+  `bc-ur-registry`, `bc-ur-registry-sol`, `@ngraveio/bc-ur`, `@scure/base`) and asserts
+  they are excluded from grouped Dependabot bumps, so any bump is a deliberate two-file
+  change (`package.json` + that test). Keep the lockfile diff surgical.
 - Otherwise **NO CHANGE**.
 - **A version number is not evidence.** Neither is npm's `fixAvailable`. On 2026-07-27 the
   `shell-quote` residual was retired on a trigger that had genuinely fired and had to be
