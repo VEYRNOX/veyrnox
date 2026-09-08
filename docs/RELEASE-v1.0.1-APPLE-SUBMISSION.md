@@ -2,7 +2,7 @@
 
 Owner: Al Jobson. Last updated: 2026-09-08 (session-rebuilt after prior scratchpad was lost).
 
-**Submission HOLD:** in effect. Owner clicks Submit for Review only when tasks 21 + 22 (below) both go green.
+**SUBMITTED for review — 2026-09-08 06:53:47 UTC.** All pre-submission gates green. Waiting on Apple. On approval, owner presses Release (releaseType MANUAL) — phased release then ramps over 7 days.
 
 ---
 
@@ -12,7 +12,7 @@ Owner: Al Jobson. Last updated: 2026-09-08 (session-rebuilt after prior scratchp
 |---|---|---|
 | App | Veyrnox (`6790188660`, bundle `com.veyrnox.app`) | ASC API |
 | Version | 1.0.1 | `appStoreVersions/eaeb97ea-…` |
-| State | READY_FOR_REVIEW | ASC API |
+| State | WAITING_FOR_REVIEW | submittedDate `2026-09-08T06:53:47.299Z` |
 | releaseType | MANUAL | ASC API |
 | Phased release | INACTIVE (armed for post-approval) | `appStoreVersionPhasedRelease` |
 | Copyright | Veyrnox Limited | ASC |
@@ -145,20 +145,20 @@ Chain is **armed** end-to-end (wired 2026-09-08 in-session):
 Only remaining gate for referral chain verification (does NOT block 1.0.1 submission):
 - Real sandbox trip through the CLIENT flow: referee purchases with a code → RC fires `INITIAL_PURCHASE` (sandbox) → sandbox webhook lands (proven) → `Subscription.jsx` calls `first-referral-bonus` → `first_bonus_granted_at` timestamp lands on the referrer's row. Only the last leg (client → `first-referral-bonus`) is untested — every other leg has been exercised.
 
-## Remaining pre-Submit gate items
+## Pre-Submit gate — all green before Submit
 
-| # | Task | Owner | State |
-|---|---|---|---|
-| 21 | Stock-iPhone golden-path walkthrough | Owner (physical device, not the dev iPhone) | **PENDING** |
-| 22 | TestFlight Crashes + Xcode Organizer Hangs = 0 on build 57 | Owner watches during TF window | **PENDING** |
+| # | Task | Result |
+|---|---|---|
+| 21 | Stock-iPhone golden-path walkthrough | ✓ Owner tested + confirmed |
+| 22 | TestFlight Crashes + Xcode Organizer Hangs = 0 on build 57 | ✓ Zero signatures on build 57 per ASC diagnosticSignatures |
 
-Both are the mandatory CLAUDE.md pre-submission gate — Play build 5 was rejected under the same failure mode (KEK/RASP fail-closed on untested device), and iOS review will treat an unresponsive Create Wallet path the same way.
+Both were the mandatory CLAUDE.md pre-submission gate — Play build 5 was rejected under the same failure mode (KEK/RASP fail-closed on untested device); we avoided that pattern this time.
 
-## Confidence to Submit
+## Also completed this session
 
-- **~70%** if we run tasks 21 + 22.
-- **~55%** if we skip them.
-- **~85%** with both green.
+- **TestFlight "What to Test" note** for build 57 populated (559 chars) — tester walkthrough instructions covering the golden path + the Play-rejection pattern to watch for.
+- **Review submission item audit** — 4 items on `0babae55-…` all `READY_FOR_REVIEW` (1 appStoreVersion + 2 AI subs + 1 subscription-group artifact).
+- **Reviewer notes verified** (1797 chars) — no-account explainer, PIN setup, receive/send flow, both subscription tiers with paths, sandbox tester note. PIN minimum ("8 digits") matches `src/lib/pinStrength.js:19`.
 
 ## What is NOT in scope of this submission
 
@@ -171,4 +171,7 @@ Both are the mandatory CLAUDE.md pre-submission gate — Play build 5 was reject
 - **#2412** (merged, `e10dbde6`) — extend `APPLE_OFFER_IDS` map with the 5 `ai-*` referral keys.
 - **#2415** (merged, `1e75ca7f`) — CLAUDE.md correction for referral bugs #1703 + #1704 marked FIXED.
 - **#2434** (merged, `c39bf87`) — iOS versionCode bump 56 → 57 + iOS SPM sync (Capacitor 8.5.1 + purchases-hybrid-common 18.33.1 pinned to what shipped).
+- **#2436** (merged, `43557d5`) — first-cut of these MD deliverables to `docs/`.
+- **#2437** (merged, `9cce848`) — CLAUDE.md sync to referral chain armed state + prod migration lesson.
+- **#2439** (merged, `8f5b624`) — release MDs synced to chain-armed state after RC webhooks configured.
 - **#2414** (closed, wrong head branch) — first attempt at #2415 hit the release worktree branch; superseded.
