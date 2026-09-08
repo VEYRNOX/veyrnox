@@ -218,10 +218,31 @@ Two consequences worth carrying:
   (`2026-08-25T09:26:29Z`), so that run resolved the re-pointed runbook. Confirmed the
   runbook on `origin/main` is the Keystone version: it probes SIGNAL 1 / 2a / 2b / 2c and
   documents the Ledger and Trezor chains as retired rather than probing them.
-  **What is NOT established: what that run actually reported.** Its output has not been
-  read, so the confirmation this entry asks for is *available* but not yet *collected* —
-  do not upgrade "it ran" into "it reported no movement" without opening the report. The
-  scheduler is enabled and the cron is `30 9 * * 2`; for the next fire time read
+  **Its output HAS now been read — collected 2026-09-08.** This bullet said "What is NOT
+  established: what that run actually reported ... the confirmation this entry asks for is
+  *available* but not yet *collected*", which was true when written and is now discharged.
+  What the 2026-09-01 run reported, verbatim in substance:
+  - **Verdict: no upstream movement, no action.** Run against `origin/main` `666effe9`.
+  - **Step 0 re-derived the chain from that lockfile and it matched this entry exactly** —
+    one requirer only: `secp256k1@4.0.5` (declares `elliptic ^6.5.7`) → `hdkey@2.1.0`
+    (declares `secp256k1 ^4.0.0`) → `@keystonehq/bc-ur-registry-eth@0.22.1` (declares
+    `hdkey ^2.0.1`), the last being both a direct pin and reached via
+    `@keystonehq/keystone-sdk@0.12.3`. `elliptic@6.6.1` resolved. No Ledger/Trezor chain,
+    no undocumented chain.
+  - **All four signals NOT fired.** SIGNAL 1: `elliptic@latest` = `6.6.1` and the
+    published version list ends there — the newest release is inside the advisory range.
+    2a: `secp256k1@latest` = `5.0.2`, still declares `elliptic ^6.5.7` (moot regardless —
+    `hdkey` pins `^4.0.0`). 2b: `hdkey@latest` = `2.1.0`, = resolved, still declares
+    `secp256k1 ^4.0.0`. 2c: `bc-ur-registry-eth@latest` = `0.22.1`, = resolved, still
+    declares `hdkey ^2.0.1`. Every link is already at latest published; no upstream
+    escape hatch exists.
+  **Where to find it, because this cost a search:** the watcher writes NO report file — its
+  `## Output` section specifies chat output only. So "read the watcher's report" means
+  searching session transcripts (`search_session_transcripts`), not opening a path. That
+  asymmetry is exactly what let this entry know *that* it ran for five days without knowing
+  *what it said*: `lastRunAt` is queryable state, the verdict is not. The 2026-09-01 run is
+  session `local_85b0b5ed-8855-42b1-9b11-c865030ab230`, titled "Veyrnox elliptic upstream
+  watch". The scheduler is enabled and the cron is `30 9 * * 2`; for the next fire time read
   `nextRunAt` from `list_scheduled_tasks` rather than any date written here (see the
   bullet below for why).
 - **Its `lastRunAt` moved on 2026-08-25 and that run does NOT count as the
