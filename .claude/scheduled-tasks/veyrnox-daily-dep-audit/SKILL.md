@@ -159,6 +159,13 @@ Two consequences worth carrying:
   GONE — `@trezor/connect-web`, `@trezor/utxo-lib`, `tiny-secp256k1`,
   `@ledgerhq/hw-app-eth` and `@ethersproject/signing-key` are all absent from
   `origin/main`'s lockfile at `24333ad9`.
+  **That arrow is a PATH, not a parentage claim (annotated 2026-09-08, issue #2445).**
+  `@keystonehq/bc-ur-registry-eth` has two requirers in the lockfile: the root package,
+  via an exact `"0.22.1"` pin in `package.json`, and `keystone-sdk` via `^0.22.0`. npm
+  resolves the root's exact pin. Any remediation that bumps only `keystone-sdk` leaves
+  `elliptic` resolved — the direct pin has to move too, and it is asserted by
+  `src/wallet-core/hw/__tests__/digitalShield.deps.test.js`, so that is a deliberate
+  `package.json` + test change.
 - **The old "not on the wallet's signing path" line was retired, not reworded —
   it stopped being true.** `src/wallet-core/hw/digitalShield.js:12` imports
   `ETHSignature` from `@keystonehq/bc-ur-registry-eth`, and the repo's own
