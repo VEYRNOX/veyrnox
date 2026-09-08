@@ -4,6 +4,8 @@ Owner: Al Jobson. Last updated: 2026-09-08.
 
 **SUBMITTED for review — 2026-09-08 (14 changes queued in Publishing overview, quick checks passed, Submit clicked).** Managed publishing = ON — on approval, changes stage until owner presses Publish.
 
+**Cross-reference — Apple 1.0.1 status (unrelated to Play, but the fiat on-ramp story is shared):** Apple rejected the same-day iOS 1.0.1 submission twice on 2026-09-08. Rejection 1 was on the AI Security Protection promoted-IAP images (2.3.2 metadata) — resolved by disabling both promoted purchases and deleting the images. Rejection 2 was Guideline 2.1 → 3.1.5(iii) asking for cryptocurrency-exchange licensing evidence on the Buy → Transak flow — a Path B reply (third-party partnership with Transak Ltd, FCA FRN 928910) has been sent to Apple, with §3a documenting the in-app UK geo-suppression (`isUkBuyBlocked()`, s.21 FSMA 2000). Full record in `RELEASE-v1.0.1-APPLE-SUBMISSION.md` under "Rejection cycle (2026-09-08)". Play reviewers have not (to date) asked for equivalent licensing evidence on the same Buy flow — if that changes, the same reply applies verbatim, and the UK geo-suppression is device-side so it fires on Android identically.
+
 ---
 
 ## App identity
