@@ -131,13 +131,19 @@ Each offering resolves to both monthly + annual packages (`$rc_monthly` + `$rc_a
 - Bug #1704 (P1 attribute-name mismatch) — FIXED (both ends use `veyrnox_referral_code`).
 - CLAUDE.md corrected accordingly: PR #2415 merged as `1e75ca7f` on 2026-09-07.
 
-Remaining chain gates (do NOT block 1.0.1 submission, but referral tiers stay INERT until closed):
-1. Set `REVENUECAT_WEBHOOK_AUTHORIZATION` on both Supabase projects (production `jwstkrtslotnjyerzzsi`, staging `nszlbcmcysftwyudthjz`) — same value on both.
-2. Configure RC webhook (project `proj82381f44` — verified 2026-09-08 that the webhook list is EMPTY):
-   - URL: `https://jwstkrtslotnjyerzzsi.supabase.co/functions/v1/rc-webhook`
-   - Auth header: value from step 1
-   - Events: `INITIAL_PURCHASE`, `NON_RENEWING_PURCHASE`
-3. Real sandbox trip: referrer generates code → referee purchases with code → RC fires `INITIAL_PURCHASE` → `rc-webhook` writes attribution row + grants bonus.
+Chain is **armed** end-to-end (wired 2026-09-08 in-session):
+
+- `rc-webhook` redeployed on both Supabase projects (prod v14, staging v5) with `verify_jwt: false`. Sole authentication is the in-function timing-safe compare against `REVENUECAT_WEBHOOK_AUTHORIZATION` (the prior `verify_jwt: true` blocked legitimate RC delivery — the RC Authorization header is a shared secret, not a Supabase JWT).
+- `REVENUECAT_WEBHOOK_AUTHORIZATION` set on both projects; secret persisted at `~/.veyrnox/rc-webhook-secret` (mode 600) on the dev machine.
+- Two RC webhooks in project `proj82381f44`:
+  - `whintgrb0a8102c4b` → prod Supabase, `environment: production`.
+  - `whintgr6d9a9977bc` → staging Supabase, `environment: sandbox`.
+- Smoke-tested: wrong secret → 401, right secret → 200, on both endpoints.
+- **Synthetic end-to-end test on staging (2026-09-08):** minted a test code with `generate_referral_code`, POSTed a synthetic `INITIAL_PURCHASE` to staging `rc-webhook` with a `veyrnox_referral_code` subscriber attribute → row's `rc_user_id` written correctly by `set_referral_rc_user`. Test row cleaned up. Proves the entire `RC → webhook → RPC → DB write` path.
+- **Prod `increment_referral` migration also landed 2026-09-08** — discovered mid-session that the `ref_code → p_code` rename was staging-only for six weeks. Every prod client call had been silently failing at PostgREST; 3560 referral rows sat at `count=0`. Applied via MCP (`increment_referral_rename_arg_ref_code_to_p_code`); anon/authenticated/service_role EXECUTE grants preserved. Future referrals will now count.
+
+Only remaining gate for referral chain verification (does NOT block 1.0.1 submission):
+- Real sandbox trip through the CLIENT flow: referee purchases with a code → RC fires `INITIAL_PURCHASE` (sandbox) → sandbox webhook lands (proven) → `Subscription.jsx` calls `first-referral-bonus` → `first_bonus_granted_at` timestamp lands on the referrer's row. Only the last leg (client → `first-referral-bonus`) is untested — every other leg has been exercised.
 
 ## Remaining pre-Submit gate items
 

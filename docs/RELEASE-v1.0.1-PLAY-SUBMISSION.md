@@ -85,13 +85,14 @@ Same infrastructure serves both stores. Code state per this session:
 - Bug #1704 (P1 attribute-name mismatch) — FIXED.
 - CLAUDE.md corrected — PR #2415 merged as `1e75ca7f` on 2026-09-07.
 
-Owner gates blocking end-to-end activation (do NOT block Play submission itself):
-1. Set `REVENUECAT_WEBHOOK_AUTHORIZATION` on both Supabase projects (prod `jwstkrtslotnjyerzzsi`, staging `nszlbcmcysftwyudthjz`) — same value.
-2. Configure RC webhook (project `proj82381f44` — webhook list verified EMPTY 2026-09-08):
-   - URL: `https://jwstkrtslotnjyerzzsi.supabase.co/functions/v1/rc-webhook`
-   - Auth header: value from step 1
-   - Events: `INITIAL_PURCHASE`, `NON_RENEWING_PURCHASE`
-3. Real sandbox trip via Play Billing to prove the chain fires.
+Chain is **armed** end-to-end (wired 2026-09-08 in-session — see the Apple MD for the full record; the same webhook infra serves both stores because RC has one project).
+
+Additional Play-side facts to keep in mind for the sandbox test:
+- Play Billing test purchases fire RC's `sandbox` environment. Sandbox webhook `whintgr6d9a9977bc` will route them to staging Supabase, not prod.
+- Play `-Beta` and license testers are RC-side sandbox — do not expect rows in prod DB from a Play internal-testing purchase.
+
+Only remaining gate for referral chain verification (does NOT block Play Send):
+- Real Play Billing sandbox trip through the CLIENT flow: referee purchases with a code → RC fires `INITIAL_PURCHASE` (sandbox) → sandbox webhook posts to staging `rc-webhook` (proven synthetically on 2026-09-08) → `Subscription.jsx` calls `first-referral-bonus` → `first_bonus_granted_at` lands on referrer's row. Only the client-triggered `first-referral-bonus` leg remains untested.
 
 ## Remaining Play blockers before Submit
 
