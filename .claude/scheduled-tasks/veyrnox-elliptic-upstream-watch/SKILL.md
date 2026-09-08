@@ -42,14 +42,28 @@ was probing two dead paths and had no probe at all for the live one: its "no ups
 movement" verdicts were true about packages that no longer mattered. Runs from 2026-08-22
 to 2026-08-25 should be read as covering SIGNAL 1 only.
 
-**The surviving chain, and it reaches `src/wallet-core/`:**
+**The surviving chain, and it reaches `src/wallet-core/`. Note the TWO entry points —
+`@keystonehq/bc-ur-registry-eth` is a direct root dependency as well as an SDK
+transitive, and the direct exact pin is the one npm actually resolves:**
 ```
-@keystonehq/keystone-sdk 0.12.3
+(root package.json)              @keystonehq/bc-ur-registry-eth: "0.22.1"  <-- exact, DIRECT
+@keystonehq/keystone-sdk 0.12.3  @keystonehq/bc-ur-registry-eth: ^0.22.0   <-- transitive
   └─ @keystonehq/bc-ur-registry-eth 0.22.1   (hdkey ^2.0.1)
      └─ hdkey 2.1.0                          (secp256k1 ^4.0.0)
         └─ secp256k1 4.0.5                   (elliptic ^6.5.7)
            └─ elliptic 6.6.1                 GHSA-848j-6mx2-7j84
 ```
+**Why the second entry point is called out here rather than left to the remediation
+step (added 2026-09-08, issue #2445):** this block used to render `keystone-sdk` as the
+sole parent. Bumping only `keystone-sdk` when a signal fires leaves the root's exact
+`0.22.1` pin in place and `elliptic` still resolved, with nothing in the diagram to
+explain why. `package.json` pins four Keystone packages exactly
+(`bc-ur-registry` `0.8.0`, `bc-ur-registry-eth` `0.22.1`, `bc-ur-registry-sol` `0.9.5`,
+`keystone-sdk` `0.12.3`), and
+`src/wallet-core/hw/__tests__/digitalShield.deps.test.js` asserts those exact strings AND
+that all four stay out of grouped Dependabot bumps — so any bump is a deliberate
+`package.json` + test change, never incidental churn.
+
 `src/wallet-core/hw/digitalShield.js` imports `ETHSignature` from
 `@keystonehq/bc-ur-registry-eth`, so this is no longer the "off the signing path" story
 the retired chains had. What keeps it low is a reachability argument, not the old slogan:
