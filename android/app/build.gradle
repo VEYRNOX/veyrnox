@@ -29,7 +29,7 @@ android {
         // track change only takes effect on the NEXT bundle. 44 is therefore the
         // first code that can reach Closed testing (Alpha) and generate the
         // Pre-launch report (#1960).
-        versionCode 47
+        versionCode 48
         // Customer-facing version for the public Play launch. versionCode is internal
         // bookkeeping (monotonic, permanently consumed per upload, never shown to users);
         // versionName is what appears on the store listing.
