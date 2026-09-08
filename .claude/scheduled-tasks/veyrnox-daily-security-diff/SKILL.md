@@ -128,7 +128,36 @@ If there are no commits in the last 24 hours, write a one-line "No security-rele
 > 2026-07-28. If several runs in a row carry the same maintenance note, that is
 > the signal to escalate it rather than repeat it.
 
-From the commit list, flag any file matching these patterns:
+#### Triage every changed file with this question FIRST
+
+*Does it send data off-device, decide a credential floor, gate an action, or
+record what a security change does?*
+
+**Any yes → deep analysis, whether or not a pattern below matches.** Ask this of
+every file in the window before you consult the index, not after.
+
+Promoted above the path list on 2026-09-08, after a **sixth** consecutive run
+produced something from an unmatched file. It had been sitting at the bottom of
+this step since 2026-09-02 as a closing note, which is exactly where a reader who
+has already finished matching paths will not act on it. The paths below are a
+FAST INDEX — where risk was *known* to be — and the index will always lag a
+codebase organised by behaviour. Two categories cut across every module boundary
+and stay invisible to a path list until someone remembers to name them:
+
+- **Egress sinks.** Where data LEAVES the device is a property of what a file
+  CALLS, not where it lives. `src/pages/Settings.jsx` is a settings screen by
+  location and an egress source by behaviour.
+- **Credential-floor owners.** A file that decides "16 chars" or "8 digits" is
+  security-critical regardless of directory.
+
+A third has since joined them, and it is the one the question catches that the
+paths do not: **a tier or entitlement check that has become a security gate.**
+`src/lib/tierCache.js` is a subscription-state mirror by name, and since
+`3424de6f` it is the I2 boundary deciding whether a WalletConnect send POSTs
+recipient address and calldata to `tip-screen`. No path list organised by module
+role would have flagged it.
+
+Now flag any file matching these patterns:
 
 **Crypto / key / wallet core** — all of `wallet-core`, not two files of it.
 Covers `vault.js`, `keystore/kek.js`, `panic.js`, `deniabilitySession.js`,
@@ -239,6 +268,28 @@ these matched before 2026-09-02; two produced findings that day.
 - `src/pages/PanicWipe.jsx`
 - `src/pages/StealthWallets.jsx`
 
+**Commerce integrity and tier gates.** Added 2026-09-08 (report O-3, and the M-2
+finding of the same day). Not key material, but these files decide what a
+customer is CHARGED and which paid controls unlock, and the repo's own rule is
+that offer paths fail CLOSED (`OFFER_UNAVAILABLE`) rather than fall through to a
+full-price charge.
+- `src/lib/purchases.js`
+- `src/lib/purchases/**` — note `APPLE_OFFER_IDS` exists as TWO hand-synced
+  copies, `purchases.js` and `purchases/shared.js` (the Huawei flavour, imported
+  by `huaweiPurchases.js`). A change to one that misses the other is silent.
+- `src/lib/tier.js`, `src/lib/tierCache.js`
+- **`tierCache.js` is the sharper half of this entry and the reason it exists.**
+  It is a `let _tier = 'free'` module mirror — fail-closed by default, forced to
+  `'free'` on the deniability flip — and as of `3424de6f` it is what stops a
+  Free/Safety-Plus WalletConnect send POSTing recipient address, calldata, value
+  and chain to `tip-screen` under a stable `X-Rc-User-Id`. Loosening that default
+  or `setCachedTier`'s falsy coercion silently re-opens M-2, and until 2026-09-08
+  nothing in this list could see the file.
+- What to look for: a tier check removed from an egress or gate call site while
+  the sibling call sites keep theirs (M-2 was one ungated site out of four); a
+  paid-feature default that resolves permissive before its provider has settled;
+  an offer identifier changed in one copy of the map only.
+
 **Native**
 - `android/app/src/main/**`
 - `ios/App/App/**`
@@ -308,30 +359,45 @@ and the credential-floor / coercion-state pages.
 from unmatched files — again, both of them did. Added `functions/**` (the
 Cloudflare Pages server layer) and `e2e/**` + `src/**/__tests__/**`.
 
+*Widened again 2026-09-08*, after the **sixth** consecutive run whose findings
+came from unmatched files. Added the commerce-integrity / tier-gate block above.
+
+**The sixth run triggered the escalation clause, and this is what it did.** The
+paragraph here used to end: *"If a sixth run produces findings from unmatched
+files, do not just add another pattern: the failure is that a list organised by
+PATH cannot keep up with a codebase organised by BEHAVIOUR, and the fix is to
+lead triage with the behavioural question below rather than to keep extending the
+index."* The sixth run came, `diff-2026-09-08.md` said so in as many words, and
+the clause was honoured rather than quietly satisfied with a seventh path: the
+behavioural question was **moved to the top of this step**, where triage starts,
+and the paths were relabelled as a fast index beneath it. The new block was added
+too — that is not a contradiction, since the clause forbade adding a pattern
+*instead of* the reorganisation, not *alongside* it.
+
+**Do not migrate that question back to the bottom.** It sat there for six days as
+a closing note and did not change how a single run triaged, because a reader who
+has already worked through a path list has finished triaging. Position was the
+whole defect.
+
 **This was applied by a human-driven session, and that is the point.** The
 maintenance rule above tells a run to record the pattern to add, because the
 task may only write its own report — so four consecutive runs correctly noted an
-omission none of them could fix. The escalation worked exactly once someone read
-the note and edited this file. If a sixth run produces findings from unmatched
-files, do not just add another pattern: the failure is that a list organised by
-PATH cannot keep up with a codebase organised by BEHAVIOUR, and the fix is to
-lead triage with the behavioural question below rather than to keep extending
-the index.
+omission none of them could fix. The escalation works exactly when someone reads
+the note and edits this file; it has now worked three times (2026-09-02,
+2026-09-03, 2026-09-08). If a SEVENTH run still produces findings from unmatched
+files even with the behavioural question leading triage, the reorganisation was
+not the fix either — at that point the honest conclusion is that a static
+document cannot do this job, and the next thing to try is a mechanical one (a
+changed-file classifier the run executes) rather than more prose.
 
 **Why the list kept lagging, structurally.** It was organised by MODULE ROLE
-(`wallet-core`, `rasp`, `sign-gate`) and by NAMED FILE. Two whole categories cut
-across both and were therefore invisible until someone remembered to name them:
-
-- **Egress sinks.** Where data LEAVES the device is a property of what a file
-  calls, not where it lives. `src/pages/Settings.jsx` is a settings screen by
-  location and an egress source by behaviour.
-- **Credential-floor owners.** A file that decides "16 chars" or "8 digits" is
-  security-critical regardless of directory.
-
-So prefer a BEHAVIOURAL question over a path match when triaging a changed file:
-*does it send data off-device, decide a credential floor, gate an action, or
-record what a security change does?* Any yes → deep analysis, whether or not a
-pattern above matches. The paths are a fast index, not the definition.
+(`wallet-core`, `rasp`, `sign-gate`) and by NAMED FILE. The categories that cut
+across both — egress sinks, credential-floor owners, and tier checks that have
+become security gates — were therefore invisible until someone remembered to
+name them. They are enumerated with the triage question at the top of this step;
+they are deliberately NOT restated here, because a second copy of an operational
+list does not stay a copy (see the `docs/scheduled-tasks/` mirror deleted in
+PR #2295, and the drift that mirror shipped).
 
 ### Step 3 — For each flagged file, read the diff
 Run: `git diff <oldest-in-window>~1 origin/main -- <file>`.
