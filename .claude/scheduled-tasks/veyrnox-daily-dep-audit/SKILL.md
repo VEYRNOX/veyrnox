@@ -245,6 +245,23 @@ Two consequences worth carrying:
   watch". The scheduler is enabled and the cron is `30 9 * * 2`; for the next fire time read
   `nextRunAt` from `list_scheduled_tasks` rather than any date written here (see the
   bullet below for why).
+- **SECOND confirmation, 2026-09-08 — identical on every axis, so the "treat the first
+  report as the confirmation" caveat above is now discharged.** The watcher ran at
+  `2026-09-08T08:34:09Z` against `origin/main` `53a35f38` (lockfile 1,122,449 bytes) and
+  again reported **no upstream movement, no action**. Every probe matched the 2026-09-01
+  run at `666effe9` exactly: `elliptic@latest` 6.6.1 with the published list still ending
+  there; `secp256k1@latest` 5.0.2 still declaring `elliptic ^6.5.7`; `hdkey@latest` 2.1.0
+  still declaring `secp256k1 ^4.0.0`; `bc-ur-registry-eth@latest` 0.22.1 still declaring
+  `hdkey ^2.0.1`; `keystone-sdk@latest` 0.12.3. Step 0 re-derived the same four edges with
+  `secp256k1 4.0.5` as the sole requirer, and confirmed the `"elliptic": "^6.6.1"` override
+  is still present in `package.json`. Nothing moved in seven days.
+  **One thing that run added, and this entry had wrong by omission:**
+  `@keystonehq/bc-ur-registry-eth@0.22.1` is a **DIRECT root dependency**, not only a
+  transitive of `keystone-sdk`. The blast-radius chain written at the top of this entry
+  reads as a single line from the SDK inward, which understates it — remediation for a
+  fired 2a/2b/2c has to bump that direct pin as well, not just the SDK. Not a signal, and
+  it changes no severity; recorded because a remediation derived from the chain-as-written
+  would miss half the edit.
 - **Its `lastRunAt` moved on 2026-08-25 and that run does NOT count as the
   confirmation.** The scheduler records a run at `2026-08-25T08:52:21Z`; PR #2084 —
   the re-point — merged at `2026-08-25T09:26:29Z`, i.e. **34 minutes later**. The task
