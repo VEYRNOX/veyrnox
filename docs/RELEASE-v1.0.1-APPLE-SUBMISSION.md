@@ -2,7 +2,61 @@
 
 Owner: Al Jobson. Last updated: 2026-09-08 (session-rebuilt after prior scratchpad was lost).
 
-**SUBMITTED for review — 2026-09-08 06:53:47 UTC.** All pre-submission gates green. Waiting on Apple. On approval, owner presses Release (releaseType MANUAL) — phased release then ramps over 7 days.
+**REJECTED TWICE, REPLIED — 2026-09-08.** Timeline below in the Rejection cycle section. Currently awaiting Apple's response to the ASC reply. On approval, owner presses Release (releaseType MANUAL) — phased release then ramps over 7 days.
+
+---
+
+## Rejection cycle (2026-09-08)
+
+### Rejection 1 — Submission `0babae55` (submitted 06:53:47 UTC → REJECTED ~14:05)
+
+- **Guideline 2.3.2 Performance: Accurate Metadata.** Not against the app version itself — against the **promoted-IAP metadata** for AI Security Protection Monthly 2 / Annual 2.
+- Two complaints from the reviewer message:
+  1. The promotional image `ai_sp_{monthly,annual}_promoted.jpg` was a screenshot from the app with hard-to-read text — must be unique, not a screenshot.
+  2. Image and/or display name/description contained price references — must not (30-char name / 45-char description caps; pricing varies by territory).
+- Apple's review device: iPad Air 11-inch (M3).
+
+### Actions taken
+
+- Verified via ASC API that the AI SP display names/descriptions themselves were within caps and contained no price string ("AI Security Protection Monthly" / "…Annual" · "Live AI advisor plus Safety Plus features"). The price complaint was against the **image**.
+- Owner decision (session): drop promoted-IAP surface entirely for 1.0.1 rather than iterate art. AI SP subs remain purchasable in-app but are not featured on the App Store product page.
+- ASC API: `PATCH /v1/promotedPurchases/{monthly,annual}` set `enabled=false, visibleForAllUsers=false`.
+- ASC API: `DELETE /v1/subscriptionImages/{monthly,annual}` removed both promo images.
+- On the rejected submission, removed all four items (App Version + Sub Group + Monthly + Annual) so the submission auto-closed to state `COMPLETE` with all items `REMOVED`. Then observed: no "Cancel Submission" available in ASC UI because state is already `COMPLETE`; also `PATCH canceled=true` on the reviewSubmission returned 409 `Resource is not in cancellable state` — a REJECTED submission is not cancellable, but emptying it achieves the same end.
+
+### Fresh submission — `3ca728bd` (submitted 13:44:50 UTC)
+
+- Contents: App Version 1.0.1 (57) alone. AI SP subs deferred.
+- IN_REVIEW at 14:43 UTC — Apple pickup ~1h.
+- REJECTED at 14:54 UTC — **~11 min turnaround** on the app-alone version.
+
+### Rejection 2 — same submission `3ca728bd`
+
+- **Guideline 2.1 Information Needed → 3.1.5(iii)** (cryptocurrency exchange licensing). Reviewer asked for the Path B (third-party partnership) evidence bundle. Reviewer's captured screenshots were the Buy Crypto entry page (Transak) and the Dashboard (Safety Plus upsell, incidental).
+- Confirmed via code review that the Buy → Transak flow is the ONLY exchange-adjacent feature. `Convert` in the sidebar is a local fiat/crypto price calculator (CoinGecko, no wallet interaction). No swap, DEX, off-ramp, order book, or P2P surface in the app. `docs/Documentation.jsx:253` already states this explicitly: *"Custodial features (swaps, fiat off-ramp, KYC) are not built by design; the fiat on-ramp is a hand-off to a licensed third party."*
+
+### Reply sent to Apple (2026-09-08, via ASC Reply to App Review)
+
+- Attached as PDF (`reply.pdf`, formatted, 5 sections + §3a UK geo-suppression).
+- Positioned as a Path B (third-party) response: Transak Ltd (UK Company No. 12793134, FCA FRN 928910). Public v2 API endpoints, docs link, partner-program key.
+- Distribution limitation: App Store availability aligned to Transak's supported-countries list.
+- FCA compliance: KYC/AML/sanctions/consumer-protection executed by Transak under its FCA registration; Veyrnox performs no crypto-asset promotion beyond directing the user to the widget.
+- **UK-specific in-app suppression (§3a):** `useBuyEnabled()` / `isUkBuyBlocked()` (`src/lib/buy/useBuyEnabled.js:50`) hides the Buy tile, `/buy`, and `/buy/in-progress` when the device locale region is `GB`/`UK` or the timezone is `Europe/London` — s.21 FSMA 2000 financial-promotions safeguard. Reply is explicit that this is a client-side, device-reported good-faith suppression, not a hard access control.
+- Custody: transactions occur between user and Transak; keys stay on-device.
+- Tokens: no new/exclusive tokens; standard listed cryptocurrencies only.
+
+### Watch armed
+
+- Persistent monitor `bnd0qzlrq` polling `reviewSubmissions/3ca728bd` state every 5 min via ASC API. Notifies on any transition.
+
+### What did NOT happen this cycle (accepted residuals)
+
+- **No new build.** Rejection 1 was metadata-only (promoted-IAP images). Rejection 2 is licensing information Apple needs before it can accept the same binary. Build 57 remains the submitted artifact.
+- **AI SP subs remain `READY_TO_SUBMIT`** — deferred until 1.0.1 is APPROVED. They will go in a follow-up submission (no promoted purchase, no image; sub review only).
+- **Third-party audit** — still outstanding; not affected by this cycle.
+
+---
+
 
 ---
 
@@ -12,7 +66,7 @@ Owner: Al Jobson. Last updated: 2026-09-08 (session-rebuilt after prior scratchp
 |---|---|---|
 | App | Veyrnox (`6790188660`, bundle `com.veyrnox.app`) | ASC API |
 | Version | 1.0.1 | `appStoreVersions/eaeb97ea-…` |
-| State | WAITING_FOR_REVIEW | submittedDate `2026-09-08T06:53:47.299Z` |
+| State | REJECTED (awaiting Apple response to reply on submission `3ca728bd`) | see Rejection cycle above |
 | releaseType | MANUAL | ASC API |
 | Phased release | INACTIVE (armed for post-approval) | `appStoreVersionPhasedRelease` |
 | Copyright | Veyrnox Limited | ASC |
