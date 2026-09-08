@@ -21,7 +21,8 @@
 // We assert STRUCTURE (the enableBiometricUnlock spy), never copy.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 
 vi.mock('@/lib/WalletProvider', () => ({ useWallet: vi.fn() }));
@@ -74,15 +75,37 @@ function makeCtx(overrides = {}) {
   };
 }
 
+// userEvent w/ advanceTimers noop — clicks return a promise the caller MUST
+// await, so React flushes state between digits and before Submit. Bare
+// fireEvent fires the whole sequence in one synchronous tick, which loses digits
+// when the mount-time biometric auto-prompt re-renders mid-sequence (#2443).
+const user = userEvent.setup();
+
 async function enterPin(pin = '13572468') {
-  for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
-  fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
+  for (const d of pin) {
+    await user.click(screen.getByRole('button', { name: d }));
+  }
+  // Wait until Submit reports the full-length value before pressing it — the
+  // reducer only completes on submit if value.length === length.
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Submit PIN' })).not.toBeDisabled(),
+  );
+  await user.click(screen.getByRole('button', { name: 'Submit PIN' }));
 }
 
-async function waitForPinPad() {
-  // If a cache exists, let the mount-time prompt settle before driving the
-  // typed-PIN fallback. A cache-free device never starts that prompt.
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Submit PIN' })).not.toBeDisabled());
+async function waitForPinPad(ctx) {
+  // hasStoredUnlockSecret → true starts the mount-time auto-biometric prompt,
+  // which flips busy=true → disables the pad. Wait for it to FIRE and SETTLE
+  // (autoBioTriedRef then latches it OFF for the rest of the test) BEFORE
+  // driving the typed-PIN fallback. A cache-free device never starts that
+  // prompt, so only assert on the mock when it was set to resolve true.
+  const cached = await vi.mocked(hasStoredUnlockSecret)();
+  if (cached === true && ctx?.unlockWithBiometric) {
+    await waitFor(() => expect(ctx.unlockWithBiometric).toHaveBeenCalled());
+  }
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Submit PIN' })).not.toBeDisabled(),
+  );
 }
 
 beforeEach(() => {
@@ -105,7 +128,7 @@ describe('WalletEntry — typed-PIN auto-cache guard (ordering + chaff compat)',
     vi.mocked(useWallet).mockReturnValue(ctx);
 
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
-    await waitForPinPad();
+    await waitForPinPad(ctx);
     await enterPin();
 
     await waitFor(() => expect(ctx.enableBiometricUnlock).toHaveBeenCalledWith('13572468'));
@@ -121,7 +144,7 @@ describe('WalletEntry — typed-PIN auto-cache guard (ordering + chaff compat)',
     vi.mocked(useWallet).mockReturnValue(ctx);
 
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
-    await waitForPinPad();
+    await waitForPinPad(ctx);
     await enterPin();
 
     await waitFor(() => expect(ctx.unlock).toHaveBeenCalledWith('13572468', { pinModel: true, skipBiometric: true }));
@@ -143,7 +166,7 @@ describe('WalletEntry — typed-PIN auto-cache guard (ordering + chaff compat)',
     vi.mocked(useWallet).mockReturnValue(ctx);
 
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
-    await waitForPinPad();
+    await waitForPinPad(ctx);
     await enterPin();
 
     await waitFor(() => expect(ctx.unlock).toHaveBeenCalled());
@@ -157,7 +180,7 @@ describe('WalletEntry — typed-PIN auto-cache guard (ordering + chaff compat)',
     vi.mocked(useWallet).mockReturnValue(ctx);
 
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
-    await waitForPinPad();
+    await waitForPinPad(ctx);
     await enterPin();
 
     await waitFor(() => expect(ctx.enableBiometricUnlock).toHaveBeenCalledWith('13572468'));
@@ -171,7 +194,7 @@ describe('WalletEntry — typed-PIN auto-cache guard (ordering + chaff compat)',
     vi.mocked(useWallet).mockReturnValue(ctx);
 
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
-    await waitForPinPad();
+    await waitForPinPad(ctx);
 
     await waitFor(() => expect(setBiometricUnlockEnabled).toHaveBeenCalledWith(false));
     expect(clearUnlockSecret).toHaveBeenCalled();
@@ -185,7 +208,7 @@ describe('WalletEntry — typed-PIN auto-cache guard (ordering + chaff compat)',
     vi.mocked(useWallet).mockReturnValue(ctx);
 
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
-    await waitForPinPad();
+    await waitForPinPad(ctx);
 
     expect(setBiometricUnlockEnabled).not.toHaveBeenCalled();
     expect(clearUnlockSecret).not.toHaveBeenCalled();
@@ -198,7 +221,7 @@ describe('WalletEntry — typed-PIN auto-cache guard (ordering + chaff compat)',
     vi.mocked(useWallet).mockReturnValue(ctx);
 
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
-    await waitForPinPad();
+    await waitForPinPad(ctx);
     await enterPin();
 
     await waitFor(() => expect(ctx.unlock).toHaveBeenCalled());
