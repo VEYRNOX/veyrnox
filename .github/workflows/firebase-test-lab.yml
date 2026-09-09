@@ -263,7 +263,7 @@ jobs:
             --timeout "$TIMEOUT" \
             --num-flaky-test-attempts 0 \
             --no-resign \
-            --robo-script .github/testlab/android-pin-onboarding-robo-script.json \
+            --robo-script .github/testlab/android-onboarding-nosecure-robo-script.json \
             "${BUCKET_ARGS[@]}" 2>&1 | tee firebase-test-lab.log
           TEST_STATUS=${PIPESTATUS[0]}
           set -e
