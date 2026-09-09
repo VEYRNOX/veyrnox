@@ -98,6 +98,7 @@ export const DEMO = (() => {
 })();
 
 const iso = (d) => new Date(d).toISOString();
+const daysAgo = (n) => iso(Date.now() - n * 864e5);
 const addr = (p) => p + Array.from({ length: 36 }, (_, i) => "0123456789abcdef"[(i * 7 + 3) % 16]).join("");
 
 // Address-poisoning demo pair (Phase S2). DEMO_KNOWN_COUNTERPARTY is a real
@@ -194,20 +195,28 @@ const SEEDS = {
   // "claim/reward" lure wording, emoji/homoglyph tickers, Telegram links — all
   // airdropped unsolicited and worth $0. `acquired_via` + `verified` + `value_usd`
   // drive src/wallet-core/evm/spam.js classifyToken(). Hiding is display-only.
+  //
+  // `deployed_at` is RELATIVE (daysAgo), never a literal date. suspiciousAssets.js
+  // decides the `new_contract` issue with isRecentDeployment(), which compares
+  // against Date.now() with a 30-day window — so a hardcoded date silently ages
+  // out and the demo stops showing "Contract appears newly deployed" on that
+  // token. That happened: the previous literals iso("2026-08-05")..iso("2026-08-18")
+  // had already lapsed for tok8/tok3 by 2026-09-09. Same bug shape that took
+  // `unit-tests` red repo-wide that morning (PR #2462). Keep every value under 30.
   WalletToken: [
     // --- Sepolia (testnet) ---
     { id: "tok1", network: "sepolia", symbol: "USDC", name: "USD Coin",       token_contract: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238", balance: 1250,    value_usd: 1250.0, acquired_via: "purchase", verified: true, contract_verified: true, is_mintable: false, is_freezable: true, holder_count: 50000, liquidity_usd: 2000000 },
     { id: "tok2", network: "sepolia", symbol: "WETH", name: "Wrapped Ether",  token_contract: "0xfff9976782d46cc05630d1f6ebab18b2324d6b14", balance: 0.42,    value_usd: 1344.0, acquired_via: "purchase", verified: true, contract_verified: true, is_mintable: false, is_freezable: false, holder_count: 25000, liquidity_usd: 1000000 },
-    { id: "tok3", network: "sepolia", symbol: "USDC", name: "USDC-Rewards.com", token_contract: "0xdeadbeef00000000000000000000000000000003", balance: 5000,  value_usd: 0.0, acquired_via: "airdrop", verified: false, contract_verified: false, is_mintable: true, is_freezable: true, transfer_fee_bps: 900, holder_count: 18, liquidity_usd: 2000, deployed_at: iso("2026-08-09") },
-    { id: "tok4", network: "sepolia", symbol: "CLAIM", name: "Claim 5,000 USDT Reward", token_contract: "0xdeadbeef00000000000000000000000000000004", balance: 5000, value_usd: 0.0, acquired_via: "airdrop", verified: false, contract_verified: false, is_mintable: true, transfer_fee_bps: 1200, holder_count: 31, liquidity_usd: 5000, deployed_at: iso("2026-08-12") },
+    { id: "tok3", network: "sepolia", symbol: "USDC", name: "USDC-Rewards.com", token_contract: "0xdeadbeef00000000000000000000000000000003", balance: 5000,  value_usd: 0.0, acquired_via: "airdrop", verified: false, contract_verified: false, is_mintable: true, is_freezable: true, transfer_fee_bps: 900, holder_count: 18, liquidity_usd: 2000, deployed_at: daysAgo(22) },
+    { id: "tok4", network: "sepolia", symbol: "CLAIM", name: "Claim 5,000 USDT Reward", token_contract: "0xdeadbeef00000000000000000000000000000004", balance: 5000, value_usd: 0.0, acquired_via: "airdrop", verified: false, contract_verified: false, is_mintable: true, transfer_fee_bps: 1200, holder_count: 31, liquidity_usd: 5000, deployed_at: daysAgo(19) },
     // --- Ethereum Mainnet ---
     { id: "tok5", network: "mainnet", symbol: "USDC", name: "USD Coin",       token_contract: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", balance: 4820,    value_usd: 4820.0, acquired_via: "purchase", verified: true, contract_verified: true, is_mintable: false, is_freezable: true, holder_count: 1000000, liquidity_usd: 100000000 },
     { id: "tok6", network: "mainnet", symbol: "USDT", name: "Tether USD",     token_contract: "0xdAC17F958D2ee523a2206206994597C13D831ec7", balance: 2150,    value_usd: 2150.0, acquired_via: "purchase", verified: true, contract_verified: true, is_mintable: false, is_freezable: true, holder_count: 800000, liquidity_usd: 90000000 },
     { id: "tok7", network: "mainnet", symbol: "WETH", name: "Wrapped Ether",  token_contract: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", balance: 1.85,    value_usd: 5920.0, acquired_via: "purchase", verified: true, contract_verified: true, is_mintable: false, is_freezable: false, holder_count: 500000, liquidity_usd: 120000000 },
-    { id: "tok8", network: "mainnet", symbol: "USDC", name: "USDC-Rewards.com", token_contract: "0xdeadbeef00000000000000000000000000000008", balance: 10000, value_usd: 0.0, acquired_via: "airdrop", verified: false, contract_verified: false, is_mintable: true, is_freezable: true, transfer_fee_bps: 750, holder_count: 22, liquidity_usd: 4000, deployed_at: iso("2026-08-05") },
-    { id: "tok9", network: "mainnet", symbol: "🎁GIFT", name: "Free Gift Token", token_contract: "0xdeadbeef00000000000000000000000000000009", balance: 1000000, value_usd: 0.0, acquired_via: "airdrop", verified: false, contract_verified: false, is_mintable: true, is_freezable: true, transfer_fee_bps: 1500, holder_count: 12, liquidity_usd: 500, deployed_at: iso("2026-08-18") },
-    { id: "tok10", network: "mainnet", symbol: "CLAIM", name: "Claim 5,000 USDT Reward", token_contract: "0xdeadbeef0000000000000000000000000000000a", balance: 5000, value_usd: 0.0, acquired_via: "airdrop", verified: false, contract_verified: false, is_mintable: true, transfer_fee_bps: 1200, holder_count: 41, liquidity_usd: 2500, deployed_at: iso("2026-08-11") },
-    { id: "tok11", network: "mainnet", symbol: "AIRDROP", name: "t.me/airdropclaim", token_contract: "0xdeadbeef0000000000000000000000000000000b", balance: 250, value_usd: 0.0, acquired_via: "airdrop", verified: false, contract_verified: false, is_mintable: true, is_freezable: true, transfer_fee_bps: 500, holder_count: 55, liquidity_usd: 1000, deployed_at: iso("2026-08-14") },
+    { id: "tok8", network: "mainnet", symbol: "USDC", name: "USDC-Rewards.com", token_contract: "0xdeadbeef00000000000000000000000000000008", balance: 10000, value_usd: 0.0, acquired_via: "airdrop", verified: false, contract_verified: false, is_mintable: true, is_freezable: true, transfer_fee_bps: 750, holder_count: 22, liquidity_usd: 4000, deployed_at: daysAgo(26) },
+    { id: "tok9", network: "mainnet", symbol: "🎁GIFT", name: "Free Gift Token", token_contract: "0xdeadbeef00000000000000000000000000000009", balance: 1000000, value_usd: 0.0, acquired_via: "airdrop", verified: false, contract_verified: false, is_mintable: true, is_freezable: true, transfer_fee_bps: 1500, holder_count: 12, liquidity_usd: 500, deployed_at: daysAgo(13) },
+    { id: "tok10", network: "mainnet", symbol: "CLAIM", name: "Claim 5,000 USDT Reward", token_contract: "0xdeadbeef0000000000000000000000000000000a", balance: 5000, value_usd: 0.0, acquired_via: "airdrop", verified: false, contract_verified: false, is_mintable: true, transfer_fee_bps: 1200, holder_count: 41, liquidity_usd: 2500, deployed_at: daysAgo(20) },
+    { id: "tok11", network: "mainnet", symbol: "AIRDROP", name: "t.me/airdropclaim", token_contract: "0xdeadbeef0000000000000000000000000000000b", balance: 250, value_usd: 0.0, acquired_via: "airdrop", verified: false, contract_verified: false, is_mintable: true, is_freezable: true, transfer_fee_bps: 500, holder_count: 55, liquidity_usd: 1000, deployed_at: daysAgo(17) },
   ],
   NFTAsset: [
     { id: "nft1", name: "Reward Pass #1", collection: "Free Reward Club", token_id: "1", contract_address: "0xdeadbeef000000000000000000000000000000c1", chain: "ethereum", image_url: "https://attacker.example/track.png", acquired_via: "airdrop", unsolicited: true, status: "holding", note: "Unsolicited drop" },
