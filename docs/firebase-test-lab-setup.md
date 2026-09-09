@@ -4,18 +4,49 @@
 the pipeline. This file documents the GCP-side configuration the workflow needs
 to run.
 
-## Current state (2026-09-04)
+## Current state (2026-09-09)
 
-**Working.** Full rebuild landed 2026-09-04 afternoon on Firebase project
-`veyrnox-400ae` (Workspace-visible, project number 567659013773). Latest run
-`matrix-hhpcvb8uffw6a` completed 265 UI actions on Pixel 8 / Android 14 with
-zero crashes and zero ANRs against versionCode 41. **Android side needs no
-further owner action.**
+**The plumbing works. No crawl has ever passed.** Those are different claims and
+this section used to conflate them.
 
-That run is the only Test Lab evidence that exists, and it is bound to
-versionCode 41. Play Internal testing has since moved on — **versionCode 42
-(1.0.1) released 2026-09-05 21:30, and `main` is already at 43** — and neither
-has been through Test Lab. Do not read the clean 41 result as covering them.
+The wiring is genuinely fixed: the full rebuild landed 2026-09-04 on Firebase
+project `veyrnox-400ae` (Workspace-visible, project number 567659013773),
+matrices get created, devices get allocated, the APK and robo script upload,
+and results land in the GCS bucket.
+
+**But every matrix ever run has come back `Failed` / `Test failed to run`,
+including `matrix-hhpcvb8uffw6a`.** Established 2026-09-09 by reading the job
+logs:
+
+| matrix | versionCode | outcome |
+|---|---|---|
+| `matrix-hhpcvb8uffw6a` (Sep 4) | 41 | `Failed` · `Test failed to run`, ONE device (`shiba-34`), `Test time = 610` vs a 600s (`10m`) budget |
+| `matrix-1delt54g28ira` (Sep 4) | ~44 | `Failed` ×3 · `Test failed to run`, `Test time = 611/611/610` vs 600s |
+| `matrix-7rkpltfw6gsza` (Sep 9) | 48 | `Failed` ×3 · `Test failed to run`, `Test time = 1214/1211` vs a 1200s (`20m`) budget |
+
+Every device ran to its timeout and returned `toolResultsStep: null`,
+`toolLogs: []`, `toolOutputs: []`, `outcome: null`, `infrastructureFailure:
+null`. Doubling the timeout doubled the runtime and changed nothing else.
+
+**⚠ This section previously said `matrix-hhpcvb8uffw6a` "completed 265 UI
+actions on Pixel 8 / Android 14 with zero crashes and zero ANRs against
+versionCode 41", and that "Android side needs no further owner action". Both
+were wrong.** No UI-action count appears anywhere in that run's log; the figure
+has no traceable source. Zero crashes and zero ANRs is technically true and
+completely uninformative, because the crawl produced no results at all — the
+same output a crawl that never started produces. Android needs the root cause
+found before this workflow is evidence of anything.
+
+Diagnosis so far, from `docs/RELEASE-v1.0.1-PLAY-SUBMISSION.md` gate 3: not an
+install failure, not an infrastructure failure, not a crash. The APK is fine on
+inspection (Capacitor payload intact, no dev/bypass flags, robo script's first
+target still live in the source). The next step is the per-device `logcat` and
+`robo_results.pb` in the results bucket, which this workflow deliberately never
+prints because they may carry wallet state.
+
+The old versionCode-drift warning still applies and is now moot in the worst
+way: 41, ~44 and 48 have all been through Test Lab and none produced a result,
+so there is no clean run to mistakenly read forward onto a later build.
 
 **iOS side is still broken but in a different way** — SPM Capacitor graph
 fixed by PR #2316 (SharePlugin.swift now compiles), next blocker is code
