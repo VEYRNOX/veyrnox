@@ -329,6 +329,68 @@ Two consequences worth carrying:
 - **Not tracked — no watcher.** Nobody is monitoring this until someone looks. Do not
   report it as monitored, and do not invent a watcher name for it.
 
+### `morgan` — max severity: moderate — accepted 2026-09-09
+
+- **Advisory:** GHSA-jxfw-x594-9x9m — log forging via unescaped Unicode line separators.
+  A request field that reaches a log line can carry U+2028/U+2029, which several log
+  viewers treat as a line break, so an attacker-influenced request can forge additional
+  log entries. Vulnerable `< 1.12.0`; the tree carries `1.11.0`.
+- **Chain — dev-only, and TWO copies that behave differently.** Both are reached through
+  the appium E2E harness, and the distinction is the whole entry:
+  - **root** `node_modules/morgan`, required by `@appium/base-driver@10.8.0`;
+  - **nested** `node_modules/appium-uiautomator2-driver/node_modules/morgan`, inside that
+    driver's published shrinkwrap.
+- **Accounts for** 7 moderate findings as of 2026-09-09 at `origin/main` `2d97a064`
+  (`morgan` as the advisory root, plus `@appium/base-driver`, `@appium/base-plugin`,
+  `appium`, `appium-android-driver`, `appium-chromedriver` and
+  `appium-uiautomator2-driver` as dependents).
+- **Why accepted — both owners are already at latest, and the obvious override buys
+  nothing. Measured 2026-09-09, do not re-derive:**
+  1. **No upstream fix to resolve to.** `@appium/base-driver@latest` is `10.8.0` — the
+     version already resolved — and it pins `morgan` at an **exact** `1.11.0`, so no range
+     resolution anywhere reaches `1.12.0`. `appium-uiautomator2-driver@latest` is `8.6.1`,
+     likewise already resolved.
+  2. **The nested copy cannot be moved from this repo at all.** The published
+     `appium-uiautomator2-driver@8.6.1` tarball ships its own `npm-shrinkwrap.json`
+     (265 entries) pinning `node_modules/morgan` at `1.11.0`. Per the shrinkwrap mechanism
+     documented at the top of this section, that outranks both our `package-lock.json` and
+     our `overrides`; the only remediation is a version bump of the shrinkwrap OWNER, and
+     there is no newer driver to bump to.
+  3. **An `overrides` entry to `^1.12.0` moves the root copy and changes NOTHING that the
+     audit can see.** Measured: root `morgan` resolves to `1.12.0`, the nested copy stays
+     at `1.11.0`, and `npm audit` still reports **9 moderate** with all seven chain entries
+     flagged and `morgan` still an advisory root via the nested node. Note the shape — this
+     is the `brace-expansion` / `stream-json` trap inverted: there a green audit hid a
+     broken override, here an unchanged audit hides a real but partial fix. Either way the
+     audit number is not the thing to reason from.
+  4. **Low consequence even where it is reachable.** `morgan` is dev-only HTTP request
+     logging inside the appium server during E2E runs, against our own test app; the
+     forged-log output is not read by any automated gate.
+- **What was deliberately NOT done, and why it must stay not-done unless someone changes
+  their mind on purpose:** the `overrides` entry from point 3 was evaluated and rejected.
+  It forces a semver-minor onto a package that pins exact, removes one vulnerable copy from
+  disk, and produces zero movement in the reported findings — so a future reader would
+  reasonably mistake it for a working fix and stop looking. If it is ever added, add it
+  with this paragraph amended, not silently.
+- **Revisit trigger:** `@appium/base-driver` widens or bumps its `morgan` pin to admit
+  `>= 1.12.0` (then the root copy is a plain lockfile update); OR
+  `appium-uiautomator2-driver` publishes a version whose shrinkwrap carries
+  `morgan >= 1.12.0` (then the nested copy clears on a driver bump, which is the only
+  thing that ever clears it); OR the driver stops publishing a shrinkwrap; OR the advisory
+  is re-rated above moderate; OR the appium E2E harness is dropped from `devDependencies`
+  entirely. On any of these, re-derive from the resolved tree — and per this file's own
+  rule, retire the entry only once the vulnerable package is actually gone from the
+  INSTALLED tree, confirmed with `npm ci` and an on-disk version check rather than an
+  `npm audit` verdict.
+- **Tracked:** `veyrnox-morgan-upstream-watch`, weekly. Its runbook lands in the same PR as
+  this entry; the scheduler registration is separate, because the task resolves its runbook
+  from `origin/main` and registering it first would give it nothing to resolve. **The
+  scheduler registry is not in git, so this line is exactly the kind of claim this file
+  keeps recording as decaying silently** — confirm with `list_scheduled_tasks` (check
+  `enabled`, and check `lastRunAt` against the merge time of any runbook change) rather
+  than trusting it. See the `brace-expansion` entry for a watcher whose "Tracked" claim was
+  false for four weeks because it was registered DISABLED and never ran once.
+
 ## Retired residuals
 
 Entries that were accepted, then genuinely cleared. Kept as a record so a future reader
