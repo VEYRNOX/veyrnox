@@ -17,7 +17,12 @@ describe('evaluateTokenContractRisk', () => {
       liquidity_usd: 1500,
       holder_count: 42,
       contract_verified: false,
-      deployed_at: '2026-08-10T00:00:00.000Z',
+      // Relative, not a literal date. `isRecentDeployment` compares against
+      // Date.now(), so a hardcoded timestamp silently ages out of
+      // CONTRACT_REVIEW_WINDOW_DAYS and turns this into a time bomb — the
+      // previous '2026-08-10T00:00:00.000Z' detonated on 2026-09-09, exactly
+      // 30 days later, failing CI on every open PR at once.
+      deployed_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     });
 
     expect(risk.severity).toBe('high');
