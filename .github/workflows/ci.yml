@@ -1,5 +1,15 @@
 name: CI
 
+# The effective SHA is always in the run title, so a caller that dispatched
+# this workflow for one exact commit can find ITS run in `gh run list` without
+# guessing. `gh workflow run --ref` only accepts a branch or tag (a SHA there
+# is HTTP 422: No ref found, run 31932385069), so a dispatched run's head_sha
+# is whatever main's tip was when GitHub created it — NOT the SHA the caller
+# asked for. Matching on head_sha is therefore wrong on a busy branch; it cost
+# firebase-test-lab.yml runs 34197672875 and 34328144917, where the build
+# succeeded and the gate could not recognise it.
+run-name: ci · ${{ inputs.target_sha || github.sha }}
+
 on:
   pull_request:
   push:
@@ -26,6 +36,11 @@ on:
         type: boolean
         required: false
         default: false
+      target_sha:
+        description: 'Full 40-hex commit SHA to build. Empty = the dispatched branch tip.'
+        type: string
+        required: false
+        default: ''
 
 # Cancel superseded runs on the same ref to save minutes.
 #
@@ -76,6 +91,51 @@ env:
   VITE_EDGE_BASE: ${{ vars.VITE_EDGE_BASE }}
 
 jobs:
+  # --------------------------------------------------------------------------
+  # target_sha is fed straight to `actions/checkout`'s `ref:` by every job
+  # below, so it must be a full 40-hex commit SHA and nothing else. A branch
+  # name would resolve — and would silently build a different tree than the
+  # caller pinned, which is the exact failure target_sha exists to remove.
+  #
+  # Every checkout job depends on this guard. A dispatch may request an exact
+  # SHA only when that commit is already reachable from main; this prevents an
+  # arbitrary ref from executing in a workflow that restores shared caches.
+  # --------------------------------------------------------------------------
+  target-sha-guard:
+    name: target_sha is a full commit SHA
+    runs-on: ubuntu-latest
+    outputs:
+      effective_sha: ${{ steps.resolve.outputs.effective_sha }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - name: Resolve and validate
+        id: resolve
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TARGET_SHA:-}" ]; then
+            echo "effective_sha=$EVENT_SHA" >> "$GITHUB_OUTPUT"
+            echo "No target_sha — building the event SHA."
+            exit 0
+          fi
+          if ! printf '%s' "$TARGET_SHA" | grep -qE '^[0-9a-f]{40}$'; then
+            echo "::error::target_sha must be a full 40-hex commit SHA; got '${TARGET_SHA}'."
+            exit 1
+          fi
+          git fetch --no-tags origin main "$TARGET_SHA"
+          if ! git merge-base --is-ancestor "$TARGET_SHA" origin/main; then
+            echo "::error::target_sha must name a commit reachable from main."
+            exit 1
+          fi
+          echo "effective_sha=$(git rev-parse "$TARGET_SHA^{commit}")" >> "$GITHUB_OUTPUT"
+          echo "target_sha ${TARGET_SHA} accepted."
+
   # Diff-based mainnet activation flag change gate (Critical Blocker #3,
   # Option A). Mainnet is already live and audited (2026-06-17) — this job
   # does NOT gate "is mainnet on", it gates "did this PR CHANGE a mainnet
@@ -94,6 +154,7 @@ jobs:
   # no checkout, under pull-requests: write, and does the label + comment.
   mainnet-flag-detect:
     runs-on: ubuntu-latest
+    needs: target-sha-guard
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
@@ -102,10 +163,17 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          ref: ${{ github.sha }}
           # Full history so `git diff <base>...HEAD` can find the merge-base;
           # a shallow checkout would make every PR look like it changed
           # everything (or fail the diff outright).
           fetch-depth: 0
+      - name: Check out validated target
+        env:
+          VALIDATED_SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
+        run: |
+          git fetch --no-tags origin "$VALIDATED_SHA"
+          git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -175,8 +243,17 @@ jobs:
 
   verify:
     runs-on: ubuntu-latest
+    needs: target-sha-guard
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+      - name: Check out validated target
+        env:
+          VALIDATED_SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
+        run: |
+          git fetch --no-tags origin "$VALIDATED_SHA"
+          git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -280,8 +357,17 @@ jobs:
   # branch protection.
   unit-tests:
     runs-on: ubuntu-latest
+    needs: target-sha-guard
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+      - name: Check out validated target
+        env:
+          VALIDATED_SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
+        run: |
+          git fetch --no-tags origin "$VALIDATED_SHA"
+          git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -293,9 +379,17 @@ jobs:
 
   android-unit-tests:
     runs-on: ubuntu-latest
-    needs: verify
+    needs: [verify, target-sha-guard]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+      - name: Check out validated target
+        env:
+          VALIDATED_SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
+        run: |
+          git fetch --no-tags origin "$VALIDATED_SHA"
+          git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -330,9 +424,17 @@ jobs:
   # release/signing path stays where it is.
   store-flavor-compile:
     runs-on: ubuntu-latest
-    needs: verify
+    needs: [verify, target-sha-guard]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+      - name: Check out validated target
+        env:
+          VALIDATED_SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
+        run: |
+          git fetch --no-tags origin "$VALIDATED_SHA"
+          git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -365,9 +467,17 @@ jobs:
       (github.ref == 'refs/heads/main' && github.event_name != 'pull_request')
       || (github.event_name == 'workflow_dispatch'
       && (inputs.build_release == true || inputs.build_staging_release == true))
-    needs: verify
+    needs: [verify, target-sha-guard]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+      - name: Check out validated target
+        env:
+          VALIDATED_SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
+        run: |
+          git fetch --no-tags origin "$VALIDATED_SHA"
+          git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -496,9 +606,17 @@ jobs:
       (github.ref == 'refs/heads/main' && github.event_name != 'pull_request')
       || (github.event_name == 'workflow_dispatch'
       && (inputs.build_release == true || inputs.build_staging_release == true))
-    needs: verify
+    needs: [verify, target-sha-guard]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+      - name: Check out validated target
+        env:
+          VALIDATED_SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
+        run: |
+          git fetch --no-tags origin "$VALIDATED_SHA"
+          git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -584,9 +702,17 @@ jobs:
     if: >-
       (github.ref == 'refs/heads/main' && github.event_name == 'push')
       || (github.event_name == 'workflow_dispatch' && inputs.build_firebase_test == true)
-    needs: verify
+    needs: [verify, target-sha-guard]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+      - name: Check out validated target
+        env:
+          VALIDATED_SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
+        run: |
+          git fetch --no-tags origin "$VALIDATED_SHA"
+          git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -909,7 +1035,7 @@ jobs:
   release-cert-guard:
     name: Release-cert guard rejects wrong fingerprints
     runs-on: ubuntu-latest
-    needs: release-guard-scope
+    needs: [target-sha-guard, release-guard-scope]
     # This job ALWAYS runs and ALWAYS reports a conclusion, so that it can be added
     # to the branch ruleset's required checks.
     #
@@ -945,7 +1071,16 @@ jobs:
             echo "### Release-cert guard: not needed for this change" >> "$GITHUB_STEP_SUMMARY"
           fi
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
         if: env.NEEDED == 'true'
+      - name: Check out validated target
+        if: env.NEEDED == 'true'
+        env:
+          VALIDATED_SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
+        run: |
+          git fetch --no-tags origin "$VALIDATED_SHA"
+          git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         if: env.NEEDED == 'true'
         with:
