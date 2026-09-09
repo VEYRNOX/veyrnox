@@ -1596,11 +1596,42 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
       or scope to the structural container — the heading, the blockquote marker, the
       addendum block — never to the phrase alone. A doc that records a correction will
       always contain the thing it corrected.
+  - **Grepping a live log can match the grep itself, because the tool logs your
+    commands.** Distinct from the four instances above: there the artifact contained a
+    *record* of the thing being searched for; here the artifact records the *search*,
+    so every query writes its own match and the count climbs as you look.
+    **2026-09-09, three times in one hour**, measuring whether a claude-mem fix had
+    worked. Its PostToolUse hook writes each Bash command into
+    `~/.claude-mem/logs/claude-mem-<date>.log`, so
+    `grep -c "Worker version mismatch" <log>` counts the recycles AND every command
+    that named the string. Reported 4 recycles after a patch that had actually stopped
+    them at 0, then 3 `Issue #817` discards that were likewise 0 — and that second one
+    became a **confident wrong conclusion stated to the user** ("still fires, so it is
+    not version-driven") and was one step from a wrong public comment on
+    `thedotmack/claude-mem#3940`. Corrected counts were 58/63 before the patch and 0/0
+    after, i.e. exactly the opposite conclusion.
+    Anchor to the log's own line shape, not the payload:
+
+    ```bash
+    grep -E "^\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:.]+\] \[" "$LOG" | grep -cF "$NEEDLE"
+    ```
+
+    Genuine entries start with a timestamp and level; an echoed command is raw text
+    with no prefix, which is why the anchor removes it. Verified 2026-09-09 by echoing
+    a nonsense token and then grepping for it: raw `grep -cF` returned 2, the anchored
+    form returned 0.
+    Assume any log written by the harness you are running under is contaminated by your
+    own commands. To confirm, emit a nonsense token in one call and grep for it in the
+    **next** one — the echo is written after the command completes, so a command cannot
+    detect its own echo and a single-call self-test always reports a reassuring 0.
   - **Note which way each failure points.** The `-F` bug fails DANGEROUS: it stays silent
     and reports a clean result that is wrong. The absence-check-hits-its-own-comment bug
-    fails SAFE: it cries wolf on correct work. Both come from a check that cannot tell
-    code from prose, and only the second one announces itself — so finding one is a
-    prompt to go looking for the other, not evidence that verification is working.
+    fails SAFE: it cries wolf on correct work. The log-echo bug fails BOTH ways, which is
+    what makes it the worst of the three: it inflates a count, so it condemns a working
+    fix *and* manufactures evidence for whatever hypothesis the inflated number happens
+    to support. All three come from a check that cannot tell the thing from a mention of
+    the thing, and only the second announces itself — so finding one is a prompt to go
+    looking for the others, not evidence that verification is working.
 - **Mutation-check every new test pin, or you ship coverage that cannot fail.** Three
   pins written on 2026-09-03 were broken on the first attempt and ALL THREE looked green:
   - **A prefix ate the assertion.** A status-tag pin used `startsWith()` against
