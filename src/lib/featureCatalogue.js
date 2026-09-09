@@ -559,8 +559,13 @@ export const FEATURE_CATEGORIES = [
         name: 'Android App',
         displayName: 'Android Play Store',
         status: 'built',
-        summary: 'Native Android shell — Play internal testing',
-        explanation: 'Built. Native Android shell via Capacitor, current submission train 1.0.1 / versionCode 10 with Play internal-testing upload path wired in CI. Upload key reset completed. Play Billing (IAP) device-verified on the internal track. Release build end-to-end verified (signed AAB, jarsigner, release cert fingerprint guard). Submission remains on hold pending the pre-submission verification checklist (Play Pre-launch report, Android Vitals crash/ANR check, fresh-device golden-path walk). NOT verified: a clean Pre-launch report for versionCode 10 is still console-only and pending, RASP on a Play install not device-verified, no production review submission made.',
+        summary: 'Native Android shell — submitted for Play review',
+        // No versionCode in this copy, deliberately. It moved eight times between
+        // two corrections of the same number elsewhere in the repo, and a build
+        // number a user cannot act on is not worth the decay. The release train
+        // (1.0.1) is what identifies this entry; the current code lives in
+        // android/app/build.gradle. See PR #2471.
+        explanation: 'Built. Native Android shell via Capacitor on the 1.0.1 release train, with the Play upload path wired in CI. Upload key reset completed. Play Billing (IAP) device-verified on the internal track. Release build end-to-end verified (signed AAB, jarsigner, release cert fingerprint guard). Submitted for Google Play review on 8 September 2026 from the closed testing track, with managed publishing on — approval stages the release rather than publishing it. NOT verified: submitted is not approved and the app is not yet publicly listed on Play; no Play Pre-launch report has ever been generated for any build of this app, so the automated crash sweep standing in for it is a Firebase Test Lab run against an earlier build, not the submitted one; Android Vitals cannot report until the app publishes; RASP on a Play install is not device-verified. The pre-submission golden-path walk was completed on a stock device by the owner.',
       },
       {
         name: 'Samsung Galaxy Store',

@@ -90,10 +90,44 @@ describe('key features are built, not roadmap — and not verified either', () =
 });
 
 describe('release-track wording stays current', () => {
-  it('Android App cites the current 1.0.1 / versionCode 10 train, not the retired versionCode 6 copy', () => {
+  // This block used to pin the literal string '1.0.1 / versionCode 10'. That is
+  // why the copy still said versionCode 10 while build.gradle was at 48 — the
+  // pin FROZE a decaying number and made correcting it a test change nobody had
+  // a reason to make. It also let the surrounding sentences go false unnoticed:
+  // the copy claimed submission "remains on hold" and that no review submission
+  // had been made, for a day after both stores were submitted (2026-09-08).
+  //
+  // So these assert the HONESTY PROPERTIES that must hold, not a build number.
+  // Each one names a specific way this copy has been or could go wrong.
+  it('carries no versionCode at all — a build number a user cannot act on only decays', () => {
     const feature = byName('Android App');
-    expect(feature.explanation).toContain('1.0.1 / versionCode 10');
-    expect(feature.explanation).not.toContain('versionCode 6');
-    expect(feature.explanation).toContain('Pre-launch report');
+    expect(feature.explanation).not.toMatch(/versionCode\s*\d+/i);
+    expect(feature.summary).not.toMatch(/versionCode\s*\d+/i);
+    // The release train still identifies the entry; only the build number goes.
+    expect(feature.explanation).toContain('1.0.1');
+  });
+
+  it('says submitted for review, and does not imply the hold is still in force', () => {
+    const feature = byName('Android App');
+    expect(feature.explanation).toMatch(/submitted for google play review/i);
+    // The two sentences that went false on 2026-09-08.
+    expect(feature.explanation).not.toMatch(/remains on hold/i);
+    expect(feature.explanation).not.toMatch(/no production review submission made/i);
+  });
+
+  it('does not let "submitted" read as approved, published, or listed (I4)', () => {
+    const feature = byName('Android App');
+    expect(feature.explanation).toMatch(/submitted is not approved/i);
+    expect(feature.explanation).toMatch(/not yet publicly listed/i);
+  });
+
+  it('still discloses the Pre-launch report gap and that the Robo run is on an earlier build', () => {
+    const feature = byName('Android App');
+    expect(feature.explanation).toMatch(/pre-launch report/i);
+    // F-2 (diff-2026-09-09): no Robo run exists for the submitted build. If that
+    // is ever closed by a real run on the submitted versionCode, this assertion
+    // is the thing that sends you back here to update the copy.
+    expect(feature.explanation).toMatch(/earlier build/i);
+    expect(feature.explanation).toMatch(/rasp on a play install is not device-verified/i);
   });
 });
