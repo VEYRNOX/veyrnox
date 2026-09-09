@@ -120,7 +120,7 @@ import EntryTiles from "@/components/EntryTiles";
 import { getAuthModel, setAuthModel, shouldAutoCacheTypedPin } from "@/lib/authModel";
 import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
 import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
-import { WEB_VAULT_ERR } from "@/lib/vaultErrors";
+import { WEB_VAULT_ERR, NATIVE_VAULT_ERR } from "@/lib/vaultErrors";
 import { Capacitor } from "@capacitor/core";
 import { isRecoverableSeedInputError } from "@/lib/pendingPinFlow";
 import {
@@ -1270,6 +1270,17 @@ export default function WalletEntry() {
         toast.error(msg);
         return;
       }
+      if (e?.code === NATIVE_VAULT_ERR.DEVICE_NOT_SECURE) {
+        // Recoverable environment constraint: the device has no lock screen /
+        // biometry enrolled, so hardware KEK cannot bind a user-auth Keystore
+        // key. Keep the pending PIN so the user can set a device lock and
+        // retry without re-entering it. This is the Play build-5 rejection
+        // path — a reviewer/emulator hits this on a wide-open device.
+        const msg = e.userMessage || "Please set a device passcode or biometric before creating a wallet.";
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
       clearPendingPin();
       const msg = "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
       setError(msg);
@@ -1328,6 +1339,15 @@ export default function WalletEntry() {
         // Web mainnet vaults require a ≥12-char password; the user needs to go back
         // and restart onboarding with a full password instead of a PIN.
         const msg = e.userMessage || "Web vault PIN must be at least 8 digits.";
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+      if (e?.code === NATIVE_VAULT_ERR.DEVICE_NOT_SECURE) {
+        // Same recoverable environment constraint as doCreateWallet. Keep the
+        // pending PIN so the user can set a device lock and retry the import
+        // without re-entering it.
+        const msg = e.userMessage || "Please set a device passcode or biometric before importing a wallet.";
         setError(msg);
         toast.error(msg);
         return;

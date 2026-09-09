@@ -10,6 +10,16 @@ export const WEB_VAULT_ERR = Object.freeze({
   PASSWORD_TOO_SHORT: 'WEB_VAULT_PASSWORD_TOO_SHORT',
 });
 
+// Native (iOS/Android) vault machine codes the UI branches on. Same facade
+// contract: string VALUES must stay byte-for-byte identical to what
+// src/wallet-core/keystore/native.js throws. DEVICE_NOT_SECURE fires on a
+// Create Wallet attempt when KeyguardManager.isDeviceSecure() === false —
+// hardware KEK cannot bind a Keystore user-auth key without a device lock,
+// so vault creation refuses. Recoverable: user sets a lock and retries.
+export const NATIVE_VAULT_ERR = Object.freeze({
+  DEVICE_NOT_SECURE: 'DEVICE_NOT_SECURE',
+});
+
 // KEK machine codes the UI branches on during unlock. Same facade contract as
 // above: the string VALUES must stay byte-for-byte identical to what
 // src/wallet-core/keystore/kek.js exports as KEK_ERR (which throws them), and
