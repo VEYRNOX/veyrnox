@@ -377,15 +377,35 @@ Upload key: `veyrnox-upload.jks` (SHA-1 `97:5A:05:8E…:BA:B2:F3`). App signing 
 Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Secrets
 (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`,
 `RELEASE_CERT_SHA256`) updated 2026-07-22 for CI.
-- **versionCode: `build.gradle` is at 40 on `main`** (bumped 2026-08-31, #2197).
+- **versionCode: THIS BULLET DOES NOT STATE THE CURRENT VALUE, DELIBERATELY.
+  Read it from the file:**
+
+  ```bash
+  git show origin/main:android/app/build.gradle | grep -n 'versionCode'
+  ```
+
+  There is still exactly one declaration — product flavours added in #1890 do
+  NOT override it — but no line number is given here either, because that moved
+  too (it was line 25, it is now further down).
+
+  **Twice now this line has been wrong, and the second time it was wrong about
+  its own remedy.** It said `32` until 2026-09-01, eight bumps behind. It was
+  corrected to `40`, and by 2026-09-09 the real value was `48` — eight bumps
+  behind again — while the correction itself told readers to consult
+  `android/app/build.gradle:25`, a line that no longer held the declaration. A
+  number that moves almost daily does not survive being written down, and
+  neither does a pointer to where it lives. **Do not "helpfully" restore the
+  current value here.** Writing it down is the defect; the command above is the
+  fix.
+
+  The bump ledger below is kept for a different reason and is still worth
+  maintaining: a versionCode consumed on Play can never be reused, so this is
+  the record of what has been spent, not a statement of where the counter is.
   Bumps: 5→6 (#1319), 6→7 (#1737), 7→8 (#1747), 8→10 (#1890), 10→11 (#1974),
   11→32 (#1975, PLR Robo onboard), 32→33 (#1986), 33→34 (#2031), 34→35 (#2033),
-  35→36 (#2036), 36→37 (#2107), 37→38 (#2137), 38→39 (#2161), 39→40 (#2197).
-  Product flavours added in #1890 do NOT override `versionCode` — still one
-  declaration, at `android/app/build.gradle:25`.
-  **This line said 32 until 2026-09-01, eight bumps behind.** A number that moves
-  almost daily does not survive being written down; re-read
-  `android/app/build.gradle:25` rather than trusting this bullet.
+  35→36 (#2036), 36→37 (#2107), 37→38 (#2137), 38→39 (#2161), 39→40 (#2197),
+  40→41 (#2302), 41→42 (#2346), 42→43 (#2355), 43→44 (`ae825dbf`, first Closed
+  testing upload), 44→45 (#2397), 45→46 (#2407), 46→47 (#2410), 47→48 (#2433).
   - **Codes 1–11 consumed on Play.** 1–5 from early uploads; 10–11 consumed by
     `firebase-test-lab.yml`'s duplicate `publish-android-staging` job (removed in
     #1980) before `ci.yml`'s `publish-to-play-internal` could use them.

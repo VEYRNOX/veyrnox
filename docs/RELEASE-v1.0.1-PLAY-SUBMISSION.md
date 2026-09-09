@@ -22,7 +22,7 @@ Owner: Al Jobson. Last updated: 2026-09-08.
 
 | Field | Value | Verified |
 |---|---|---|
-| versionCode submitted | 48 | `android/app/build.gradle:25` on origin/main |
+| versionCode submitted | 48 | `android/app/build.gradle` on origin/main (grep `versionCode` — the declaration has moved line twice, so no line number is cited here) |
 | versionName | 1.0.1 | Play Console (Closed testing - Alpha, Internal testing) |
 | Track submitted from | Closed testing - Alpha (promoted from Internal testing during session) | Play Console showed Closed testing was 4/5 complete, needed only Send-for-review |
 | Publish path | `ci.yml → publish-to-play-internal` | single upload path — Firebase Test Lab duplicate removed in #1980 |
