@@ -97,32 +97,43 @@ jobs:
   # name would resolve — and would silently build a different tree than the
   # caller pinned, which is the exact failure target_sha exists to remove.
   #
-  # This job cannot PREVENT a concurrent job checking out a malformed ref: it
-  # has no `needs:` edge to them, deliberately, because making nine jobs wait
-  # on a five-second check would add a runner boot to every push. It does not
-  # need to. The only consumer of this workflow's artifacts — the
-  # firebase-test-lab.yml gate — requires the whole run to conclude `success`
-  # before it downloads anything, so a malformed SHA reds the run and the
-  # artifact is refused. Fail-closed at the point of use.
+  # Every checkout job depends on this guard. A dispatch may request an exact
+  # SHA only when that commit is already reachable from main; this prevents an
+  # arbitrary ref from executing in a workflow that restores shared caches.
   # --------------------------------------------------------------------------
   target-sha-guard:
     name: target_sha is a full commit SHA
     runs-on: ubuntu-latest
+    outputs:
+      effective_sha: ${{ steps.resolve.outputs.effective_sha }}
     timeout-minutes: 5
     steps:
-      - name: Validate
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - name: Resolve and validate
+        id: resolve
         env:
           TARGET_SHA: ${{ inputs.target_sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           if [ -z "${TARGET_SHA:-}" ]; then
-            echo "No target_sha — building the dispatched ref's tip."
+            echo "effective_sha=$EVENT_SHA" >> "$GITHUB_OUTPUT"
+            echo "No target_sha — building the event SHA."
             exit 0
           fi
           if ! printf '%s' "$TARGET_SHA" | grep -qE '^[0-9a-f]{40}$'; then
             echo "::error::target_sha must be a full 40-hex commit SHA; got '${TARGET_SHA}'."
             exit 1
           fi
+          git fetch --no-tags origin main "$TARGET_SHA"
+          if ! git merge-base --is-ancestor "$TARGET_SHA" origin/main; then
+            echo "::error::target_sha must name a commit reachable from main."
+            exit 1
+          fi
+          echo "effective_sha=$(git rev-parse "$TARGET_SHA^{commit}")" >> "$GITHUB_OUTPUT"
           echo "target_sha ${TARGET_SHA} accepted."
 
   # Diff-based mainnet activation flag change gate (Critical Blocker #3,
@@ -143,6 +154,7 @@ jobs:
   # no checkout, under pull-requests: write, and does the label + comment.
   mainnet-flag-detect:
     runs-on: ubuntu-latest
+    needs: target-sha-guard
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
@@ -151,7 +163,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ inputs.target_sha }}
+          ref: ${{ needs.target-sha-guard.outputs.effective_sha }}
           # Full history so `git diff <base>...HEAD` can find the merge-base;
           # a shallow checkout would make every PR look like it changed
           # everything (or fail the diff outright).
@@ -225,10 +237,11 @@ jobs:
 
   verify:
     runs-on: ubuntu-latest
+    needs: target-sha-guard
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ inputs.target_sha }}
+          ref: ${{ needs.target-sha-guard.outputs.effective_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -332,10 +345,11 @@ jobs:
   # branch protection.
   unit-tests:
     runs-on: ubuntu-latest
+    needs: target-sha-guard
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ inputs.target_sha }}
+          ref: ${{ needs.target-sha-guard.outputs.effective_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -347,11 +361,11 @@ jobs:
 
   android-unit-tests:
     runs-on: ubuntu-latest
-    needs: verify
+    needs: [verify, target-sha-guard]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ inputs.target_sha }}
+          ref: ${{ needs.target-sha-guard.outputs.effective_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -386,11 +400,11 @@ jobs:
   # release/signing path stays where it is.
   store-flavor-compile:
     runs-on: ubuntu-latest
-    needs: verify
+    needs: [verify, target-sha-guard]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ inputs.target_sha }}
+          ref: ${{ needs.target-sha-guard.outputs.effective_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -423,11 +437,11 @@ jobs:
       (github.ref == 'refs/heads/main' && github.event_name != 'pull_request')
       || (github.event_name == 'workflow_dispatch'
       && (inputs.build_release == true || inputs.build_staging_release == true))
-    needs: verify
+    needs: [verify, target-sha-guard]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ inputs.target_sha }}
+          ref: ${{ needs.target-sha-guard.outputs.effective_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -556,11 +570,11 @@ jobs:
       (github.ref == 'refs/heads/main' && github.event_name != 'pull_request')
       || (github.event_name == 'workflow_dispatch'
       && (inputs.build_release == true || inputs.build_staging_release == true))
-    needs: verify
+    needs: [verify, target-sha-guard]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ inputs.target_sha }}
+          ref: ${{ needs.target-sha-guard.outputs.effective_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -646,11 +660,11 @@ jobs:
     if: >-
       (github.ref == 'refs/heads/main' && github.event_name == 'push')
       || (github.event_name == 'workflow_dispatch' && inputs.build_firebase_test == true)
-    needs: verify
+    needs: [verify, target-sha-guard]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ inputs.target_sha }}
+          ref: ${{ needs.target-sha-guard.outputs.effective_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -973,7 +987,7 @@ jobs:
   release-cert-guard:
     name: Release-cert guard rejects wrong fingerprints
     runs-on: ubuntu-latest
-    needs: release-guard-scope
+    needs: [target-sha-guard, release-guard-scope]
     # This job ALWAYS runs and ALWAYS reports a conclusion, so that it can be added
     # to the branch ruleset's required checks.
     #
@@ -1010,7 +1024,7 @@ jobs:
           fi
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ inputs.target_sha }}
+          ref: ${{ needs.target-sha-guard.outputs.effective_sha }}
         if: env.NEEDED == 'true'
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         if: env.NEEDED == 'true'

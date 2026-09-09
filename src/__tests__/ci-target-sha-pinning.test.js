@@ -7,8 +7,9 @@
 // green CI build sitting in a run they could not identify.
 //
 // Two halves keep that closed, and BOTH have to stay:
-//   1. ci.yml checks out `inputs.target_sha` in every job, so the dispatched
-//      run builds the requested tree wherever the branch has moved.
+//   1. ci.yml checks out the guard's validated SHA in every job, so the
+//      dispatched run builds the requested main-tree wherever the branch has
+//      moved without accepting an arbitrary ref into shared caches.
 //   2. ci.yml's run-name carries the effective SHA, so the caller can find
 //      its run without head_sha.
 // Half of this fix is worse than none: pinning the checkout while matching on
@@ -36,7 +37,8 @@ const ci = stripComments(read('.github/workflows/ci.yml'));
 const testLab = stripComments(read('.github/workflows/firebase-test-lab.yml'));
 
 const CHECKOUT = 'actions/checkout@';
-const REF_PIN = 'ref: ${{ inputs.target_sha }}';
+const GUARDED_REF = 'ref: ${{ needs.target-sha-guard.outputs.effective_sha }}';
+const RAW_INPUT_REF = 'ref: ${{ inputs.target_sha }}';
 
 describe('ci.yml SHA pinning', () => {
   it('accepts target_sha and validates it before anything trusts it', () => {
@@ -46,13 +48,16 @@ describe('ci.yml SHA pinning', () => {
     expect(ci).toContain("grep -qE '^[0-9a-f]{40}$'");
   });
 
-  it('pins EVERY checkout to target_sha, not just the ones that build APKs', () => {
+  it('pins every consumer checkout to the guarded SHA', () => {
     // A single unpinned checkout builds the branch tip into an otherwise
     // pinned run — a mixed tree, which is worse than an honest mismatch.
     const checkouts = ci.split(CHECKOUT).length - 1;
-    const pins = ci.split(REF_PIN).length - 1;
+    const pins = ci.split(GUARDED_REF).length - 1;
     expect(checkouts).toBeGreaterThan(0);
-    expect(pins).toBe(checkouts);
+    // The guard has one trusted event-tree checkout to validate ancestry; all
+    // other checkouts consume its validated SHA.
+    expect(pins).toBe(checkouts - 1);
+    expect(ci).not.toContain(RAW_INPUT_REF);
   });
 
   it('puts the effective SHA in the run name so a caller can find its run', () => {
