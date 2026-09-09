@@ -1308,12 +1308,22 @@ export default function WalletEntry() {
   // Slice L (2026-08-11): auto-heal pre-vault explore leak (see comment above
   // the render-time null-return below). Fires only when the leak-condition
   // matches; leaveExplore + setView run once, then re-render lands correctly.
+  //
+  // 2026-09-09: also guard on `!error`. doCreateWallet's DEVICE_NOT_SECURE
+  // branch (PR #2484) sets an actionable error message and returns without
+  // navigating; but its earlier setChosenPath(null) makes THIS effect's
+  // guard match, and the auto-heal route to entry-tiles immediately blows
+  // the error message away. FTL run 34386235944 tripped assertion #2
+  // (new copy present) for exactly this reason — bytes were in the APK,
+  // fix code ran, the message was set, then Slice L drove past it. Same
+  // trap exists for PASSWORD_TOO_SHORT in principle; the shared guard
+  // covers both without needing a branch-specific escape.
   useEffect(() => {
-    if (vaultExists === false && exploreMode && !generatedSeed && !chosenPath) {
+    if (vaultExists === false && exploreMode && !generatedSeed && !chosenPath && !error) {
       leaveExplore();
       setView("entry-tiles");
     }
-  }, [vaultExists, exploreMode, generatedSeed, chosenPath, leaveExplore]);
+  }, [vaultExists, exploreMode, generatedSeed, chosenPath, error, leaveExplore]);
 
   // PHASE 2 (import): import an existing seed under the in-memory pendingPin via the
   // provider method (PIN-cohort re-provision, so the device stays PIN cohort, never
@@ -1624,7 +1634,10 @@ export default function WalletEntry() {
   // still land here. Kill it wholesale — pre-vault users route to entry-tiles;
   // the useEffect above forces leaveExplore + setView on the transition.
   // Render null this frame so the empty explore dashboard never shows.
-  if (vaultExists === false && exploreMode && !generatedSeed && !chosenPath) {
+  // 2026-09-09: matching `!error` guard to the effect above. Same intent —
+  // an error message needs to render on the current view, not be replaced
+  // by a blank frame while the effect races to route to entry-tiles.
+  if (vaultExists === false && exploreMode && !generatedSeed && !chosenPath && !error) {
     return null;
   }
 
