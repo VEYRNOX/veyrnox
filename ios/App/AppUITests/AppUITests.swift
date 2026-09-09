@@ -36,24 +36,15 @@ final class AppUITests: XCTestCase {
         // A Capacitor app renders inside a WKWebView; XCUITest matches HTML
         // buttons by their aria-label OR visible text. Every predicate below
         // matches BOTH via NSPredicate on `label` (label reflects both).
-        // 1. Telemetry consent screen may appear before the entry tiles
-        //    (2026-07-26 addition). Dismiss it with the deny path — the smoke
-        //    is not opting real data into anything. Tolerate its absence: on
-        //    a device with prior consent state the screen is skipped.
-        //    "No thanks" is telemetry_consent.cta_deny in
-        //    src/i18n/locales/en/security.json.
-        tapButtonIfPresent(app: app, label: "No thanks", timeout: 6)
-
-        // 1b. BiometricConsent (#2129, 2026-08-27) — rendered between telemetry
-        //     consent and the entry tiles when Capacitor.isNativePlatform() is
-        //     true and the seen-marker is absent. Before #2149 wired the
-        //     --uitest-fresh-install flag through AppDelegate the marker leaked
-        //     across runs and this screen never re-appeared in CI, which is why
-        //     the test could reach New wallet without dismissing it. On a stock
-        //     simulator the "Not now" path is the honest choice: no biometric is
-        //     enrolled. Tolerate its absence — the probe silently skips when
-        //     getBiometricStatus() reports available: false.
-        tapButtonIfPresent(app: app, label: "Not now", timeout: 6)
+        // 1. Startup coordinator — race the entry tile against any consent
+        //    screen that may appear ahead of it. Two prior sequential probes
+        //    ("No thanks" for telemetry, "Not now" for biometric) burned up to
+        //    12 s of wall clock before the 15 s entry-tile wait even started
+        //    (#2477), leaving cold WKWebView paints indistinguishable from
+        //    consent-state faults. This waits for whichever surface actually
+        //    renders first, dismisses any consent seen, and loops until the
+        //    entry tile is visible — one fixed budget, deterministic dwell.
+        waitForEntryTile(app: app, tile: "New wallet")
 
         // 2. Entry tiles — the fresh-device landing. Slice D1 (2026-08-10)
         //    replaced WelcomeHero's single "Get Started" action with a 4-tile
@@ -141,8 +132,9 @@ final class AppUITests: XCTestCase {
         app.launchArguments += ["--uitest-fresh-install"]
         app.launch()
 
-        tapButtonIfPresent(app: app, label: "No thanks", timeout: 6)
-        tapButtonIfPresent(app: app, label: "Not now", timeout: 6)
+        // Same startup coordinator as the create path — see the create test
+        // for the rationale (#2477).
+        waitForEntryTile(app: app, tile: "Have a wallet")
         // Same retry rationale as the create path.
         tapButtonUntilAdvanced(
             app: app,
@@ -387,14 +379,7 @@ final class AppUITests: XCTestCase {
         webViewSafeTap(button)
     }
 
-    private func tapButtonIfPresent(app: XCUIApplication, label: String, timeout: TimeInterval) {
-        let button = buttonMatching(app, label: label)
-        if button.waitForExistence(timeout: timeout) {
-            webViewSafeTap(button)
-        }
-    }
-
-    /// Press a button and confirm the next-view element appears. Retries the
+/// Press a button and confirm the next-view element appears. Retries the
     /// press if it doesn't — a cold WKWebView on iOS 26 Simulator sometimes
     /// swallows the first click at the WebKit layer even though XCUITest's
     /// press succeeded at the AX layer (idempotent tile taps make retry safe).
@@ -408,13 +393,89 @@ final class AppUITests: XCTestCase {
         failureMessage: String
     ) {
         let button = buttonMatching(app, label: label)
-        XCTAssertTrue(button.waitForExistence(timeout: appearTimeout), "Entry tile '\(label)' never appeared.")
+        if !button.waitForExistence(timeout: appearTimeout) {
+            attachFailureDiagnostics(app: app, reason: "entry-tile-\(label)-missing")
+            XCTFail("Entry tile '\(label)' never appeared.")
+            return
+        }
         for attempt in 1...maxAttempts {
             webViewSafeTap(button)
             if next.waitForExistence(timeout: perAttemptWait) { return }
             if attempt < maxAttempts { NSLog("[VEYRNOX-XCUITEST] '\(label)' press attempt \(attempt) did not advance the view; retrying") }
         }
+        attachFailureDiagnostics(app: app, reason: "entry-tile-\(label)-no-advance")
         XCTFail(failureMessage)
+    }
+
+    /// Race the entry tile against any consent surface that may appear ahead of
+    /// it. Dismisses whichever consent is currently on screen and re-polls,
+    /// returning as soon as the entry tile is visible. One fixed budget replaces
+    /// the previous two sequential 6 s optional probes, whose 0–12 s variable
+    /// dwell coupled a cold WKWebView paint to the entry-tile assertion (#2477).
+    ///
+    /// On timeout, attaches a screenshot and the accessibility tree so the
+    /// failure separates "WKWebView never rendered" from "consent state /
+    /// routing was wrong" — the log alone could not tell them apart.
+    private func waitForEntryTile(
+        app: XCUIApplication,
+        tile: String,
+        budget: TimeInterval = 45
+    ) {
+        let entryTile = app.buttons[tile]
+        // Consent surfaces the app may render before the entry tiles. Order is
+        // not asserted — whichever is currently on screen gets dismissed. The
+        // deny path is the honest choice for both on a stock simulator (no real
+        // data opt-in, no biometric enrolled).
+        // "No thanks" is telemetry_consent.cta_deny in
+        // src/i18n/locales/en/security.json. "Not now" is BiometricConsent's
+        // decline path (#2129, 2026-08-27). Fresh-install marker reset is via
+        // --uitest-fresh-install (#2149).
+        let consentDismissals = ["No thanks", "Not now"]
+
+        let deadline = Date().addingTimeInterval(budget)
+        var loops = 0
+        while Date() < deadline {
+            loops += 1
+            if entryTile.exists { return }
+            var dismissed = false
+            for label in consentDismissals {
+                let btn = app.buttons[label]
+                if btn.exists {
+                    NSLog("[VEYRNOX-XCUITEST] startup: dismissing consent '\(label)' (loop \(loops))")
+                    webViewSafeTap(btn)
+                    dismissed = true
+                    break
+                }
+            }
+            if !dismissed { Thread.sleep(forTimeInterval: 0.5) }
+        }
+
+        // Final chance — the tile may have painted in the last poll interval.
+        if entryTile.exists { return }
+
+        attachFailureDiagnostics(app: app, reason: "entry-tile-\(tile)-startup-timeout")
+        XCTFail(
+            "Entry tile '\(tile)' never appeared within \(budget)s, and no consent surface was on screen at timeout. "
+            + "Check the attached screenshot + AX tree to distinguish 'WKWebView never rendered' from 'consent state or routing was wrong'."
+        )
+    }
+
+    /// Attach a screenshot plus the current accessibility-tree dump to the test
+    /// result on failure. Kept small on purpose: screenshot first (never blocks
+    /// on AX snapshot), then the tree (which can stall on a wedged webview —
+    /// #2477 records a 338 s AX-query timeout that would swallow the diagnostic
+    /// if the order were reversed). Both are `.keepAlways` so they survive a
+    /// green re-run's artifact retention.
+    private func attachFailureDiagnostics(app: XCUIApplication, reason: String) {
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "failure-screenshot-\(reason)"
+        shot.lifetime = .keepAlways
+        add(shot)
+
+        let tree = XCTAttachment(string: app.debugDescription)
+        tree.name = "failure-ax-tree-\(reason)"
+        tree.lifetime = .keepAlways
+        add(tree)
     }
 
     /// XCUITest's `.tap()` on a WKWebView button dispatches an accessibility
