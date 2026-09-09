@@ -553,10 +553,62 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
 - `veyrnox.com` is a client-rendered SPA — `curl` gives **false negatives** when checking
   page content; verify by rendering the page.
 
-**1.0.1 SUBMISSION HOLD — BOTH stores (owner-locked 2026-08-12).** No submission to
-Play OR App Store review until every check in this section passes. Owner-decided
-after the build-5/6 Play rejection; do not attempt "just one more submit" reasoning.
-Pre-submission verification below is the gate.
+**1.0.1 SUBMISSION HOLD — BOTH stores (owner-locked 2026-08-12). RELEASED
+2026-09-08; both stores submitted that day. The paragraph below is the original
+lock text and is kept as the record of why the gate existed — read it as
+history, not as a live block.**
+
+> **1.0.1 SUBMISSION HOLD — BOTH stores (owner-locked 2026-08-12).** No submission to
+> Play OR App Store review until every check in this section passes. Owner-decided
+> after the build-5/6 Play rejection; do not attempt "just one more submit" reasoning.
+> Pre-submission verification below is the gate.
+
+**Release record (added 2026-09-09).** Both submissions were made on 2026-09-08:
+App Store 1.0.1 build 57, and Play versionCode 48 promoted from Internal to
+Closed testing — Alpha and sent for review with managed publishing ON. Full
+per-item state in `docs/RELEASE-v1.0.1-APPLE-SUBMISSION.md` and
+`docs/RELEASE-v1.0.1-PLAY-SUBMISSION.md`.
+
+- **Apple — all three checks met.** The mandatory `.ipa` byte-check ran against
+  the exported `Payload/App.app/public/assets/index-*.js` and returned no matches
+  for `VITE_(BYPASS_RASP|DEV_UNGATE_SEND|DEMO_MODE):"1"`; the stock-iPhone
+  golden-path walkthrough was performed and confirmed by the owner (an owner
+  attestation, not a captured artifact — recorded honestly as such); TestFlight
+  Crashes and Xcode Organizer Hangs were zero on build 57 per ASC
+  `diagnosticSignatures`. Apple then rejected twice the same day, on promoted-IAP
+  imagery (2.3.2) and on Guideline 2.1 → 3.1.5(iii) crypto-licensing evidence for
+  the Buy → Transak flow — **neither rejection was the KEK/RASP failure this hold
+  was built to prevent.**
+- **Play gate 2 (Pre-launch report) was WAIVED, permanently.** No report has ever
+  been generated for any of the 39+ bundles uploaded, root cause never
+  established. #1960 was closed 2026-09-04 as an accepted residual by owner
+  decision, with Firebase Test Lab Robo named as the substitute. That closure is
+  the recorded basis for the waiver.
+- **Play gate 4 (Android Vitals) was WAIVED as structurally unobtainable
+  pre-publish.** Vitals only fills from Production/Open/Closed-testing installs
+  whose testers share usage and diagnostics; on a `Draft` app the check is
+  vacuous, not merely unmet. It becomes meaningful only after Publish.
+- **Play gate 3 (the Robo substitute) is met only weakly, and that is OPEN.** The
+  crawl standing in for gate 2 is matrix `matrix-1delt54g28ira` (Sep 4) against
+  versionCode **~44**, while **48** was submitted; the fresh dispatch against 48
+  failed on a CI-artifact dependency. The four bumps 44→48 are bump-only, but 48
+  non-test `src/` commits landed in between — including `0dc4f673`, a fix for the
+  Send chunk blanking on cold parse, which is the exact class of failure a Robo
+  crawl exists to catch. Tracked as F-2 in
+  `docs/security-diffs/diff-2026-09-09.md`; the Play doc's table still marks this
+  row ✓ where rows 2 and 4 correctly read ⚠.
+
+**No explicit release decision was written down on the day** — the hold text was
+simply overtaken by the submissions, and for a day this file said "do not submit"
+while both submissions were live. That is the whole reason this record exists: a
+lock that cannot distinguish *released* from *violated* is not recording the
+decision it was written to record. **If a hold is lifted, amend it here in the
+same session.**
+
+**The checklist below is NOT retired.** It remains the standard for the next
+submission of any build to either store — a resubmission after an Apple rejection
+included. Gate 2 stays waived on the #1960 reasoning; gate 3's evidence must come
+from the versionCode actually being submitted.
 
 **Pre-submission verification for 1.0.1 (BOTH stores) — MUST run before any human
 review submission.** Added 2026-08-12 after Play rejected build 5 under Broken
