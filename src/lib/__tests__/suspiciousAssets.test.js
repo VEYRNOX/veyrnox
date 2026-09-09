@@ -17,7 +17,7 @@ describe('evaluateTokenContractRisk', () => {
       liquidity_usd: 1500,
       holder_count: 42,
       contract_verified: false,
-      deployed_at: '2026-08-10T00:00:00.000Z',
+      deployed_at: new Date().toISOString(),
     });
 
     expect(risk.severity).toBe('high');
