@@ -1,0 +1,90 @@
+[
+  {
+    "description": "FTL-specific script: Firebase Test Lab Pixels ship with NO lock screen / NO biometrics enrolled, so isDeviceSecure() is false and createVault fails closed with DEVICE_NOT_SECURE. Onboarding cannot reach the telemetry-consent screen or the main wallet — the happy-path assertions from android-pin-onboarding-robo-script.json would always fail here for a reason the app is DESIGNED to fail on. This variant asserts the ACTUAL correct behaviour on wide-open devices: PR #2484's actionable copy renders instead of the old generic fail-closed banner. See CLAUDE.md 'DEVICE_NOT_SECURE' notes.",
+    "eventType": "WAIT",
+    "delayTime": 8000
+  },
+  {
+    "description": "Choose the fresh wallet path",
+    "eventType": "VIEW_CLICKED",
+    "elementDescriptors": [
+      {
+        "text": "New wallet"
+      }
+    ]
+  },
+  {
+    "description": "Wait for the custom PinPad",
+    "eventType": "WAIT",
+    "delayTime": 1000
+  },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "1" }] },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "9" }] },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "2" }] },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "8" }] },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "3" }] },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "7" }] },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "4" }] },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "6" }] },
+  {
+    "description": "Explicitly submit the eight-digit PIN via the stable visible button text",
+    "eventType": "VIEW_CLICKED",
+    "elementDescriptors": [
+      {
+        "text": "Submit PIN"
+      }
+    ]
+  },
+  {
+    "description": "Wait for the confirmation PinPad",
+    "eventType": "WAIT",
+    "delayTime": 750
+  },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "1" }] },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "9" }] },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "2" }] },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "8" }] },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "3" }] },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "7" }] },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "4" }] },
+  { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "6" }] },
+  {
+    "description": "Explicitly submit PIN confirmation via the stable visible button text",
+    "eventType": "VIEW_CLICKED",
+    "elementDescriptors": [
+      {
+        "text": "Submit PIN"
+      }
+    ]
+  },
+  {
+    "description": "Allow the provisioning path to run and DEVICE_NOT_SECURE to surface. Argon2id KDF plus the biometric-probe cache read on FTL Pixels usually resolves inside ~10s; leave 30s of slack.",
+    "eventType": "WAIT",
+    "delayTime": 30000
+  },
+  {
+    "description": "The Play-rejection generic fail-closed banner must remain absent — this is the same tripwire the happy-path script carries. The DEVICE_NOT_SECURE path now shows a specific actionable message, not this string. If this assertion ever fires again, PR #2484's branch has regressed.",
+    "eventType": "ASSERTION",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "negateCondition": true,
+      "elementDescriptors": [
+        {
+          "text": "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again."
+        }
+      ]
+    }
+  },
+  {
+    "description": "The DEVICE_NOT_SECURE actionable copy from PR #2484 must be visible. This is the positive assertion that proves the fix rendered on real hardware.",
+    "eventType": "ASSERTION",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "elementDescriptors": [
+        {
+          "text": "Please set a device passcode or biometric before creating a wallet."
+        }
+      ]
+    }
+  }
+]
