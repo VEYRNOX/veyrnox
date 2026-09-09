@@ -127,11 +127,27 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
 
   it('downloads the isolated Android Firebase artifact from CI for this exact commit', () => {
     expect(workflow).toContain('actions: write');
-    expect(workflow).toContain('--commit "$SHA"');
+    // 2026-09-09: commit identity moved OFF head_sha. `--commit "$SHA"` filters
+    // on the run's head_sha, and a workflow_dispatch run's head_sha is the
+    // BRANCH TIP (`gh workflow run --ref` cannot take a SHA), so on a busy main
+    // this matched nothing and the gate timed out beside a green build — runs
+    // 34197672875 and 34328144917. It is now matched on ci.yml's run-name,
+    // which carries the SHA the run was asked to build.
+    //
+    // This is a stricter assertion than the one it replaces, not a relaxed one:
+    // the old filter could select a run that built a DIFFERENT commit and pass.
+    //
+    // The matching "`--commit` is gone" check lives in
+    // ci-target-sha-pinning.test.js, NOT here, because it must run against a
+    // comment-stripped copy. `workflow` in this file is the raw text, and the
+    // comment above (plus the retry-budget note in the workflow itself) quotes
+    // `--commit "$SHA"` as history — an absence check here matches the prose
+    // and fires on correct code. It did, on the first attempt at this edit.
+    expect(workflow).toContain('displayTitle | contains(\\"$SHA\\")');
     expect(workflow).toContain('run-id: ${{ steps.ci_run.outputs.run_id }}');
     expect(workflow).toContain('github-token: ${{ github.token }}');
     expect(workflow).toContain("EXPECTED_EVENT: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch' || 'push' }}");
-    expect(workflow).toContain('select(.event == \\"$EXPECTED_EVENT\\")');
+    expect(workflow).toContain('select(.event == \\"$EXPECTED_EVENT\\"');
     expect(workflow).not.toContain('--event push');
     expect(workflow).not.toContain('dawidd6/action-download-artifact');
     expect(workflow).toContain('name: veyrnox-firebase-test-apk');

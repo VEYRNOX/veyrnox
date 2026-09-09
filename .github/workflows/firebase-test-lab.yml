@@ -102,15 +102,36 @@ jobs:
           # run_id-keyed concurrency group, so a push landing during the ~15
           # min build no longer cancels this gate's run (and this gate no
           # longer cancels main's push CI).
+          #
+          # 2026-09-09: concurrency fixed CANCELLATION, not IDENTITY. --ref
+          # still resolves to the branch, so GitHub stamps the dispatched run
+          # with main's tip AT CREATION TIME and builds that tree — on a
+          # 10-merges-a-day branch, routinely a different commit than the one
+          # this gate is testing. Runs 34197672875 and 34328144917 both died
+          # here with a perfectly good APK sitting in a green CI run the gate
+          # could not recognise (34328596263 built 19fa7b68 while the gate
+          # waited on 2315cc88).
+          #
+          # target_sha makes ci.yml check out the exact commit regardless of
+          # where the branch has moved, and ci.yml's run-name carries that SHA
+          # so the wait loop below can identify ITS run without head_sha.
           gh workflow run ci.yml \
             --ref "$GITHUB_REF_NAME" \
             -f build_firebase_test=true \
-            -f build_staging_release=true
+            -f build_staging_release=true \
+            -f target_sha="$GITHUB_SHA"
 
       # This workflow and ci.yml start independently on the same main push. A
       # manual branch run first dispatches ci.yml with build_firebase_test=true.
       # Accept only push/workflow_dispatch CI runs for THIS SHA, then download
       # by run ID. A PR run cannot produce the isolated signed Firebase APK.
+      #
+      # Matched on displayTitle, NOT head_sha. ci.yml's `run-name` is
+      # `ci · <effective sha>` — the target_sha it was asked to build, or its
+      # own github.sha when none was given — so this works for both the manual
+      # gate (where head_sha is the branch tip and therefore wrong) and the
+      # push path (where the two agree). `--commit` was the previous filter
+      # and is what made a busy main unwinnable.
       - name: Wait for this commit's successful CI artifact
         id: ci_run
         env:
@@ -122,10 +143,9 @@ jobs:
           for attempt in $(seq 1 100); do
             RUN_JSON=$(gh run list \
               --workflow ci.yml \
-              --commit "$SHA" \
-              --limit 20 \
-              --json databaseId,status,conclusion,event,createdAt \
-              --jq "[.[] | select(.event == \"$EXPECTED_EVENT\")] | sort_by(.createdAt) | reverse | .[0] // {}")
+              --limit 40 \
+              --json databaseId,status,conclusion,event,createdAt,displayTitle \
+              --jq "[.[] | select(.event == \"$EXPECTED_EVENT\" and (.displayTitle | contains(\"$SHA\")))] | sort_by(.createdAt) | reverse | .[0] // {}")
             RUN_ID=$(jq -r '.databaseId // empty' <<<"$RUN_JSON")
             STATUS=$(jq -r '.status // empty' <<<"$RUN_JSON")
             CONCLUSION=$(jq -r '.conclusion // empty' <<<"$RUN_JSON")
@@ -137,15 +157,22 @@ jobs:
               fi
 
               # No redispatch on `cancelled`. It was tried (#1857) and could
-              # not work: `gh workflow run --ref` takes a branch name, so the
-              # redispatched run builds the branch TIP — and a cancellation
+              # not work THEN: `gh workflow run --ref` takes a branch name, so
+              # the redispatched run built the branch TIP — and a cancellation
               # means main has already moved past $SHA. The new run's head SHA
-              # therefore never matches this loop's `--commit "$SHA"` filter, the
-              # loop re-reads the same terminal cancelled run, and the whole
-              # retry budget burns in ~60s on builds of the wrong commit while
-              # each dispatch cancels main's own push CI. Root cause is fixed in
-              # ci.yml's concurrency group instead; a cancellation reaching here
-              # now means something genuinely cancelled it, which is a real red.
+              # therefore never matched this loop's old `--commit "$SHA"`
+              # filter, the loop re-read the same terminal cancelled run, and
+              # the whole retry budget burned in ~60s on builds of the wrong
+              # commit while each dispatch cancelled main's own push CI.
+              #
+              # 2026-09-09: target_sha + run-name matching removes the
+              # identity half of that (a redispatch would now be findable and
+              # would build the right tree), but redispatch stays OFF — it was
+              # never the right answer to a cancellation, and re-enabling it
+              # is a separate decision with its own retry-budget maths. Root
+              # cause of the cancellations themselves is ci.yml's concurrency
+              # group; one reaching here means something genuinely cancelled
+              # the run, which is a real red.
               echo "::error::CI run ${RUN_ID} for ${SHA} concluded ${CONCLUSION}; refusing to test another commit's APK."
               exit 1
             fi

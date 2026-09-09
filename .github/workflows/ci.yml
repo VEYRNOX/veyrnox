@@ -1,5 +1,15 @@
 name: CI
 
+# The effective SHA is always in the run title, so a caller that dispatched
+# this workflow for one exact commit can find ITS run in `gh run list` without
+# guessing. `gh workflow run --ref` only accepts a branch or tag (a SHA there
+# is HTTP 422: No ref found, run 31932385069), so a dispatched run's head_sha
+# is whatever main's tip was when GitHub created it — NOT the SHA the caller
+# asked for. Matching on head_sha is therefore wrong on a busy branch; it cost
+# firebase-test-lab.yml runs 34197672875 and 34328144917, where the build
+# succeeded and the gate could not recognise it.
+run-name: ci · ${{ inputs.target_sha || github.sha }}
+
 on:
   pull_request:
   push:
@@ -26,6 +36,11 @@ on:
         type: boolean
         required: false
         default: false
+      target_sha:
+        description: 'Full 40-hex commit SHA to build. Empty = the dispatched branch tip.'
+        type: string
+        required: false
+        default: ''
 
 # Cancel superseded runs on the same ref to save minutes.
 #
@@ -76,6 +91,40 @@ env:
   VITE_EDGE_BASE: ${{ vars.VITE_EDGE_BASE }}
 
 jobs:
+  # --------------------------------------------------------------------------
+  # target_sha is fed straight to `actions/checkout`'s `ref:` by every job
+  # below, so it must be a full 40-hex commit SHA and nothing else. A branch
+  # name would resolve — and would silently build a different tree than the
+  # caller pinned, which is the exact failure target_sha exists to remove.
+  #
+  # This job cannot PREVENT a concurrent job checking out a malformed ref: it
+  # has no `needs:` edge to them, deliberately, because making nine jobs wait
+  # on a five-second check would add a runner boot to every push. It does not
+  # need to. The only consumer of this workflow's artifacts — the
+  # firebase-test-lab.yml gate — requires the whole run to conclude `success`
+  # before it downloads anything, so a malformed SHA reds the run and the
+  # artifact is refused. Fail-closed at the point of use.
+  # --------------------------------------------------------------------------
+  target-sha-guard:
+    name: target_sha is a full commit SHA
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TARGET_SHA:-}" ]; then
+            echo "No target_sha — building the dispatched ref's tip."
+            exit 0
+          fi
+          if ! printf '%s' "$TARGET_SHA" | grep -qE '^[0-9a-f]{40}$'; then
+            echo "::error::target_sha must be a full 40-hex commit SHA; got '${TARGET_SHA}'."
+            exit 1
+          fi
+          echo "target_sha ${TARGET_SHA} accepted."
+
   # Diff-based mainnet activation flag change gate (Critical Blocker #3,
   # Option A). Mainnet is already live and audited (2026-06-17) — this job
   # does NOT gate "is mainnet on", it gates "did this PR CHANGE a mainnet
@@ -102,6 +151,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          ref: ${{ inputs.target_sha }}
           # Full history so `git diff <base>...HEAD` can find the merge-base;
           # a shallow checkout would make every PR look like it changed
           # everything (or fail the diff outright).
@@ -177,6 +227,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.target_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -282,6 +334,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.target_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -296,6 +350,8 @@ jobs:
     needs: verify
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.target_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -333,6 +389,8 @@ jobs:
     needs: verify
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.target_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -368,6 +426,8 @@ jobs:
     needs: verify
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.target_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -499,6 +559,8 @@ jobs:
     needs: verify
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.target_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -587,6 +649,8 @@ jobs:
     needs: verify
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.target_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
@@ -945,6 +1009,8 @@ jobs:
             echo "### Release-cert guard: not needed for this change" >> "$GITHUB_STEP_SUMMARY"
           fi
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.target_sha }}
         if: env.NEEDED == 'true'
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         if: env.NEEDED == 'true'
