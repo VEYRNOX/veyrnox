@@ -7,6 +7,10 @@ import {
   evaluateTokenContractRisk,
 } from '@/lib/suspiciousAssets';
 
+// Relative, not a literal date: `new_contract` fires only inside a rolling
+// 30-day window, so a hardcoded timestamp ages out and reds the suite forever.
+const daysAgoIso = (days) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
 describe('evaluateTokenContractRisk', () => {
   it('surfaces mint, freeze, transfer-tax, liquidity, holder, and verification concerns', () => {
     const risk = evaluateTokenContractRisk({
@@ -17,7 +21,7 @@ describe('evaluateTokenContractRisk', () => {
       liquidity_usd: 1500,
       holder_count: 42,
       contract_verified: false,
-      deployed_at: '2026-08-10T00:00:00.000Z',
+      deployed_at: daysAgoIso(5),
     });
 
     expect(risk.severity).toBe('high');
