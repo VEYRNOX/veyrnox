@@ -1199,12 +1199,23 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
       // by a remote "unavailable" verdict (I4: fail honest).
       const seedHits = lookupThreatSync(detected.address);
       let remoteResult = null;
-      // Codex P1 2026-08-15: the consent prompt on this screen literally says
-      // "Your addresses ... are never included" without an explicit grant, but
-      // the remote address-lookup egress used to run BEFORE that gate. Skip
-      // the remote call unless the user has affirmatively granted advisor
-      // consent — local seed still fires either way, so a known-bad address
-      // is still surfaced honestly. Matches the sendMessage gate at :553.
+      // Codex P1 2026-08-15: this remote address-lookup egress used to run
+      // BEFORE the consent gate. Skip the remote call unless the user has
+      // affirmatively granted advisor consent — local seed still fires either
+      // way, so a known-bad address is still surfaced honestly. Matches the
+      // sendMessage gate at :553.
+      //
+      // 2026-09-09: this comment used to justify the gate by quoting the
+      // consent copy back as a guarantee about wallet addresses. That
+      // guarantee was false. advisorScrubber.js strips BIP-39 runs,
+      // private keys, xprv/WIF/Solana secrets and PIN-shaped digit runs — it
+      // carries NO address pattern, so an address the user types reaches both
+      // the model and this lookup. advisor.consent.body_1 now says exactly
+      // that, and THIS GATE is what keeps the corrected sentence true: with
+      // no grant, a typed address goes nowhere. Do not restore the old
+      // wording in either place; TermsLegal.jsx §9 is the matching
+      // user-facing disclosure, and the locale copy is pinned by
+      // src/i18n/__tests__/advisorConsentCopy.test.js.
       if (TIP_CHAT_URL && advisorOnlineEnabled && hasAdvisorConsent()) {
         // 2026-08-16 audit remediation: wire an AbortController so a
         // mid-flight deniability flip cancels this screen call rather than
@@ -1561,7 +1572,7 @@ Additional public knowledge you should apply:
             >
               <p className="font-medium text-foreground">{t('advisor.consent.title', { defaultValue: 'Answer questions online?' })}</p>
               <p className="mt-1 text-muted-foreground">
-                {t('advisor.consent.body_1', { defaultValue: "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included." })}
+                {t('advisor.consent.body_1', { defaultValue: "The advisor can send the questions you type - plus which screen you are on, which chain is selected, and the app's display language - to Veyrnox's threat-intelligence service for a fuller answer. Before anything leaves the device, the app strips seed phrases, private keys and PINs out of your message. Wallet addresses are not stripped - an address you type or paste is sent with the rest of your text, and may be checked against threat lists. We never attach your balances. A random per-install ID goes with each question to enforce a daily limit on how many you can ask; it is created even if you declined usage events, and a panic wipe erases it." })}
               </p>
               <p className="mt-1 text-muted-foreground">
                 {t('advisor.consent.body_2', { defaultValue: 'Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.' })}
