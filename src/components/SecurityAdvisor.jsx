@@ -1572,7 +1572,7 @@ Additional public knowledge you should apply:
             >
               <p className="font-medium text-foreground">{t('advisor.consent.title', { defaultValue: 'Answer questions online?' })}</p>
               <p className="mt-1 text-muted-foreground">
-                {t('advisor.consent.body_1', { defaultValue: "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Before anything leaves the device, the app strips seed phrases, private keys and PINs out of your message. Wallet addresses are not stripped - an address you type or paste is sent with the rest of your text, and may be checked against threat lists. We never attach your balances." })}
+                {t('advisor.consent.body_1', { defaultValue: "The advisor can send the questions you type - plus which screen you are on, which chain is selected, and the app's display language - to Veyrnox's threat-intelligence service for a fuller answer. Before anything leaves the device, the app strips seed phrases, private keys and PINs out of your message. Wallet addresses are not stripped - an address you type or paste is sent with the rest of your text, and may be checked against threat lists. We never attach your balances. A random per-install ID goes with each question to enforce a daily limit on how many you can ask; it is created even if you declined usage events, and a panic wipe erases it." })}
               </p>
               <p className="mt-1 text-muted-foreground">
                 {t('advisor.consent.body_2', { defaultValue: 'Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.' })}

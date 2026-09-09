@@ -57,3 +57,31 @@ describe('advisor.consent.body_1 — address honesty', () => {
     expect(readBody1(locale)).toMatch(/addresses are not stripped/i);
   });
 });
+
+// The consent copy also has to be COMPLETE, not merely non-false. §9 of
+// TermsLegal.jsx enumerates the payload exhaustively; the consent screen is
+// what the user actually grants against, so anything §9 lists has to be here
+// too. Two items were missing until 2026-09-09:
+//
+//   - the app display language, in the system prompt at SecurityAdvisor.jsx
+//     (`Current app language: ${currentLanguageName} (${currentLanguage})`)
+//   - the persistent per-install device_id, minted by getOrCreateDeviceId()
+//     and sent with every request to enforce the TIP-side 30-turns/24h cap
+//
+// device_id in particular is minted regardless of the telemetry answer —
+// lib/deviceId.js checks no consent of its own — so a user who declined usage
+// events still gets one the first time they enable the Advisor. That is the
+// surprising part, and it is why the copy says so explicitly.
+describe('advisor.consent.body_1 — payload completeness', () => {
+  it.each(locales)('%s discloses the app display language', (locale) => {
+    expect(readBody1(locale)).toMatch(/display language/i);
+  });
+
+  it.each(locales)('%s discloses the per-install identifier', (locale) => {
+    expect(readBody1(locale)).toMatch(/per-install ID/i);
+  });
+
+  it.each(locales)('%s says the identifier survives a declined telemetry answer', (locale) => {
+    expect(readBody1(locale)).toMatch(/even if you declined usage events/i);
+  });
+});
