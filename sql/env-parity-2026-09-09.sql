@@ -9,8 +9,16 @@
 -- analysing the wrong one — see the header of
 -- sql/live-project-hardening-2026-08-07.sql, which is the file this one follows.
 --
--- NOTHING IN THIS FILE HAS BEEN APPLIED. Both stages are owner-gated. The audit
--- in Section 0 is read-only and was run; the stages below were not.
+-- APPLIED STATE — check here first, and keep it true:
+--     Section 0 (audit)   read-only, run 2026-09-09 on both projects
+--     STAGE 1             ✅ APPLIED to prod 2026-09-09
+--     STAGE 2             ❌ NOT APPLIED, owner-gated
+--
+-- This block said "NOTHING IN THIS FILE HAS BEEN APPLIED" for the few minutes
+-- between Stage 1 running and this commit. Leaving it that way is precisely the
+-- failure this file exists to document — a header describing a state the
+-- database no longer has. Update it in the same change as the apply, never
+-- after.
 --
 --
 -- WHY THIS FILE EXISTS
@@ -88,8 +96,13 @@ order by c.relname;
 -- =============================================================================
 -- MEASURED STATE, 2026-09-09 (both projects, via 0a/0b above)
 --
--- FINDING 1 — anon and authenticated hold FULL CRUD on three rate-limit tables
---             on PROD. Staging holds Dxtm only (no select/insert/update/delete).
+-- FINDING 1 — ✅ CLOSED by STAGE 1 on 2026-09-09. Stated below in the present
+--             tense as measured, because this section is the point-in-time
+--             record the stages act on; do not rewrite it to match the current
+--             state, or the reason Stage 1 exists disappears with it.
+--
+--             anon and authenticated held FULL CRUD on three rate-limit tables
+--             on PROD. Staging held Dxtm only (no select/insert/update/delete).
 --
 --     table                        prod              staging
 --     bonus_claim_attempts         anon=arwdDxtm     anon=Dxtm
@@ -140,7 +153,35 @@ order by c.relname;
 
 
 -- =============================================================================
--- STAGE 1 — ❌ NOT APPLIED. Finding 1: align prod's table grants to staging.
+-- STAGE 1 — ✅ APPLIED to jwstkrtslotnjyerzzsi on 2026-09-09, as migration
+-- `env_parity_stage1_revoke_anon_table_grants`. Finding 1: align prod's table
+-- grants to staging. Idempotent and declarative; safe to re-run.
+--
+-- POST-CHECK, from query 0b immediately after (anon and authenticated gone from
+-- all three; RLS and policy counts untouched, which is the point — the gate that
+-- was already doing the work is undisturbed):
+--
+--   bonus_claim_attempts        rls=t policies=0  postgres=arwdDxtm service_role=arwdDxtm
+--   bonus_claim_attempts_by_ip  rls=t policies=0  postgres=arwdDxtm service_role=arwdDxtm
+--   track_event_rate_hits       rls=t policies=0  postgres=arwdDxtm service_role=arwdDxtm
+--
+-- Prod now matches staging on these three tables, modulo service_role's wider
+-- rights, which are not load-bearing (see the CHECKED AND NOT A FINDING notes).
+--
+-- WHAT WAS NOT DONE, and why, so nobody records this as more verified than it is:
+-- the write paths were NOT exercised by a live call. Proving it end to end means
+-- invoking track_event against production, which writes a real telemetry row and
+-- mints a device id — the exact pollution that PR #1328 was opened to stop after
+-- a test run put 126 phantom rows into prod. The static argument is relied on
+-- instead, and it is a strong one rather than a hedge: all three tables are
+-- touched only inside SECURITY DEFINER functions owned by `postgres` (verified
+-- post-apply: track_event, check_first_referral_bonus and
+-- record_bonus_claim_attempt are all prosecdef=true, proowner=postgres), and a
+-- definer function does not consult the CALLER's table grants. If a rate-limit
+-- write ever does fail after this, that premise is where to look first.
+--
+-- Historical note — the pre-apply state this replaced:
+--   all three carried anon=arwdDxtm and authenticated=arwdDxtm.
 --
 -- SAFE, and here is the argument rather than an assertion: nothing reads or
 -- writes these tables through PostgREST. Every access is inside a SECURITY
@@ -159,12 +200,11 @@ order by c.relname;
 -- Idempotent and declarative; safe to re-run.
 -- =============================================================================
 
--- REVOKE ALL ON TABLE public.bonus_claim_attempts       FROM anon, authenticated;
--- REVOKE ALL ON TABLE public.bonus_claim_attempts_by_ip FROM anon, authenticated;
--- REVOKE ALL ON TABLE public.track_event_rate_hits      FROM anon, authenticated;
-
--- Post-check (expect anon/authenticated absent from all three ACLs):
---   re-run 0b and diff against staging.
+-- Applied 2026-09-09. Left uncommented as the record of exactly what ran; they
+-- are idempotent, so re-running is a no-op rather than a hazard.
+REVOKE ALL ON TABLE public.bonus_claim_attempts       FROM anon, authenticated;
+REVOKE ALL ON TABLE public.bonus_claim_attempts_by_ip FROM anon, authenticated;
+REVOKE ALL ON TABLE public.track_event_rate_hits      FROM anon, authenticated;
 
 
 -- =============================================================================
