@@ -21,6 +21,11 @@ on:
         type: boolean
         required: false
         default: false
+      force_play_upload:
+        description: 'Upload to Play closed testing even if versionCode did not change in this push'
+        type: boolean
+        required: false
+        default: false
 
 # Cancel superseded runs on the same ref to save minutes.
 #
@@ -720,16 +725,91 @@ jobs:
       && vars.PLAY_PUBLISH_ENABLED == 'true'
       && inputs.build_staging_release != true
     steps:
+      # ----------------------------------------------------------------------
+      # A versionCode is consumed permanently by its first successful upload.
+      # This job runs on EVERY main push, but `versionCode` only moves when
+      # someone bumps android/app/build.gradle by hand — so from the second
+      # push after a bump onward, the upload is guaranteed to fail with
+      # `Version code N has already been used.` and red main for reasons that
+      # have nothing to do with the commit that triggered it.
+      #
+      # That is not hypothetical: every completed main run between the
+      # 2026-09-08 internal→closed rename (ae514917) and this fix failed here,
+      # 7 for 7, while versionCode sat at 48. The runs looked caused by
+      # whatever had just merged — the same misattribution that let the inert
+      # release-cert guard survive ~15 merges (#1373).
+      #
+      # So compare this commit's versionCode against its parent's and upload
+      # only on a change. Values reach the script via env, never interpolated
+      # into the command string — same rule release-guard-scope follows.
+      #
+      # FAIL-OPEN, deliberately: if either lookup fails we attempt the upload.
+      # A spurious attempt costs one red step and says exactly why; a spurious
+      # SKIP silently strands a real release build off the track, which is the
+      # failure nobody notices. `force_play_upload` is the escape hatch for
+      # the one case this cannot see — a bump commit whose CI run was
+      # cancelled (8 of the 15 runs sampled at fix time were cancellations),
+      # where the next push carries an unchanged versionCode that was
+      # nonetheless never uploaded.
+      # ----------------------------------------------------------------------
+      - name: Skip when this versionCode was already consumed
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          FORCED: ${{ inputs.force_play_upload }}
+        run: |
+          set -euo pipefail
+
+          if [ "$FORCED" = "true" ]; then
+            echo "upload=true" >> "$GITHUB_OUTPUT"
+            echo "force_play_upload set — uploading without the versionCode check."
+            exit 0
+          fi
+
+          # Reads build.gradle at a ref without a checkout. `head -1` because
+          # product flavours could add further matches later; the canonical
+          # declaration is the first one (android/app/build.gradle:32).
+          vc_at() {
+            gh api "repos/${REPO}/contents/android/app/build.gradle?ref=$1" \
+              -H 'Accept: application/vnd.github.raw' 2>/dev/null \
+              | sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*/\1/p' \
+              | head -1
+          }
+
+          now="$(vc_at "$SHA" || true)"
+          parent="$(gh api "repos/${REPO}/commits/${SHA}" --jq '.parents[0].sha' 2>/dev/null || true)"
+          prev=""
+          [ -n "$parent" ] && prev="$(vc_at "$parent" || true)"
+
+          if [ -z "$now" ] || [ -z "$prev" ]; then
+            echo "upload=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Could not read versionCode (this='${now:-?}', parent='${prev:-?}') — attempting the upload anyway (fail-open)."
+            exit 0
+          fi
+
+          if [ "$now" != "$prev" ]; then
+            echo "upload=true" >> "$GITHUB_OUTPUT"
+            echo "versionCode ${prev} -> ${now} — uploading to Play closed testing."
+          else
+            echo "upload=false" >> "$GITHUB_OUTPUT"
+            echo "versionCode unchanged at ${now} — already consumed by an earlier upload, skipping."
+          fi
+
       - name: Download signed AAB artifact
+        if: steps.gate.outputs.upload == 'true'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: veyrnox-release-aab
           path: aab-artifact/
       - name: Verify AAB present
+        if: steps.gate.outputs.upload == 'true'
         run: |
           ls -l aab-artifact/
           test -s aab-artifact/app-google-release.aab
       - name: Upload to Play closed testing track
+        if: steps.gate.outputs.upload == 'true'
         # r0adkll/upload-google-play — pinned by SHA per repo convention.
         # v1.1.3 (2024-08 vintage) — the most recent stable tag on the
         # action's repo. Bump the SHA (and this comment) if a newer
