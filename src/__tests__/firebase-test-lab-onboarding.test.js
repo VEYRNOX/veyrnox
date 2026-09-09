@@ -29,7 +29,12 @@ const entryTiles = read('src/components/EntryTiles.jsx');
 const workflow = read('.github/workflows/firebase-test-lab.yml');
 const ciWorkflow = read('.github/workflows/ci.yml');
 const androidBuild = read('android/app/build.gradle');
-const roboScriptPath = '.github/testlab/android-pin-onboarding-robo-script.json';
+// FTL Pixels ship with no lock screen, so onboarding cannot reach the
+// telemetry-consent screen or the main wallet — the DEVICE_NOT_SECURE
+// path (PR #2484) fires instead. The nosecure variant asserts the fix's
+// actionable copy on that path; the happy-path script was retired when
+// the workflow switched to this one. See CLAUDE.md 'DEVICE_NOT_SECURE'.
+const roboScriptPath = '.github/testlab/android-onboarding-nosecure-robo-script.json';
 const roboScript = JSON.parse(read(roboScriptPath));
 
 function indexOrFail(source, needle) {
@@ -98,29 +103,34 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
       .filter(({ eventType }) => eventType === 'VIEW_CLICKED')
       .map(({ elementDescriptors }) => elementDescriptors?.[0]);
     const pin = '19283746';
+    // On FTL Pixels there is no lock screen so onboarding halts at the
+    // DEVICE_NOT_SECURE branch — no telemetry-consent screen to decline,
+    // no main wallet to render. The click sequence is PIN entry only.
     expect(clicks).toEqual([
       { text: 'New wallet' },
       ...[...pin].map(text => ({ text })),
       { text: 'Submit PIN' },
       ...[...pin].map(text => ({ text })),
       { text: 'Submit PIN' },
-      // Declining telemetry exercises the I3 no-egress path deliberately —
-      // do not "simplify" by removing this click or the wallet-render check.
-      { text: 'No thanks' },
     ]);
     expect(roboScript.every(({ visionText }) => visionText == null)).toBe(true);
     expect(roboScript.some(({ eventType }) => eventType === 'VIEW_TEXT_CHANGED')).toBe(false);
+    // Regression guard on PR #2484: the old generic fail-closed banner
+    // must still be absent (negated element_present assertion).
     expect(roboScript).toContainEqual(expect.objectContaining({
       eventType: 'ASSERTION',
       contextDescriptor: expect.objectContaining({
-        elementDescriptors: [{ text: 'Help improve Veyrnox' }],
+        negateCondition: true,
+        elementDescriptors: [{ text: "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again." }],
       }),
     }));
-    // Post-consent assertion: the main wallet UI actually rendered.
+    // Positive assertion: the DEVICE_NOT_SECURE actionable copy from
+    // PR #2484 IS on screen. Rename this string in WalletEntry.jsx and
+    // this test fails, which is the point.
     expect(roboScript).toContainEqual(expect.objectContaining({
       eventType: 'ASSERTION',
       contextDescriptor: expect.objectContaining({
-        elementDescriptors: [{ text: 'Send' }],
+        elementDescriptors: [{ text: 'Please set a device passcode or biometric before creating a wallet.' }],
       }),
     }));
   });
