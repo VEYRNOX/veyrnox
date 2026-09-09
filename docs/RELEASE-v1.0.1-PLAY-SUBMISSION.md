@@ -44,15 +44,19 @@ That matches the KEK/RASP fail-closed pattern documented in CLAUDE.md — review
 
 Verified addressed in versionCode 48 by the stock-Android golden-path walkthrough (see below).
 
-## Pre-submission gate — all green
+## Pre-submission gate — 2 of 5 met, 3 carried as waived or weak
 
-Same mandatory gate as before, applied to versionCode 48:
+Same mandatory gate as before, applied to versionCode 48. **This heading read
+"all green" until 2026-09-09, while three of its five rows were already ⚠ or
+resting on evidence from another build.** Rows 1 and 5 are met outright; 2 and 4
+are waived on recorded reasoning; 3 is met only weakly. Read the rows, not the
+heading.
 
 | # | Check | Result |
 |---|---|---|
 | 1 | AAB uploaded to Internal + Closed testing | ✓ Internal 48 (Sep 8 12:56 AM); promoted to Closed testing - Alpha in-session |
 | 2 | Play Pre-launch report exists | ⚠ Never generated for any bundle — accepted residual per #1960; Firebase Test Lab substitutes |
-| 3 | Firebase Test Lab Robo output on 48 (substitute for #2) | ✓ Sep 4 matrix `matrix-1delt54g28ira` (versionCode ~44) — 267 UI actions on Pixel 8, no app crash. Fresh dispatch on 2026-09-08 failed on CI-artifact dep (workflow needs a CI-built AAB for main SHA), not an app failure. |
+| 3 | Firebase Test Lab Robo output on 48 (substitute for #2) | ⚠ **No Robo run exists for versionCode 48.** The only clean crawl is Sep 4 matrix `matrix-1delt54g28ira` against versionCode **~44** — 267 UI actions on Pixel 8, no app crash. The fresh dispatch on 2026-09-08 **failed** on a CI-artifact dep (workflow needs a CI-built AAB for the main SHA); that failure is infrastructure, not an app crash, but it also means 48 was never crawled. The four bumps 44→48 are bump-only (`build.gradle` + `staging-mobile-release.test.js`), **but the AAB also packages the web bundle and 48 non-test `src/` commits landed in between** — among them `0dc4f673` *fix(send): shim `process.version` so Send chunk doesn't blank on cold parse*, which is exactly the class of failure a Robo crawl exists to catch, plus `3424de6f` (RASP hard-signal latch + WC tier gate). This row was marked ✓ at submission; corrected to ⚠ on 2026-09-09. Tracked as F-2 in `docs/security-diffs/diff-2026-09-09.md`. **Closing it needs a Robo run against the versionCode actually submitted — not a re-reading of the ~44 result.** Row 5 (owner walkthrough on 48) is separate, stronger evidence and is unaffected. |
 | 4 | Android Vitals crashes + ANRs = 0 | ⚠ Vacuous on Draft state — Vitals only populates from Production/Open/Closed testing installs where testers share usage & diagnostics; fills post-Publish |
 | 5 | **Stock-Android golden-path walkthrough** on a device the developer has never touched with a debug build | ✓ Owner tested + confirmed 2026-09-08 (Create Wallet + Import Seed + Send/Receive testnet + WalletConnect on Sepolia; no RASP/KEK fail-closed screen, no unresponsive Create Wallet) |
 
