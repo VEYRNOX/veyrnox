@@ -56,9 +56,63 @@ heading.
 |---|---|---|
 | 1 | AAB uploaded to Internal + Closed testing | ✓ Internal 48 (Sep 8 12:56 AM); promoted to Closed testing - Alpha in-session |
 | 2 | Play Pre-launch report exists | ⚠ Never generated for any bundle — accepted residual per #1960; Firebase Test Lab substitutes |
-| 3 | Firebase Test Lab Robo output on 48 (substitute for #2) | ⚠ **No Robo run exists for versionCode 48.** The only clean crawl is Sep 4 matrix `matrix-1delt54g28ira` against versionCode **~44** — 267 UI actions on Pixel 8, no app crash. The fresh dispatch on 2026-09-08 **failed** on a CI-artifact dep (workflow needs a CI-built AAB for the main SHA); that failure is infrastructure, not an app crash, but it also means 48 was never crawled. The four bumps 44→48 are bump-only (`build.gradle` + `staging-mobile-release.test.js`), **but the AAB also packages the web bundle and 48 non-test `src/` commits landed in between** — among them `0dc4f673` *fix(send): shim `process.version` so Send chunk doesn't blank on cold parse*, which is exactly the class of failure a Robo crawl exists to catch, plus `3424de6f` (RASP hard-signal latch + WC tier gate). This row was marked ✓ at submission; corrected to ⚠ on 2026-09-09. Tracked as F-2 in `docs/security-diffs/diff-2026-09-09.md`. **Closing it needs a Robo run against the versionCode actually submitted — not a re-reading of the ~44 result.** Row 5 (owner walkthrough on 48) is separate, stronger evidence and is unaffected. |
+| 3 | Firebase Test Lab Robo output on 48 (substitute for #2) | ❌ **UNMET. No Robo crawl has ever passed, at any versionCode.** A crawl against 48 was obtained on 2026-09-09 (`matrix-7rkpltfw6gsza`) and **failed on all three devices** with `Test failed to run`. So did the two Sep 4 matrices this row previously cited as evidence. Detail below the table. Row 5 (owner walkthrough on 48) is separate, stronger, human evidence, is unaffected, and is now the **only** thing covering this ground. |
 | 4 | Android Vitals crashes + ANRs = 0 | ⚠ Vacuous on Draft state — Vitals only populates from Production/Open/Closed testing installs where testers share usage & diagnostics; fills post-Publish |
 | 5 | **Stock-Android golden-path walkthrough** on a device the developer has never touched with a debug build | ✓ Owner tested + confirmed 2026-09-08 (Create Wallet + Import Seed + Send/Receive testnet + WalletConnect on Sepolia; no RASP/KEK fail-closed screen, no unresponsive Create Wallet) |
+
+### Gate 3 detail — the Robo substitute has never produced a passing result
+
+Established 2026-09-09 by reading the job log of every Robo matrix that exists.
+This row previously read ✓, then ⚠ (corrected the same morning for the narrower
+reason that no run existed for 48). Both were wrong in the same direction: the
+runs it cited as clean were not.
+
+| matrix | was cited as | job log actually says |
+|---|---|---|
+| `matrix-hhpcvb8uffw6a` (Sep 4, vc41) | 265 UI actions clean, Pixel 8 (in `CLAUDE.md`) | `Failed` · `Test failed to run`, ONE device (`shiba-34`), `Test time = 610` vs a 600s (`10m`) budget |
+| `matrix-1delt54g28ira` (Sep 4, ~vc44) | 267 UI actions on Pixel 8, no app crash (in this row) | `Failed` ×3 · `Test failed to run`, `Test time = 611/611/610` vs the same 600s budget |
+| `matrix-7rkpltfw6gsza` (Sep 9, vc48) | — | `Failed` ×3 · `Test failed to run`, `Test time = 1214/1211` vs a 1200s (`20m`) budget |
+
+Every device in every matrix ran to its timeout and came back with
+`toolResultsStep: null`, `toolLogs: []`, `toolOutputs: []`, `outcome: null`,
+`infrastructureFailure: null`. Doubling the budget doubled the runtime and
+changed nothing else. **No UI-action count appears in any of those logs** — the
+265/267 figures have no source that could be found; do not reinstate either
+without naming the artifact it came from.
+
+**Why it fails is not established.** By shape it is not an install failure
+(those die in seconds), not an infrastructure failure (the field is explicitly
+null), and not a crash (that sets an `outcome` with a failure detail) — the
+crawler waited for something until it was killed. Ruled out by inspecting the
+exact APK sent to Firebase (`app-google-firebaseTest.apk`, run 34331563602):
+the Capacitor payload is intact (1061 files under `assets/public/`,
+`index.html` present), no `VITE_BYPASS_RASP` / `DEV_UNGATE_SEND` /
+`DEMO_MODE` is `"1"`, and the robo script's first click target `New wallet` is
+live at `src/components/EntryTiles.jsx:21`. Remaining candidates are a RASP
+fail-closed screen on datacenter hardware, or Robo never attaching; separating
+them needs the per-device `logcat` and `robo_results.pb` in the GCS results
+bucket, which `firebase-test-lab.yml` deliberately never prints because they
+may carry wallet state.
+
+**Consequences to carry forward, not to soften:**
+
+- The 48 non-test `src/` commits between 44 and 48 — including `0dc4f673`
+  *fix(send): shim `process.version` so Send chunk doesn't blank on cold parse*
+  and `3424de6f` (RASP hard-signal latch + WC tier gate) — have never been
+  exercised by any automated crawl. `0dc4f673` is precisely the class of defect
+  a Robo crawl exists to catch, and precisely the class Google's Aug 12
+  Broken Functionality rejection was about.
+- #1960 was closed as accepted residual on the reasoning that Firebase Test Lab
+  substitutes for the missing Play Pre-launch report. The substitute has never
+  passed either, so that closure rests on evidence that does not exist. Reopen
+  or re-argue it; do not cite it as-is.
+- Closing this row needs a Robo matrix that actually reports a passing outcome
+  against the submitted versionCode. A re-reading of any Sep 4 result cannot do
+  it, and neither can a green workflow run — read the `OUTCOME` / `TEST_DETAILS`
+  table in the `Robo crawl` step and compare `Test time` against the
+  `--timeout` budget.
+
+Tracked as F-2 in `docs/security-diffs/diff-2026-09-09.md`.
 
 ## Store listing (Default — English, United States)
 

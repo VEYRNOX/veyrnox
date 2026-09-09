@@ -418,10 +418,49 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
     Closed testing). **#1960 CLOSED 2026-09-04** on the accepted-residual
     reasoning: Firebase Test Lab now provides equivalent crash/ANR data on
     the same Robo infrastructure, and is the primary automated gate going
-    forward — 265 UI actions clean on versionCode 41 (Pixel 8, Android 14,
-    matrix `matrix-hhpcvb8uffw6a`). The Play Pre-launch empty state is left
+    forward. The Play Pre-launch empty state is left
     open as accepted residual; if wanted, the recommended path is upload to
     Closed testing + send for review (blocked on the Aug 12 rejection risk).
+  - **⚠ THE SUBSTITUTE HAS NEVER PASSED EITHER. Established 2026-09-09 by
+    reading the job log of every Robo matrix that exists.** The sentence above
+    used to end "— 265 UI actions clean on versionCode 41 (Pixel 8, Android 14,
+    matrix `matrix-hhpcvb8uffw6a`)". That was FALSE, and it is the evidence
+    #1960's closure rests on, so the closure rationale is materially weaker
+    than recorded:
+
+    | matrix | was cited as | job log actually says |
+    |---|---|---|
+    | `matrix-hhpcvb8uffw6a` (Sep 4, vc41) | 265 UI actions clean, Pixel 8 | `Failed` · `Test failed to run`, ONE device (`shiba-34`), `Test time = 610` against a 600s (`10m`) budget |
+    | `matrix-1delt54g28ira` (Sep 4, ~vc44) | 267 UI actions, no app crash | `Failed` ×3 · `Test failed to run`, `Test time = 611/611/610` against the same 600s budget |
+    | `matrix-7rkpltfw6gsza` (Sep 9, vc48) | — | `Failed` ×3 · `Test failed to run`, `Test time = 1214/1211` against a 1200s (`20m`) budget |
+
+    Every device in every matrix ran to its timeout and returned
+    `toolResultsStep: null`, `toolLogs: []`, `toolOutputs: []`, `outcome: null`,
+    `infrastructureFailure: null`. Doubling the budget doubled the runtime and
+    changed nothing else. **No UI-action count has ever appeared in a log read
+    on 2026-09-09** — the "265"/"267" figures have no source I could find; do
+    not reinstate either without naming the artifact it came from.
+  - **Why the crawl fails is NOT established.** By shape it is neither an
+    install failure (those die in seconds), an infrastructure failure (that
+    field is explicitly null), nor a crash (that sets an `outcome` carrying a
+    failure detail). The crawler waited for something until it was killed.
+    Ruled out by direct inspection of the exact APK sent to Firebase
+    (`app-google-firebaseTest.apk` from run 34331563602): the Capacitor payload
+    is intact (1061 files under `assets/public/`, `index.html` present), no
+    `VITE_BYPASS_RASP`/`DEV_UNGATE_SEND`/`DEMO_MODE` is `"1"`, and the robo
+    script's first click target `New wallet` is live at
+    `src/components/EntryTiles.jsx:21`. Remaining candidates — a RASP
+    fail-closed screen on datacenter hardware, or Robo never attaching — need
+    the per-device `logcat` and `robo_results.pb` from the GCS results bucket,
+    which the workflow deliberately never prints because they may carry wallet
+    state. Reading them needs the service-account credentials.
+  - **Standing rule this produced: read the outcome table, not the run status.**
+    Both figures survived because the workflow RUN was red for an
+    unrelated-looking reason every time, so nobody read past the job status
+    into the step. `gh run view <id> --json conclusion` does not tell you
+    whether a crawl passed — the `OUTCOME` / `TEST_DETAILS` table inside the
+    `Robo crawl` step's log does, and `Test time` against the `--timeout`
+    budget is what distinguishes a real crawl from one that was killed.
 - **Release build verified end-to-end 2026-07-23** (INTERNAL): signed `app-release.aab`,
   `jarsigner` verified, `BuildConfig.RELEASE_CERT_SHA256` = Google's app-signing cert.
   Fixed en route: `keystore.properties` `storeFile` resolved against the wrong directory
@@ -608,15 +647,25 @@ per-item state in `docs/RELEASE-v1.0.1-APPLE-SUBMISSION.md` and
   pre-publish.** Vitals only fills from Production/Open/Closed-testing installs
   whose testers share usage and diagnostics; on a `Draft` app the check is
   vacuous, not merely unmet. It becomes meaningful only after Publish.
-- **Play gate 3 (the Robo substitute) is met only weakly, and that is OPEN.** The
-  crawl standing in for gate 2 is matrix `matrix-1delt54g28ira` (Sep 4) against
-  versionCode **~44**, while **48** was submitted; the fresh dispatch against 48
-  failed on a CI-artifact dependency. The four bumps 44→48 are bump-only, but 48
-  non-test `src/` commits landed in between — including `0dc4f673`, a fix for the
-  Send chunk blanking on cold parse, which is the exact class of failure a Robo
-  crawl exists to catch. Tracked as F-2 in
-  `docs/security-diffs/diff-2026-09-09.md`; the Play doc's table still marks this
-  row ✓ where rows 2 and 4 correctly read ⚠.
+- **Play gate 3 (the Robo substitute) is UNMET — not "met weakly". Corrected
+  2026-09-09.** This bullet read *"is met only weakly"* and named matrix
+  `matrix-1delt54g28ira` (Sep 4, versionCode ~44) as the crawl standing in for
+  the gate. There is no weak pass to grade: **that matrix failed on all three
+  devices with `Test failed to run`**, as did every other matrix ever run. See
+  the #1960 bullet above for the full table and the ruled-out causes. Gate 3
+  has no passing evidence at any versionCode.
+
+  The original concern stands on top of that and is now strictly worse. A crawl
+  against 48 was finally obtained on 2026-09-09 (`matrix-7rkpltfw6gsza`, after
+  fixing the SHA race in the dispatch gate) and it failed the same way, so the
+  gap is no longer "~44 was crawled, 48 was not" — nothing has been crawled.
+  The 48 non-test `src/` commits between 44 and 48 still include `0dc4f673`, a
+  fix for the Send chunk blanking on cold parse, which is exactly the class of
+  failure a Robo crawl exists to catch and which therefore remains uncovered by
+  any automated gate. Tracked as F-2 in
+  `docs/security-diffs/diff-2026-09-09.md`. Row 5 (the owner's stock-device
+  walkthrough on 48) is separate, stronger, human evidence and is unaffected —
+  it is currently the ONLY thing covering this ground.
 
 **No explicit release decision was written down on the day** — the hold text was
 simply overtaken by the submissions, and for a day this file said "do not submit"
