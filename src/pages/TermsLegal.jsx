@@ -253,10 +253,14 @@ export default function TermsLegal() {
               <p>
                 When enabled, each message you type is sent to our Veyrnox-run proxy, which
                 forwards it to a third-party language model provider that produces the reply.
-                Alongside your message we send two small pieces of context: <code>current_screen</code>
+                Alongside your message we send three small pieces of context: <code>current_screen</code>
                 (the name of the screen you are on, for example &ldquo;Dashboard&rdquo; or
-                &ldquo;Send&rdquo;) and <code>wallet_chain</code> (which blockchain the current
-                account is on). We also attach the same anonymous install identifier
+                &ldquo;Send&rdquo;), <code>wallet_chain</code> (which blockchain the current
+                account is on), and the app&rsquo;s display language, so the answer comes back in
+                the language you are reading. That language tag is whichever one you picked in
+                Settings or, if you never picked one, the one your device reports; for some
+                languages it carries a regional variant such as
+                &ldquo;pt-BR&rdquo;. We also attach the same anonymous install identifier
                 (<code>device_id</code>) used for the usage events in &sect;11. It is there to
                 enforce a per-device daily limit on how many questions can be asked &mdash; not to
                 personalise answers. It is not linked to your name, wallet, or addresses, and it is
