@@ -1633,12 +1633,59 @@ ONE message for concurrency.
 
 ### Codex — second developer
 
-Codex is read-only (`codex review` or `codex exec -s read-only`). Claude reads the report,
-then implements. Codex output is INTERNAL — never the outstanding independent audit.
+`codex review --base main` is a read-only invocation, and using Codex that way is still
+the intended review pattern: Claude reads the report, then implements. Codex output is
+INTERNAL — never the outstanding independent audit.
 
-Runbook: `docs/codex-review-runbook.md` — CLI install, one-line invocation
-(`codex review --base main`), when to use it, when it does NOT substitute for
-the independent audit gate.
+Runbook: `docs/codex-review-runbook.md` — CLI install, one-line invocation, when to use
+it, when it does NOT substitute for the independent audit gate.
+
+**But Codex is NOT read-only on this machine, and this section said it was until
+2026-09-09.** A long-running Codex thread writes to the repo continuously. Read the
+correction below before attributing any unexplained branch, push, or merge to a Claude
+session — two sessions mis-attributed Codex's writes to each other on 2026-09-09 alone,
+and one of them (this file's own author) did it twice in one afternoon.
+
+- **What it is.** The ChatGPT desktop app's bundled agent —
+  `/Applications/ChatGPT.app/Contents/Resources/codex … app-server`, plus the CLI at
+  `~/.local/bin/codex`. Its threads live in `~/.codex/sessions/<yyyy>/<mm>/<dd>/rollout-*.jsonl`,
+  NOT in `~/.claude/projects/`, which is why a transcript sweep across Claude sessions
+  finds nothing and reads as "no actor exists".
+- **It is indistinguishable from a Claude session in every record GitHub keeps.** Same
+  macOS user, same git identity (`Al Jobson <al.jobson@21stclick.co.uk>`), same `gh`
+  token. A PR timeline showing `actor=aljobson User` tells you nothing about which agent
+  acted. Do not conclude "a Claude session did this" from an actor field.
+- **It works in the SHARED PRIMARY CHECKOUT.** Its `exec_command` calls carry
+  `workdir: /Users/aljobson/Documents/GitHub/veyrnox`, so its `git fetch` and
+  `git worktree add` run in the checkout this file tells every Claude session to treat as
+  read-only. Assume the primary's ref state can change under you at any moment.
+- **It creates `/tmp` worktrees on `codex/*` branches, and pushes to `claude/*` branches
+  it does not own.** Observed 2026-09-09:
+  `git worktree add /tmp/veyrnox-pr2474 -b codex/fix-pr2474-conflict FETCH_HEAD`, and the
+  same thread made `codex/fix-pr2470-conflict`. Its push history includes
+  `git push origin claude/biometrics-auto-unlock`,
+  `git push origin claude/documentation-verified-labels-81b6f4`, and
+  `git push origin HEAD:veyrnox-audit-fix8-medlow && gh pr merge 2273`. **So it force-pushes
+  other agents' PR branches and merges PRs.** This is the mechanism behind
+  `.claude/scheduled-tasks/daily-veyrnox-branch-review/SKILL.md`'s "PR #1789 was merged by
+  another actor after its auto-merge had been explicitly disabled".
+- **A PR's head can change under you, and `gh pr diff` will not warn you.** #2470 was
+  force-pushed from a duplicate fixture change to a test-only change between one session
+  reading it and another; both then described it correctly for their own snapshot and
+  contradicted each other. State the head SHA whenever you describe a PR's contents.
+- **There is a SECOND automation fleet.** `~/.codex/automations/` holds ~16 automations
+  whose names mirror the Claude scheduled tasks — `daily-veyrnox-branch-review`,
+  `veyrnox-daily-security-diff`, `veyrnox-daily-dep-audit`, `veyrnox-dependency-audit`,
+  `veyrnox-weekly-security-audit`, `veyrnox-audit-finding-tracker`, `gemini-weekly-sweep`,
+  `veyrnox-elliptic-upstream-watch`, plus watch tasks. Both fleets run the same jobs
+  against the same repo, which is a sufficient explanation for duplicate PRs on one bug
+  without looking for another cause: 2026-09-09 produced #2462, #2465 and #2470 for a
+  single fixture bug, plus a `codex/fix-suspicious-assets-date-fixture` branch.
+- **How to check, rather than guess.** `ps -Ao pid,etime,command | grep -i codex` for the
+  running agent; `grep -rlF '<branch-or-path>' ~/.codex/sessions ~/.codex/archived_sessions`
+  to find the thread that did it — the rollout JSONL records the literal shell command and
+  its `workdir`. A single thread can be very long-lived (the one found on 2026-09-09 opened
+  2026-08-23 and was 127 MB / 26,517 lines), so date the file by mtime, not by its name.
 
 ### Orchestration — pick automatically
 

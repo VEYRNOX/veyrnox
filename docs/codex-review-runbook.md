@@ -91,9 +91,16 @@ merge.
   PR as "audited" in commit messages, PR bodies, or release notes.
 - **Not a merge gate.** There is no CI wiring that runs codex on every
   PR — this runbook is a manual invocation, opt-in by the author.
-- **Not a fix engine here.** Per CLAUDE.md, Codex is read-only (`codex
-  review` / `codex exec -s read-only`). Claude reads the report and
-  implements.
+- **Not a fix engine *in this workflow*.** The invocations in this runbook
+  are read-only (`codex review` / `codex exec -s read-only`); Claude reads
+  the report and implements. That is a property of how this runbook calls
+  Codex, **not** of Codex on this machine — corrected 2026-09-09, when this
+  bullet and CLAUDE.md both claimed the latter. A separate long-running
+  Codex thread from the ChatGPT desktop app creates worktrees, commits,
+  pushes to `claude/*` branches it does not own, and merges PRs, all under
+  the same git identity and `gh` token as every Claude session. See
+  CLAUDE.md's "Codex — second developer" section before attributing an
+  unexplained branch or merge to a Claude session.
 
 ## Recording the review
 
