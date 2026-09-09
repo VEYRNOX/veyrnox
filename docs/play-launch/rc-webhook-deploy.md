@@ -34,10 +34,28 @@ Set Edge Function secret (Supabase dashboard → Edge Functions → Secrets):
 Deploy:
 
 ```bash
-supabase functions deploy rc-webhook
+supabase functions deploy rc-webhook --no-verify-jwt
 ```
 
-Note the deliberately absent `--no-verify-jwt` — same rationale as `first-referral-bonus`.
+`--no-verify-jwt` is REQUIRED — this line said the opposite until 2026-09-09.
+Live state: `verify_jwt=false` on both Supabase projects since 2026-09-08 (prod
+v14, staging v5). Do not "restore" the platform gate.
+
+RevenueCat calls this endpoint server-to-server and puts the shared
+`REVENUECAT_WEBHOOK_AUTHORIZATION` secret in the `Authorization` header. That is
+not a Supabase JWT, so with `verify_jwt` on, the platform rejects every
+legitimate delivery before the handler runs — and it fails silently: RC records
+a 401 and the symptom looks like "the webhook isn't firing".
+
+Turning the platform gate off costs nothing here, because it was never this
+endpoint's control. The in-function timing-safe compare against
+`REVENUECAT_WEBHOOK_AUTHORIZATION` is, and it fails closed when the secret is
+unset (500, before any body read); `set_referral_rc_user` is SECURITY DEFINER
+and grants nothing to `anon`.
+
+**`first-referral-bonus` is the opposite and keeps `verify_jwt=true`** — it is
+called from the client through the Cloudflare Pages proxy, which carries the
+Supabase anon key. Do not copy one function's deploy line to the other.
 
 ## Wire RC dashboard
 

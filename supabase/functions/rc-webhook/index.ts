@@ -39,13 +39,28 @@
 //
 // DEPLOY
 //
-//   supabase functions deploy rc-webhook
+//   supabase functions deploy rc-webhook --no-verify-jwt
 //
-// NOTE the missing --no-verify-jwt. Same rationale as first-referral-bonus:
-// keep the platform's bearer check in front of this handler, even though the
-// real gate is the shared-secret compare below. If your project uses the
-// newer non-JWT publishable keys, verify the platform still enforces bearer
-// presence after deploying.
+// --no-verify-jwt IS REQUIRED, and this is the opposite of what this block said
+// until 2026-09-09. Live state: verify_jwt=false on both projects since
+// 2026-09-08 (prod v14, staging v5). Do NOT "restore" the platform gate.
+//
+// Why it has to be off: RevenueCat sends this request server-to-server and puts
+// the shared REVENUECAT_WEBHOOK_AUTHORIZATION secret in the Authorization
+// header. That is not a Supabase JWT, so the platform's bearer check rejects
+// every legitimate delivery before this handler runs. The failure is silent in
+// the worst way — RC records a 401 and the symptom presents as "the webhook
+// isn't firing", not as an error anyone reads.
+//
+// This does NOT apply to first-referral-bonus, which keeps verify_jwt=true:
+// that one is called from the client through the Cloudflare Pages proxy, which
+// carries the Supabase anon key. Same repo, opposite answer — do not copy one
+// function's deploy line to the other.
+//
+// Nothing is lost by turning the platform gate off, because it was never this
+// endpoint's control: the shared-secret compare below always was (see
+// AUTHENTICATION, HONESTLY above), and the RPC it calls is SECURITY DEFINER
+// granting nothing to anon.
 //
 // ENV (Supabase dashboard → Edge Functions → Secrets):
 //   SUPABASE_URL                        auto-injected
