@@ -24,6 +24,7 @@ import { Switch } from "@/components/ui/switch";
 import BackButton from "@/components/BackButton";
 import PasskeySetup from "../components/PasskeySetup";
 import BiometricUnlockSettings from "../components/security/BiometricUnlockSettings";
+import TheftProtectionSettings from "../components/security/TheftProtectionSettings";
 import PasskeyUnlockSettings from "../components/security/PasskeyUnlockSettings";
 import TwoFactorSettings from "../components/security/TwoFactorSettings";
 import HardwareKekSettings from "../components/security/HardwareKekSettings";
@@ -435,6 +436,8 @@ export default function Settings() {
 
             <div className="space-y-5">
               <BiometricUnlockSettings embedded />
+              <div className="border-t border-border" />
+              <TheftProtectionSettings />
               <div className="border-t border-border" />
               <PasskeyUnlockSettings embedded />
             </div>

@@ -137,6 +137,7 @@ import {
   ensureBiometric2faOnNative,
 } from '@/lib/biometric';
 import { ensureKekPinNoticeOnNative } from '@/lib/kekPinNotice';
+import { runTheftProtectionGate } from '@/lib/theftProtection';
 import { clearConsent } from '@/lib/consent';
 import { clearPendingWcUri } from '@/lib/deepLinkPairing';
 import { setLivePricesEnabled } from '@/lib/priceFeed';
@@ -1919,6 +1920,14 @@ export function WalletProvider({ children }) {
     // Hidden wallet 2FA mode (primary set only; decoy/hidden always use PIN).
     setHiddenWallet2faModeState(mv.getHiddenWallet2faMode(container));
     const isPrimary = !decoy && !hidden;
+
+    // THEFT PROTECTION: extra OS-biometric factor on top of PIN + KEK.
+    // No-op on decoy/hidden (K-2, enforced inside the gate) and when the
+    // user has not opted in. Fails closed on RASP WARN/BLOCK, biometric
+    // decline, iOS non-Face biometry, or any probe error — the throw
+    // propagates OUT of unlock() so no visible session mounts. See
+    // src/lib/theftProtection.js for the honest ceiling.
+    await runTheftProtectionGate({ isPrimary });
 
     if (isPrimary) {
       // Capture the PREVIOUS unlock time for display (read for free — already
