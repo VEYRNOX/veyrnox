@@ -84,3 +84,42 @@ describe('firebase-test-lab.yml gate', () => {
     expect(testLab).toContain('refusing to fall back to an older APK');
   });
 });
+
+// publish-to-play-closed was the one consumer target_sha never reached (#2495).
+// `android-release` builds the AAB from the guard's validated SHA, but this job
+// read `build.gradle` at `github.sha` to decide whether the versionCode had
+// moved — deciding on one tree while uploading another, which is the exact
+// failure target_sha exists to remove.
+//
+// The two assertions below are a pair and both are load-bearing. Switching the
+// SHA without adding the `needs:` entry is WORSE than not fixing it: the
+// expression resolves to an empty string, `vc_at ""` returns nothing, and the
+// gate takes its deliberate fail-open branch and uploads on every push.
+//
+// Scoped to the job block, not the whole file, for two reasons. `SHA: ${{
+// github.sha }}` is a SUBSTRING of the guard's own legitimate `EVENT_SHA: ${{
+// github.sha }}` at the top of ci.yml, so a file-wide absence check fires on
+// correct code. And the fix's own comments quote `github.sha` as history —
+// hence the comment-stripped copy, per this file's header.
+describe('ci.yml publish-to-play-closed uses the validated SHA', () => {
+  const start = ci.indexOf('\n  publish-to-play-closed:');
+  // End at the next top-level job key, so the slice cannot spill into whatever
+  // job happens to follow and satisfy an assertion from there.
+  const rest = ci.slice(start + 1);
+  const nextJob = rest.search(/\n  [a-z][a-z0-9-]*:\n/);
+  const job = nextJob === -1 ? rest : rest.slice(0, nextJob);
+
+  it('locates the job block', () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(job).toContain('Skip when this versionCode was already consumed');
+  });
+
+  it('depends on target-sha-guard so the outputs resolve', () => {
+    expect(job).toMatch(/needs:\s*\[[^\]]*target-sha-guard[^\]]*\]/);
+  });
+
+  it('reads the guard output, never the branch tip', () => {
+    expect(job).toContain('SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}');
+    expect(job).not.toContain('SHA: ${{ github.sha }}');
+  });
+});

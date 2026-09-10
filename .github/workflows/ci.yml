@@ -842,7 +842,11 @@ jobs:
   # testers get the update. It is NOT a production rollout.
   publish-to-play-closed:
     runs-on: ubuntu-latest
-    needs: android-release
+    # target-sha-guard is required for `needs.target-sha-guard.outputs` to
+    # resolve at all — without it the SHA below silently becomes an empty
+    # string, `vc_at ""` returns nothing, and the gate takes its fail-open
+    # branch and uploads on every push (#2495).
+    needs: [android-release, target-sha-guard]
     # Same trigger scope as android-release: main pushes only, never PRs.
     # AND the opt-in variable must be set — otherwise skip cleanly.
     if: >-
@@ -883,7 +887,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
+          # The VALIDATED commit, not the branch tip. `android-release` builds
+          # the AAB from target-sha-guard's effective_sha, so reading
+          # build.gradle at github.sha compared this commit's versionCode
+          # against a DIFFERENT tree than the artifact being uploaded (#2495).
+          # effective_sha falls back to github.sha when no target_sha was
+          # supplied, so the ordinary push path is unchanged.
+          SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
           FORCED: ${{ inputs.force_play_upload }}
         run: |
           set -euo pipefail
