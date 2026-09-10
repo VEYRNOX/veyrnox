@@ -647,25 +647,48 @@ per-item state in `docs/RELEASE-v1.0.1-APPLE-SUBMISSION.md` and
   pre-publish.** Vitals only fills from Production/Open/Closed-testing installs
   whose testers share usage and diagnostics; on a `Draft` app the check is
   vacuous, not merely unmet. It becomes meaningful only after Publish.
-- **Play gate 3 (the Robo substitute) is UNMET — not "met weakly". Corrected
-  2026-09-09.** This bullet read *"is met only weakly"* and named matrix
-  `matrix-1delt54g28ira` (Sep 4, versionCode ~44) as the crawl standing in for
-  the gate. There is no weak pass to grade: **that matrix failed on all three
-  devices with `Test failed to run`**, as did every other matrix ever run. See
-  the #1960 bullet above for the full table and the ruled-out causes. Gate 3
-  has no passing evidence at any versionCode.
+- **Play gate 3 (the Robo substitute) was WAIVED 2026-09-10 as accepted
+  residual (owner decision).** Four sequential fix attempts landed on `main`
+  between 2026-09-09 and 2026-09-10 — #2484 (DEVICE_NOT_SECURE actionable copy),
+  #2487 (Slice L auto-heal `!error` guard), #2500 (RootErrorBoundary + boot
+  watchdog), #2510 (diagnostics widening). Every one passed local + CI; every
+  one left the FTL Robo crawl red. Diagnostic evidence pulled from GCS bucket
+  `veyrnox-400ae-testlab-results` for matrix
+  `robo-terminate-2497-20260910T141344Z-10340` (built from `3b5a9188`, both #2487
+  and #2500 present) confirms: app launched, no crash, no ANR, no RASP block
+  (logcat 13,482 lines), Robo tapped through PIN entry via accessibility tree
+  and Submit PIN successful at t=62.4s (dst=4), then screen transitioned dst=4
+  → dst=1 during the 30s post-PIN wait with the DEVICE_NOT_SECURE message
+  absent at assertion time. All screenshots after FTL splash rendered black
+  on `#050608`. The pattern is: Robo tooling matching against a dark-theme app
+  with async KEK/Argon2id state machines is not a reliable signal on this
+  app's security model. **Sole release evidence going forward: owner
+  stock-device walkthrough** (row 5 of the pre-submission checklist below),
+  plus Play Vitals post-install crash/ANR + TestFlight/Xcode Organizer hangs
+  as post-launch signals. This waiver extends #1960's precedent — that closure
+  named FTL Robo as Pre-launch report's substitute, and FTL Robo has now
+  itself failed to produce a passing run at any versionCode. Tracking issues
+  closed the same day: #2497 (FTL never passed), #2511 (Samsung SCG13 PIN-pad
+  drift), #2512 (Slice L auto-heal secondary race). All three closed as
+  accepted residual with the same rationale; do not reopen as an automated
+  gate. The #2484/#2487/#2500 fixes remain in the tree because they help real
+  users on real devices — the FTL red was Robo instrumentation, not a
+  user-facing defect.
 
-  The original concern stands on top of that and is now strictly worse. A crawl
-  against 48 was finally obtained on 2026-09-09 (`matrix-7rkpltfw6gsza`, after
-  fixing the SHA race in the dispatch gate) and it failed the same way, so the
-  gap is no longer "~44 was crawled, 48 was not" — nothing has been crawled.
-  The 48 non-test `src/` commits between 44 and 48 still include `0dc4f673`, a
-  fix for the Send chunk blanking on cold parse, which is exactly the class of
-  failure a Robo crawl exists to catch and which therefore remains uncovered by
-  any automated gate. Tracked as F-2 in
-  `docs/security-diffs/diff-2026-09-09.md`. Row 5 (the owner's stock-device
-  walkthrough on 48) is separate, stronger, human evidence and is unaffected —
-  it is currently the ONLY thing covering this ground.
+  **Historical note (pre-waiver).** This bullet previously read (2026-09-09):
+  *"Play gate 3 is UNMET — not 'met weakly'. This bullet read 'is met only
+  weakly' and named matrix `matrix-1delt54g28ira` (Sep 4, versionCode ~44) as
+  the crawl standing in for the gate. There is no weak pass to grade: that
+  matrix failed on all three devices with `Test failed to run`, as did every
+  other matrix ever run… nothing has been crawled. The 48 non-test src/
+  commits between 44 and 48 still include `0dc4f673`, a fix for the Send
+  chunk blanking on cold parse, which is exactly the class of failure a Robo
+  crawl exists to catch and which therefore remains uncovered by any
+  automated gate. Tracked as F-2 in `docs/security-diffs/diff-2026-09-09.md`.
+  Row 5 (the owner's stock-device walkthrough on 48) is separate, stronger,
+  human evidence and is unaffected — it is currently the ONLY thing covering
+  this ground."* The 2026-09-10 owner decision accepts row 5 as the sole
+  substitute rather than treating the automated gap as a defect to be closed.
 
 **No explicit release decision was written down on the day** — the hold text was
 simply overtaken by the submissions, and for a day this file said "do not submit"
@@ -676,8 +699,12 @@ same session.**
 
 **The checklist below is NOT retired.** It remains the standard for the next
 submission of any build to either store — a resubmission after an Apple rejection
-included. Gate 2 stays waived on the #1960 reasoning; gate 3's evidence must come
-from the versionCode actually being submitted.
+included. Gate 2 stays waived on the #1960 reasoning; gate 3 was waived
+2026-09-10 as accepted residual — owner stock-device walkthrough (row 5) is
+now the sole substitute, and FTL Robo runs are advisory-only. `firebase-test-lab.yml`
+stays wired but its failure is not a required check on `main` (verified 2026-09-10:
+required contexts are `verify`, `unit-tests`, `Release-cert guard rejects wrong
+fingerprints`, `mainnet-flag-gate`, `staging-gate` — none of them FTL).
 
 **Pre-submission verification for 1.0.1 (BOTH stores) — MUST run before any human
 review submission.** Added 2026-08-12 after Play rejected build 5 under Broken
@@ -687,7 +714,16 @@ your PIN and try again."` — an unresponsive-UI outcome from our KEK/RASP path 
 closed on hardware we never tested. Neither store's automated tools caught it because
 neither had been run against build 5 (Play Pre-launch report showed
 "Upload artifacts to generate pre-launch reports"; iOS has no equivalent auto-tool).
-- **Play (mandatory):** upload the AAB to Internal testing → open **Test and release →
+- **Play (SUPERSEDED 2026-09-10):** this bullet described "confirm a Pre-launch
+  report exists" as mandatory before promoting to review. Both automated Play
+  checks (Pre-launch report AND FTL Robo substitute) are now WAIVED as accepted
+  residual per the 2026-09-04 (#1960) and 2026-09-10 owner decisions above. The
+  mandatory check has moved to owner stock-device walkthrough (row 5); FTL runs
+  are advisory-only. The historical text is preserved below because the
+  failure-mode reasoning still explains why row 5 exists — a real reviewer on
+  hardware you haven't tested is what row 5 substitutes for.
+
+  *Historical, pre-waiver:* upload the AAB to Internal testing → open **Test and release →
   Testing → Pre-launch report → Overview** and confirm a report exists for the new
   versionCode. Fix every crash/ANR/error dialog it reports before promoting to review.
   Do NOT submit for review without a clean report — this is the same tool
