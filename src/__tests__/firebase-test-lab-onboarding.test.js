@@ -106,6 +106,22 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     // On FTL Pixels there is no lock screen so onboarding halts at the
     // DEVICE_NOT_SECURE branch — no telemetry-consent screen to decline,
     // no main wallet to render. The click sequence is PIN entry only.
+    //
+    // RECORDED GAP (#2492, restored 2026-09-10): the pre-#2486 script also
+    // clicked { text: 'No thanks' } to exercise the I3 no-egress path and
+    // asserted { text: 'Send' } on the main wallet after onboarding. Those
+    // deliberately covered:
+    //   - the telemetry-consent decline (I3: declining transmits nothing
+    //     and mints no device id) — do not "simplify" by removing this
+    //     click on any device profile that CAN reach the screen,
+    //   - the fresh-vault-lands-on-main-wallet-with-Send-reachable path.
+    // Both are unrunnable on stock FTL because the device is not secure.
+    // The spec is parked at
+    //   .github/testlab/android-pin-onboarding-robo-script.json
+    // (see .github/testlab/README.md). RE-ENABLE CONDITION: any FTL
+    // device profile provisioned with a lock screen, or a `--test`
+    // instrumentation lane that sets one — restore the two assertions
+    // to this file the same commit that adds the second matrix.
     expect(clicks).toEqual([
       { text: 'New wallet' },
       ...[...pin].map(text => ({ text })),
