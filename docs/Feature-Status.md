@@ -3100,3 +3100,63 @@ before citing.**
   (absent by 2026-09-06; exact date unrecoverable, the registry is not in git). Both
   `SKILL.md` copies were retained. Regression cover is the daily audit itself, which
   surfaces nested findings unsuppressed — as it did here.
+
+## 2026-09-10 — FTL Robo waived as an automated release gate (owner decision)
+
+Four sequential fix attempts against Firebase Test Lab Robo landed on `main`
+between 2026-09-09 and 2026-09-10:
+
+- **PR #2484** (`53b8a089`) — surface DEVICE_NOT_SECURE actionable message
+  instead of the generic fail-closed banner. Merged; on `main`.
+- **PR #2487** (`54b99ba3`) — Slice L auto-heal `!error` guard, so a
+  DEVICE_NOT_SECURE error message can render on the "choose" view instead of
+  being immediately replaced by a route to entry-tiles. Merged; on `main`.
+- **PR #2500** (`bf68a1be`) — `RootErrorBoundary` at the top of the tree plus
+  an inline boot watchdog in `index.html` (Reload UI after 5s if React never
+  mounts). Motivated by the Apple 1.0.1 build 57 iPad-blank-page rejection.
+  Merged; on `main`.
+- **PR #2510** (`3b5a9188`) — widen sanitized FTL matrix diagnostics so a
+  future Robo failure surfaces something more useful than "Test failed to
+  run" in the workflow log. Merged; on `main`.
+
+Every one passed local + CI. Every one left the FTL Robo crawl red.
+
+**Evidence.** GCS matrix
+`gs://veyrnox-400ae-testlab-results/robo-terminate-2497-20260910T141344Z-10340/`
+(built from `3b5a9188`, both #2487 and #2500 present), device
+`shiba-34-en-portrait`:
+
+- App launched — no crash, no ANR, no RASP block (logcat 13,482 `veyrnox` lines).
+- Robo tapped through PIN entry via the accessibility tree — Submit PIN
+  successful at t=62.4s (dst=4, post-PIN).
+- During the scripted 30s wait, screen transitioned dst=4 → dst=1 —
+  DEVICE_NOT_SECURE message not present at assertion time.
+- `roboscriptFinished: {reason: ASSERTION_FAILED}` at t=95.6s.
+- All screenshots after FTL splash render pure black on the app's `#050608`
+  background. React did mount (accessibility tree existed and was
+  tap-successful); the visual capture surface didn't hold whatever was on
+  screen at snapshot cadence.
+
+**Owner decision.** Waive FTL Robo as an automated release gate. Sole release
+evidence going forward is the owner stock-device walkthrough (row 5 of the
+`CLAUDE.md` pre-submission checklist), plus Play Vitals post-install
+crash/ANR and TestFlight/Xcode Organizer hangs as post-launch signals. This
+extends #1960's precedent — that closure (2026-09-04) named FTL Robo as the
+Play Pre-launch report's substitute, and FTL Robo has now itself failed to
+produce a passing run at any versionCode.
+
+**Scope, stated honestly.**
+
+- **Not a code-regression closure.** The #2484 / #2487 / #2500 fixes remain
+  in-tree. They help real users on real devices. The FTL red was Robo
+  instrumentation matching against a dark-theme app with async
+  KEK/Argon2id state machines, not a user-facing defect.
+- **`firebase-test-lab.yml` stays wired** and runs on push, as advisory-only.
+  It is not in the `main`-branch required-check set (verified 2026-09-10:
+  required contexts are `verify`, `unit-tests`, `Release-cert guard rejects
+  wrong fingerprints`, `mainnet-flag-gate`, `staging-gate`).
+- **Tracking issues closed** as accepted residual with the same rationale:
+  #2497 (FTL never passed at any versionCode), #2511 (Samsung SCG13 OneUI
+  PIN-pad text-matching drift), #2512 (Slice L `!error` guard state race).
+- Recorded in `CLAUDE.md` at the same time under the 1.0.1 SUBMISSION HOLD /
+  Play gate 3 bullet (PR #2513).
