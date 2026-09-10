@@ -842,7 +842,7 @@ jobs:
   # testers get the update. It is NOT a production rollout.
   publish-to-play-closed:
     runs-on: ubuntu-latest
-    needs: android-release
+    needs: [android-release, target-sha-guard]
     # Same trigger scope as android-release: main pushes only, never PRs.
     # AND the opt-in variable must be set — otherwise skip cleanly.
     if: >-
@@ -883,7 +883,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
+          SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
           FORCED: ${{ inputs.force_play_upload }}
         run: |
           set -euo pipefail
