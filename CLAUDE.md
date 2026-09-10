@@ -264,8 +264,37 @@ is what the sentence was there to guard. See the App Store section for the evide
 `api/trackEvent.js` writes 7 event types to our own Supabase with a random
 `veyrnox-device-id`; `receive_viewed` and `send_completed` carry an asset symbol.
 Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-07-23:
-- The pipeline is PROVEN to work end-to-end, but has **zero real-user data** — the
-  only rows ever written were 126 from local test runs (see below).
+- **The pipeline carries REAL USER DATA at scale, and this bullet said the
+  opposite until 2026-09-10.** It read: *"The pipeline is PROVEN to work
+  end-to-end, but has **zero real-user data** — the only rows ever written were
+  126 from local test runs (see below)."* That was approximately true the day it
+  was written and has been decisively false since the App Store launch. Do not
+  reason about privacy, store declarations or consent from a no-real-data
+  premise. Shape, measured 2026-09-10 on prod `jwstkrtslotnjyerzzsi` — a
+  snapshot, not a fact to carry forward:
+  **thousands of events from thousands of distinct devices, continuously since
+  2026-07-23, with the large majority of the volume in the trailing 28 days.**
+  Re-derive rather than trusting a number written here (the versionCode bullet
+  above is what happens otherwise):
+
+  ```sql
+  select count(*) as events, count(distinct device_id) as devices,
+         min(created_at)::date as first, max(created_at)::date as last
+  from public.events;
+  ```
+
+  **Why it went stale unnoticed, which is the reusable part.** Day one
+  (2026-07-23) holds 141 events across 115 device_ids, and the 126-event test
+  leak in the next bullet accounts for almost all of it — so the sentence was
+  written on the one day it was defensible, and the file's own convention of
+  dating a block ("Consequences worked through 2026-07-23") made it look
+  current afterwards. The growth is recent and tracks the launch, not the
+  writing. **A claim of the form "we have no X yet" has an expiry date and no
+  alarm.** It is also self-contradicting inside this file, which records 574 new
+  customers / 578 active users and states plainly that *any "not yet launched"
+  framing anywhere in this file is wrong* — this bullet was exactly that framing,
+  six weeks past its truth.
+  Tracked as [#2508](https://github.com/VEYRNOX/veyrnox/issues/2508).
 - **Test suite was writing to PRODUCTION Supabase.** `.env.local` credentials leak
   into Vitest, so any test rendering WalletProvider inserted real rows — 126 events
   across 114 phantom device_ids from one run. Fixed in PR #1328 by blanking the
@@ -275,6 +304,12 @@ Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-0
 - **Store declarations were understated.** Play Data Safety and Apple App Privacy
   both claimed App-functionality-only; **Analytics** purpose added to both
   2026-07-23. Still open: Apple's **Usage Data → Product Interaction** is undeclared.
+  **That gap is now higher-stakes than when it was written, and its status is
+  UNCHECKED — not re-verified as of 2026-09-10.** It was recorded while the
+  no-real-user-data bullet above made it look academic; thousands of real
+  devices have since transmitted. Confirm it against App Store Connect directly
+  rather than against this line, and do not read the correction above as
+  evidence either way — it measured the database, not the declaration.
   **Consent/opt-out now exists (2026-07-26):** opt-in screen at first wallet entry
   (`TelemetryConsent.jsx`, suppressed in deniability/demo) plus a permanent toggle
   at Settings → Privacy. The gate lives in `api/trackEvent.js` — the single egress
