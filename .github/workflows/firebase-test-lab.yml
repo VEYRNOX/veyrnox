@@ -301,6 +301,34 @@ jobs:
       # The normal gcloud table collapses device preparation and startup errors
       # into "Test failed to run". Query only the matrix/execution status fields;
       # never print logcat or app artifacts, which may contain wallet state.
+      #
+      # 2026-09-10 (#2497): widened the field set. Every matrix at every
+      # versionCode returns `toolResultsStep: null, toolLogs: [], toolOutputs: []`
+      # with `outcome: null` and `state: FINISHED` at the timeout budget — zero
+      # actionable signal on WHERE the crawl stopped. The Testing API v1 also
+      # returns the fields below; safe to print (they name lifecycle progress,
+      # not app state) and cost nothing to fetch (same call, additional jq).
+      #
+      #   testDetails.progressMessages[] — timestamped "Provisioning device",
+      #                                    "Preparing device", "Starting test",
+      #                                    "Robo test running", etc. Empty ==
+      #                                    Robo never started; last message
+      #                                    tells us where it stalled.
+      #   testDetails.errorMessage       — any error surfaced by the framework.
+      #   testMatrixId, timestamp        — matrix identity + creation time,
+      #                                    to cross-reference bucket paths.
+      #   resultStorage.gcsPath          — the GCS path the owner needs to
+      #                                    pull logcat/robo_results.pb from,
+      #                                    named here so a person does not
+      #                                    have to chase it via the Console.
+      #   per-execution timestamp        — matrix provisioning delay separates
+      #                                    from the crawl duration.
+      #   testSpecification.testTimeout  — proves the run got the configured
+      #                                    timeout, not a truncated one.
+      #
+      # Deliberately NOT fetched here: step-level `toolResults` step logs.
+      # Those require a second call into the Tool Results API and are the
+      # next widening step if these fields still return empty.
       - name: Surface sanitized per-device Firebase diagnostics
         if: always() && steps.robo.outputs.matrix_id != ''
         env:
@@ -314,14 +342,25 @@ jobs:
             "https://testing.googleapis.com/v1/projects/${PROJECT_ID}/testMatrices/${MATRIX_ID}" \
             --output firebase-matrix.json
           jq '{
+            testMatrixId,
             state,
+            timestamp,
             invalidMatrixDetails,
             outcomeSummary,
+            resultStorage: {
+              gcsPath: .resultStorage.googleCloudStorage.gcsPath,
+              toolResultsHistory: .resultStorage.toolResultsHistory,
+              toolResultsExecution: .resultStorage.toolResultsExecution
+            },
             testExecutions: [
               .testExecutions[]? | {
                 id,
                 state,
+                timestamp,
                 environment: .environment.androidDevice,
+                testSpecificationTimeout: .testSpecification.testTimeout,
+                progressMessages: (.testDetails.progressMessages // []),
+                errorMessage: .testDetails.errorMessage,
                 testDetails,
                 toolResultsStep: .toolExecution.toolResultsStep,
                 toolLogs: (.toolExecution.toolLogs // []),
@@ -562,6 +601,8 @@ jobs:
           echo "matrix_id=$MATRIX_ID" >> "$GITHUB_OUTPUT"
           exit "$TEST_STATUS"
 
+      # Same widening as the Android diagnostics step (#2497). See that step
+      # above for the rationale on each new field.
       - name: Surface sanitized iOS per-device diagnostics
         if: always() && steps.ios_test.outputs.matrix_id != ''
         env:
@@ -575,14 +616,25 @@ jobs:
             "https://testing.googleapis.com/v1/projects/${PROJECT_ID}/testMatrices/${MATRIX_ID}" \
             --output firebase-ios-matrix.json
           jq '{
+            testMatrixId,
             state,
+            timestamp,
             invalidMatrixDetails,
             outcomeSummary,
+            resultStorage: {
+              gcsPath: .resultStorage.googleCloudStorage.gcsPath,
+              toolResultsHistory: .resultStorage.toolResultsHistory,
+              toolResultsExecution: .resultStorage.toolResultsExecution
+            },
             testExecutions: [
               .testExecutions[]? | {
                 id,
                 state,
+                timestamp,
                 environment: .environment.iosDevice,
+                testSpecificationTimeout: .testSpecification.testTimeout,
+                progressMessages: (.testDetails.progressMessages // []),
+                errorMessage: .testDetails.errorMessage,
                 testDetails,
                 toolResultsStep: .toolExecution.toolResultsStep,
                 toolLogs: (.toolExecution.toolLogs // []),
