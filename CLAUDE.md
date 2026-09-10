@@ -1784,6 +1784,11 @@ Tie-break: destructive → Router; scope unknown → Spawner; else → Parallel.
 - `docs/Audit.scope.md` — audit scope and gate status
 - `docs/branch-protection-config.md` — what gates a merge into `main`, per-change, with the
   exact payload to restore each prior state (both layers)
+- `docs/scheduled-loops.md` — registry of the recurring tasks under `.claude/scheduled-tasks/`,
+  including one upstream watcher per accepted dependency residual (elliptic Tue, morgan Thu,
+  stream-json Fri) and which watchers are retired. **It cannot prove a task is registered** —
+  the scheduler registry is not in git, so confirm with `list_scheduled_tasks` before citing
+  any residual as tracked
 - `docs/hardware-kek-phase-plan.md` — KEK rollout plan
 - `docs/audit-2026-07-01-kek-internal.md` — KEK audit findings
 - `docs/audit-triage/internal-audit-2026-06-17.md` — mainnet gate audit
