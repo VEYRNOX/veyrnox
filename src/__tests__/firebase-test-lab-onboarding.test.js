@@ -157,7 +157,13 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(workflow).toContain('run-id: ${{ steps.ci_run.outputs.run_id }}');
     expect(workflow).toContain('github-token: ${{ github.token }}');
     expect(workflow).toContain("EXPECTED_EVENT: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch' || 'push' }}");
-    expect(workflow).toContain('select(.event == \\"$EXPECTED_EVENT\\"');
+    // #2496: `--event` moved from a client-side jq `select` to a server-side
+    // `gh run list --event` flag, alongside `--branch "$BRANCH"` and a sized
+    // `--limit 200` window. `--event push` literal must still be absent —
+    // event flows through env, never a hard-coded value.
+    expect(workflow).toContain('--event "$EXPECTED_EVENT"');
+    expect(workflow).toContain('--branch "$BRANCH"');
+    expect(workflow).toContain('--limit 200');
     expect(workflow).not.toContain('--event push');
     expect(workflow).not.toContain('dawidd6/action-download-artifact');
     expect(workflow).toContain('name: veyrnox-firebase-test-apk');
