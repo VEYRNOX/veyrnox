@@ -101,28 +101,9 @@ final class AppUITests: XCTestCase {
         //    cannot satisfy the native secure-store precondition. The only
         //    honest simulator outcome is an explicit fail-closed result with no
         //    usable wallet. Successful provisioning remains real-device-only.
-        // The user-visible fail-closed signal on this simulator flow is a
-        // sonner toast (`toast.error(...)` in WalletEntry.doCreateWallet).
-        // Sonner renders inside a portal-mounted <li> that WKWebView does
-        // NOT publish to XCUITest's accessibility tree — confirmed twice
-        // (runs 33524731172 + 33526853634): the banner IS visible on the
-        // recorded screen but every staticTexts label/identifier query
-        // returned false through the entire poll window. The toast also
-        // auto-dismisses in ~4 s, and WalletEntry then clears chosenPath +
-        // routes back to `entry-tiles`, so there is no persistent inline
-        // banner to poll either.
-        //
-        // The AX-visible fail-closed signal is: after PIN confirm, the app
-        // has returned to the entry-tiles view rather than moved forward to
-        // a dashboard. On success the "New wallet" tile is gone; on failure
-        // it re-appears. Give the flow long enough to complete provisioning
-        // + failure routing (~30 s on cold CI simulators).
-        let entryTileAfterFailure = app.buttons["New wallet"]
-        XCTAssertTrue(
-            entryTileAfterFailure.waitForExistence(timeout: 45),
-            "Simulator provisioning must fail closed and return the user to the entry-tiles picker. If this fails, the flow may have provisioned a wallet on a device with no secure store — check the recording for a dashboard."
-        )
-        XCTAssertFalse(app.staticTexts["Created."].exists, "A simulator without secure storage must not create a wallet.")
+        //    See assertFailedClosed for what that outcome now looks like on
+        //    screen, and why it stopped being "the entry tiles came back".
+        assertFailedClosed(app: app, action: "create")
     }
 
     /// Import follows the same native secure-store rule as new-wallet creation:
@@ -167,14 +148,8 @@ final class AppUITests: XCTestCase {
             failureMessage: "Restore / Import button never appeared."
         )
 
-        // Same reasoning as the create path: sonner toast is not AX-visible
-        // in WKWebView, and after failure the app routes back to entry tiles.
-        let entryTileAfterFailure = app.buttons["Have a wallet"]
-        XCTAssertTrue(
-            entryTileAfterFailure.waitForExistence(timeout: 45),
-            "Simulator import must fail closed and return the user to the entry-tiles picker."
-        )
-        XCTAssertFalse(app.staticTexts["Created."].exists, "A simulator without secure storage must not import a wallet.")
+        // Same terminal check as the create path.
+        assertFailedClosed(app: app, action: "import")
     }
 
     // MARK: - helpers
@@ -458,6 +433,72 @@ final class AppUITests: XCTestCase {
             "Entry tile '\(tile)' never appeared within \(budget)s, and no consent surface was on screen at timeout. "
             + "Check the attached screenshot + AX tree to distinguish 'WKWebView never rendered' from 'consent state or routing was wrong'."
         )
+    }
+
+    /// Terminal fail-closed assertion, shared by the create and import smokes.
+    ///
+    /// WHAT THE SIGNAL IS NOT, any more: "the entry-tiles picker came back".
+    /// Both tests polled for their entry tile until 2026-09-10, and that only
+    /// ever worked by accident on one of the two paths:
+    ///   - create: doCreateWallet's catch runs `setChosenPath(null)`
+    ///     unconditionally BEFORE any branch (WalletEntry.jsx), which used to
+    ///     let Slice L's auto-heal route to entry-tiles. #2487 added `!error`
+    ///     to both Slice L guards — deliberately, so an actionable message is
+    ///     not driven past — so the create flow now STAYS on the failing
+    ///     screen and the tile poll can only time out.
+    ///   - import: doImportWallet's catch has NO setChosenPath(null), so
+    ///     `chosenPath === "have"` keeps the seed form mounted and the tile
+    ///     never returned in the first place. That assertion had never once
+    ///     been true; it went red the moment #2485 put the test in CI
+    ///     (run 34369955287, AppUITests.swift:181).
+    ///
+    /// WHAT THE SIGNAL IS: EntryShell's inline `role="alert"` banner. That is
+    /// real DOM, so WKWebView publishes it — unlike the sonner toast that
+    /// fires alongside, which renders in a portal-mounted <li> that XCUITest
+    /// cannot see (runs 33524731172 + 33526853634) and must never be polled.
+    ///
+    /// Both known fail-closed messages are accepted, because which one the
+    /// simulator produces has never actually been observed:
+    ///   - DEVICE_NOT_SECURE — createVault's userMessage when
+    ///     checkBiometry() reports deviceIsSecure false
+    ///     (src/wallet-core/keystore/native.js).
+    ///   - the generic "nothing was saved" banner — the Play build-5
+    ///     rejection string this file's header exists to catch.
+    /// Both mean the vault was refused, which is the security property under
+    /// test; WHICH one appears is a UX question, and asserting a guess would
+    /// be a red test dressed up as a finding. A third, unknown message is not
+    /// silently tolerated — it times out here and the AX tree is attached, so
+    /// the next run names it and this predicate can be tightened.
+    ///
+    /// Copy-drift rule from this file's header applies: if either string
+    /// changes, change it here AND in
+    /// src/__tests__/firebase-test-lab-onboarding.test.js.
+    private func assertFailedClosed(app: XCUIApplication, action: String) {
+        let banner = app.staticTexts.matching(
+            NSPredicate(
+                format: "label CONTAINS[c] %@ OR label CONTAINS[c] %@",
+                "device passcode",
+                "nothing was saved"
+            )
+        ).firstMatch
+
+        // Diagnostics BEFORE the assertion, not after. setUpWithError sets
+        // continueAfterFailure = false, so the first XCTAssert to fail aborts
+        // the test body — anything attached on the line below it never runs.
+        // That is how run 34369955287 failed on exactly this check and left no
+        // screenshot and no AX tree to explain it.
+        let shown = banner.waitForExistence(timeout: 45)
+        if !shown { attachFailureDiagnostics(app: app, reason: "\(action)-no-fail-closed-banner") }
+        XCTAssertTrue(
+            shown,
+            "Simulator \(action) must fail closed with a visible error banner. No banner means the flow either never finished provisioning, or provisioned a wallet on a device with no secure store — check the attached screenshot + AX tree for a dashboard."
+        )
+
+        // Ordering matters for the same reason: capture the evidence for THIS
+        // assertion before it can abort the body.
+        let created = app.staticTexts["Created."].exists
+        if created { attachFailureDiagnostics(app: app, reason: "\(action)-provisioned-on-insecure-device") }
+        XCTAssertFalse(created, "A simulator without secure storage must not \(action) a wallet.")
     }
 
     /// Attach a screenshot plus the current accessibility-tree dump to the test
