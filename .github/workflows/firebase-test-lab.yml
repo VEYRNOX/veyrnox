@@ -138,14 +138,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.sha }}
           EXPECTED_EVENT: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch' || 'push' }}
+          BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
+          # Retry budget: 100 × 15s = 25 min. A ci.yml build takes ~15 min, so
+          # this covers at most ~2 wall-clock builds worth of runs on ci.yml.
+          # `--limit 200` is a floor comfortably above what could land in that
+          # window even under sustained 10+ merges/day (a busy day averages
+          # one ci.yml run per ~7 min ≈ ~4 runs in 25 min).
+          #
+          # Server-side filters `--branch` and `--event` bound the client-side
+          # `displayTitle | contains` scan to runs that could plausibly be
+          # ours; the previous fixed 40-run window across the whole workflow's
+          # history could silently exclude the target run (#2496).
           for attempt in $(seq 1 100); do
             RUN_JSON=$(gh run list \
               --workflow ci.yml \
-              --limit 40 \
+              --branch "$BRANCH" \
+              --event "$EXPECTED_EVENT" \
+              --limit 200 \
               --json databaseId,status,conclusion,event,createdAt,displayTitle \
-              --jq "[.[] | select(.event == \"$EXPECTED_EVENT\" and (.displayTitle | contains(\"$SHA\")))] | sort_by(.createdAt) | reverse | .[0] // {}")
+              --jq "[.[] | select(.displayTitle | contains(\"$SHA\"))] | sort_by(.createdAt) | reverse | .[0] // {}")
             RUN_ID=$(jq -r '.databaseId // empty' <<<"$RUN_JSON")
             STATUS=$(jq -r '.status // empty' <<<"$RUN_JSON")
             CONCLUSION=$(jq -r '.conclusion // empty' <<<"$RUN_JSON")
@@ -178,11 +191,24 @@ jobs:
             fi
 
             if (( attempt % 8 == 1 )); then
-              echo "Waiting for CI on ${SHA} (status=${STATUS:-not-started})..."
+              # Distinguish "no matching run in the window" from "matching run
+              # is still building". Both used to log the same "Waiting..." line
+              # and misread as normal until the retry budget expired (#2496).
+              if [[ -z "$RUN_ID" ]]; then
+                echo "No ci.yml run yet matches SHA=${SHA} on branch=${BRANCH}, event=${EXPECTED_EVENT} (attempt ${attempt}/100)."
+              else
+                echo "Waiting for CI run ${RUN_ID} on ${SHA} (status=${STATUS:-not-started}, attempt ${attempt}/100)..."
+              fi
             fi
             sleep 15
           done
-          echo "::error::Timed out waiting for a successful CI run for ${SHA}; refusing to fall back to an older APK."
+          # A timeout with no RUN_ID ever seen is a different failure from a
+          # timeout on a run stuck in_progress — surface both explicitly.
+          if [[ -z "${RUN_ID:-}" ]]; then
+            echo "::error::Timed out with no ci.yml run for ${SHA} on ${BRANCH} within the ${EXPECTED_EVENT} window; refusing to fall back to an older APK."
+          else
+            echo "::error::Timed out waiting for ci.yml run ${RUN_ID} on ${SHA} to complete; refusing to fall back to an older APK."
+          fi
           exit 1
 
       - name: Download this commit's isolated Firebase APK from ci.yml

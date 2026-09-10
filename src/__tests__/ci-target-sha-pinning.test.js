@@ -98,6 +98,27 @@ describe('firebase-test-lab.yml gate', () => {
     expect(testLab).not.toContain('--commit "$SHA"');
   });
 
+  it('bounds the client-side title scan with server-side filters and a sized window (#2496)', () => {
+    // Server-side `--branch` + `--event` narrow `gh run list` to runs that
+    // could plausibly be this gate's target, so the client-side
+    // `displayTitle | contains` pass runs over a bounded, relevant set rather
+    // than the most recent 40 ci.yml runs of any kind. `--limit 200` is the
+    // sized floor: 100 retries × 15s = 25 min, ci.yml build ~15 min, so the
+    // window covers at most ~4 runs even on a 10+ merges/day branch.
+    expect(testLab).toContain('--branch "$BRANCH"');
+    expect(testLab).toContain('--event "$EXPECTED_EVENT"');
+    expect(testLab).toContain('--limit 200');
+    expect(testLab).not.toContain('--limit 40');
+  });
+
+  it('logs "no matching run" distinctly from "still building" (#2496)', () => {
+    // Previously both cases printed the same "Waiting for CI on ${SHA}" line,
+    // so a fell-out-of-window timeout looked identical to CI still running
+    // and only surfaced when the retry budget expired.
+    expect(testLab).toContain('No ci.yml run yet matches SHA=');
+    expect(testLab).toContain('Waiting for CI run ');
+  });
+
   it('still refuses an unsuccessful run rather than testing an older APK', () => {
     // The pinning fix must not soften the artifact-provenance rule.
     expect(testLab).toContain('refusing to test another commit\'s APK.');
