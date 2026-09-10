@@ -222,8 +222,11 @@ jobs:
           # Budget, from run 33617705223's measured timeline: first ceremony
           # ~280s (most of it one-time — 12s launch, first keypad key at 85s),
           # second ~140s, so worst case ~420s. 600s leaves headroom without
-          # crowding the 900s watchdog below (non-test overhead measured ~150s,
-          # so ~750s worst case against that 900s kill).
+          # crowding the 1000s watchdog below (non-test overhead measured ~150s,
+          # so ~750s worst case against that 1000s kill). Run 34496100453
+          # completed both tests in 751s but needed additional teardown time;
+          # the extra margin preserves its result instead of misreporting a pass
+          # as a watchdog timeout.
           # Keep flag comments OUT of the backslash-continued command below —
           # a comment line inside a continuation is spliced into the command
           # and silently comments out every flag after it.
@@ -240,7 +243,7 @@ jobs:
               os.killpg(child.pid, signal.SIGKILL)
               child.wait()
               raise SystemExit(124)
-          ' 900 \
+          ' 1000 \
             xcodebuild test-without-building \
             -project App.xcodeproj \
             -scheme App \
