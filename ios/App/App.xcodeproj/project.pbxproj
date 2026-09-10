@@ -25,6 +25,7 @@
 		B6C7D8E9F0A1B2C3D4E5F6A7 /* ShamirShareTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B7C8D9E0F1A2B3C4D5E6F7 /* ShamirShareTests.swift */; };
 		B7C8D9E0F1A2B3C4D5E6F7A8 /* RestoreFromFileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B8C9D0E1F2A3B4C5D6E7F8 /* RestoreFromFileTests.swift */; };
 		B8C9D0E1F2A3B4C5D6E7F8A9 /* SeedRevealTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8B9C0D1E2F3A4B5C6D7E8F9 /* SeedRevealTests.swift */; };
+		C9D0E1F2A3B4C5D6E7F8A9B0 /* FirstPaintNotBlankTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B0C1D2E3F4A5B6C7D8E9F0 /* FirstPaintNotBlankTests.swift */; };
 		BBCCDD011FED79650016851F /* HardwareKekPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD001FED79650016851F /* HardwareKekPlugin.m */; };
 		BBCCDD041FED79650016851F /* HardwareKekPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD031FED79650016851F /* HardwareKekPluginBridge.m */; };
 		BBCCDD111FED79650016851F /* RaspIntegrityPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD101FED79650016851F /* RaspIntegrityPlugin.m */; };
@@ -33,6 +34,8 @@
 		BBCCDD231FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD221FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m */; };
 		BBCCDD311FED79650016851F /* AppAttestPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD301FED79650016851F /* AppAttestPlugin.m */; };
 		BBCCDD341FED79650016851F /* AppAttestPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD331FED79650016851F /* AppAttestPluginBridge.m */; };
+		BBCCDD411FED79650016851F /* BugReportPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD401FED79650016851F /* BugReportPlugin.swift */; };
+		BBCCDD431FED79650016851F /* BugReportPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD421FED79650016851F /* BugReportPluginBridge.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,6 +70,7 @@
 		A6B7C8D9E0F1A2B3C4D5E6F7 /* ShamirShareTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShamirShareTests.swift; sourceTree = "<group>"; };
 		A7B8C9D0E1F2A3B4C5D6E7F8 /* RestoreFromFileTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestoreFromFileTests.swift; sourceTree = "<group>"; };
 		A8B9C0D1E2F3A4B5C6D7E8F9 /* SeedRevealTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SeedRevealTests.swift; sourceTree = "<group>"; };
+		A9B0C1D2E3F4A5B6C7D8E9F0 /* FirstPaintNotBlankTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FirstPaintNotBlankTests.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		BBCCDD001FED79650016851F /* HardwareKekPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HardwareKekPlugin.m; sourceTree = "<group>"; };
 		BBCCDD021FED79650016851F /* HardwareKekPlugin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HardwareKekPlugin.h; sourceTree = "<group>"; };
@@ -79,6 +83,8 @@
 		BBCCDD301FED79650016851F /* AppAttestPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppAttestPlugin.m; sourceTree = "<group>"; };
 		BBCCDD321FED79650016851F /* AppAttestPlugin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppAttestPlugin.h; sourceTree = "<group>"; };
 		BBCCDD331FED79650016851F /* AppAttestPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppAttestPluginBridge.m; sourceTree = "<group>"; };
+		BBCCDD401FED79650016851F /* BugReportPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugReportPlugin.swift; sourceTree = "<group>"; };
+		BBCCDD421FED79650016851F /* BugReportPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BugReportPluginBridge.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -144,6 +150,8 @@
 				BBCCDD331FED79650016851F /* AppAttestPluginBridge.m */,
 				BBCCDD201FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift */,
 				BBCCDD221FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m */,
+				BBCCDD401FED79650016851F /* BugReportPlugin.swift */,
+				BBCCDD421FED79650016851F /* BugReportPluginBridge.m */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
@@ -167,6 +175,7 @@
 				A6B7C8D9E0F1A2B3C4D5E6F7 /* ShamirShareTests.swift */,
 				A7B8C9D0E1F2A3B4C5D6E7F8 /* RestoreFromFileTests.swift */,
 				A8B9C0D1E2F3A4B5C6D7E8F9 /* SeedRevealTests.swift */,
+				A9B0C1D2E3F4A5B6C7D8E9F0 /* FirstPaintNotBlankTests.swift */,
 				71480926541331B0C80A6D35 /* Info.plist */,
 			);
 			name = AppUITests;
@@ -315,6 +324,7 @@
 				B6C7D8E9F0A1B2C3D4E5F6A7 /* ShamirShareTests.swift in Sources */,
 				B7C8D9E0F1A2B3C4D5E6F7A8 /* RestoreFromFileTests.swift in Sources */,
 				B8C9D0E1F2A3B4C5D6E7F8A9 /* SeedRevealTests.swift in Sources */,
+				C9D0E1F2A3B4C5D6E7F8A9B0 /* FirstPaintNotBlankTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -330,6 +340,8 @@
 				BBCCDD341FED79650016851F /* AppAttestPluginBridge.m in Sources */,
 				BBCCDD211FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift in Sources */,
 				BBCCDD231FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m in Sources */,
+				BBCCDD411FED79650016851F /* BugReportPlugin.swift in Sources */,
+				BBCCDD431FED79650016851F /* BugReportPluginBridge.m in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -510,7 +522,7 @@
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = R54268MWFV;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -546,7 +558,7 @@
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = R54268MWFV;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
