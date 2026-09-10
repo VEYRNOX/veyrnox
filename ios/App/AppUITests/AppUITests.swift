@@ -32,6 +32,7 @@ final class AppUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["--uitest-fresh-install"]
         app.launch()
+        snap(app: app, name: "create-01-cold-launch")
 
         // A Capacitor app renders inside a WKWebView; XCUITest matches HTML
         // buttons by their aria-label OR visible text. Every predicate below
@@ -45,6 +46,7 @@ final class AppUITests: XCTestCase {
         //    renders first, dismisses any consent seen, and loops until the
         //    entry tile is visible — one fixed budget, deterministic dwell.
         waitForEntryTile(app: app, tile: "New wallet")
+        snap(app: app, name: "create-02-entry-tiles")
 
         // 2. Entry tiles — the fresh-device landing. Slice D1 (2026-08-10)
         //    replaced WelcomeHero's single "Get Started" action with a 4-tile
@@ -84,6 +86,7 @@ final class AppUITests: XCTestCase {
             maxAttempts: 3,
             failureMessage: "Entry tiles / 'New wallet' never advanced to the PIN pad."
         )
+        snap(app: app, name: "create-03-pin-pad")
 
         // 3. PIN pad: 8 digits, then tap the submit button. PinPad's submit
         //    aria-label is "Submit PIN"; the visible text is the scheme's
@@ -104,6 +107,7 @@ final class AppUITests: XCTestCase {
         //    See assertFailedClosed for what that outcome now looks like on
         //    screen, and why it stopped being "the entry tiles came back".
         assertFailedClosed(app: app, action: "create")
+        snap(app: app, name: "create-04-post-fail-closed")
     }
 
     /// Import follows the same native secure-store rule as new-wallet creation:
@@ -112,10 +116,12 @@ final class AppUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["--uitest-fresh-install"]
         app.launch()
+        snap(app: app, name: "import-01-cold-launch")
 
         // Same startup coordinator as the create path — see the create test
         // for the rationale (#2477).
         waitForEntryTile(app: app, tile: "Have a wallet")
+        snap(app: app, name: "import-02-entry-tiles")
         // Same retry rationale as the create path.
         tapButtonUntilAdvanced(
             app: app,
@@ -126,9 +132,11 @@ final class AppUITests: XCTestCase {
             maxAttempts: 3,
             failureMessage: "Entry tiles / 'Have a wallet' never advanced to the PIN pad."
         )
+        snap(app: app, name: "import-03-pin-pad")
 
         let pin = "19283746"
         setPinCeremony(app: app, pin: pin)
+        snap(app: app, name: "import-04-seed-entry")
 
         let words = [
             "abandon", "abandon", "abandon", "abandon",
@@ -150,6 +158,7 @@ final class AppUITests: XCTestCase {
 
         // Same terminal check as the create path.
         assertFailedClosed(app: app, action: "import")
+        snap(app: app, name: "import-05-post-fail-closed")
     }
 
     // MARK: - helpers
@@ -499,6 +508,17 @@ final class AppUITests: XCTestCase {
         let created = app.staticTexts["Created."].exists
         if created { attachFailureDiagnostics(app: app, reason: "\(action)-provisioned-on-insecure-device") }
         XCTAssertFalse(created, "A simulator without secure storage must not \(action) a wallet.")
+    }
+
+    /// Unconditional milestone screenshot — attached to the result bundle even
+    /// on green runs so a reader can see what the flow actually looked like.
+    /// `.keepAlways` because default retention drops attachments from passing
+    /// tests, which is exactly the case we want them for here.
+    private func snap(app: XCUIApplication, name: String) {
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "milestone-\(name)"
+        shot.lifetime = .keepAlways
+        add(shot)
     }
 
     /// Attach a screenshot plus the current accessibility-tree dump to the test
