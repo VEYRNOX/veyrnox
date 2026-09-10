@@ -140,7 +140,8 @@ order by c.relname;
 
 
 -- =============================================================================
--- STAGE 1 — ❌ NOT APPLIED. Finding 1: align prod's table grants to staging.
+-- STAGE 1 — ✅ APPLIED 2026-09-10 (owner-approved). Finding 1: align prod's
+-- table grants to staging.
 --
 -- SAFE, and here is the argument rather than an assertion: nothing reads or
 -- writes these tables through PostgREST. Every access is inside a SECURITY
@@ -159,16 +160,24 @@ order by c.relname;
 -- Idempotent and declarative; safe to re-run.
 -- =============================================================================
 
--- REVOKE ALL ON TABLE public.bonus_claim_attempts       FROM anon, authenticated;
--- REVOKE ALL ON TABLE public.bonus_claim_attempts_by_ip FROM anon, authenticated;
--- REVOKE ALL ON TABLE public.track_event_rate_hits      FROM anon, authenticated;
+REVOKE ALL ON TABLE public.bonus_claim_attempts       FROM anon, authenticated;
+REVOKE ALL ON TABLE public.bonus_claim_attempts_by_ip FROM anon, authenticated;
+REVOKE ALL ON TABLE public.track_event_rate_hits      FROM anon, authenticated;
 
--- Post-check (expect anon/authenticated absent from all three ACLs):
---   re-run 0b and diff against staging.
+-- Post-check output (2026-09-10, prod jwstkrtslotnjyerzzsi, migration
+-- env_parity_2026_09_10_stage1_rate_limit_table_grants):
+--
+--   bonus_claim_attempts        acl = postgres=arwdDxtm/postgres service_role=arwdDxtm/postgres
+--   bonus_claim_attempts_by_ip  acl = postgres=arwdDxtm/postgres service_role=arwdDxtm/postgres
+--   track_event_rate_hits       acl = postgres=arwdDxtm/postgres service_role=arwdDxtm/postgres
+--
+-- anon and authenticated absent from all three, matching staging. No client
+-- callers verified pre-apply via git grep on src/ and functions/ — zero hits.
 
 
 -- =============================================================================
--- STAGE 2 — ❌ NOT APPLIED. Finding 2: drop PUBLIC EXECUTE on prod.
+-- STAGE 2 — ✅ APPLIED 2026-09-10 (owner-approved). Finding 2: drop PUBLIC
+-- EXECUTE on prod.
 --
 -- ⚠ THIS IS NOT H-3, AND THE DIFFERENCE IS LOAD-BEARING. H-3 wants EXECUTE
 -- revoked from anon AND authenticated, and CLAUDE.md gates that on
@@ -183,15 +192,23 @@ order by c.relname;
 -- converts a no-op into an outage.
 -- =============================================================================
 
--- REVOKE ALL ON FUNCTION public.generate_referral_code(uuid)             FROM PUBLIC;
--- REVOKE ALL ON FUNCTION public.get_referral_earnings(text)              FROM PUBLIC;
--- REVOKE ALL ON FUNCTION public.get_referral_paid_count(text)            FROM PUBLIC;
--- REVOKE ALL ON FUNCTION public.increment_referral(text, uuid)           FROM PUBLIC;
--- REVOKE ALL ON FUNCTION public.track_event(uuid, text, jsonb)           FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.generate_referral_code(uuid)             FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_referral_earnings(text)              FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_referral_paid_count(text)            FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.increment_referral(text, uuid)           FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.track_event(uuid, text, jsonb)           FROM PUBLIC;
 
--- Post-check: re-run 0a. Each of the five should lose its "=X/postgres" entry
--- and KEEP anon=X and authenticated=X. If anon disappeared too, the H-3 form was
--- run by mistake — re-grant before the next client request.
+-- Post-check output (2026-09-10, prod jwstkrtslotnjyerzzsi, migration
+-- env_parity_2026_09_10_stage2_public_execute_revoke):
+--
+--   generate_referral_code(p_device_id uuid)                 postgres=X anon=X authenticated=X service_role=X
+--   get_referral_earnings(p_code text)                       postgres=X anon=X authenticated=X service_role=X
+--   get_referral_paid_count(p_code text)                     postgres=X anon=X authenticated=X service_role=X
+--   increment_referral(p_code text, p_device_id uuid)        postgres=X anon=X authenticated=X service_role=X
+--   track_event(p_device_id uuid, p_event text, p_metadata jsonb)  postgres=X anon=X authenticated=X service_role=X
+--
+-- Leading "=X/postgres" (PUBLIC) entry removed on all five; anon and
+-- authenticated preserved. Matches staging.
 
 
 -- =============================================================================
