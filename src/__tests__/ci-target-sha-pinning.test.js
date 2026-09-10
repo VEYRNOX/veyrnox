@@ -66,6 +66,25 @@ describe('ci.yml SHA pinning', () => {
     expect(ci).toContain('run-name: ci · ${{ inputs.target_sha || github.sha }}');
   });
 
+  it('gates publish-to-play-closed on the guard, not the event SHA', () => {
+    // The job performs no checkout, so the checkout-pin assertions above
+    // cannot see it. Extract the job body and pin its needs + SHA env
+    // directly. Regression: reading `github.sha` here compares the branch
+    // tip's versionCode against its parent, while the AAB it uploads was
+    // built by android-release from the validated target_sha — a "skip an
+    // upload that carries a real bump" or "attempt an upload for a bump not
+    // in the built artifact" mismatch. See #2495.
+    const jobStart = ci.indexOf('publish-to-play-closed:');
+    expect(jobStart).toBeGreaterThan(-1);
+    // Bound the block at the next top-level job header (two-space indent,
+    // followed by `name:` shape). Fall back to end-of-file.
+    const rest = ci.slice(jobStart + 'publish-to-play-closed:'.length);
+    const nextJob = rest.search(/\n {2}[a-z][a-z0-9-]*:\n/);
+    const body = nextJob === -1 ? rest : rest.slice(0, nextJob);
+    expect(body).toContain('needs: [android-release, target-sha-guard]');
+    expect(body).toContain('SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}');
+    expect(body).not.toContain('SHA: ${{ github.sha }}');
+  });
 });
 
 describe('firebase-test-lab.yml gate', () => {
