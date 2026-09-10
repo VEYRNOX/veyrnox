@@ -246,6 +246,7 @@ jobs:
             -scheme App \
             -destination "$destination" \
             -only-testing:AppUITests/AppUITests/test_simulatorFailsClosedWithoutSecureStore \
+            -only-testing:AppUITests/AppUITests/test_simulatorImportFailsClosedWithoutSecureStore \
             -resultBundlePath TestResults.xcresult \
             -clonedSourcePackagesDirPath SourcePackages \
             -derivedDataPath DerivedData \
