@@ -326,8 +326,17 @@ Two consequences worth carrying:
   dependency imports `jayson`'s main entry rather than `jayson/lib/client/browser`, which
   would both make the advisory reachable AND be broken by the override — check the bundle
   grep above before assuming either still holds.
-- **Not tracked — no watcher.** Nobody is monitoring this until someone looks. Do not
-  report it as monitored, and do not invent a watcher name for it.
+- **Tracked:** `veyrnox-stream-json-upstream-watch`, weekly. Added 2026-09-10; this entry
+  said **Not tracked — no watcher** from acceptance until then. Its runbook lands in the
+  same PR as this line; the scheduler registration is separate, because the task resolves
+  its runbook from `origin/main` and registering it first would give it nothing to resolve.
+  **The scheduler registry is not in git, so this line is exactly the kind of claim this
+  file keeps recording as decaying silently** — confirm with `list_scheduled_tasks` (check
+  `enabled`, and check `lastRunAt` against the merge time of any runbook change) rather
+  than trusting it. See the `brace-expansion` entry for a watcher whose "Tracked" claim was
+  false for four weeks because it was registered DISABLED and never ran once, and the
+  `elliptic` entry for one whose `lastRunAt` predated its own re-pointed brief by 34
+  minutes.
 
 ### `morgan` — max severity: moderate — accepted 2026-09-09
 
