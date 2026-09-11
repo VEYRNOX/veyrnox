@@ -68,6 +68,11 @@ export default function TheftProtectionSettings() {
             the check fails or the device looks compromised (BUILT — not
             device-verified).
           </p>
+          <p className="text-xs text-muted-foreground/80 mt-1">
+            When you also set a spending limit in Security Center, Theft
+            Protection enforces the limit: an over-limit send needs the same
+            biometric check before it can sign.
+          </p>
         </div>
         <Switch
           checked={on}

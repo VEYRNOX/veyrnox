@@ -79,6 +79,12 @@ import { sendAmountErrorKind } from "@/lib/sendAmountError";
 import { isSelfSend, addressesEqualForCurrency } from "@/lib/selfSend";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
 import { evaluateSendGate, SEND_GATE } from "@/lib/sendGate";
+import {
+  isTheftProtectionEnabled,
+  runTheftProtectionGate,
+  isTheftProtectionError,
+  theftProtectionMessage,
+} from "@/lib/theftProtection";
 import { resolveEnsName } from "@/lib/ens";
 import { getProvider } from "@/wallet-core/evm/provider";
 import { evaluateTwoFactor } from "@/lib/twoFactorGate";
@@ -745,6 +751,20 @@ export default function SendCrypto() {
   const [limitAck, setLimitAck] = useState(false);
   useEffect(() => { setLimitAck(false); }, [amount, selectedWallet?.currency, toAddress]);
 
+  // Theft Protection — extends the silent checkbox path with a fresh RASP + OS
+  // biometric gate on every over-limit send. Opt-in and primary-session only:
+  // decoy/hidden/demo sessions must never prompt (K-2, I3) — the gate itself
+  // re-asserts isPrimary, but we ALSO gate here so isTheftProtectionEnabled is
+  // not read from a deniable surface. `theftProtectionVerifiedRef` is a
+  // one-shot token consumed by the mutationFn on the NEXT signer attempt (same
+  // discipline as twoFactorVerifiedRef, audit H1) and reset on any breach
+  // input change so a prior pass cannot reach a changed send.
+  const isPrimarySession = !demoActive && !isDecoy && !isHidden;
+  const theftProtectionVerifiedRef = useRef(false);
+  useEffect(() => { theftProtectionVerifiedRef.current = false; }, [amount, selectedWallet?.currency, toAddress]);
+  const [theftProtectionError, setTheftProtectionError] = useState("");
+  // theftProtectionRequired is derived below, after limitEval is computed.
+
   // Effective balance for max/limit checks: chain read for live assets, falling
   // back to the DB value only for not-yet-live assets (display only).
   const effectiveBalance = demoActive
@@ -957,6 +977,12 @@ export default function SendCrypto() {
     }),
     [canonicalAmount, selectedWallet, history, txLimits]
   );
+
+  // Theft Protection kicks in only when the limit trips AND the primary user
+  // opted in. `isTheftProtectionEnabled()` reads localStorage — cheap; called
+  // per render is fine (identical pattern to isSendReauthRequired() below).
+  const theftProtectionRequired =
+    isPrimarySession && limitEval.blocked && isTheftProtectionEnabled();
 
   // ANOMALY / FRAUD DETECTION inputs (Phase S2) — derived from the SAME local data
   // already loaded above, NOTHING fetched. `priorSends` are this asset's past
@@ -1333,7 +1359,10 @@ export default function SendCrypto() {
   // second factor is enforced at the chokepoint — not only by which JSX branch renders.
   const twoFactorVerifiedRef = useRef(false);
 
-  const evaluateCurrentSendGate = async ({ twoFactorVerified = twoFactorVerifiedRef.current } = {}) => {
+  const evaluateCurrentSendGate = async ({
+    twoFactorVerified = twoFactorVerifiedRef.current,
+    theftProtectionVerified = theftProtectionVerifiedRef.current,
+  } = {}) => {
     // The Send gate must stay a SINGLE chokepoint even when the UX forks into a
     // Digital Shield prepare/finalize flow. Recompute the same live inputs here
     // instead of mirroring a subset of them in UI state.
@@ -1427,6 +1456,10 @@ export default function SendCrypto() {
       twoFactorVerified,
       limit: limitGate,
       limitAck,
+      // Re-derive TP-required from the FRESH limit computation, not the render
+      // snapshot — the mutationFn is the defense-in-depth chokepoint.
+      theftProtectionRequired: isPrimarySession && !!limitGate?.blocked && isTheftProtectionEnabled(),
+      theftProtectionVerified,
       riskScoreFailed,
       txPolicy: txPolicyAtSign,
       presign: presignAtSign,
@@ -1471,7 +1504,11 @@ export default function SendCrypto() {
       // shared gate evaluation, preserving the existing retry semantics.
       const twoFactorVerified = twoFactorVerifiedRef.current;
       twoFactorVerifiedRef.current = false;
-      await evaluateCurrentSendGate({ twoFactorVerified });
+      // Same one-shot discipline for Theft Protection: consume BEFORE the gate
+      // so a retry (or a second click) must re-run the biometric prompt.
+      const theftProtectionVerified = theftProtectionVerifiedRef.current;
+      theftProtectionVerifiedRef.current = false;
+      await evaluateCurrentSendGate({ twoFactorVerified, theftProtectionVerified });
 
       // NOTE: the HD-account lookup that main did here is intentionally NOT hoisted —
       // it is EVM-only (matches selectedWallet.address against an EVM account) and now
@@ -1692,7 +1729,32 @@ export default function SendCrypto() {
     setDigitalShieldBusy(false);
   };
 
+  // Preflight the Theft Protection gate on an over-limit send. Called before
+  // both the plain and DigitalShield signing paths; on success we set the
+  // one-shot token (consumed inside mutationFn) so the SAME chokepoint
+  // (evaluateSendGate) authorises the very next signer attempt. On failure the
+  // signer is never reached — the machine-stable reason from
+  // TheftProtectionError drives an inline error via theftProtectionMessage.
+  const preflightTheftProtection = async () => {
+    if (!theftProtectionRequired) return true;
+    if (theftProtectionVerifiedRef.current) return true;
+    setTheftProtectionError("");
+    try {
+      await runTheftProtectionGate({ isPrimary: true });
+      theftProtectionVerifiedRef.current = true;
+      return true;
+    } catch (err) {
+      const msg = isTheftProtectionError(err)
+        ? theftProtectionMessage(err)
+        : theftProtectionMessage(null);
+      setTheftProtectionError(msg);
+      toast.error(msg);
+      return false;
+    }
+  };
+
   const startSendAttempt = async () => {
+    if (!(await preflightTheftProtection())) return;
     if (!useDigitalShieldMode) {
       sendTx.mutate();
       return;
@@ -2344,10 +2406,21 @@ export default function SendCrypto() {
                 </p>
               ))}
               <p className="text-destructive/70">{t("send_gates.spend_limit.adjust_hint")}</p>
-              <label className="flex items-start gap-2 text-destructive cursor-pointer pt-0.5">
-                <input type="checkbox" checked={limitAck} onChange={e => setLimitAck(e.target.checked)} className="mt-0.5" />
-                {t("send_gates.spend_limit.ack_checkbox")}
-              </label>
+              {theftProtectionRequired ? (
+                <p data-testid="tp-limit-ack-note" className="text-destructive/80 pt-0.5">
+                  Theft Protection will verify this send with Face ID / biometric before signing.
+                </p>
+              ) : (
+                <label className="flex items-start gap-2 text-destructive cursor-pointer pt-0.5">
+                  <input type="checkbox" checked={limitAck} onChange={e => setLimitAck(e.target.checked)} className="mt-0.5" />
+                  {t("send_gates.spend_limit.ack_checkbox")}
+                </label>
+              )}
+              {theftProtectionError && (
+                <p role="alert" data-testid="tp-limit-error" className="text-destructive pt-0.5">
+                  {theftProtectionError}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -2372,7 +2445,7 @@ export default function SendCrypto() {
 
         {step === "form" && (
           <Button
-            className={`w-full ${(!toAddress || !isFormAmountWellFormed(canonicalAmount) || !addressFormatValid || (balanceKnown && parseFloat(canonicalAmount) > effectiveBalance) || (limitEval.blocked && !limitAck)) ? "opacity-70" : ""}`}
+            className={`w-full ${(!toAddress || !isFormAmountWellFormed(canonicalAmount) || !addressFormatValid || (balanceKnown && parseFloat(canonicalAmount) > effectiveBalance) || (limitEval.blocked && !limitAck && !theftProtectionRequired)) ? "opacity-70" : ""}`}
             disabled={!walletId || !assetSymbol || !flowSendEnabled || (flowSendEnabled && !isUnlocked && !demoActive)}
             onClick={() => {
               // ponytail: sim-testing patch — VITE_SIM_BYPASS_BALANCE=1 lets an empty
@@ -2381,7 +2454,7 @@ export default function SendCrypto() {
               const _simBypassBalance = import.meta.env.DEV && import.meta.env.VITE_SIM_BYPASS_BALANCE === '1';
               const invalid = !toAddress || !isFormAmountWellFormed(canonicalAmount) || !addressFormatValid
                 || (!devUngated && !_simBypassBalance && balanceKnown && parseFloat(canonicalAmount) > effectiveBalance)
-                || (limitEval.blocked && !limitAck);
+                || (limitEval.blocked && !limitAck && !theftProtectionRequired);
               if (invalid) { setShowErrors(true); return; }
               setShowErrors(false);
               setStep("review");

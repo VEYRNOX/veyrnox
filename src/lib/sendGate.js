@@ -41,6 +41,7 @@ export const SEND_GATE = Object.freeze({
   REAUTH: 'REAUTH',
   TWO_FACTOR: 'TWO_FACTOR',
   LIMIT: 'LIMIT',
+  THEFT_PROTECTION_REQUIRED: 'THEFT_PROTECTION_REQUIRED',
   RISK_SCORE_FAILED: 'RISK_SCORE_FAILED',
   RISK_BLOCK: 'RISK_BLOCK',
   RISK_CONFIRM: 'RISK_CONFIRM',
@@ -66,6 +67,12 @@ const block = (code, message) => ({ allowed: false, code, message });
  * @param {{blocked:boolean, reasons?:Array<{kind:string, limitUSD:number}>}|null} [i.limit]
  *                                      result of evaluateSendAgainstLimits()
  * @param {boolean} [i.limitAck]        the user acknowledged the limit breach
+ * @param {boolean} [i.theftProtectionRequired] Theft Protection is enabled AND
+ *                                      applies THIS action (primary session, limit tripped).
+ *                                      When true, `limitAck` is IGNORED — the fresh RASP +
+ *                                      OS-biometric check is the acknowledgement.
+ * @param {boolean} [i.theftProtectionVerified] the TP gate was verified THIS
+ *                                      action (one-shot token, consumed by the signer per send).
  * @param {boolean} [i.riskScoreFailed] the pre-sign risk score threw (fail closed)
  * @param {{decision?:string, reason?:string, requiresBiometric?:boolean}|null} [i.txPolicy]
  *                                      normalized signing policy snapshot
@@ -86,6 +93,8 @@ export function evaluateSendGate({
   twoFactorVerified = false,
   limit = null,
   limitAck = false,
+  theftProtectionRequired = false,
+  theftProtectionVerified = false,
   riskScoreFailed = false,
   txPolicy = null,
   presign = null,
@@ -117,15 +126,32 @@ export function evaluateSendGate({
     return block(SEND_GATE.TWO_FACTOR, 'Enter your Action Password to authorise this send.');
   }
 
-  // 7 — spend limits (per-tx OR daily), unless the breach was acknowledged.
-  if (limit && limit.blocked && !limitAck) {
-    const daily = (limit.reasons || []).find((r) => r.kind === 'daily');
-    return block(
-      SEND_GATE.LIMIT,
-      daily
-        ? `Daily spending limit reached: this send would put today's total over your $${daily.limitUSD.toLocaleString()} cap.`
-        : 'This send exceeds your per-transaction spending limit.',
-    );
+  // 7 — spend limits (per-tx OR daily). Three acknowledgement paths in priority
+  // order:
+  //   * Theft Protection ENABLED (opt-in, primary session only): TP replaces the
+  //     silent checkbox. A stale `limitAck` MUST NOT bypass TP — TP is the ack.
+  //   * TP disabled: fall back to the explicit checkbox `limitAck`.
+  // TP verification is a one-shot token the caller consumes per signer attempt
+  // (mutationFn re-asserts with a fresh value), so a prior pass cannot reach a
+  // later signer without a fresh Face ID / BIOMETRIC_STRONG prompt.
+  if (limit && limit.blocked) {
+    if (theftProtectionRequired) {
+      if (!theftProtectionVerified) {
+        return block(
+          SEND_GATE.THEFT_PROTECTION_REQUIRED,
+          'Confirm Theft Protection to authorise this over-limit send.',
+        );
+      }
+      // verified → falls through to the rest of the gates (limitAck bypassed)
+    } else if (!limitAck) {
+      const daily = (limit.reasons || []).find((r) => r.kind === 'daily');
+      return block(
+        SEND_GATE.LIMIT,
+        daily
+          ? `Daily spending limit reached: this send would put today's total over your $${daily.limitUSD.toLocaleString()} cap.`
+          : 'This send exceeds your per-transaction spending limit.',
+      );
+    }
   }
 
   // 8a — the risk score itself must succeed; if it threw, do not sign.

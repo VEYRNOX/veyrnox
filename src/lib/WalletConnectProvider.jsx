@@ -83,6 +83,11 @@ import { DEMO } from '@/api/demoClient';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { trackEvent, EVENT } from '@/api/trackEvent';
 import { evaluateSendAgainstLimits } from '@/lib/txLimits';
+import {
+  isTheftProtectionEnabled,
+  runTheftProtectionGate,
+  isTheftProtectionError,
+} from '@/lib/theftProtection';
 import { USD_RATES } from '@/lib/cryptos';
 import { is2faPasskeyEnabled, isPasskeyRegistered } from '@/lib/passkey';
 import { is2faBiometricEnabled } from '@/lib/biometric';
@@ -551,7 +556,7 @@ export async function _handleSignTypedData({ withPrivateKey, evmAddress }, topic
 }
 
 export async function _handleSendTransaction(
-  { withPrivateKey, evmAddress, send2faMethod = SEND_2FA.NONE, txLimits = [], history = [], knownAddresses = [], whitelist = [], usdRates = USD_RATES, remoteScreenEnabled = false, limitsUnavailable = false },
+  { withPrivateKey, evmAddress, send2faMethod = SEND_2FA.NONE, txLimits = [], history = [], knownAddresses = [], whitelist = [], usdRates = USD_RATES, remoteScreenEnabled = false, limitsUnavailable = false, isPrimary = false },
   topic, id, params, caip2ChainId,
 ) {
   const txParams = params[0] ?? {};
@@ -667,6 +672,30 @@ export async function _handleSendTransaction(
     // breach and nothing to fail closed about.
     if (!limitRejectCode && hasEnabledSpendLimit(txLimits)) limitRejectCode = 'WC_SEND_UNVALUED_TOKEN';
   }
+  // Theft Protection is the WC surface's ONLY in-band ack for a limit breach.
+  // Opt-in and primary-only (I3, K-2 — the gate itself re-asserts isPrimary).
+  // Only applies to the valued-transfer breach path (WC_SEND_LIMIT_EXCEEDED);
+  // unreadable caps / unvaluable tokens stay hard rejects — TP cannot vouch for
+  // an amount we could not compute. TheftProtectionError → a stable TP-keyed
+  // reject code so the caller can surface the machine reason (declined,
+  // rasp-blocked, requires-face, …). Any non-TP throw (a bug in the gate)
+  // fails closed to the original limit reject.
+  if (
+    limitRejectCode === 'WC_SEND_LIMIT_EXCEEDED'
+    && isPrimary
+    && isTheftProtectionEnabled()
+  ) {
+    try {
+      await runTheftProtectionGate({ isPrimary: true });
+      limitRejectCode = null;
+    } catch (err) {
+      if (isTheftProtectionError(err)) {
+        limitRejectCode = 'WC_SEND_THEFT_PROTECTION_FAILED';
+      }
+      // else: leave WC_SEND_LIMIT_EXCEEDED in place (fail closed)
+    }
+  }
+
   if (limitRejectCode) {
     await rejectRequest(topic, id, limitRejectCode).catch(() => {});
     throw new Error(
@@ -677,7 +706,9 @@ export async function _handleSendTransaction(
         : limitRejectCode === 'WC_SEND_UNVALUED_TOKEN'
           ? `this request moves a token Veyrnox cannot value on this chain, so it ` +
             `cannot be checked against your spending caps. `
-          : `this send would exceed a configured spending cap. `) +
+          : limitRejectCode === 'WC_SEND_THEFT_PROTECTION_FAILED'
+            ? `Theft Protection did not authorise this over-limit send. `
+            : `this send would exceed a configured spending cap. `) +
       `Complete the send from the in-app Send screen so the limit can be ` +
       `reviewed and acknowledged.`,
     );
@@ -1144,6 +1175,11 @@ export function WalletConnectProvider({ children }) {
         whitelist,
         usdRates: USD_RATES,
         limitsUnavailable,
+        // K-2: TP is a primary-session gate. `isDecoy`/`isHidden` are React
+        // state and can lag the module-level flag during a panic/stealth
+        // flip; the gate itself re-asserts isPrimary, but we also gate here
+        // so the runtime prompt never fires from a deniable surface.
+        isPrimary: !isDecoy && !isHidden && !isDeniabilityOrDemoActive(),
         // Audit 2026-09-07 M-2 (I2) — tier-gate the remote screen, as the other
         // THREE call sites already do (SendCrypto.jsx:858 and :873,
         // RequestApprovalModal.jsx:68 all AND with advisorOnline). This one did

@@ -164,6 +164,66 @@ describe('gate 7 — spend limits', () => {
   });
 });
 
+describe('gate 7 — Theft Protection enforces the spend limit (#2515 follow-up)', () => {
+  // When the user opts in to Theft Protection, an over-limit send must pass a
+  // FRESH RASP + OS-biometric check (runTheftProtectionGate) instead of the
+  // silent checkbox ack. TP disabled → current checkbox path unchanged. TP
+  // enabled + no limit breach → gate is a no-op (nothing to enforce). Ordering
+  // stays inside gate #7, so an earlier tripped gate still wins.
+  const overLimit = { blocked: true, reasons: [{ kind: 'per_tx', limitUSD: 500 }] };
+
+  it('BLOCKS with THEFT_PROTECTION_REQUIRED when TP is required, limit breached, not verified', () => {
+    const r = evaluateSendGate({
+      ...PASS, limit: overLimit, limitAck: false,
+      theftProtectionRequired: true, theftProtectionVerified: false,
+    });
+    expect(r.allowed).toBe(false);
+    expect(r.code).toBe(SEND_GATE.THEFT_PROTECTION_REQUIRED);
+  });
+
+  it('ALLOWS when TP is required, limit breached, and verified this action (bypasses limitAck)', () => {
+    const r = evaluateSendGate({
+      ...PASS, limit: overLimit, limitAck: false,
+      theftProtectionRequired: true, theftProtectionVerified: true,
+    });
+    expect(r.allowed).toBe(true);
+  });
+
+  it('is a no-op when TP is required but the limit did NOT trip (no unrelated prompt)', () => {
+    const r = evaluateSendGate({
+      ...PASS,
+      limit: { blocked: false, reasons: [] },
+      theftProtectionRequired: true, theftProtectionVerified: false,
+    });
+    expect(r.allowed).toBe(true);
+  });
+
+  it('REGRESSION PIN: TP disabled + limit breached + no ack → LIMIT (current behavior)', () => {
+    const r = evaluateSendGate({
+      ...PASS, limit: overLimit, limitAck: false,
+      theftProtectionRequired: false, theftProtectionVerified: false,
+    });
+    expect(r.code).toBe(SEND_GATE.LIMIT);
+  });
+
+  it('THEFT_PROTECTION_REQUIRED outranks THE limitAck checkbox path when TP is on', () => {
+    // A stale limitAck must NOT bypass TP once TP is enabled — TP is the ack.
+    const r = evaluateSendGate({
+      ...PASS, limit: overLimit, limitAck: true,
+      theftProtectionRequired: true, theftProtectionVerified: false,
+    });
+    expect(r.code).toBe(SEND_GATE.THEFT_PROTECTION_REQUIRED);
+  });
+
+  it('re-auth (6) still outranks THEFT_PROTECTION_REQUIRED', () => {
+    const r = evaluateSendGate({
+      ...PASS, reauthRequired: true, limit: overLimit,
+      theftProtectionRequired: true, theftProtectionVerified: false,
+    });
+    expect(r.code).toBe(SEND_GATE.REAUTH);
+  });
+});
+
 describe('gate 8a — risk score must compute (fail closed)', () => {
   it('blocks when the risk score threw', () => {
     const r = evaluateSendGate({ ...PASS, riskScoreFailed: true, presign: null });
