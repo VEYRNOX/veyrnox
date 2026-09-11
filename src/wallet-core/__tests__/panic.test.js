@@ -243,6 +243,7 @@ describe('panic wipe', () => {
       'veyrnox-passkey-cred',
       'veyrnox-2fa-passkey',
       'veyrnox-biometric-unlock',
+      'veyrnox-theft-protection',     // #2517: lib/theftProtection.js THEFT_PROTECTION_KEY (extra-unlock-factor tell)
       'veyrnox-2fa-biometric',        // BIO-05: biometric.js TWOFACTOR_BIOMETRIC_KEY (biometric-2FA tell)
       'veyrnox-pin-attempts',
       'veyrnox-pin-backoff-until',
