@@ -17,6 +17,17 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
 
 ## Hard rules (do not violate)
 
+- **Supabase project inventory and scope (re-confirm before every live audit).**
+  Enumerate projects from the Supabase API; never infer the set from names or a
+  previous audit. The organisation currently has three active projects:
+  `jwstkrtslotnjyerzzsi` (Veyrnox wallet production, eu-central-1),
+  `nszlbcmcysftwyudthjz` (Veyrnox wallet staging, eu-central-1), and
+  `yrqzwqywxfesmbvhzjgj` (the separate `veyrnox.ai` service, us-east-2).
+  Wallet parity audits and wallet SQL remediation target only the first two.
+  The `veyrnox.ai` project is not a disposable staging environment and must
+  never receive wallet DDL, grants, secrets, or migrations; audit it separately
+  under its own service ownership.
+
 - **DO NOT TOUCH THE CORE INFRA WIRING — locked 2026-08-11.** The chain
   {Client → Supabase Edge Function → Cloudflare Worker → Workers AI / RevenueCat}
   is load-bearing and every piece was broken and re-fixed today across ~7 PRs

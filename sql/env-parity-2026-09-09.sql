@@ -3,6 +3,14 @@
 --
 -- TARGET (for the remediation stages): jwstkrtslotnjyerzzsi  "Veyrnox PRODUCTION (live)"
 -- REFERENCE (already in the desired state):  nszlbcmcysftwyudthjz  "veyrnox-STAGING"
+-- SEPARATE / EXCLUDED FROM WALLET PARITY: yrqzwqywxfesmbvhzjgj
+--   "veyrnox.ai" service, us-east-2. It is an active independent application,
+--   not an abandoned wallet staging project. Never apply this file's wallet
+--   GRANT/REVOKE stages there; it needs its own service-specific audit.
+--
+-- Before every live audit, enumerate the organisation's projects through the
+-- Supabase API and record the scope decision. Do not infer the inventory from
+-- a hand-written production/staging pair or their names (#2505, #2506).
 --
 -- Confirm the ref in the dashboard URL, not the project name. The two projects
 -- were named the other way round until 2026-08-07 and a full session was spent
