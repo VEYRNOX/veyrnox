@@ -106,6 +106,7 @@ final class AppUITests: XCTestCase {
         //    usable wallet. Successful provisioning remains real-device-only.
         //    See assertFailedClosed for what that outcome now looks like on
         //    screen, and why it stopped being "the entry tiles came back".
+        assertPinFlowLeftPinSetup(app: app)
         assertFailedClosed(app: app, action: "create")
         snap(app: app, name: "create-04-post-fail-closed")
     }
@@ -136,6 +137,7 @@ final class AppUITests: XCTestCase {
 
         let pin = "19283746"
         setPinCeremony(app: app, pin: pin)
+        assertPinFlowLeftPinSetup(app: app)
         snap(app: app, name: "import-04-seed-entry")
 
         let words = [
@@ -185,19 +187,16 @@ final class AppUITests: XCTestCase {
     /// rather than to re-press individual keys (which would risk entering a
     /// digit twice and desyncing in the other direction).
     ///
-    /// Bounded at 2 attempts, and the bound is a TIME budget, not a taste
-    /// judgement. One ceremony measured ~280s (run 33617705223); at 3 attempts
-    /// run 33623177119 was killed at the then-300s per-test allowance mid-retry
-    /// and reported "Executed 0 tests", losing the assertion entirely — a retry
-    /// that cannot finish is worse than no retry at all. The allowance is now
-    /// 600s (ios-xcuitest-smoke.yml) and two attempts fit in ~420s. Raising
-    /// this count means raising that allowance in the same commit, and
-    /// re-checking it still clears the 900s watchdog in that file.
+    /// Bounded at 3 attempts, and the bound is a TIME budget, not a taste
+    /// judgement. Three attempts exceeded the former 300s allowance in run
+    /// 33623177119 and reported "Executed 0 tests", losing the assertion.
+    /// The allowance is now 600s; run 34622660295 used 320s for two failed
+    /// attempts, leaving room for one final retry under the 1000s watchdog.
     ///
-    /// If both attempts are consumed the caller's assertPinFlowLeftPinSetup()
+    /// If all attempts are consumed the caller's assertPinFlowLeftPinSetup()
     /// reports the desync honestly rather than letting it masquerade as a
     /// fail-closed provisioning result.
-    private func setPinCeremony(app: XCUIApplication, pin: String, maxAttempts: Int = 2) {
+    private func setPinCeremony(app: XCUIApplication, pin: String, maxAttempts: Int = 3) {
         let confirmHeading = app.staticTexts["Confirm your PIN"]
         let mismatch = app.staticTexts["PINs didn't match. Start again."]
 
