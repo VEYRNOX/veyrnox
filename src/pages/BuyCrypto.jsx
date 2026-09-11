@@ -155,7 +155,26 @@ export default function BuyCrypto() {
     },
   });
 
-  if (suppressed) return null;
+  // I3: deniability/demo MUST render nothing (no tell, no backend call).
+  // A build with the ship gate off, or a UK-region device, must NOT render a
+  // blank pane — Apple 1.0.1 (58) rejected under 2.1.0 when the reviewer's
+  // iPad hit this branch and saw an empty right pane. Render a plain message
+  // instead. Deniability still returns null above.
+  if (DEMO || isDeniabilityOrDemoActive()) return null;
+  if (!buyEnabled) {
+    return (
+      <div className="max-w-md mx-auto p-6 text-center space-y-4">
+        <div className="rounded-2xl border border-border bg-card p-6 space-y-2">
+          <h1 className="text-base font-semibold">
+            {t('buy.route.unavailable_title', { defaultValue: 'Buy is not available' })}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {t('buy.route.unavailable_body', { defaultValue: 'Buy is not available in your region right now.' })}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (widgetUrl) {
     return (
