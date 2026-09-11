@@ -70,7 +70,7 @@ const SNAPSHOT = {
     alerts_triggered: 9,
   },
   subscription: { current_tier: 'SENTINEL_TIER', has_referral: true },
-  address_book: { contact_count: 777 },
+  address_book: { contact_count: 'CONTACT_COUNT_SENTINEL' },
 };
 
 async function mountAdvisor({ withProp = false } = {}) {
@@ -167,7 +167,8 @@ describe('SecurityAdvisor — the page snapshot never reaches the network', () =
     await ask('is this dapp safe?');
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
     for (const body of sentBodies(fetchSpy)) {
-      for (const sentinel of ['424242', '313131', 'SENTINEL_TIER', '777', 'wallet_count', 'contact_count']) {
+      // A short number can occur by chance in the consented per-device ID.
+      for (const sentinel of ['424242', '313131', 'SENTINEL_TIER', 'CONTACT_COUNT_SENTINEL', 'wallet_count', 'contact_count']) {
         expect(body, `${sentinel} must not reach the wire`).not.toContain(sentinel);
       }
     }

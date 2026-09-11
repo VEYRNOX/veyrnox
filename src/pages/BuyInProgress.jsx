@@ -56,7 +56,23 @@ export default function BuyInProgress() {
   // is no support-lookup UI yet, and a decoy user must learn nothing from the
   // URL.
   if (isDeniabilityOrDemoActive()) return null;
-  if (!buyEnabled) return null;
+  // 1.0.1 build 58 blank-pane fix: render a plain message rather than null so a
+  // UK-region device or a ship-gate-off build shows text, not an empty pane
+  // (Apple 2.1.0 reject 2026-09-10). Deniability path above still returns null.
+  if (!buyEnabled) {
+    return (
+      <div className="max-w-md mx-auto p-6 text-center space-y-4">
+        <div className="rounded-2xl border border-border bg-card p-6 space-y-2">
+          <h1 className="text-base font-semibold">
+            {t('buy.route.unavailable_title', { defaultValue: 'Buy is not available' })}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {t('buy.route.unavailable_body', { defaultValue: 'Buy is not available in your region right now.' })}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto space-y-6">

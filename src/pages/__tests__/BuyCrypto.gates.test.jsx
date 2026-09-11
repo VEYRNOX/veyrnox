@@ -132,10 +132,17 @@ describe('BuyInProgress — ship gate', () => {
     );
   };
 
-  it('renders NOTHING when the ship gate is off, even with a tid in the URL', async () => {
+  // 1.0.1 build 58 blank-pane fix: this used to assert `toBeEmptyDOMElement`.
+  // Apple rejected 58 under 2.1.0 App Completeness when the reviewer's iPad
+  // landed on this page with the ship gate off (or UK-blocked) and saw a
+  // blank right pane. Now the page renders a plain unavailable message rather
+  // than nothing; the tid is still never shown.
+  it('renders the unavailable message when the ship gate is off, without leaking the tid', async () => {
     vi.stubEnv('VITE_BUY_ENABLED', 'false');
     const { container } = await renderPage();
-    expect(container).toBeEmptyDOMElement();
+    // The i18n mock returns keys verbatim; production resolves defaultValue.
+    expect(screen.getByText('buy.route.unavailable_title')).toBeInTheDocument();
+    expect(container.textContent).not.toContain('abc123');
   });
 
   it('renders the waiting screen when the ship gate is on', async () => {
