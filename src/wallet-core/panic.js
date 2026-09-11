@@ -221,6 +221,10 @@ const LOCAL_RESIDUE_KEYS = Object.freeze([
 //   veyrnox-biometric-unlock  — lib/biometric.js BIOMETRIC_PREF_KEY (biometric-
 //                               unlock-configured tell; the direct sibling of the
 //                               passkey prefs above — F-06)
+//   veyrnox-theft-protection  — lib/theftProtection.js THEFT_PROTECTION_KEY (opt-in
+//                               extra unlock factor; proves a real primary vault
+//                               existed and would re-arm the gate on the next vault
+//                               created or restored here — #2517)
 //   veyrnox-pin-attempts      — components/WalletEntry.jsx (PIN-unlock failed-attempt
 //                               counter — the runtime tell of the same PIN auth model
 //                               'veyrnox-auth-model' marks; F-06)
@@ -248,6 +252,7 @@ const DENIABILITY_RESIDUE_KEYS = Object.freeze([
   'veyrnox-passkey-cred',
   'veyrnox-2fa-passkey',
   'veyrnox-biometric-unlock',
+  'veyrnox-theft-protection',
   TWOFACTOR_BIOMETRIC_KEY,       // biometric.js 'veyrnox-2fa-biometric' (biometric-2FA
                                 // enabled tell — reveals security posture after wipe; BIO-05)
   'veyrnox-pin-attempts',
