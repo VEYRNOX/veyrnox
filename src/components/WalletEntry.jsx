@@ -114,6 +114,7 @@ import {
   hasBiometricConsentBeenRecorded,
 } from "@/lib/biometric";
 import { hasStoredUnlockSecret, clearUnlockSecret } from "@/lib/biometricUnlock";
+import { isTheftProtectionError, theftProtectionMessage } from "@/lib/theftProtection";
 import { enforceDuressBiometricInvariant, isDuressConfigured } from "@/lib/duressBiometricGuard";
 import PinPad from "@/components/security/PinPad";
 import EntryTiles from "@/components/EntryTiles";
@@ -873,6 +874,12 @@ export default function WalletEntry() {
             ? "Face ID is unavailable on this device. Enter your vault password below."
             : "Face ID didn't work. Enter your vault password below — it's your real key and always works."
         );
+      } else if (isTheftProtectionError(e)) {
+        // #2515: the cached secret DID open the vault — Theft Protection refused
+        // afterwards. The cache is not stale, so the self-heal below must not run
+        // (it would delete a working cache and tell the user Face ID was "out of
+        // date"). Say what actually happened; the PIN pad stays available.
+        setError(theftProtectionMessage(e));
       } else {
         // SELF-HEAL: the biometric MATCH succeeded but the cached secret failed
         // to unlock the vault — the cache is STALE (e.g. it still holds a duress
@@ -964,6 +971,10 @@ export default function WalletEntry() {
       } else if (isBiometricGateError(e)) {
         setBiometricFailed(true);
         setError("Biometric authentication failed or was cancelled. Unlock with your vault password below.");
+      } else if (isTheftProtectionError(e)) {
+        // #2515: the password was accepted; Theft Protection refused afterwards.
+        // Not a wrong password — keep the field and do not shake.
+        setError(theftProtectionMessage(e));
       } else {
         setError(e?.message || "Unlock failed");
         setUnlockPassword("");
@@ -1113,6 +1124,14 @@ export default function WalletEntry() {
       const isInfra = isPasskeyGateError(e) || isBiometricGateError(e);
       if (isInfra) {
         setError(e?.message || "Couldn't unlock. Try again.");
+        return;
+      }
+      // #2515: Theft Protection runs AFTER this PIN decrypted the vault, so its
+      // refusal is never a wrong PIN. Counting it marched a correct-PIN user to the
+      // irreversible wipe (RASP WARN on genuine hardware, a Face ID cancel, a Touch ID
+      // iPhone, a web build). Same data-loss class as the KEK codes below.
+      if (isTheftProtectionError(e)) {
+        setError(theftProtectionMessage(e));
         return;
       }
       // Panic-PIN path: provider fired panicWipe() and threw a distinguishable sentinel.

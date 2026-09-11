@@ -437,8 +437,15 @@ export default function Settings() {
             <div className="space-y-5">
               <BiometricUnlockSettings embedded />
               <div className="border-t border-border" />
-              <TheftProtectionSettings />
-              <div className="border-t border-border" />
+              {/* #2515: native-only. The gate's biometric has no web path, so a
+                  web opt-in would refuse every unlock. The component also
+                  refuses to enable off-native; this just hides the dead row. */}
+              {isNative && (
+                <>
+                  <TheftProtectionSettings />
+                  <div className="border-t border-border" />
+                </>
+              )}
               <PasskeyUnlockSettings embedded />
             </div>
           </div>

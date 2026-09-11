@@ -84,6 +84,61 @@ export function isTheftProtectionError(err) {
 }
 
 /**
+ * User-facing copy per gate reason (#2515). The gate only runs AFTER the PIN
+ * has decrypted the vault, so a failure here must never read as a wrong PIN —
+ * and must never reach the wrong-PIN wipe counter. Every unlock surface renders
+ * from this one map so they cannot drift (same shape as PASSKEY_GATE_MESSAGES).
+ */
+export const THEFT_PROTECTION_MESSAGES = Object.freeze({
+  'rasp-blocked': "Theft Protection kept your wallet locked because this device's security check didn't pass. Try again.",
+  'rasp-unavailable': "Theft Protection couldn't check this device's security, so your wallet stayed locked. Try again.",
+  declined: "Theft Protection's biometric check didn't pass, so your wallet stayed locked. Try again.",
+  'requires-face': 'Theft Protection on iPhone needs Face ID, so your wallet stayed locked.',
+  'biometry-probe-failed': "Theft Protection couldn't read this device's biometric settings, so your wallet stayed locked. Try again.",
+  error: "Theft Protection couldn't finish its check, so your wallet stayed locked. Try again.",
+});
+
+export function theftProtectionMessage(err) {
+  return THEFT_PROTECTION_MESSAGES[err?.reason] ?? THEFT_PROTECTION_MESSAGES.error;
+}
+
+/**
+ * @aparajita/capacitor-biometric-auth BiometryType enum:
+ *   none=0, touchId=1, faceId=2, fingerprintAuthentication=3,
+ *   faceAuthentication=4, irisAuthentication=5.
+ * Accept the numeric enum value AND the string label — tests pin the semantic
+ * string, runtime returns the integer.
+ */
+export function isFaceBiometry(biometryType) {
+  return biometryType === 'faceId' || biometryType === 2;
+}
+
+/**
+ * Can Theft Protection be ENABLED on this device? (#2515) Checked when the user
+ * switches it on, so a device the gate would refuse at every unlock cannot opt
+ * in. Mirrors the gate's own preconditions: native only (verifyBiometric2fa
+ * throws off-native), an available biometric, and Face ID on iOS (the gate's
+ * post-check). Never throws — a failed probe reads as unsupported.
+ *
+ * @returns {Promise<{supported: boolean, reason: 'not-native'|'no-biometric'|'requires-face'|null}>}
+ */
+export async function getTheftProtectionSupport({
+  platform = Capacitor?.getPlatform ? Capacitor.getPlatform() : 'web',
+  probe = getCachedBiometry,
+} = {}) {
+  if (platform !== 'ios' && platform !== 'android') {
+    return { supported: false, reason: 'not-native' };
+  }
+  let info = null;
+  try { info = await probe(); } catch { info = null; }
+  if (!info?.isAvailable) return { supported: false, reason: 'no-biometric' };
+  if (platform === 'ios' && !isFaceBiometry(info.biometryType)) {
+    return { supported: false, reason: 'requires-face' };
+  }
+  return { supported: true, reason: null };
+}
+
+/**
  * Run the Theft Protection gate. Called from WalletProvider.unlock() AFTER
  * PIN + KEK have already succeeded and AFTER assertUnlockCurrent(), gated on
  * isPrimary.
@@ -149,12 +204,6 @@ export async function runTheftProtectionGate({
     } catch (err) {
       throw new TheftProtectionError('biometry-probe-failed', err);
     }
-    // @aparajita/capacitor-biometric-auth BiometryType enum:
-    //   none=0, touchId=1, faceId=2, fingerprintAuthentication=3,
-    //   faceAuthentication=4, irisAuthentication=5.
-    // Accept the numeric enum value AND the string label — tests pin the
-    // semantic string, runtime returns the integer.
-    const isFace = biometryType === 'faceId' || biometryType === 2;
-    if (!isFace) throw new TheftProtectionError('requires-face');
+    if (!isFaceBiometry(biometryType)) throw new TheftProtectionError('requires-face');
   }
 }
