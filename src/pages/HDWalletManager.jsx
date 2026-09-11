@@ -15,6 +15,7 @@ import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
 import { isPasskeyGateError, PASSKEY_GATE_MESSAGES, PASSKEY_ESCAPE_HATCH_BLURBS } from "@/lib/passkey";
 import { isBiometricGateError } from "@/lib/biometric";
+import { isTheftProtectionError, theftProtectionMessage } from "@/lib/theftProtection";
 import { ASSETS, ASSET_STATUS, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
@@ -328,6 +329,10 @@ export default function HDWalletManager() {
       } else if (isBiometricGateError(e)) {
         setBiometricFailed(true);
         setError("Biometric authentication failed or was cancelled. Unlock with your vault password below.");
+      } else if (isTheftProtectionError(e)) {
+        // #2515: password was accepted; Theft Protection refused afterwards.
+        // Render the shared copy, never the raw "Theft Protection <reason>".
+        setError(theftProtectionMessage(e));
       } else {
         setError(e?.message || "Unlock failed");
       }
