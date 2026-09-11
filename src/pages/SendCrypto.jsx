@@ -379,8 +379,14 @@ export default function SendCrypto() {
   // no USD rate is available (I4 — never allow a fiat entry against a
   // fabricated rate). Deniable-session note: `sendUsdRate` is already gated
   // by the same policy as balanceUsd above; no extra guard needed here.
+  // Default to fiat so the amount reads in $ first — the mental unit users
+  // buy/spend in. Init is 'crypto' because sendUsdRate is typically null at
+  // mount (no wallet picked yet); a one-shot effect below flips to 'fiat'
+  // once a rate is available. After the flip, user toggles are respected
+  // (ref-gated so we never override a manual switch back to crypto).
   const [amountMode, setAmountMode] = useState('crypto');
   const [fiatDraft, setFiatDraft] = useState("");
+  const defaultedToFiatRef = useRef(false);
   // LOCALE-AWARE CANONICAL FORM of the raw input, for every DERIVE / GATE / SEND
   // site below. A de-DE / fr-FR / es-ES user who types "1,5" needs the same
   // Continue button to work as an en-US user typing "1.5" — but the downstream
@@ -758,6 +764,16 @@ export default function SendCrypto() {
   // `null` for an asset we have no reference price for (e.g. MATIC/AVAX) so we render
   // the crypto amount alone rather than a misleading ≈$0.
   const sendUsdRate = selectedWallet?.currency ? (USD_RATES[selectedWallet.currency] ?? null) : null;
+
+  // Fiat-first default: once a rate is known, flip to 'fiat' exactly once.
+  // Ref-gated so a user's manual toggle back to crypto is never overridden.
+  useEffect(() => {
+    if (defaultedToFiatRef.current) return;
+    if (sendUsdRate != null) {
+      setAmountMode('fiat');
+      defaultedToFiatRef.current = true;
+    }
+  }, [sendUsdRate]);
   // A live-read asset whose on-chain balance we could NOT read yet is
   // INDETERMINATE (react-query keeps `data` undefined while the read is pending
   // OR after it throws) — the amount line already shows "reading from network…"
@@ -2237,7 +2253,7 @@ export default function SendCrypto() {
                   }}
                   onBlur={() => setAmountTouched(true)}
                   placeholder={amountMode === 'fiat' ? tw("send.amount.fiat_placeholder") : tw("send.amount.placeholder")}
-                  className="mt-1.5 mono-value"
+                  className="mt-1.5 mono-value text-4xl font-bold h-auto py-3"
                   aria-invalid={amountInvalid || undefined}
                   aria-describedby={amountInvalid ? "send-amount-error" : undefined}
                 />
