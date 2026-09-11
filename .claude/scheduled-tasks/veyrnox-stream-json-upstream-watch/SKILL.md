@@ -128,10 +128,17 @@ range is an upstream bug, not a fix — report it as FIRED-BUT-BROKEN.
 npm view stream-json versions --json
 ```
 
-Baseline (2026-09-10): the 1.x line ends at `1.9.1`; `latest` is `3.6.0`. The published
-list tail is `3.3.0, 3.4.0, 3.5.0, 3.6.0`.
+Baseline (2026-09-10): 56 versions published. The 1.x line ends at `1.9.1`
+(2024-11-12); `latest` is `3.6.0`. The published list tail is `3.3.0, 3.4.0, 3.5.0, 3.6.0`.
 
-**FIRES** if any `1.9.2+` (or any new 1.x/2.x) appears. A backport clears the residual
+The 2.x line exists and is NOT a backport: `2.0.0` (2026-03-19) and `2.1.0` (2026-03-31),
+both inside the affected range (`<= 3.4.0`) and both outside `jayson`'s `^1.9.1`, so they
+neither carry the fix nor resolve through the tree. They predate this baseline — do not
+report them as a new release. (Omitted from the original baseline; added after the
+2026-09-11 run noticed them.)
+
+**FIRES** if any `1.9.2+` appears, or any 2.x after `2.1.0`. Only a 1.x release reaches
+the tree unaided; a patched 2.x would still need `jayson` to widen (SIGNAL 1). A backport clears the residual
 through ordinary range resolution — `jayson`'s `^1.9.1` would reach it with no override —
 and is the `brace-expansion` shape, which is the one shape that has actually resolved a
 residual in this repo without a manifest change.
