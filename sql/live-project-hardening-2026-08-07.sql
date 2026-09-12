@@ -4,6 +4,17 @@
 -- TARGET: jwstkrtslotnjyerzzsi  ("Veyrnox PRODUCTION (live)")
 -- NOT:    nszlbcmcysftwyudthjz  ("veyrnox-STAGING (not production)")
 --
+-- SEPARATE / EXCLUDED FROM WALLET HARDENING: yrqzwqywxfesmbvhzjgj
+--   The "veyrnox.ai" service, us-east-2. It is an active independent
+--   application, not an abandoned wallet staging project — despite still being
+--   NAMED `veyrnox-staging` in the Supabase API. Never apply this file's
+--   GRANT/REVOKE stages there; it needs its own service-specific audit.
+--
+-- The pair above is NOT the full inventory. Before every live audit, enumerate
+-- the organisation's projects through the Supabase API and record the scope
+-- decision. Do not infer the inventory from a hand-written production/staging
+-- pair or their names (#2505, #2506).
+--
 -- Check before you run ANYTHING. The two projects were named the other way
 -- round until today, and a full session of analysis was spent on the wrong one
 -- because the Supabase CLI reported staging as `linked` and it was called

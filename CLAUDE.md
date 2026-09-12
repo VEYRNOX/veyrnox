@@ -27,6 +27,16 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
   The `veyrnox.ai` project is not a disposable staging environment and must
   never receive wallet DDL, grants, secrets, or migrations; audit it separately
   under its own service ownership.
+  **`yrqzwqywxfesmbvhzjgj` is still NAMED `veyrnox-staging` in the Supabase
+  API, and that name is a misnomer.** It was created at
+  `2026-07-29T05:29:24Z`, ten minutes before the real wallet staging project
+  `nszlbcmcysftwyudthjz` (`05:39:23Z`), and the name is left over from that
+  abandoned first attempt; the project was later repurposed as the veyrnox.ai
+  backend and is live. So enumerating from the API — which this rule requires —
+  returns TWO projects whose names contain "staging", and the second one is not
+  one. This is the exact trap behind #2505/#2506, and renaming the project in
+  Supabase is the only thing that disarms it; until an owner does that, match on
+  the ref and treat every name in this paragraph as a label, not evidence.
 
 - **DO NOT TOUCH THE CORE INFRA WIRING — locked 2026-08-11.** The chain
   {Client → Supabase Edge Function → Cloudflare Worker → Workers AI / RevenueCat}
