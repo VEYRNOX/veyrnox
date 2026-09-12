@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import worker, { APP_ORIGIN, AASA_PATH } from '../src/index.js';
+import worker, { APP_ORIGIN, AASA_PATH, PATH_RE } from '../src/index.js';
 
 const hit = (path, { method = 'GET', host = 'veyrnox.com' } = {}) =>
   worker.fetch(new Request(`https://${host}${path}`, { method }));
@@ -35,10 +35,25 @@ describe('veyrnox.com/r/<code> Worker', () => {
     ['injected query text', '/r/VYX-STRKLB%26x'],
     ['no code', '/r/'],
     ['a nested path', '/r/VYX-STRKLB/extra'],
+    // #2534: filter(Boolean) collapsed these to a valid single segment. Pages
+    // routing never sends them to the function (verified live 2026-09-12).
+    ['a doubled leading slash', '/r//VYX-STRKLB'],
+    ['a doubled trailing slash', '/r/VYX-STRKLB//'],
   ])('fails closed on %s: app root, no ref', (_label, path) => {
     const res = hit(path);
     expect(res.status).toBe(302);
     expect(res.headers.get('Location')).toBe(`${APP_ORIGIN}/`);
+  });
+
+  // Pages runs [code].js for ONE trailing slash (verified live 2026-09-12), so
+  // the Worker must too — otherwise the same link attributes on one host only.
+  it('accepts a single trailing slash, as Pages routing does', () => {
+    expect(hit('/r/VYX-STRKLB/').headers.get('Location')).toBe(`${APP_ORIGIN}/?ref=VYX-STRKLB`);
+  });
+
+  it('uses the same path rule as the native reader', () => {
+    const native = readFileSync(resolve(__dirname, '../../../src/lib/referralAttribution.js'), 'utf8');
+    expect(native).toContain(`const PATH_RE = ${PATH_RE};`);
   });
 
   it('serves www.veyrnox.com identically', () => {
