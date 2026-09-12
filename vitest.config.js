@@ -97,7 +97,9 @@ export default defineConfig({
     // vitest did not collect them and `vite` does not serve /api/* locally — and
     // that blind spot is exactly how /api/data/klines sat at HTTP 502 in
     // production on every request without anyone noticing.
-    include: ['src/**/*.test.{js,jsx}', 'functions/**/*.test.{js,jsx}'],
+    // workers/** are standalone Cloudflare Workers (e.g. the veyrnox.com/r/*
+    // share-link redirect, #2529) — same reasoning as functions/** above.
+    include: ['src/**/*.test.{js,jsx}', 'functions/**/*.test.{js,jsx}', 'workers/**/*.test.{js,jsx}'],
     globals: true, // Faster test execution
     // The at-rest Argon2id KDF was raised to 192 MiB / t=3 (SAST M3). The pure-JS
     // WASM build in the Node/jsdom test env runs that KDF much slower than the
