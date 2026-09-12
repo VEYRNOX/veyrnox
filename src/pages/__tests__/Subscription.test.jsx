@@ -67,11 +67,11 @@ vi.mock('@/lib/referral', async (importOriginal) => ({
 }));
 
 const recordAttribution = vi.fn();
-const fetchPaidCount = vi.fn();
+const fetchReferralTier = vi.fn();
 const claimFirstReferralBonus = vi.fn();
 vi.mock('@/api/referralApi', () => ({
   recordAttribution: (...a) => recordAttribution(...a),
-  fetchPaidCount: (...a) => fetchPaidCount(...a),
+  fetchReferralTier: (...a) => fetchReferralTier(...a),
   claimFirstReferralBonus: (...a) => claimFirstReferralBonus(...a),
 }));
 
@@ -485,8 +485,7 @@ describe('Subscription page — tier-based referral discount', () => {
   function setupGoldReferral() {
     hasRedeemedMock.mockReturnValue(true);
     getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
-    fetchPaidCount.mockResolvedValue(5000);
-    getTierMock.mockReturnValue('gold');
+    fetchReferralTier.mockResolvedValue('gold');
     getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: { key: 'platinum', min: 10000 } });
     getOfferingIdForTierMock.mockImplementation((tierKey, planId) => (
       tierKey === 'gold' && (planId == null || planId === 'safety_plus')
@@ -552,8 +551,7 @@ describe('Subscription page — tier-based referral discount', () => {
     // not say 2.5%.
     hasRedeemedMock.mockReturnValue(true);
     getRedeemedCodeMock.mockReturnValue('VYX-BRONZE');
-    fetchPaidCount.mockResolvedValue(10);
-    getTierMock.mockReturnValue('bronze');
+    fetchReferralTier.mockResolvedValue('bronze');
     getTierInfoMock.mockReturnValue({ key: 'bronze', commission: 2.5, next: { key: 'silver', min: 100 } });
     getOfferingIdForTierMock.mockImplementation((tierKey, planId) => (
       tierKey === 'bronze' && (planId == null || planId === 'safety_plus')
@@ -653,7 +651,7 @@ describe('Subscription page — tier-based referral discount', () => {
   it('falls back to default prices when referrer tier lookup fails', async () => {
     hasRedeemedMock.mockReturnValue(true);
     getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
-    fetchPaidCount.mockResolvedValue(null);
+    fetchReferralTier.mockResolvedValue(null);
     renderPage();
     await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
     expect(screen.queryByText(/referral pricing available/i)).toBeNull();
@@ -662,8 +660,7 @@ describe('Subscription page — tier-based referral discount', () => {
   it('falls back to default prices when tier offering is unavailable', async () => {
     hasRedeemedMock.mockReturnValue(true);
     getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
-    fetchPaidCount.mockResolvedValue(5000);
-    getTierMock.mockReturnValue('gold');
+    fetchReferralTier.mockResolvedValue('gold');
     getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: null });
     getOfferingIdForTierMock.mockImplementation((tierKey, planId) => (
       tierKey === 'gold' && (planId == null || planId === 'safety_plus')
@@ -681,8 +678,7 @@ describe('Subscription page — tier-based referral discount', () => {
     vi.stubEnv('VITE_AI_SECURITY_PROTECTION_ANNUAL_PRICE_CENTS', '19999');
     hasRedeemedMock.mockReturnValue(true);
     getRedeemedCodeMock.mockReturnValue('VYX-AI9999');
-    fetchPaidCount.mockResolvedValue(5000);
-    getTierMock.mockReturnValue('gold');
+    fetchReferralTier.mockResolvedValue('gold');
     getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: { key: 'platinum', min: 10000 } });
     getOfferingIdForTierMock.mockImplementation((tierKey, planId) => {
       if (tierKey !== 'gold') return null;
@@ -746,8 +742,7 @@ describe('Subscription page — tier-based referral discount', () => {
     vi.stubEnv('VITE_AI_SECURITY_PROTECTION_ANNUAL_PRICE_CENTS', '');
     hasRedeemedMock.mockReturnValue(true);
     getRedeemedCodeMock.mockReturnValue('VYX-AI9999');
-    fetchPaidCount.mockResolvedValue(5000);
-    getTierMock.mockReturnValue('gold');
+    fetchReferralTier.mockResolvedValue('gold');
     getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: null });
     getOfferingIdForTierMock.mockImplementation((tierKey, planId) => {
       if (tierKey !== 'gold') return null;

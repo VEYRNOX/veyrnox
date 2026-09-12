@@ -118,6 +118,25 @@ export async function fetchPaidCount(code) {
   return null;
 }
 
+// Tier of the code's owner, resolved SERVER-side (sql/get-referral-tier.sql).
+// Replaces the fail-closed fetchPaidCount() as the paywall's input: the RPC
+// returns only a tier key, never a count, and a partner code's contracted
+// tier_override wins over its paid count. The returned string is allowlisted
+// here before anything composes an offering id from it (I5 — the backend is
+// untrusted by design). null => no offer: unknown code, 'none', deniability,
+// network failure, or an unexpected value.
+const TIER_KEYS = new Set(['bronze', 'silver', 'gold', 'platinum']);
+export async function fetchReferralTier(code) {
+  if (!isValidCode(code)) return null;
+  if (isDeniabilityOrDemoActive()) return null;
+  try {
+    const data = await rpc('get_referral_tier', { p_code: code });
+    return typeof data === 'string' && TIER_KEYS.has(data) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function recordAttribution(referralCode, planId, billingPeriod, revenueCents, discountCents) {
   if (!isValidCode(referralCode)) return;
   if (isDeniabilityOrDemoActive()) return;

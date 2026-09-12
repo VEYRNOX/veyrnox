@@ -48,15 +48,13 @@ import {
   hasRedeemed,
   hasAttributed,
   markAttributed,
-  getTier,
-  getTierInfo,
   getOfferingIdForTier,
   getPlanFullPriceCents,
   storeDiscountCents,
 } from "@/lib/referral";
 import { annualSavingPercent } from "@/lib/annualSaving";
 import { discountPercent } from "@/lib/discountPercent";
-import { recordAttribution, fetchPaidCount, claimFirstReferralBonus } from "@/api/referralApi";
+import { recordAttribution, fetchReferralTier, claimFirstReferralBonus } from "@/api/referralApi";
 import { OFFER_UNAVAILABLE } from "@/lib/purchases";
 import OutcomeSteps, {
   OUTCOME_STEPS,
@@ -144,7 +142,6 @@ export default function Subscription() {
   const [aiReferralMonthly, setAiReferralMonthly] = useState(null);
   const [aiReferralOfferTag, setAiReferralOfferTag] = useState(null);
   const [aiReferralAnnual, setAiReferralAnnual] = useState(null);
-  const [referrerTierInfo, setReferrerTierInfo] = useState(null);
   const [billing, setBilling] = useState("annual");
   const [busy, setBusy] = useState(false);
   // F-radiogroup (2026-07-20 branch review): the two billing buttons were
@@ -230,12 +227,13 @@ export default function Subscription() {
     if (hasReferral) {
       const refCode = getRedeemedCode();
       if (refCode) {
-        fetchPaidCount(refCode)
-          .then((paid) => {
-            if (cancelled || paid == null) return;
-            const tierKey = getTier(paid);
-            const info = getTierInfo(paid);
-            setReferrerTierInfo(info);
+        // The tier is resolved SERVER-side (sql/get-referral-tier.sql): a
+        // partner code's contracted tier_override, else the owner's paid-count
+        // bucket. The client never sees a count, so nothing here derives a
+        // tier — fetchReferralTier already allowlists the key it returns.
+        fetchReferralTier(refCode)
+          .then((tierKey) => {
+            if (cancelled || !tierKey) return;
             const offeringId = getOfferingIdForTier(tierKey, TIER.SAFETY_PLUS);
             const aiReferralId = getOfferingIdForTier(tierKey, TIER.AI_SECURITY_PROTECTION);
             if (offeringId) {
