@@ -31,4 +31,14 @@ workers_dev = false
 routes = [
   { pattern = "veyrnox.com/r/*",     zone_name = "veyrnox.com" },
   { pattern = "www.veyrnox.com/r/*", zone_name = "veyrnox.com" },
+  # iOS Universal Links (#2527): the apex's apple-app-site-association is served
+  # from THIS repo's file, bundled below, so the paths the app claims (/wc*,
+  # /buy/return*, /r/*) are versioned with the handler that serves them. The
+  # marketing origin served its own copy before this route existed.
+  { pattern = "veyrnox.com/.well-known/apple-app-site-association", zone_name = "veyrnox.com" },
 ]
+
+# The AASA has no file extension, so tell the bundler it is text.
+[[rules]]
+type = "Text"
+globs = ["**/apple-app-site-association"]

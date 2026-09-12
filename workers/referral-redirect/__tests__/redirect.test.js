@@ -6,7 +6,9 @@
 // veyrnox.com it lands on the marketing site's 404.
 
 import { describe, it, expect } from 'vitest';
-import worker, { APP_ORIGIN } from '../src/index.js';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import worker, { APP_ORIGIN, AASA_PATH } from '../src/index.js';
 
 const hit = (path, { method = 'GET', host = 'veyrnox.com' } = {}) =>
   worker.fetch(new Request(`https://${host}${path}`, { method }));
@@ -54,5 +56,23 @@ describe('veyrnox.com/r/<code> Worker', () => {
     const res = hit('/r/VYX-STRKLB');
     expect(res.headers.get('Cache-Control')).toBe('no-store');
     expect(res.headers.get('Referrer-Policy')).toBe('no-referrer');
+  });
+});
+
+describe('veyrnox.com apple-app-site-association (#2527)', () => {
+  const onDisk = readFileSync(resolve(__dirname, '../../../public/.well-known/apple-app-site-association'), 'utf8');
+
+  it('serves the repo file byte-for-byte as JSON, 200, no redirect', async () => {
+    const res = hit(AASA_PATH);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toBe('application/json');
+    expect(res.headers.get('Location')).toBeNull();
+    expect(await res.text()).toBe(onDisk);
+  });
+
+  it('claims /r/* for the app', async () => {
+    const body = JSON.parse(await hit(AASA_PATH).text());
+    const paths = body.applinks.details.flatMap((d) => d.components.map((c) => c['/']));
+    expect(paths).toContain('/r/*');
   });
 });
