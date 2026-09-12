@@ -14,13 +14,28 @@
 // array as "not a referral link". Reproduce exactly that shape from the path so
 // its nested-path branch keeps behaving the same on both hosts.
 import { onRequest } from '../../../functions/r/[code].js';
+// Bundled as text (wrangler [[rules]]; vitest: the `aasa-text` plugin in
+// vitest.config.js). One file, served on the apex, versioned with the handler.
+import aasa from '../../../public/.well-known/apple-app-site-association';
+
+export const AASA_PATH = '/.well-known/apple-app-site-association';
 
 // The host that actually serves the wallet app. veyrnox.com is not it (#2529).
 export const APP_ORIGIN = 'https://veyrnox-prod.pages.dev';
 
 export default {
   fetch(request) {
-    const segments = new URL(request.url).pathname.split('/').filter(Boolean); // ['r', code, ...]
+    const { pathname } = new URL(request.url);
+    if (pathname === AASA_PATH) {
+      // Apple requires 200 + JSON, no redirect. Short cache: Apple's CDN
+      // re-fetches on its own schedule; a stale edge copy only delays a path
+      // change, never breaks an existing one.
+      return new Response(aasa, {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600' },
+      });
+    }
+    const segments = pathname.split('/').filter(Boolean); // ['r', code, ...]
     const rest = segments.slice(1);
     const code = rest.length === 1 ? rest[0] : rest;
 

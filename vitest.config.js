@@ -19,8 +19,20 @@ const __dir = fileURLToPath(new URL('.', import.meta.url));
 // This worktree lives at Veyrnox/.claude/worktrees/<name>; the repo root is ../../..
 const repoRoot = path.resolve(__dir, '../../..');
 
+// The veyrnox.com Worker imports public/.well-known/apple-app-site-association
+// as text (wrangler [[rules]] type = "Text"). The file has no extension, so
+// without this Vite would try to parse it as JavaScript in tests.
+const aasaText = {
+  name: 'aasa-text',
+  enforce: 'pre',
+  transform(code, id) {
+    if (id.endsWith('/apple-app-site-association')) return { code: `export default ${JSON.stringify(code)};`, map: null };
+    return null;
+  },
+};
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [aasaText, react()],
   server: {
     fs: {
       allow: [__dir, repoRoot],
