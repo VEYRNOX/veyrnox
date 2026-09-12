@@ -96,6 +96,9 @@ describe('referralCodeFromUrl', () => {
     ['a malformed path code', 'https://veyrnox.com/r/VYX-STRIKE'], // I not in alphabet
     ['a nested path', 'https://veyrnox.com/r/VYX-STRKLB/extra'],
     ['an empty /r/', 'https://veyrnox.com/r/'],
+    // #2534: same rule as Pages routing and the veyrnox.com Worker.
+    ['a doubled leading slash', 'https://veyrnox.com/r//VYX-STRKLB'],
+    ['a doubled trailing slash', 'https://veyrnox.com/r/VYX-STRKLB//'],
     ['a bad %-escape', 'https://veyrnox.com/r/VYX-%E0%A4%A'],
     ['an unrelated path', 'https://veyrnox.com/wc?uri=wc%3Aabc'],
     ['a malformed ?ref= even with a good path', 'https://veyrnox.com/r/VYX-STRKLB?ref=nope'],

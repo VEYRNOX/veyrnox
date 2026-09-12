@@ -25,6 +25,9 @@ import { trackEvent, EVENT } from '@/api/trackEvent';
 // Mirrors functions/r/[code].js and referralApi.js. A code this rejects would
 // be rejected by increment_referral anyway.
 const CODE_RE = /^VYX-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/;
+// Pages routing's match for functions/r/[code].js, measured live (#2534): one
+// segment, optional single trailing slash. workers/referral-redirect pins this
+// exact literal, so the three readers cannot drift apart silently.
 const PATH_RE = /^\/r\/([^/]+)\/?$/;
 
 // The referral code carried by a URL, normalised, or null. `?ref=` wins over
