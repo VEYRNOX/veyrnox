@@ -76,6 +76,18 @@
                 <data android:scheme="https" android:host="veyrnox.com" android:pathPrefix="/buy/return" />
             </intent-filter>
 
+            <!-- Referral share link: https://veyrnox.com/r/VYX-XXXXXX — same autoVerify
+                 path and the SAME assetlinks.json as /wc above. DeepLinkHandler.jsx
+                 stores the code as the pending referral; it is redeemed on the next
+                 unlock (#2527). Without the app installed, the veyrnox.com/r/* Worker
+                 redirects the browser to the web wallet instead. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="veyrnox.com" android:pathPrefix="/r/" />
+            </intent-filter>
+
         </activity>
 
         <provider

@@ -17,6 +17,7 @@ import { App } from '@capacitor/app';
 import { extractWcUri, setPendingWcUri } from '@/lib/deepLinkPairing';
 import { isBuyEnabled } from '@/lib/buy/useBuyEnabled';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
+import { captureReferralFromUrl } from '@/lib/referralAttribution';
 
 export default function DeepLinkHandler() {
   const navigate = useNavigate();
@@ -34,6 +35,16 @@ export default function DeepLinkHandler() {
       // pattern-matches too eagerly on any veyrnox.com URL.
       try {
         const u = new URL(rawUrl);
+        // Referral share link (https://veyrnox.com/r/VYX-XXXXXX, #2527). Store
+        // it as the pending referral; WalletProvider redeems it on the next
+        // primary-session unlock, which is the very next thing a fresh install
+        // does. captureReferralFromUrl validates the code and carries the I3
+        // gate itself (no write in a decoy/demo session). No navigation — the
+        // user lands wherever they were going, with the code waiting.
+        if (u.hostname === 'veyrnox.com' && u.pathname.startsWith('/r/')) {
+          captureReferralFromUrl(u, 'universal_link');
+          return;
+        }
         if (u.hostname === 'veyrnox.com' && u.pathname === '/buy/return') {
           // Gate the NAVIGATION, not just the destination's render. The
           // association files claim /buy/return* on every install, including
