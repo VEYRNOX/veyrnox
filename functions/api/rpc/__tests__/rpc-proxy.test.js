@@ -113,6 +113,9 @@ describe('RPC allowlist — the only boundary once service_role is in play', () 
     ['an unlisted function', 'drop_everything'],
     ['disabled attribution write', 'record_attribution'],
     ['disabled earnings read', 'get_referral_earnings'],
+    // sql/partner-referral-codes.sql: owner-only mint, service_role only.
+    // Listing it here would let anyone holding the anon key mint partner codes.
+    ['owner-only partner code mint', 'mint_partner_referral_code'],
     ['a table read', 'referral_attributions'],
     ['path traversal out of /rpc/', '../../rest/v1/referral_codes'],
     ['an absolute URL', 'https://evil.com/x'],
