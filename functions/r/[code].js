@@ -2,6 +2,12 @@
 //
 // Referral share links: /r/VYX-ABC234  ->  302  /?ref=VYX-ABC234
 //
+// THIS RUNS ON THE PAGES HOST ONLY (veyrnox-prod.pages.dev). The links the app
+// hands out say veyrnox.com, which is the marketing site and 404'd /r/ until
+// 2026-09-12 (#2529). workers/referral-redirect imports this same function and
+// serves it on veyrnox.com/r/* with an absolute Location — change behaviour
+// here and both hosts follow; the Worker adds nothing but the origin.
+//
 // WHY A FUNCTION AND NOT `_redirects` (#2214) — do not "simplify" this back.
 // The rule lived in public/_redirects as `/r/:code  /?ref=:code  302` and never
 // substituted the placeholder: every request 302'd to the LITERAL `/?ref=:code`.
