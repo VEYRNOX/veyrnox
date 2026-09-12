@@ -13,11 +13,16 @@
 -- create a code for someone who is NOT an app install — a newsletter, a
 -- podcast, a DeFi protocol, an influencer. This adds exactly that:
 --
---   mint_partner_referral_code(p_partner_name, p_code DEFAULT NULL) -> text
+--   mint_partner_referral_code(p_partner_name,
+--                              p_code          DEFAULT NULL,
+--                              p_tier_override DEFAULT 'platinum') -> text
 --
--- It inserts one row into `referrals` with device_id NULL and a new
--- `partner_name` column so the owner can tell whose code is whose. Nothing
--- else changes: the referee-side flow is untouched, because it only ever
+-- It inserts one row into `referrals` with device_id NULL plus two new
+-- columns: `partner_name` (whose code is whose) and `tier_override` (the tier
+-- the partner is contractually locked to, regardless of paid count — partner
+-- deals default to platinum, i.e. the 15% commission in lib/referral.js
+-- TIERS; the percentage is deliberately NOT stored here so TIERS stays the
+-- single source of truth). Nothing else changes: the referee-side flow is untouched, because it only ever
 -- looks the code up by primary key —
 --
 --   share link   https://veyrnox.com/r/VYX-XXXXXX  (functions/r/[code].js)
@@ -55,9 +60,23 @@
 -- returns an integer). No RLS policy or grant is added to `referrals`.
 
 -- ----------------------------------------------------------------------------
--- 1. Column
+-- 1. Columns
 -- ----------------------------------------------------------------------------
 ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS partner_name text;
+ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS tier_override text;
+
+DO $$ BEGIN
+  ALTER TABLE public.referrals ADD CONSTRAINT chk_referrals_tier_override
+    CHECK (tier_override IS NULL
+           OR tier_override IN ('bronze', 'silver', 'gold', 'platinum'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- tier_override is READ BY NOTHING yet. The client resolves a referrer's tier
+-- from paid count (getTier in lib/referral.js) and the referee-side read
+-- (fetchPaidCount) fails closed, so a locked tier changes neither the
+-- tracker page nor the paywall today. It is the owner's record for commission
+-- reporting, and the field a future server-side tier resolver would honour.
 
 -- ----------------------------------------------------------------------------
 -- 2. Mint function
@@ -68,10 +87,20 @@ ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS partner_name text;
 --                  collision RAISES (23505) rather than silently minting a
 --                  different code — a partner told "your code is VYX-ACMEXX"
 --                  must actually own VYX-ACMEXX.
+-- p_tier_override -> locked tier. Defaults to 'platinum' (owner decision
+--                  2026-09-12: partner deals are 15% by default). Pass NULL
+--                  for a partner who should earn tier the normal way.
+--
+-- The two-argument signature from the first revision of this file is DROPped:
+-- with a third defaulted parameter, keeping both would make a two-argument
+-- call ambiguous. DROP resets the ACL, so the grants are re-issued below.
 -- ----------------------------------------------------------------------------
+DROP FUNCTION IF EXISTS public.mint_partner_referral_code(text, text, text);
+
 CREATE OR REPLACE FUNCTION public.mint_partner_referral_code(
-  p_partner_name text,
-  p_code         text DEFAULT NULL
+  p_partner_name  text,
+  p_code          text DEFAULT NULL,
+  p_tier_override text DEFAULT 'platinum'
 )
 RETURNS text
 LANGUAGE plpgsql
@@ -91,14 +120,20 @@ BEGIN
     RAISE EXCEPTION 'partner_name required, 1-80 chars' USING ERRCODE = '22023';
   END IF;
 
+  IF p_tier_override IS NOT NULL
+     AND p_tier_override NOT IN ('bronze', 'silver', 'gold', 'platinum') THEN
+    RAISE EXCEPTION 'tier_override must be bronze|silver|gold|platinum or NULL, got %', p_tier_override
+      USING ERRCODE = '22023';
+  END IF;
+
   IF p_code IS NOT NULL THEN
     candidate := upper(btrim(p_code));
     IF candidate !~ '^VYX-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$' THEN
       RAISE EXCEPTION 'code must match VYX-XXXXXX using A-Z (no I/O) and 2-9, got %', candidate
         USING ERRCODE = '22023';
     END IF;
-    INSERT INTO public.referrals (code, partner_name)
-    VALUES (candidate, btrim(p_partner_name));
+    INSERT INTO public.referrals (code, partner_name, tier_override)
+    VALUES (candidate, btrim(p_partner_name), p_tier_override);
     RETURN candidate;
   END IF;
 
@@ -116,8 +151,8 @@ BEGIN
     END LOOP;
 
     BEGIN
-      INSERT INTO public.referrals (code, partner_name)
-      VALUES (candidate, btrim(p_partner_name));
+      INSERT INTO public.referrals (code, partner_name, tier_override)
+      VALUES (candidate, btrim(p_partner_name), p_tier_override);
       RETURN candidate;
     EXCEPTION WHEN unique_violation THEN
       CONTINUE;
@@ -128,17 +163,17 @@ $$;
 
 -- Postgres grants EXECUTE to PUBLIC on CREATE FUNCTION; anon is a member of
 -- PUBLIC. Revoke from PUBLIC (naming anon alone leaves the PUBLIC grant live).
-REVOKE ALL ON FUNCTION public.mint_partner_referral_code(text, text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.mint_partner_referral_code(text, text) FROM anon;
-REVOKE ALL ON FUNCTION public.mint_partner_referral_code(text, text) FROM authenticated;
-GRANT EXECUTE ON FUNCTION public.mint_partner_referral_code(text, text) TO service_role;
+REVOKE ALL ON FUNCTION public.mint_partner_referral_code(text, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.mint_partner_referral_code(text, text, text) FROM anon;
+REVOKE ALL ON FUNCTION public.mint_partner_referral_code(text, text, text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.mint_partner_referral_code(text, text, text) TO service_role;
 
 -- ----------------------------------------------------------------------------
 -- VERIFY (after running)
 --
 --   -- anon must NOT be able to call it. Expect: f
 --   SELECT has_function_privilege('anon',
---     'public.mint_partner_referral_code(text, text)', 'EXECUTE');
+--     'public.mint_partner_referral_code(text, text, text)', 'EXECUTE');
 --
 --   -- search_path pinned. Expect: {search_path=}
 --   SELECT proconfig FROM pg_proc WHERE proname = 'mint_partner_referral_code';
@@ -146,17 +181,20 @@ GRANT EXECUTE ON FUNCTION public.mint_partner_referral_code(text, text) TO servi
 -- ----------------------------------------------------------------------------
 -- RUNBOOK — minting and reporting (SQL Editor, both projects as appropriate)
 --
---   -- random code for a partner
+--   -- random code for a partner, locked to platinum (15%) by default
 --   SELECT public.mint_partner_referral_code('Acme Newsletter');
 --
 --   -- vanity code (must fit the alphabet)
 --   SELECT public.mint_partner_referral_code('Acme Newsletter', 'VYX-ACMEXX');
 --
+--   -- a partner on gold instead, or NULL to earn tier normally
+--   SELECT public.mint_partner_referral_code('Acme Newsletter', NULL, 'gold');
+--
 --   -- hand the partner:  https://veyrnox.com/r/<code>
 --   -- and the manual path: More -> Referrals -> "Got a referral code?"
 --
 --   -- report: installs that entered each partner code
---   SELECT partner_name, code, count, created_at
+--   SELECT partner_name, code, tier_override, count, created_at
 --     FROM public.referrals
 --    WHERE partner_name IS NOT NULL
 --    ORDER BY partner_name, created_at;

@@ -18,6 +18,7 @@ const ALLOWED_RPCS = new Set([
   'increment_referral',
   'get_referral_count',
   'get_referral_paid_count',
+  'get_referral_tier',
 ]);
 
 // SQLSTATEs our own SECURITY DEFINER functions RAISE on purpose. Only an error

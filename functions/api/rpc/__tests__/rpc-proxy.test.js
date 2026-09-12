@@ -104,6 +104,7 @@ describe('RPC allowlist — the only boundary once service_role is in play', () 
     'increment_referral',
     'get_referral_count',
     'get_referral_paid_count',
+    'get_referral_tier',
   ])('allows %s', async (fn) => {
     const res = await onRequestPost(ctx(fn));
     expect(res.status).toBe(200);
