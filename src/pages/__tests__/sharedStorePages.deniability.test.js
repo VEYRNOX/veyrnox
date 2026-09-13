@@ -75,11 +75,15 @@ describe.each(PAGES)('$file — shared-store deniability gate (#2537)', ({ file,
   const queries = calls(code, 'useQuery');
   const muts = calls(code, 'useMutation');
 
-  it('derives `deniable` from decoy, hidden AND the module-level predicate', () => {
+  // DEMO is required alongside the live predicate: isDeniabilityOrDemoActive()
+  // sees only the session marker and a persisted veyrnox-demo, while DEMO is
+  // also true for VITE_DEMO_MODE=1 and native-dev builds.
+  it('derives `deniable` from DEMO, decoy, hidden AND the module-level predicate', () => {
     expect(code).toMatch(/const\s*\{[^}]*\bisDecoy\b[^}]*\bisHidden\b[^}]*\}\s*=\s*useWallet\(\)/);
     expect(code).toMatch(
-      /const\s+deniable\s*=\s*isDecoy\s*\|\|\s*isHidden\s*\|\|\s*isDeniabilityOrDemoActive\(\)\s*;/,
+      /const\s+deniable\s*=\s*DEMO\s*\|\|\s*isDecoy\s*\|\|\s*isHidden\s*\|\|\s*isDeniabilityOrDemoActive\(\)\s*;/,
     );
+    expect(code).toMatch(/import\s*\{\s*DEMO\s*\}\s*from\s*["']@\/api\/demoClient["']/);
     expect(code).toMatch(/import\s*\{\s*isDeniabilityOrDemoActive\s*\}\s*from\s*["']@\/wallet-core\/deniabilitySession["']/);
   });
 

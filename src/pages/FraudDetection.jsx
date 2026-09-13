@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
 import { isLocallyFlagged } from "@/wallet-core/evm/poison";
 import {
   ShieldAlert,
@@ -191,9 +192,12 @@ const SCOPE_CHECKS = [
 
 export default function FraudDetection() {
   // isDecoy/isHidden are React state and lag the module-level flag (see
-  // WalletPortfolioPage.jsx), so fold in the canonical predicate too. Fail closed.
+  // WalletPortfolioPage.jsx), so fold in the canonical predicate too. That
+  // predicate only sees the live session marker and a persisted veyrnox-demo;
+  // DEMO also covers VITE_DEMO_MODE=1 and native-dev builds, matching the
+  // `DEMO || isDeniabilityOrDemoActive()` composite in edgeApi.js. Fail closed.
   const { isDecoy, isHidden } = useWallet();
-  const deniable = isDecoy || isHidden || isDeniabilityOrDemoActive();
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
 
   const [scanResult, setScanResult] = useState(null);
   const [dismissed, setDismissed] = useState([]);

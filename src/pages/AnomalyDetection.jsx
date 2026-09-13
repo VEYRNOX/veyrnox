@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
 import { ScanLine, AlertTriangle, CheckCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
@@ -72,9 +73,12 @@ const CHECKS = [
 
 export default function AnomalyDetection() {
   // isDecoy/isHidden are React state and lag the module-level flag (see
-  // WalletPortfolioPage.jsx), so fold in the canonical predicate too. Fail closed.
+  // WalletPortfolioPage.jsx), so fold in the canonical predicate too. That
+  // predicate only sees the live session marker and a persisted veyrnox-demo;
+  // DEMO also covers VITE_DEMO_MODE=1 and native-dev builds, matching the
+  // `DEMO || isDeniabilityOrDemoActive()` composite in edgeApi.js. Fail closed.
   const { isDecoy, isHidden } = useWallet();
-  const deniable = isDecoy || isHidden || isDeniabilityOrDemoActive();
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
 
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
