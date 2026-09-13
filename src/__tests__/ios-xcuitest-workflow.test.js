@@ -45,9 +45,14 @@ describe('iOS XCUITest smoke workflow', () => {
     // is its own outcome (2), never "not running".
     expect(step).toMatch(/listing="\$\(xcrun simctl spawn "\$IOS_SIMULATOR_UDID" launchctl list\)" \|\| return 2/);
     expect(step).toContain(String.raw`grep -q 'UIKitApplication:com\.veyrnox\.app\[' <<<"$listing"`);
-    // No `… | grep -q`: under the runner's pipefail an early grep exit is
-    // SIGPIPE (141) and reads as "not running" while the app is up.
-    expect(step).not.toMatch(/\|\s*grep\s+-q/);
+    // No `… | grep -q`. This step runs under `bash -e` without pipefail, so
+    // that pipe is correct today; the ban keeps the check correct if pipefail
+    // is ever enabled, where an early grep exit is SIGPIPE (141) and would
+    // read as "not running" while the app is up. Scoped to code lines: the
+    // step's own comment quotes the retired pipe, and an absence check must
+    // not fire on the documentation of what it removed.
+    const stepCode = step.split('\n').filter((line) => !/^\s*#/.test(line)).join('\n');
+    expect(stepCode).not.toMatch(/\|\s*grep\s+-q/);
     // After terminate: poll, fail on a query error, reboot if still running,
     // then require a definite "not running" (state 1).
     const terminate = at('simctl terminate "$IOS_SIMULATOR_UDID" com.veyrnox.app');
