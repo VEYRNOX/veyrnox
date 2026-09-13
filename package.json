@@ -195,7 +195,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
-    "@capacitor/cli": "^8.4.2",
+    "@capacitor/cli": "^8.5.1",
     "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.62.1",
     "@rollup/plugin-inject": "^5.0.5",
