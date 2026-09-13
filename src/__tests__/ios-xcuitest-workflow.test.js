@@ -22,10 +22,18 @@ describe('iOS XCUITest smoke workflow', () => {
     const build = workflow.indexOf('- name: Build for testing');
     const warm = workflow.indexOf('- name: Warm up the app on the simulator');
     const run = workflow.indexOf('- name: Run AppUITests');
+    // indexOf returns -1 for a missing marker, which would satisfy a bare
+    // ordering comparison — assert presence first.
+    for (const [name, index] of [['build', build], ['warm-up', warm], ['run', run]]) {
+      expect(index, `${name} step not found`).toBeGreaterThanOrEqual(0);
+    }
     expect(warm).toBeGreaterThan(build);
     expect(run).toBeGreaterThan(warm);
     const step = workflow.slice(warm, run);
-    expect(step).toMatch(/simctl launch "\$IOS_SIMULATOR_UDID" com\.veyrnox\.app/);
+    // Same lifecycle as the tests, which both launch with this flag.
+    expect(step).toMatch(/simctl launch "\$IOS_SIMULATOR_UDID" com\.veyrnox\.app --uitest-fresh-install/);
     expect(step).toMatch(/simctl terminate "\$IOS_SIMULATOR_UDID" com\.veyrnox\.app/);
+    // Hand-off is verified, not assumed: poll for the process to be gone.
+    expect(step).toContain(String.raw`UIKitApplication:com\.veyrnox\.app\[`);
   });
 });

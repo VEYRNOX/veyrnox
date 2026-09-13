@@ -198,15 +198,42 @@ jobs:
         # every wait to fit a one-time cost would slow every later check. So the
         # one-time cost is paid here, outside any test budget: install, launch,
         # give it the measured cold-start time plus margin, terminate.
-        # The screenshot is evidence only; this step never fails the job.
-        timeout-minutes: 5
+        #
+        # Launched with --uitest-fresh-install, the same flag both tests pass,
+        # so the warm-up runs the identical lifecycle: AppDelegate wipes
+        # WKWebsiteDataStore + UserDefaults, then the WebView boots empty. A
+        # flagless launch would warm a different path (and write the fresh-
+        # install marker the tests then have to wipe).
+        #
+        # The hand-off must leave NO running instance, or the first test's
+        # launch() has to kill it and can hit the same "Failed to terminate"
+        # this is meant to avoid. So after terminate, poll until the app is gone
+        # from launchd (entries read `UIKitApplication:<bundle>[<id>]…`; the
+        # trailing `\[` stops com.veyrnox.app matching the
+        # com.veyrnox.app.AppUITests.xctrunner test runner); if it is still there after 30 s, reboot the simulator,
+        # which guarantees a clean slate at the cost of a boot. The warm-up
+        # screenshot is evidence only; warm-up install/launch failures warn and
+        # continue, since the tests are still valid cold.
+        timeout-minutes: 8
         run: |
           app="DerivedData/Build/Products/Debug-iphonesimulator/App.app"
+          running() { xcrun simctl spawn "$IOS_SIMULATOR_UDID" launchctl list 2>/dev/null | grep -q 'UIKitApplication:com\.veyrnox\.app\['; }
           xcrun simctl install "$IOS_SIMULATOR_UDID" "$app" || { echo "::warning::warm-up install failed; tests will cold-start"; exit 0; }
-          xcrun simctl launch "$IOS_SIMULATOR_UDID" com.veyrnox.app || { echo "::warning::warm-up launch failed; tests will cold-start"; exit 0; }
+          xcrun simctl launch "$IOS_SIMULATOR_UDID" com.veyrnox.app --uitest-fresh-install || { echo "::warning::warm-up launch failed; tests will cold-start"; exit 0; }
           sleep 120
           xcrun simctl io "$IOS_SIMULATOR_UDID" screenshot warmup-after-120s.png || true
           xcrun simctl terminate "$IOS_SIMULATOR_UDID" com.veyrnox.app || true
+          for _ in $(seq 1 30); do running || break; sleep 1; done
+          if running; then
+            echo "::warning::warm-up instance still running 30s after terminate; rebooting the simulator for a clean hand-off"
+            xcrun simctl shutdown "$IOS_SIMULATOR_UDID" || true
+            xcrun simctl boot "$IOS_SIMULATOR_UDID"
+            xcrun simctl bootstatus "$IOS_SIMULATOR_UDID" -b
+          fi
+          if running; then
+            echo "::error::com.veyrnox.app still running after a simulator reboot; the test step would inherit it"
+            exit 1
+          fi
 
       - name: Run AppUITests
         working-directory: ios/App

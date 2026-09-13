@@ -25,6 +25,25 @@ final class AppUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    /// Hand-off between tests, on EVERY exit path. XCUITest relaunches by
+    /// killing the previous instance, and on four CI runs (#2543:
+    /// 34483371568, 34598062623, 34625908307, 34643353906) that kill failed
+    /// within ~1 s — "Failed to terminate com.veyrnox.app:<pid>" — so the next
+    /// test died inside launch() with no screenshot. Doing it here attributes
+    /// any such failure to the test that left the process. It must be teardown,
+    /// not the end of a test body: continueAfterFailure = false aborts the body
+    /// on the first failed assertion, which would skip a body-level terminate
+    /// and hand the next test a live process again.
+    override func tearDownWithError() throws {
+        let app = XCUIApplication()
+        guard app.state != .notRunning else { return }
+        app.terminate()
+        XCTAssertTrue(
+            app.wait(for: .notRunning, timeout: 30),
+            "App did not reach .notRunning within 30s of terminate() in teardown. Harness/runner hand-off failure (#2543), NOT an app result."
+        )
+    }
+
     /// Simulator smoke: native provisioning must fail closed when the simulator
     /// cannot provide a passcode-backed secure store. A real device is required
     /// to verify successful wallet creation and hardware-gated unlock.
@@ -109,20 +128,6 @@ final class AppUITests: XCTestCase {
         assertPinFlowLeftPinSetup(app: app)
         assertFailedClosed(app: app, action: "create")
         snap(app: app, name: "create-04-post-fail-closed")
-
-        // Hand-off to the import test, done HERE rather than by that test's
-        // launch(). XCUITest relaunches by killing the previous instance, and
-        // on four CI runs (#2543: 34483371568, 34598062623, 34625908307,
-        // 34643353906) that kill failed within ~1 s — "Failed to terminate
-        // com.veyrnox.app:<pid>" — so a create test that had PASSED left its
-        // app on screen and the import test died inside launch() with no
-        // screenshot. Terminating explicitly puts any such failure in the test
-        // that left the process, after its milestone screenshot above.
-        app.terminate()
-        XCTAssertTrue(
-            app.wait(for: .notRunning, timeout: 30),
-            "App did not reach .notRunning within 30s of terminate(). Harness/runner hand-off failure (#2543), NOT a fail-closed result — the fail-closed assertion above already passed."
-        )
     }
 
     /// Import follows the same native secure-store rule as new-wallet creation:
@@ -291,10 +296,11 @@ final class AppUITests: XCTestCase {
     /// `rejected` returns false immediately, without re-pressing, when the app
     /// has visibly refused the buffer — re-pressing cannot help there.
     ///
-    /// Polls once a second, not twice: every `exists` is a full WebKit AX
-    /// snapshot, and on a slow runner those stall (~31 s each in run
-    /// 34643406215, three in a row, which XCTest turns into "Failed to get
-    /// matching snapshots"). Fewer queries means fewer chances to hit it.
+    /// Query rate: every `exists` is a full WebKit AX snapshot, and on a slow
+    /// runner those stall (~31 s each in run 34643406215, three in a row, which
+    /// XCTest turns into "Failed to get matching snapshots"). The old loop made
+    /// 2 queries/s. With `rejected` supplied each tick makes TWO queries, so the
+    /// tick is 2 s — 1 query/s combined; without it, 0.5 queries/s.
     @discardableResult
     private func submitPinUntilAdvanced(
         app: XCUIApplication,
@@ -315,7 +321,7 @@ final class AppUITests: XCTestCase {
                     NSLog("[VEYRNOX-XCUITEST] PIN \(stage): pad rejected the buffer (digit presses lost); restarting the ceremony instead of re-pressing")
                     return false
                 }
-                Thread.sleep(forTimeInterval: 1.0)
+                Thread.sleep(forTimeInterval: 2.0)
             }
             if press < maxPresses {
                 NSLog("[VEYRNOX-XCUITEST] PIN \(stage): submit press \(press) did not advance the view; re-pressing")
@@ -599,6 +605,13 @@ final class AppUITests: XCTestCase {
     /// only thing that moves focus. First attempt uses the real-touch press;
     /// the second falls back to `.tap()`, since press-focuses-an-input has not
     /// been proven on this simulator the way press-clicks-a-button has.
+    ///
+    /// The 5 s / 10 s deadlines bound the POLLING, not each query: the
+    /// `hasKeyboardFocus` read is a synchronous AX snapshot that XCTest cannot
+    /// cancel. A wedged bridge is bounded instead by XCTest's own snapshot
+    /// timeout (~30 s x 3 retries, then "Failed to get matching snapshots") —
+    /// a named failure in well under the 10-minute allowance, which is what
+    /// the old typeText retry loop consumed.
     private func focusTextField(app: XCUIApplication, field: XCUIElement, name: String) {
         for attempt in 1...2 {
             if attempt == 1 { webViewSafeTap(field) } else { field.tap() }
