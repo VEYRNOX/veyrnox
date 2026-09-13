@@ -43,7 +43,7 @@ describe('iOS XCUITest smoke workflow', () => {
     };
     // Listing captured before matching, anchored pattern, and a query failure
     // is its own outcome (2), never "not running".
-    expect(step).toMatch(/listing="\$\(xcrun simctl spawn "\$IOS_SIMULATOR_UDID" launchctl list\)" \|\| return 2/);
+    expect(step).toMatch(/listing="\$\(bounded \d+ xcrun simctl spawn "\$IOS_SIMULATOR_UDID" launchctl list\)" \|\| return 2/);
     expect(step).toContain(String.raw`grep -q 'UIKitApplication:com\.veyrnox\.app\[' <<<"$listing"`);
     // No `… | grep -q`. This step runs under `bash -e` without pipefail, so
     // that pipe is correct today; the ban keeps the check correct if pipefail
@@ -53,15 +53,36 @@ describe('iOS XCUITest smoke workflow', () => {
     // not fire on the documentation of what it removed.
     const stepCode = step.split('\n').filter((line) => !/^\s*#/.test(line)).join('\n');
     expect(stepCode).not.toMatch(/\|\s*grep\s+-q/);
-    // After terminate: poll, fail on a query error, reboot if still running,
-    // then require a definite "not running" (state 1).
+    // After terminate: poll; anything but a definite "not running" (still
+    // running OR a failed/timed-out query) reboots the simulator, then a
+    // definite "not running" (state 1) is required or the step fails.
     const terminate = at('simctl terminate "$IOS_SIMULATOR_UDID" com.veyrnox.app');
     const poll = at('wait_until_gone && state=0 || state=$?', terminate);
-    const queryFail = at('if [ "$state" -eq 2 ]; then', poll);
-    at('exit 1', queryFail);
-    const reboot = at('xcrun simctl bootstatus "$IOS_SIMULATOR_UDID" -b', queryFail);
+    const notGone = at('if [ "$state" -ne 1 ]; then', poll);
+    const reboot = at('xcrun simctl bootstatus "$IOS_SIMULATOR_UDID" -b', notGone);
     const recheck = at('app_state && state=0 || state=$?', reboot);
     const requireGone = at('if [ "$state" -ne 1 ]; then', recheck);
     at('exit 1', requireGone);
+  });
+
+  // #2543 runs 34753802443 / 34754922127: a simctl call (screenshot, terminate
+  // or the launchd query) hung with the app healthy, and the step died on its
+  // own timeout with no diagnosis. Every simctl call in the warm-up must carry
+  // a bound so a hang becomes a handled failure.
+  it('bounds every simctl call in the warm-up step', () => {
+    const warm = workflow.indexOf('- name: Warm up the app on the simulator');
+    const run = workflow.indexOf('- name: Run AppUITests');
+    expect(warm).toBeGreaterThanOrEqual(0);
+    expect(run).toBeGreaterThan(warm);
+    const code = workflow
+      .slice(warm, run)
+      .split('\n')
+      .filter((line) => !/^\s*#/.test(line));
+    expect(code.join('\n')).toContain(`bounded() { perl -e 'alarm shift; exec @ARGV or exit 127' "$@"; }`);
+    const calls = code.filter((line) => /\bxcrun simctl\b/.test(line));
+    expect(calls.length).toBeGreaterThanOrEqual(8);
+    for (const line of calls) {
+      expect(line, `unbounded simctl call: ${line.trim()}`).toMatch(/\bbounded \d+ xcrun simctl\b/);
+    }
   });
 });
