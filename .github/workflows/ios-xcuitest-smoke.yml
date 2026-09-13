@@ -188,6 +188,26 @@ jobs:
               exit 1
             }
 
+      - name: Warm up the app on the simulator
+        working-directory: ios/App
+        # The FIRST launch of a fresh install is far slower than any later one:
+        # in run 34747267714 (#2543) it took ~95 s to paint the entry tiles
+        # (blank white to ~40 s, then the Suspense spinner), while the next
+        # test's launch on the same simulator reached them in ~30 s. The
+        # create test's 45 s entry-tile budget cannot absorb that, and widening
+        # every wait to fit a one-time cost would slow every later check. So the
+        # one-time cost is paid here, outside any test budget: install, launch,
+        # give it the measured cold-start time plus margin, terminate.
+        # The screenshot is evidence only; this step never fails the job.
+        timeout-minutes: 5
+        run: |
+          app="DerivedData/Build/Products/Debug-iphonesimulator/App.app"
+          xcrun simctl install "$IOS_SIMULATOR_UDID" "$app" || { echo "::warning::warm-up install failed; tests will cold-start"; exit 0; }
+          xcrun simctl launch "$IOS_SIMULATOR_UDID" com.veyrnox.app || { echo "::warning::warm-up launch failed; tests will cold-start"; exit 0; }
+          sleep 120
+          xcrun simctl io "$IOS_SIMULATOR_UDID" screenshot warmup-after-120s.png || true
+          xcrun simctl terminate "$IOS_SIMULATOR_UDID" com.veyrnox.app || true
+
       - name: Run AppUITests
         working-directory: ios/App
         # test-without-building: the compile already happened in its own step
@@ -324,6 +344,7 @@ jobs:
           path: |
             ios/App/xcodebuild.log
             ios/App/xcodebuild-build.log
+            ios/App/warmup-after-120s.png
           if-no-files-found: warn
 
       - name: Upload result bundle
