@@ -18,9 +18,11 @@
 // I4: analytics is best-effort fire-and-forget; a failed track call must
 // never block or fail referral capture.
 
-import { setPendingReferral, getPendingReferral } from '@/lib/referral';
+import { Capacitor } from '@capacitor/core';
+import { setPendingReferral, getPendingReferral, hasRedeemed } from '@/lib/referral';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { trackEvent, EVENT } from '@/api/trackEvent';
+import { getInstallReferrer } from '@/plugins/installReferrer';
 
 // Mirrors functions/r/[code].js and referralApi.js. A code this rejects would
 // be rejected by increment_referral anyway.
@@ -55,4 +57,36 @@ export function captureReferralFromUrl(url = new URL(window.location.href), sour
   if (getPendingReferral() === ref) return;
   setPendingReferral(ref);
   void trackEvent(EVENT.REFERRAL_CODE_APPLIED, { code: ref, source }).catch(() => {});
+}
+
+// Play Store listing that hands `ref=<code>` back to the installed app through
+// the Install Referrer API (#2541). The whole referrer value is URL-encoded, as
+// Play requires.
+export function playStoreReferralUrl(code) {
+  return 'https://play.google.com/store/apps/details?id=com.veyrnox.app&referrer='
+    + encodeURIComponent(`ref=${code}`);
+}
+
+// Android, on launch: pick up a code that arrived through a Play install. Play
+// keeps the referrer for the life of the install, so skip once a code is pending
+// or already redeemed. An organic install's referrer
+// (utm_source=google-play&utm_medium=organic) carries no `ref` and is ignored.
+// ponytail: a code the server rejects is re-captured on each launch until the
+// user redeems another; add a checked-once flag (and its panic residue entry) if
+// that telemetry noise ever matters.
+export async function captureInstallReferrer() {
+  if (Capacitor.getPlatform() !== 'android') return;
+  if (isDeniabilityOrDemoActive() || hasRedeemed() || getPendingReferral()) return;
+  let referrer;
+  try {
+    referrer = await getInstallReferrer();
+  } catch {
+    return; // no Play Store, service error, or a non-Play flavour
+  }
+  const code = new URLSearchParams(referrer).get('ref');
+  if (!code) return;
+  const url = new URL('http://localhost/');
+  url.searchParams.set('ref', code);
+  // Re-checks I3 itself: the await above can outlive a session switch.
+  captureReferralFromUrl(url, 'install_referrer');
 }

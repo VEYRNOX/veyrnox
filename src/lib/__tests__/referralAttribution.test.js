@@ -3,7 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('@/lib/referral', () => ({
   setPendingReferral: vi.fn(),
   getPendingReferral: vi.fn(() => null),
+  hasRedeemed: vi.fn(() => false),
 }));
+let platform = 'android';
+vi.mock('@capacitor/core', () => ({ Capacitor: { getPlatform: () => platform } }));
+vi.mock('@/plugins/installReferrer', () => ({ getInstallReferrer: vi.fn() }));
 vi.mock('@/wallet-core/deniabilitySession', () => ({
   isDeniabilityOrDemoActive: vi.fn(() => false),
 }));
@@ -12,8 +16,9 @@ vi.mock('@/api/trackEvent', () => ({
   EVENT: { REFERRAL_CODE_APPLIED: 'referral_code_applied' },
 }));
 
-import { captureReferralFromUrl, referralCodeFromUrl } from '@/lib/referralAttribution';
-import { setPendingReferral, getPendingReferral } from '@/lib/referral';
+import { captureReferralFromUrl, referralCodeFromUrl, captureInstallReferrer, playStoreReferralUrl } from '@/lib/referralAttribution';
+import { setPendingReferral, getPendingReferral, hasRedeemed } from '@/lib/referral';
+import { getInstallReferrer } from '@/plugins/installReferrer';
 import { trackEvent } from '@/api/trackEvent';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
@@ -104,5 +109,85 @@ describe('referralCodeFromUrl', () => {
     ['a malformed ?ref= even with a good path', 'https://veyrnox.com/r/VYX-STRKLB?ref=nope'],
   ])('returns null for %s', (_label, href) => {
     expect(referralCodeFromUrl(new URL(href))).toBeNull();
+  });
+});
+
+// #2541: a share link tapped without the app installed reaches the app only as
+// Play's install referrer.
+describe('playStoreReferralUrl', () => {
+  it('encodes the whole referrer value, which Play requires', () => {
+    const u = new URL(playStoreReferralUrl('VYX-AB3DEF'));
+    expect(u.origin + u.pathname).toBe('https://play.google.com/store/apps/details');
+    expect(u.searchParams.get('id')).toBe('com.veyrnox.app');
+    // One level of decoding yields exactly what Play hands back to the app.
+    expect(u.searchParams.get('referrer')).toBe('ref=VYX-AB3DEF');
+    expect(playStoreReferralUrl('VYX-AB3DEF')).toContain('referrer=ref%3DVYX-AB3DEF');
+  });
+});
+
+describe('captureInstallReferrer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    platform = 'android';
+    vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(false);
+    vi.mocked(getPendingReferral).mockReturnValue(null);
+    vi.mocked(hasRedeemed).mockReturnValue(false);
+    vi.mocked(getInstallReferrer).mockResolvedValue('ref=VYX-AB3DEF');
+  });
+
+  it('stores the code a Play install carried, tagged install_referrer', async () => {
+    await captureInstallReferrer();
+    expect(setPendingReferral).toHaveBeenCalledWith('VYX-AB3DEF');
+    expect(trackEvent).toHaveBeenCalledWith('referral_code_applied', { code: 'VYX-AB3DEF', source: 'install_referrer' });
+  });
+
+  it('ignores an organic install referrer', async () => {
+    vi.mocked(getInstallReferrer).mockResolvedValue('utm_source=google-play&utm_medium=organic');
+    await captureInstallReferrer();
+    expect(setPendingReferral).not.toHaveBeenCalled();
+  });
+
+  it('ignores a malformed code in the referrer', async () => {
+    vi.mocked(getInstallReferrer).mockResolvedValue('ref=NOT-A-CODE');
+    await captureInstallReferrer();
+    expect(setPendingReferral).not.toHaveBeenCalled();
+  });
+
+  it('treats a plugin rejection as no referrer (never throws)', async () => {
+    vi.mocked(getInstallReferrer).mockRejectedValue(new Error('not available'));
+    await expect(captureInstallReferrer()).resolves.toBeUndefined();
+    expect(setPendingReferral).not.toHaveBeenCalled();
+  });
+
+  it('does not ask for the referrer off Android', async () => {
+    platform = 'ios';
+    await captureInstallReferrer();
+    expect(getInstallReferrer).not.toHaveBeenCalled();
+  });
+
+  it('I3: does not read the referrer or write in a deniability/demo session', async () => {
+    vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
+    await captureInstallReferrer();
+    expect(getInstallReferrer).not.toHaveBeenCalled();
+    expect(hasRedeemed).not.toHaveBeenCalled();
+    expect(setPendingReferral).not.toHaveBeenCalled();
+  });
+
+  it('I3: a session switch during the referrer lookup still blocks the write', async () => {
+    vi.mocked(getInstallReferrer).mockImplementation(async () => {
+      vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
+      return 'ref=VYX-AB3DEF';
+    });
+    await captureInstallReferrer();
+    expect(setPendingReferral).not.toHaveBeenCalled();
+  });
+
+  it('skips once a code is pending or already redeemed', async () => {
+    vi.mocked(getPendingReferral).mockReturnValue('VYX-ZZZZZZ');
+    await captureInstallReferrer();
+    vi.mocked(getPendingReferral).mockReturnValue(null);
+    vi.mocked(hasRedeemed).mockReturnValue(true);
+    await captureInstallReferrer();
+    expect(getInstallReferrer).not.toHaveBeenCalled();
   });
 });
