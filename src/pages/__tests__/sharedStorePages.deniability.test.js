@@ -1,0 +1,128 @@
+// K-2 / I3 (#2537) — seven pages that read the SHARED veyrnox-appdata IndexedDB
+// must deny a decoy / hidden / demo session.
+//
+// `src/api/localClient.js` keeps one record per entity name with no per-session
+// partitioning, cleared only by panic wipe. So without a gate a decoy session
+// opening /onchain lists the real user's send history, and /budget, /recurring,
+// /savings and /invoices can alter or delete the real user's rows.
+//
+// The fix is the two-chokepoint shape already used by PriceAlerts.jsx,
+// AddressBook.jsx and Settings.jsx:
+//   read  — every useQuery on the store is `enabled: !deniable`, and the rows it
+//           returns are blanked locally (`const x = deniable ? [] : xRaw`) so a
+//           cached result from the real session cannot render either;
+//   write — every mutationFn throws DENIABILITY_BLOCKED before any store call.
+//
+// Source scan, matching Settings.wallet-passkeys-i3.test.js: these pages pull in
+// recharts, dialogs and the whole WalletProvider, and in a deniable session the
+// write controls never render (no rows), so a render test cannot reach the
+// mutations anyway. Blocks are extracted by paren matching rather than a fixed
+// window, so a pin can never be satisfied by the NEXT hook's guard.
+//
+// The last test in each page block is the coverage net: every
+// `base44.entities.*` call in the file must sit inside a gated query or a
+// guarded mutation. Adding a new ungated read or write turns it red.
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const here = dirname(fileURLToPath(import.meta.url));
+
+// Strip comments so a pin is never satisfied by the prose documenting it.
+const stripComments = (s) =>
+  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+// Return the text of every `<callee>(...)` call, parens balanced, skipping
+// string literals so a ")" inside an error message cannot end the block early.
+function calls(code, callee) {
+  const out = [];
+  const re = new RegExp(`\\b${callee}\\(`, 'g');
+  let m;
+  while ((m = re.exec(code))) {
+    let depth = 0;
+    let quote = null;
+    for (let i = m.index + callee.length; i < code.length; i++) {
+      const c = code[i];
+      if (quote) {
+        if (c === '\\') i++;
+        else if (c === quote) quote = null;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === '`') quote = c;
+      else if (c === '(') depth++;
+      else if (c === ')' && --depth === 0) {
+        out.push({ start: m.index, end: i + 1, text: code.slice(m.index, i + 1) });
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+const PAGES = [
+  { file: 'OnChainAnalytics.jsx', rows: ['transactions', 'wallets'], mutations: 0 },
+  { file: 'AnomalyDetection.jsx', rows: ['transactions', 'fraudAlerts'], mutations: 0 },
+  { file: 'FraudDetection.jsx', rows: ['transactions', 'addressBook', 'fraudAlerts'], mutations: 0 },
+  { file: 'BudgetLimits.jsx', rows: ['budgets', 'transactions'], mutations: 3 },
+  { file: 'RecurringPayments.jsx', rows: ['payments', 'wallets'], mutations: 3 },
+  { file: 'SavingsGoals.jsx', rows: ['goals'], mutations: 3 },
+  { file: 'InvoiceGenerator.jsx', rows: ['invoices'], mutations: 3 },
+];
+
+describe.each(PAGES)('$file — shared-store deniability gate (#2537)', ({ file, rows, mutations }) => {
+  const code = stripComments(readFileSync(resolve(here, '..', file), 'utf8'));
+  const queries = calls(code, 'useQuery');
+  const muts = calls(code, 'useMutation');
+
+  // DEMO is required alongside the live predicate: isDeniabilityOrDemoActive()
+  // sees only the session marker and a persisted veyrnox-demo, while DEMO is
+  // also true for VITE_DEMO_MODE=1 and native-dev builds.
+  it('derives `deniable` from DEMO, decoy, hidden AND the module-level predicate', () => {
+    expect(code).toMatch(/const\s*\{[^}]*\bisDecoy\b[^}]*\bisHidden\b[^}]*\}\s*=\s*useWallet\(\)/);
+    expect(code).toMatch(
+      /const\s+deniable\s*=\s*DEMO\s*\|\|\s*isDecoy\s*\|\|\s*isHidden\s*\|\|\s*isDeniabilityOrDemoActive\(\)\s*;/,
+    );
+    expect(code).toMatch(/import\s*\{\s*DEMO\s*\}\s*from\s*["']@\/api\/demoClient["']/);
+    expect(code).toMatch(/import\s*\{\s*isDeniabilityOrDemoActive\s*\}\s*from\s*["']@\/wallet-core\/deniabilitySession["']/);
+  });
+
+  it.runIf(mutations > 0)('denyInDeniable throws DENIABILITY_BLOCKED', () => {
+    expect(code).toMatch(
+      /const\s+denyInDeniable\s*=\s*\(\)\s*=>\s*\{\s*throw\s+Object\.assign\([^;]*code:\s*["']DENIABILITY_BLOCKED["']/,
+    );
+  });
+
+  it('every store query is disabled in a deniable session', () => {
+    expect(queries.length).toBe(rows.length);
+    for (const q of queries) {
+      expect(q.text, q.text).toMatch(/enabled:\s*!deniable\b/);
+    }
+  });
+
+  it.each(rows)('blanks `%s` locally in a deniable session', (name) => {
+    expect(code).toMatch(new RegExp(`data:\\s*${name}Raw\\s*=\\s*\\[\\]`));
+    expect(code).toMatch(new RegExp(`const\\s+${name}\\s*=\\s*deniable\\s*\\?\\s*\\[\\]\\s*:\\s*${name}Raw\\s*;`));
+  });
+
+  it(`every mutationFn (${mutations}) refuses before touching the store`, () => {
+    expect(muts.length).toBe(mutations);
+    for (const mu of muts) {
+      const fn = mu.text.match(/mutationFn:\s*\([^)]*\)\s*=>\s*\{\s*([\s\S]*)/);
+      expect(fn, `mutationFn must be a block body:\n${mu.text}`).toBeTruthy();
+      // The guard is the FIRST statement, so validation errors cannot reveal
+      // anything and no store call can precede it.
+      expect(fn[1]).toMatch(/^if\s*\(deniable\)\s*denyInDeniable\(\);/);
+    }
+  });
+
+  it('no base44.entities call sits outside a gated query or guarded mutation', () => {
+    const covered = [...queries, ...muts];
+    const re = /base44\.entities\./g;
+    let m;
+    while ((m = re.exec(code))) {
+      const inside = covered.some((b) => m.index > b.start && m.index < b.end);
+      expect(inside, `ungated store access at offset ${m.index}: ${code.slice(m.index, m.index + 60)}`).toBe(true);
+    }
+  });
+});

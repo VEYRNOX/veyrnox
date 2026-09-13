@@ -2,6 +2,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useWallet } from "@/lib/WalletProvider";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
 import { FileText, Plus, Send, Trash2, Copy, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +19,25 @@ import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const STATUS_COLORS = { draft: "secondary", sent: "default", paid: "outline", overdue: "destructive" };
 
+// K-2 / I3 (#2537): these entities live in the SHARED veyrnox-appdata IndexedDB,
+// one record per entity name with no per-session partitioning (cleared only by
+// panic wipe). A decoy/hidden/demo session would otherwise read the real user's
+// rows and write to them. Same two-chokepoint shape as PriceAlerts / AddressBook /
+// Settings: gate each query and blank the derived rows locally, then refuse every
+// mutation before it touches the store.
+const denyInDeniable = () => {
+  throw Object.assign(new Error("Not available in this session"), { code: "DENIABILITY_BLOCKED" });
+};
+
 export default function InvoiceGenerator() {
+  // isDecoy/isHidden are React state and lag the module-level flag (see
+  // WalletPortfolioPage.jsx), so fold in the canonical predicate too. That
+  // predicate only sees the live session marker and a persisted veyrnox-demo;
+  // DEMO also covers VITE_DEMO_MODE=1 and native-dev builds, matching the
+  // `DEMO || isDeniabilityOrDemoActive()` composite in edgeApi.js. Fail closed.
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
+
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState(null);
@@ -27,13 +48,16 @@ export default function InvoiceGenerator() {
     invoice_number: `INV-${Date.now().toString().slice(-6)}`,
   });
 
-  const { data: invoices = [], isLoading, isError } = useQuery({
+  const { data: invoicesRaw = [], isLoading, isError } = useQuery({
     queryKey: ["invoices"],
     queryFn: () => base44.entities.Invoice.list("-created_date"),
+    enabled: !deniable,
   });
+  const invoices = deniable ? [] : invoicesRaw;
 
   const create = useMutation({
     mutationFn: (/** @type {any} */ d) => {
+      if (deniable) denyInDeniable();
       const amount = parseLocaleNumber(d.total_amount, resolveLocale());
       if (!Number.isFinite(amount) || amount <= 0) throw new Error("Amount must be a positive number");
       const addr = (d.wallet_address || "").trim();
@@ -47,12 +71,18 @@ export default function InvoiceGenerator() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: (/** @type {any} */ vars) => base44.entities.Invoice.update(vars.id, { status: vars.status }),
+    mutationFn: (/** @type {any} */ vars) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.Invoice.update(vars.id, { status: vars.status });
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices"] }),
   });
 
   const remove = useMutation({
-    mutationFn: (/** @type {any} */ id) => base44.entities.Invoice.delete(id),
+    mutationFn: (/** @type {any} */ id) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.Invoice.delete(id);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices"] }),
   });
 

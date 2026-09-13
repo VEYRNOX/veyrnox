@@ -4,6 +4,9 @@ import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useWallet } from "@/lib/WalletProvider";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
 import { ScanLine, AlertTriangle, CheckCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
@@ -60,13 +63,31 @@ const CHECKS = [
   { key: "unusual_hour", label: "Off-hours activity", desc: "Transactions between 02:00–05:00 local time" },
 ];
 
+// K-2 / I3 (#2537): these entities live in the SHARED veyrnox-appdata IndexedDB,
+// one record per entity name with no per-session partitioning (cleared only by
+// panic wipe). A decoy/hidden/demo session would otherwise read the real user's
+// rows and write to them. Same two-chokepoint shape as PriceAlerts / AddressBook /
+// Settings: gate each query and blank the derived rows locally, then refuse every
+// mutation before it touches the store. This page only reads, so the query gate
+// is the whole fix.
+
 export default function AnomalyDetection() {
+  // isDecoy/isHidden are React state and lag the module-level flag (see
+  // WalletPortfolioPage.jsx), so fold in the canonical predicate too. That
+  // predicate only sees the live session marker and a persisted veyrnox-demo;
+  // DEMO also covers VITE_DEMO_MODE=1 and native-dev builds, matching the
+  // `DEMO || isDeniabilityOrDemoActive()` composite in edgeApi.js. Fail closed.
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
+
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [dismissed, setDismissed] = useState([]);
 
-  const { data: transactions = [], isLoading, isError } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 200) });
-  const { data: fraudAlerts = [] } = useQuery({ queryKey: ["fraud-alerts"], queryFn: () => base44.entities.FraudAlert.list("-created_date", 20) });
+  const { data: transactionsRaw = [], isLoading, isError } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 200), enabled: !deniable });
+  const transactions = deniable ? [] : transactionsRaw;
+  const { data: fraudAlertsRaw = [] } = useQuery({ queryKey: ["fraud-alerts"], queryFn: () => base44.entities.FraudAlert.list("-created_date", 20), enabled: !deniable });
+  const fraudAlerts = deniable ? [] : fraudAlertsRaw;
 
   const scan = () => {
     setScanning(true);

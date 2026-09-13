@@ -3,6 +3,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useWallet } from "@/lib/WalletProvider";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
 import { Plus, Trash2, Repeat, ShieldAlert, PenLine, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CoinLogo from "@/components/CoinLogo";
@@ -35,25 +38,48 @@ function useNotificationPermission() {
   return { permission, request };
 }
 
+// K-2 / I3 (#2537): these entities live in the SHARED veyrnox-appdata IndexedDB,
+// one record per entity name with no per-session partitioning (cleared only by
+// panic wipe). A decoy/hidden/demo session would otherwise read the real user's
+// rows and write to them. Same two-chokepoint shape as PriceAlerts / AddressBook /
+// Settings: gate each query and blank the derived rows locally, then refuse every
+// mutation before it touches the store.
+const denyInDeniable = () => {
+  throw Object.assign(new Error("Not available in this session"), { code: "DENIABILITY_BLOCKED" });
+};
+
 export default function RecurringPayments() {
+  // isDecoy/isHidden are React state and lag the module-level flag (see
+  // WalletPortfolioPage.jsx), so fold in the canonical predicate too. That
+  // predicate only sees the live session marker and a persisted veyrnox-demo;
+  // DEMO also covers VITE_DEMO_MODE=1 and native-dev builds, matching the
+  // `DEMO || isDeniabilityOrDemoActive()` composite in edgeApi.js. Fail closed.
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
+
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const { permission: notifPerm, request: requestNotif } = useNotificationPermission();
 
-  const { data: payments = [], isLoading } = useQuery({
+  const { data: paymentsRaw = [], isLoading } = useQuery({
     queryKey: ["recurring-payments"],
     queryFn: () => base44.entities.RecurringPayment.list("-created_date"),
+    enabled: !deniable,
   });
+  const payments = deniable ? [] : paymentsRaw;
 
-  const { data: wallets = [] } = useQuery({
+  const { data: walletsRaw = [] } = useQuery({
     queryKey: ["wallets"],
     queryFn: () => base44.entities.Wallet.list(),
+    enabled: !deniable,
   });
+  const wallets = deniable ? [] : walletsRaw;
 
   const addPayment = useMutation({
     mutationFn: () => {
+      if (deniable) denyInDeniable();
       const amount = parseLocaleNumber(form.amount, resolveLocale());
       if (!Number.isFinite(amount) || amount <= 0) {
         throw new Error("Amount must be a positive number");
@@ -67,12 +93,18 @@ export default function RecurringPayments() {
   });
 
   const toggleStatus = useMutation({
-    mutationFn: (/** @type {any} */ vars) => base44.entities.RecurringPayment.update(vars.id, { status: vars.status === "active" ? "paused" : "active" }),
+    mutationFn: (/** @type {any} */ vars) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.RecurringPayment.update(vars.id, { status: vars.status === "active" ? "paused" : "active" });
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["recurring-payments"] }),
   });
 
   const deletePayment = useMutation({
-    mutationFn: (/** @type {any} */ id) => base44.entities.RecurringPayment.delete(id),
+    mutationFn: (/** @type {any} */ id) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.RecurringPayment.delete(id);
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["recurring-payments"] }); toast.success("Payment deleted"); },
   });
 
