@@ -22,7 +22,6 @@ import { Capacitor } from '@capacitor/core';
 import { setPendingReferral, getPendingReferral, hasRedeemed } from '@/lib/referral';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { trackEvent, EVENT } from '@/api/trackEvent';
-import { getInstallReferrer } from '@/plugins/installReferrer';
 
 // Mirrors functions/r/[code].js and referralApi.js. A code this rejects would
 // be rejected by increment_referral anyway.
@@ -79,6 +78,8 @@ export async function captureInstallReferrer() {
   if (isDeniabilityOrDemoActive() || hasRedeemed() || getPendingReferral()) return;
   let referrer;
   try {
+    // Lazy: keeps the plugin registration out of web/iOS and module load.
+    const { getInstallReferrer } = await import('@/plugins/installReferrer');
     referrer = await getInstallReferrer();
   } catch {
     return; // no Play Store, service error, or a non-Play flavour
