@@ -214,11 +214,19 @@ jobs:
         #
         # app_state has THREE outcomes, and only grep's no-match means gone:
         #   0 running, 1 not running, 2 the launchd query itself failed.
-        # The listing is captured BEFORE matching. Piping it into `grep -q`
-        # under the runner's `pipefail` returns 141 (SIGPIPE) when grep exits
-        # on the first match, which read as "not running" while the app was up
-        # (#2545 review). A failed query is an unknown state, so it fails the
-        # step rather than letting the tests inherit a possibly-live process.
+        # A failed query is an unknown state, so it fails the step rather than
+        # letting the tests inherit a possibly-live process. A plain
+        # `launchctl list | grep -q` cannot tell a failed query from "absent".
+        #
+        # The listing is captured BEFORE matching so the check stays correct if
+        # `pipefail` is ever on. It is NOT on here: this workflow sets no
+        # default shell, so every step runs `bash -e {0}` (confirmed in run
+        # 34751973935's log), and only the steps that `set -o pipefail`
+        # themselves have it. With pipefail on, `list | grep -q` would return
+        # 141 (SIGPIPE) when grep exits on the first match and read as "not
+        # running" while the app was up. The #2545 review assumed pipefail was
+        # the runner default; for this step it was not, so that failure could
+        # not have occurred before the change.
         #
         # Still running after 30 s: reboot the simulator for a clean slate,
         # then require a definite "not running". The warm-up screenshot is
