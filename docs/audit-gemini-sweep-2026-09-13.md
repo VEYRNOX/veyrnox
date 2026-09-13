@@ -38,35 +38,46 @@ changes.
 - **Both "dead file" findings are FALSE.** `CorrelationMatrix.jsx` is routed
   at `/correlation` and `CustomDashboardWidgets.jsx` at `/dashboard-widgets`
   (both lazy-imported in `src/App.jsx`). Do not delete either.
-- **Widget-key drift is REAL.** `Dashboard.jsx` reads and writes
-  `dashboard-widgets`; `CustomDashboardWidgets.jsx` uses
-  `dashboard-widget-config` (its `STORAGE_KEY`). The two screens do not share
-  config. Both keys are already in `src/wallet-core/panic.js`'s residue list,
-  so panic wipe covers both. Severity as UX drift, not HIGH.
-- **The localStorage deniability findings are PLAUSIBLE but overstated.** Neither
-  widget writer checks for a decoy or demo session, so a coerced session can
-  change the real user's layout. What leaks is a layout preference, not wallet
-  data. That fits the K-2 write-gate pattern (`lib/consent.js`) more than CRITICAL.
+- **Widget-key drift is real, but the drift is demo vs real build.**
+  *(Corrected in a same-day follow-up; see the correction block at the end.)*
+  `Dashboard.jsx`'s `dashboard-widgets` read/write lives in `DemoDashboard`,
+  which renders only when `DEMO` is true. In every non-demo build, `/` renders
+  `WalletPortfolioPage.jsx`, which reads neither key. So in the real app,
+  `/dashboard-widgets` (`CustomDashboardWidgets.jsx`, listed in
+  `lib/navigation.js` as "Custom Widgets") saves `dashboard-widget-config` and
+  nothing in `src/` reads it back. The screen changes nothing. Panic wipe
+  already covers both keys. Treat this as an honesty/UX defect (a control with
+  no effect), not HIGH.
+- **The localStorage deniability findings are overstated.** The
+  `Dashboard.jsx` write only runs in demo mode, which the app already treats
+  like a deniability state. `CustomDashboardWidgets.jsx` writes with no decoy
+  check, but its key is read by nothing and swept by panic wipe. Low, not
+  CRITICAL.
 - **The entity-read deniability findings are the substantive result, and the
   class is REAL.** `src/api/localClient.js` keeps every entity in one shared
   IndexedDB (`veyrnox-appdata`) with no per-session partitioning. Sibling pages
   were already fixed for exactly this K-2 class with a two-chokepoint gate
   (`enabled: !deniable` plus a blanked derived list, and mutations throw
   `DENIABILITY_BLOCKED`): `PriceAlerts.jsx`, `Settings.jsx`, `AddressBook.jsx`,
-  `NetworkManager.jsx` and `components/WatchlistWidget.jsx`. The flagged pages
-  have no deniability reference at all: `Dashboard.jsx`, `AnomalyDetection.jsx`,
+  `NetworkManager.jsx` and `components/WatchlistWidget.jsx`. Seven flagged pages
+  have no deniability reference at all: `AnomalyDetection.jsx`,
   `FraudDetection.jsx`, `BudgetLimits.jsx`, `InvoiceGenerator.jsx`,
-  `RecurringPayments.jsx` and `SavingsGoals.jsx`. `OnChainAnalytics.jsx` has none
-  either.
-  - **Highest-impact instance: `Dashboard.jsx`.** It runs an ungated
-    `Wallet.list()`, `Transaction.list()` and `PriceAlert.filter()`, and a
-    `Wallet.create` / `Wallet.update` mutation. `Settings.jsx` gates the same
-    `Wallet` read because it exposes wallet names and count, which breaks the
-    design-system "never show wallet count/list" rule.
-  - Whether a decoy session actually reaches these routes with real rows in
-    the store was NOT established here. Route-level gating in
-    `components/Layout.jsx` was not traced end to end. Confirm reachability
-    before rating CRITICAL.
+  `RecurringPayments.jsx`, `SavingsGoals.jsx` and `OnChainAnalytics.jsx`.
+  Tracked as [#2537](https://github.com/VEYRNOX/veyrnox/issues/2537).
+  - **`Dashboard.jsx` is NOT affected.** *(Corrected; this bullet originally
+    called it the highest-impact instance.)* Its ungated `Wallet`,
+    `Transaction` and `PriceAlert` queries and its `Wallet` mutations are all
+    inside `DemoDashboard`, behind `if (!DEMO) return <WalletPortfolioPage />`
+    (`Dashboard.jsx:52-54`). Demo mode runs on the in-memory demo client, not
+    `veyrnox-appdata`. The real dashboard, `WalletPortfolioPage.jsx`, already
+    gates its entity query (`entityQueryEnabled`, line 659).
+  - **Reachability, established in the follow-up.** All seven routes sit under
+    `WalletGate` → `Layout` in `src/App.jsx`, with no decoy route block.
+    `lib/navigation.js` lists six of them with no deniability filtering; only
+    `/invoices` is missing from it. `/anomaly-detection`, `/fraud` and `/budget`
+    are Safety Plus routes. Real rows exist: `SendCrypto.jsx` writes a
+    `Transaction` row (hash, amount, from/to addresses) after every real
+    broadcast. Still not device-verified.
   - Exposure depends on real rows existing. `FraudAlert` has no writer in
     `src/`, so that part of the `AnomalyDetection` / `FraudDetection` findings
     reads an empty store. `Transaction` is written by `SendCrypto.jsx`, and
@@ -79,4 +90,19 @@ changes.
   be empty there. Low practical exposure. `CorrelationMatrix.jsx` already gates
   its query with `enabled: !isDeniabilityOrDemoActive()`, and Gemini did not
   flag it for deniability.
-- No existing issue matched a search for this gap. None was filed from this run.
+- The scheduled run filed no issue. The follow-up filed
+  [#2537](https://github.com/VEYRNOX/veyrnox/issues/2537) for the seven pages.
+
+## Correction — same-day follow-up
+
+The first version of these notes (merged in #2536, `77455e65`) named
+`Dashboard.jsx` as the highest-impact instance of the entity-read gap. That was
+wrong. The checks counted ungated queries in the file without seeing that the
+default export sends every non-demo build to `WalletPortfolioPage.jsx`, so the
+flagged code is demo-only. The notes above are corrected in place, with each
+changed bullet marked.
+
+**The lesson, and it generalises: a page file's default export is not
+necessarily the component a user sees.** Before rating any finding in
+`src/pages/`, read `export default` and follow any `DEMO` or platform split
+first.
