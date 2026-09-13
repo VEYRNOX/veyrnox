@@ -42,6 +42,14 @@ public class MainActivity extends BridgeActivity {
         // M2d — Android StrongBox/TEE vault-blob wrap (ungated PR #1152).
         registerPlugin(VeyrnoxEnclavePlugin.class);
         registerPlugin(AndroidBiometricCachePlugin.class);
+        // InstallReferrerPlugin lives in src/gms (google + samsung, #2541). Load
+        // reflectively so huawei/fdroid builds, which have no Play Store and no
+        // referrer library, compile without it. Absent class = JS sees no referrer.
+        try {
+            registerPlugin((Class) Class.forName("com.veyrnox.app.InstallReferrerPlugin"));
+        } catch (ClassNotFoundException e) {
+            // nogms flavour — nothing to register.
+        }
         // HuaweiIapPlugin lives in the `huawei` source set (HMS-only classpath).
         // Load reflectively so google/samsung/fdroid builds compile without HMS.
         if (BuildConfig.HAS_HUAWEI_IAP) {

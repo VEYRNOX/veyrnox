@@ -17,7 +17,7 @@ import { App } from '@capacitor/app';
 import { extractWcUri, setPendingWcUri } from '@/lib/deepLinkPairing';
 import { isBuyEnabled } from '@/lib/buy/useBuyEnabled';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
-import { captureReferralFromUrl } from '@/lib/referralAttribution';
+import { captureReferralFromUrl, captureInstallReferrer } from '@/lib/referralAttribution';
 
 export default function DeepLinkHandler() {
   const navigate = useNavigate();
@@ -73,6 +73,11 @@ export default function DeepLinkHandler() {
       setPendingWcUri(wc);
       navigate('/walletconnect');
     };
+
+    // Store install (#2541): a share link tapped without the app installed can
+    // only reach it through Play's install referrer. Android-only and a no-op
+    // once a code is pending or redeemed; never blocks launch.
+    void captureInstallReferrer().catch(() => {});
 
     // Cold start: the app was launched by the link (appUrlOpen does NOT fire here).
     App.getLaunchUrl()

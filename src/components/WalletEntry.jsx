@@ -118,6 +118,7 @@ import { isTheftProtectionError, theftProtectionMessage } from "@/lib/theftProte
 import { enforceDuressBiometricInvariant, isDuressConfigured } from "@/lib/duressBiometricGuard";
 import PinPad from "@/components/security/PinPad";
 import EntryTiles from "@/components/EntryTiles";
+import ReferralHandoff from "@/components/ReferralHandoff";
 import { getAuthModel, setAuthModel, shouldAutoCacheTypedPin } from "@/lib/authModel";
 import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
 import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
@@ -1707,6 +1708,7 @@ export default function WalletEntry() {
     return (
       <EntryShell chromeless>
         <EntryTiles onSelect={handleTileSelect} />
+        <ReferralHandoff />
       </EntryShell>
     );
   }

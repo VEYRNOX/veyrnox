@@ -227,6 +227,11 @@ dependencies {
     // --- GMS-only dependencies (google + samsung flavors) ---
     googleImplementation 'com.google.android.play:integrity:1.3.0'
     samsungImplementation 'com.google.android.play:integrity:1.3.0'
+    // Play Install Referrer (#2541): carries a referral code across a store
+    // install. Google's single-purpose library, read locally from the Play Store
+    // app; InstallReferrerPlugin lives in src/gms for these two flavours only.
+    googleImplementation 'com.android.installreferrer:installreferrer:2.2'
+    samsungImplementation 'com.android.installreferrer:installreferrer:2.2'
 
     googleImplementation platform('com.google.firebase:firebase-bom:34.16.0')
     googleImplementation 'com.google.firebase:firebase-crashlytics'

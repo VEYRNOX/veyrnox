@@ -12,6 +12,7 @@ import { MemoryRouter } from 'react-router';
 const captureReferralFromUrl = vi.fn();
 vi.mock('@/lib/referralAttribution', () => ({
   captureReferralFromUrl: (...a) => captureReferralFromUrl(...a),
+  captureInstallReferrer: () => Promise.resolve(),
 }));
 
 const setPendingWcUri = vi.fn();
