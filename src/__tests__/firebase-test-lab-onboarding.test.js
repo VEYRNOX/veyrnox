@@ -95,6 +95,22 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(swift).toContain('app.buttons["Submit PIN"]');
   });
 
+  // #2543: setPinCeremony short-circuits to a fresh ceremony when PinSetup
+  // shows its lost-digit rejection copy, instead of re-pressing an already
+  // cleared pad. That only works while the Swift strings match what
+  // checkPinStrength actually renders — copy drift would silently disable the
+  // short-circuit and bring back the re-press-into-AX-stall failure.
+  it('matches the iOS PIN-pad rejection copy to checkPinStrength', async () => {
+    const { checkPinStrength } = await import('../lib/pinStrength.js');
+    const tooShort = checkPinStrength('1928374').reason;
+    const empty = checkPinStrength('').reason;
+    const predicate = swift.match(/let padRejected = [\s\S]*?\.firstMatch/)?.[0];
+    expect(predicate, 'padRejected query not found in AppUITests.swift').toBeTruthy();
+    expect(predicate).toContain(`"${tooShort}"`);
+    expect(predicate).toContain(`"${empty}"`);
+    expect(swift).toMatch(/submitPinUntilAdvanced\(app: app, stage: "set", [^\n]*rejected: \{ padRejected\.exists \}/);
+  });
+
   it('uses a Robo script to click the custom Android PinPad instead of inventing text fields', () => {
     expect(workflow).toContain(`--robo-script ${roboScriptPath}`);
     expect(workflow).not.toContain('--robo-directives');

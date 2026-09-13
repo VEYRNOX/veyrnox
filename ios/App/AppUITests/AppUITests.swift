@@ -109,6 +109,20 @@ final class AppUITests: XCTestCase {
         assertPinFlowLeftPinSetup(app: app)
         assertFailedClosed(app: app, action: "create")
         snap(app: app, name: "create-04-post-fail-closed")
+
+        // Hand-off to the import test, done HERE rather than by that test's
+        // launch(). XCUITest relaunches by killing the previous instance, and
+        // on four CI runs (#2543: 34483371568, 34598062623, 34625908307,
+        // 34643353906) that kill failed within ~1 s — "Failed to terminate
+        // com.veyrnox.app:<pid>" — so a create test that had PASSED left its
+        // app on screen and the import test died inside launch() with no
+        // screenshot. Terminating explicitly puts any such failure in the test
+        // that left the process, after its milestone screenshot above.
+        app.terminate()
+        XCTAssertTrue(
+            app.wait(for: .notRunning, timeout: 30),
+            "App did not reach .notRunning within 30s of terminate(). Harness/runner hand-off failure (#2543), NOT a fail-closed result — the fail-closed assertion above already passed."
+        )
     }
 
     /// Import follows the same native secure-store rule as new-wallet creation:
@@ -148,7 +162,7 @@ final class AppUITests: XCTestCase {
         for (index, word) in words.enumerated() {
             let field = app.textFields["Recovery phrase entry \(index + 1)"]
             XCTAssertTrue(field.waitForExistence(timeout: index == 0 ? 15 : 3), "Seed word box \(index + 1) never appeared.")
-            field.tap()
+            focusTextField(app: app, field: field, name: "Seed word box \(index + 1)")
             field.typeText(word)
         }
         tapButton(
@@ -199,14 +213,25 @@ final class AppUITests: XCTestCase {
     private func setPinCeremony(app: XCUIApplication, pin: String, maxAttempts: Int = 3) {
         let confirmHeading = app.staticTexts["Confirm your PIN"]
         let mismatch = app.staticTexts["PINs didn't match. Start again."]
+        // PinSetup's stage-one rejection copy for a lost-digit buffer. Source of
+        // truth is checkPinStrength in src/lib/pinStrength.js; the copy-drift
+        // guard in src/__tests__/firebase-test-lab-onboarding.test.js checks
+        // both strings against it.
+        let padRejected = app.staticTexts.matching(
+            NSPredicate(format: "label == %@ OR label == %@", "Use at least 8 digits.", "Enter a numeric PIN.")
+        ).firstMatch
 
         for attempt in 1...maxAttempts {
             enterPin(app: app, digits: pin, stage: "set")
 
-            // A short buffer at stage one does not advance, and neither does a
-            // swallowed submit press. Re-press before spending a whole ceremony
-            // attempt on it — a re-press costs seconds, a ceremony costs ~140s.
-            guard submitPinUntilAdvanced(app: app, stage: "set", advanced: { confirmHeading.exists }) else {
+            // A swallowed submit press does not advance, so it is re-pressed.
+            // A SHORT buffer (dropped digit presses) does not advance either,
+            // but PinSetup has already rejected it and cleared the pad
+            // (PinSetup.jsx `setRealPin("")`), so a re-press submits nothing and
+            // only earns "Enter a numeric PIN." — run 34643406215 spent ~50 s
+            // doing that before an AX-snapshot stall killed the test (#2543).
+            // `rejected` short-circuits straight to a fresh ceremony instead.
+            guard submitPinUntilAdvanced(app: app, stage: "set", advanced: { confirmHeading.exists }, rejected: { padRejected.exists }) else {
                 NSLog("[VEYRNOX-XCUITEST] PIN attempt \(attempt): stage one never advanced to confirm; retrying")
                 clearPinPadIfPossible(app: app)
                 continue
@@ -262,11 +287,20 @@ final class AppUITests: XCTestCase {
     /// Budget: 3 presses x 8s = 24s worst case per stage. Run 33626090694 used
     /// 532s of the 600s allowance with no re-presses, so this fits — but it is
     /// the tightest thing in the file. If the allowance moves, re-do this sum.
+    ///
+    /// `rejected` returns false immediately, without re-pressing, when the app
+    /// has visibly refused the buffer — re-pressing cannot help there.
+    ///
+    /// Polls once a second, not twice: every `exists` is a full WebKit AX
+    /// snapshot, and on a slow runner those stall (~31 s each in run
+    /// 34643406215, three in a row, which XCTest turns into "Failed to get
+    /// matching snapshots"). Fewer queries means fewer chances to hit it.
     @discardableResult
     private func submitPinUntilAdvanced(
         app: XCUIApplication,
         stage: String,
         advanced: () -> Bool,
+        rejected: () -> Bool = { false },
         maxPresses: Int = 3,
         perPressWait: TimeInterval = 8
     ) -> Bool {
@@ -277,7 +311,11 @@ final class AppUITests: XCTestCase {
             let deadline = Date().addingTimeInterval(perPressWait)
             while Date() < deadline {
                 if advanced() { return true }
-                Thread.sleep(forTimeInterval: 0.5)
+                if rejected() {
+                    NSLog("[VEYRNOX-XCUITEST] PIN \(stage): pad rejected the buffer (digit presses lost); restarting the ceremony instead of re-pressing")
+                    return false
+                }
+                Thread.sleep(forTimeInterval: 1.0)
             }
             if press < maxPresses {
                 NSLog("[VEYRNOX-XCUITEST] PIN \(stage): submit press \(press) did not advance the view; re-pressing")
@@ -526,6 +564,13 @@ final class AppUITests: XCTestCase {
     /// #2477 records a 338 s AX-query timeout that would swallow the diagnostic
     /// if the order were reversed). Both are `.keepAlways` so they survive a
     /// green re-run's artifact retention.
+    ///
+    /// A second screenshot follows the tree, because the tree can describe a
+    /// DIFFERENT moment: in run 34747267714 the first screenshot showed a boot
+    /// spinner, the AX snapshot then took ~10 s, and the tree it returned
+    /// already contained "New wallet" — which read as "the query missed a
+    /// present button" when the tile had simply painted late (#2543). The
+    /// pair brackets the tree in time.
     private func attachFailureDiagnostics(app: XCUIApplication, reason: String) {
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "failure-screenshot-\(reason)"
@@ -536,6 +581,36 @@ final class AppUITests: XCTestCase {
         tree.name = "failure-ax-tree-\(reason)"
         tree.lifetime = .keepAlways
         add(tree)
+
+        let after = XCTAttachment(screenshot: app.screenshot())
+        after.name = "failure-screenshot-after-ax-tree-\(reason)"
+        after.lifetime = .keepAlways
+        add(after)
+    }
+
+    /// Give a WKWebView `<input>` keyboard focus before typing into it.
+    ///
+    /// Bare `.tap()` is an AXPress (see webViewSafeTap), and on a slow runner it
+    /// intermittently leaves focus on the PREVIOUS input: runs 34479474536 and
+    /// 34589591007 (#2543) show box N-1 still "Keyboard Focused" after tapping
+    /// box N, and typeText then retried "Neither element nor any descendant has
+    /// keyboard focus" until the 10-minute allowance killed the test.
+    /// SeedInputGrid.jsx does no focus management of its own, so the tap is the
+    /// only thing that moves focus. First attempt uses the real-touch press;
+    /// the second falls back to `.tap()`, since press-focuses-an-input has not
+    /// been proven on this simulator the way press-clicks-a-button has.
+    private func focusTextField(app: XCUIApplication, field: XCUIElement, name: String) {
+        for attempt in 1...2 {
+            if attempt == 1 { webViewSafeTap(field) } else { field.tap() }
+            let deadline = Date().addingTimeInterval(attempt == 1 ? 5 : 10)
+            while Date() < deadline {
+                if (field.value(forKey: "hasKeyboardFocus") as? Bool) == true { return }
+                Thread.sleep(forTimeInterval: 1.0)
+            }
+            NSLog("[VEYRNOX-XCUITEST] \(name): focus attempt \(attempt) did not take")
+        }
+        attachFailureDiagnostics(app: app, reason: "no-keyboard-focus")
+        XCTFail("\(name) never took keyboard focus after a press and a tap. Harness failure against a slow WKWebView (#2543), NOT an app result.")
     }
 
     /// XCUITest's `.tap()` on a WKWebView button dispatches an accessibility
