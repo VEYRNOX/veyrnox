@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useWallet } from "@/lib/WalletProvider";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { Plus, Trash2, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,16 +17,34 @@ import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
+// K-2 / I3 (#2537): these entities live in the SHARED veyrnox-appdata IndexedDB,
+// one record per entity name with no per-session partitioning (cleared only by
+// panic wipe). A decoy/hidden/demo session would otherwise read the real user's
+// rows and write to them. Same two-chokepoint shape as PriceAlerts / AddressBook /
+// Settings: gate each query and blank the derived rows locally, then refuse every
+// mutation before it touches the store.
+const denyInDeniable = () => {
+  throw Object.assign(new Error("Not available in this session"), { code: "DENIABILITY_BLOCKED" });
+};
+
 export default function BudgetLimits() {
+  // isDecoy/isHidden are React state and lag the module-level flag (see
+  // WalletPortfolioPage.jsx), so fold in the canonical predicate too. Fail closed.
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = isDecoy || isHidden || isDeniabilityOrDemoActive();
+
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ currency: "ETH", period: "monthly", limit_usd: "", alert_at_percent: 80, enabled: true });
 
-  const { data: budgets = [], isError } = useQuery({ queryKey: ["budgets"], queryFn: () => base44.entities.BudgetLimit.list() });
-  const { data: transactions = [], isError: txError } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 500) });
+  const { data: budgetsRaw = [], isError } = useQuery({ queryKey: ["budgets"], queryFn: () => base44.entities.BudgetLimit.list(), enabled: !deniable });
+  const budgets = deniable ? [] : budgetsRaw;
+  const { data: transactionsRaw = [], isError: txError } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 500), enabled: !deniable });
+  const transactions = deniable ? [] : transactionsRaw;
 
   const create = useMutation({
     mutationFn: (/** @type {any} */ d) => {
+      if (deniable) denyInDeniable();
       // Locale-aware parse: canonicalises "1,5" in comma-decimal locales
       // (de-DE, fr-FR, es-ES, it-IT, pt-PT, nl-NL) and returns NaN for
       // anything ambiguous. The existing "must be positive" gate below
@@ -38,11 +58,17 @@ export default function BudgetLimits() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["budgets"] }); setOpen(false); setForm({ currency: "ETH", period: "monthly", limit_usd: "", alert_at_percent: 80, enabled: true }); },
   });
   const remove = useMutation({
-    mutationFn: (/** @type {any} */ id) => base44.entities.BudgetLimit.delete(id),
+    mutationFn: (/** @type {any} */ id) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.BudgetLimit.delete(id);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["budgets"] }),
   });
   const toggle = useMutation({
-    mutationFn: (/** @type {any} */ vars) => base44.entities.BudgetLimit.update(vars.id, { enabled: vars.enabled }),
+    mutationFn: (/** @type {any} */ vars) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.BudgetLimit.update(vars.id, { enabled: vars.enabled });
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["budgets"] }),
   });
 
