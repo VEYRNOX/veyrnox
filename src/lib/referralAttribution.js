@@ -58,6 +58,17 @@ export function captureReferralFromUrl(url = new URL(window.location.href), sour
   void trackEvent(EVENT.REFERRAL_CODE_APPLIED, { code: ref, source }).catch(() => {});
 }
 
+// Manual entry (the Create Wallet invite field, #2569). Same validator, event
+// and deniability gate as a link, via the same entry point. Returns false for a
+// malformed code so the caller can say so; a valid code returns true even in a
+// deniable session, where captureReferralFromUrl stores nothing.
+export function captureReferralCode(raw, source = 'manual_entry') {
+  const code = String(raw ?? '').trim().toUpperCase();
+  if (!CODE_RE.test(code)) return false;
+  captureReferralFromUrl(new URL(`http://localhost/?ref=${encodeURIComponent(code)}`), source);
+  return true;
+}
+
 // Play Store listing that hands `ref=<code>` back to the installed app through
 // the Install Referrer API (#2541). The whole referrer value is URL-encoded, as
 // Play requires.
