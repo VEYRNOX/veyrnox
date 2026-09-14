@@ -80,9 +80,32 @@ describe('iOS XCUITest smoke workflow', () => {
       .filter((line) => !/^\s*#/.test(line));
     expect(code.join('\n')).toContain(`bounded() { perl -e 'alarm shift; exec @ARGV or exit 127' "$@"; }`);
     const calls = code.filter((line) => /\bxcrun simctl\b/.test(line));
-    expect(calls.length).toBeGreaterThanOrEqual(8);
+    // 7 since run 34777838366: the separate `simctl boot` in recovery was
+    // folded into `bootstatus -b` (see the next test).
+    expect(calls.length).toBeGreaterThanOrEqual(7);
     for (const line of calls) {
       expect(line, `unbounded simctl call: ${line.trim()}`).toMatch(/\bbounded \d+ xcrun simctl\b/);
     }
+  });
+
+  // #2543 run 34777838366: CoreSimulator wedged, so shutdown timed out and a
+  // separate `simctl boot` then failed on a device still Booted/Shutting Down.
+  // A failed shutdown must restart CoreSimulatorService, and recovery must boot
+  // via `bootstatus -b` (boots only if needed), never a bare `simctl boot`.
+  it('recovers a wedged CoreSimulator instead of booting a still-booted device', () => {
+    const warm = workflow.indexOf('- name: Warm up the app on the simulator');
+    const run = workflow.indexOf('- name: Run AppUITests');
+    const code = workflow
+      .slice(warm, run)
+      .split('\n')
+      .filter((line) => !/^\s*#/.test(line))
+      .join('\n');
+    expect(code).not.toMatch(/xcrun simctl boot "\$IOS_SIMULATOR_UDID"/);
+    const shutdown = code.indexOf('if ! bounded 30 xcrun simctl shutdown "$IOS_SIMULATOR_UDID"; then');
+    const restart = code.indexOf('killall -9 com.apple.CoreSimulator.CoreSimulatorService', shutdown);
+    const boot = code.indexOf('xcrun simctl bootstatus "$IOS_SIMULATOR_UDID" -b', restart);
+    expect(shutdown).toBeGreaterThan(0);
+    expect(restart).toBeGreaterThan(shutdown);
+    expect(boot).toBeGreaterThan(restart);
   });
 });
