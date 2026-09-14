@@ -4,6 +4,7 @@ import pluginReact from "eslint-plugin-react";
 import pluginReactHooks from "eslint-plugin-react-hooks";
 import pluginUnusedImports from "eslint-plugin-unused-imports";
 import ringImportLint from "./eslint/rules/ring-import-lint.js";
+import reactPkg from "react/package.json" with { type: "json" };
 
 // Local plugin exposing the R0/R1 crypto-core ring-boundary rule. Kept inline
 // (not published) — it's a repo-specific structural guard.
@@ -45,7 +46,10 @@ export default [
     },
     settings: {
       react: {
-        version: "detect",
+        // Not "detect": eslint-plugin-react 7.37.x detects via
+        // context.getFilename(), which ESLint 10 removed (#2555). Read the
+        // installed version directly so it still tracks React bumps.
+        version: reactPkg.version,
       },
     },
     plugins: {
@@ -88,6 +92,11 @@ export default [
       // NOT delete them to make lint green.
       "react/no-unescaped-entities": "warn",
       "no-empty": "warn",
+      // New in @eslint/js 10 recommended (#2555). Every hit when it landed was a
+      // deliberate fail-closed initializer (`let ok = false; try { ok = ... }
+      // catch { ok = false; }`) in 2FA/step-up gates. Kept at "warn" rather
+      // than rewriting security gates to satisfy a lint rule.
+      "no-useless-assignment": "warn",
     },
   },
   {
@@ -110,6 +119,8 @@ export default [
       // Defer unused-var reporting to the plugin (warn, _-prefix escape hatch),
       // matching the src block, so the core error rule doesn't double-report.
       "no-unused-vars": "off",
+      // Same defensive-initializer pattern as the src block above (#2555).
+      "no-useless-assignment": "warn",
       "unused-imports/no-unused-imports": "error",
       "unused-imports/no-unused-vars": [
         "warn",
