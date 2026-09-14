@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { otaManifestPlugin } from './scripts/ota/manifest.mjs'
 import { fileURLToPath } from 'node:url'
 import inject from '@rollup/plugin-inject'
 import JavaScriptObfuscator from 'javascript-obfuscator'
@@ -164,6 +165,9 @@ export default defineConfig(({ command }) => {
       printUrls(),
       inject({ Buffer: ['buffer', 'Buffer'], include: ['src/**'] }),
       veyrnoxObfuscatorPlugin(),
+      // Writes dist/ota-manifest.json (sha256 of every output file). The native
+      // OTA loader reads it from the store binary; see docs/ota-updates.md.
+      otaManifestPlugin(),
     ],
     // Pre-bundle the wallet-core's crypto deps so Vite doesn't discover them
     // mid-session and trigger an optimize + forced full-reload (which can flash a

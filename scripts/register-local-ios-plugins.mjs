@@ -26,7 +26,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 // AppAttestPlugin is the iOS remote-attestation probe (ObjC, ios/App/App/AppAttestPlugin.m +
 // AppAttestPluginBridge.m) — RASP Phase 2b. Same cap-sync drop hazard as the other
 // local plugins: it is not an npm package, so it must be re-added here every run.
-const LOCAL_IOS_PLUGIN_CLASSES = ['HardwareKekPlugin', 'VeyrnoxSpeechRecognitionPlugin', 'RaspIntegrityPlugin', 'AppAttestPlugin'];
+const LOCAL_IOS_PLUGIN_CLASSES = ['HardwareKekPlugin', 'VeyrnoxSpeechRecognitionPlugin', 'RaspIntegrityPlugin', 'AppAttestPlugin', 'VeyrnoxOtaPlugin'];
 
 // Class names `cap sync` may regenerate into packageClassList but that are NOT
 // actually linked into the iOS binary. "SpeechRecognition" is the npm plugin's ObjC

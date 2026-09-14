@@ -51,9 +51,20 @@ import '@/index.css'
 // resolved BEFORE any component's first render — otherwise the initial
 // paint would flash English before flipping to the chosen locale.
 import '@/i18n'
+import { startOtaUpdate } from '@/lib/otaUpdate.js'
+
+// OTA readiness signal. As a sibling of <App/> inside the error boundary, its
+// effect only runs if the app committed a first render — so a bundle that throws
+// on boot never reports ready, and native rolls it back on the next cold start.
+// The update check itself then runs pre-unlock, the same in every session type.
+function OtaBootSignal() {
+  React.useEffect(() => { startOtaUpdate() }, [])
+  return null
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <RootErrorBoundary>
     <App />
+    <OtaBootSignal />
   </RootErrorBoundary>
 )

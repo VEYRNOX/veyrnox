@@ -8,6 +8,7 @@ import android.webkit.WebView;
 import androidx.activity.EdgeToEdge;
 
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.ServerPath;
 import com.veyrnox.app.FileSaverPlugin;
 import com.veyrnox.app.HardwareKekPlugin;
 import com.veyrnox.app.RaspIntegrityPlugin;
@@ -42,6 +43,7 @@ public class MainActivity extends BridgeActivity {
         // M2d — Android StrongBox/TEE vault-blob wrap (ungated PR #1152).
         registerPlugin(VeyrnoxEnclavePlugin.class);
         registerPlugin(AndroidBiometricCachePlugin.class);
+        registerPlugin(OtaUpdatePlugin.class);
         // InstallReferrerPlugin lives in src/gms (google + samsung, #2541). Load
         // reflectively so huawei/fdroid builds, which have no Play Store and no
         // referrer library, compile without it. Absent class = JS sees no referrer.
@@ -60,6 +62,13 @@ public class MainActivity extends BridgeActivity {
                 // Flavor mislabelled — fail-open on registration only. IAP calls
                 // will surface HUAWEI_IAP_NOT_WIRED at the JS boundary.
             }
+        }
+        // OTA web bundle: boot a signed, fully verified downloaded bundle if one
+        // exists, else the one shipped in the APK. Also clears Capacitor's own
+        // unverified persisted server path. See OtaUpdatePlugin / docs/ota-updates.md.
+        String otaDir = OtaUpdatePlugin.resolveLaunchDir(this);
+        if (otaDir != null) {
+            bridgeBuilder.setServerPath(new ServerPath(ServerPath.PathType.BASE_PATH, otaDir));
         }
         super.onCreate(savedInstanceState);
 
