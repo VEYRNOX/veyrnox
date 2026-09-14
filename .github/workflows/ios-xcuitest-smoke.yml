@@ -246,6 +246,17 @@ jobs:
         # diagnosis and the tests never ran. `bounded N cmd` runs cmd with a
         # SIGALRM after N seconds (perl, because macOS ships no `timeout`); a
         # timed-out call exits 142 and is handled like any other failure.
+        #
+        # Recovery must survive a WEDGED CoreSimulator, not just a slow one
+        # (#2543, run 34777838366, first main run after #2557). There,
+        # screenshot, terminate, launchctl and shutdown all hit their bounds,
+        # and `simctl boot` then failed at once: a device whose shutdown never
+        # completed is still Booted/Shutting Down, and boot refuses that state.
+        # A shutdown that fails now escalates to restarting
+        # CoreSimulatorService (launchd relaunches it on the next simctl call),
+        # and `bootstatus -b` replaces the separate boot: it boots only if
+        # needed, then waits for boot to finish, so an already-booted device
+        # is not an error.
         # Worst-case sum of the bounds is ~10 min, under the step's 11, which
         # keeps build (15) + warm-up (11) + tests (18) inside the 50-min job.
         timeout-minutes: 11
@@ -278,9 +289,11 @@ jobs:
           wait_until_gone && state=0 || state=$?
           if [ "$state" -ne 1 ]; then
             echo "::warning::warm-up hand-off not verified (app_state=$state: 0 still running, 2 launchd query failed or timed out); rebooting the simulator for a clean hand-off"
-            bounded 30 xcrun simctl shutdown "$IOS_SIMULATOR_UDID" || true
-            bounded 30 xcrun simctl boot "$IOS_SIMULATOR_UDID" || { echo "::error::simulator boot failed or timed out during warm-up recovery"; exit 1; }
-            bounded 120 xcrun simctl bootstatus "$IOS_SIMULATOR_UDID" -b || { echo "::error::simulator did not finish booting during warm-up recovery"; exit 1; }
+            if ! bounded 30 xcrun simctl shutdown "$IOS_SIMULATOR_UDID"; then
+              echo "::warning::simctl shutdown failed or timed out; restarting CoreSimulatorService"
+              sudo killall -9 com.apple.CoreSimulator.CoreSimulatorService 2>/dev/null || true
+            fi
+            bounded 150 xcrun simctl bootstatus "$IOS_SIMULATOR_UDID" -b || { echo "::error::simulator did not boot during warm-up recovery"; exit 1; }
             app_state && state=0 || state=$?
             if [ "$state" -ne 1 ]; then
               echo "::error::com.veyrnox.app not confirmed gone after a simulator reboot (app_state=$state); the test step would inherit it"
