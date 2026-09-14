@@ -111,6 +111,20 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(swift).toMatch(/submitPinUntilAdvanced\(app: app, stage: "set", [^\n]*rejected: \{ padRejected\.exists \}/);
   });
 
+  // #2543 run 34825618785: a single Restore / Import press with the keyboard
+  // still up never submitted, so the fail-closed banner assertion failed on a
+  // form that was never sent. The press must be confirmed, and "confirmed" must
+  // include the fail-closed banner itself.
+  it('confirms the iOS import submit press instead of tapping once', () => {
+    const code = swift.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+    expect(code).toMatch(/pressUntilAccepted\(app: app, label: "Restore \/ Import", accepted: \{ failClosedBanner\(app: app\)\.exists \}\)/);
+    expect(code).not.toMatch(/\btapButton\(/);
+    const helper = code.match(/private func pressUntilAccepted\([\s\S]*?\n {4}\}\n/)?.[0];
+    expect(helper, 'pressUntilAccepted not found').toBeTruthy();
+    expect(helper).toMatch(/for attempt in 1\.\.\.maxAttempts/);
+    expect(helper).toMatch(/if accepted\(\) \|\| !button\.exists \|\| !button\.isEnabled \{ return \}/);
+  });
+
   it('uses a Robo script to click the custom Android PinPad instead of inventing text fields', () => {
     expect(workflow).toContain(`--robo-script ${roboScriptPath}`);
     expect(workflow).not.toContain('--robo-directives');

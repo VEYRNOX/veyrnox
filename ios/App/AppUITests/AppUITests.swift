@@ -170,12 +170,11 @@ final class AppUITests: XCTestCase {
             focusTextField(app: app, field: field, name: "Seed word box \(index + 1)")
             field.typeText(word)
         }
-        tapButton(
-            app: app,
-            label: "Restore / Import",
-            timeout: 5,
-            failureMessage: "Restore / Import button never appeared."
-        )
+        // Confirmed press, not a single tap (#2543, run 34825618785): one press
+        // with the keyboard still focused on word 12 never submitted. The
+        // failure screenshot + AX tree showed the filled form, no banner and no
+        // dashboard, so the fail-closed path was never exercised at all.
+        pressUntilAccepted(app: app, label: "Restore / Import", accepted: { failClosedBanner(app: app).exists })
 
         // Same terminal check as the create path.
         assertFailedClosed(app: app, action: "import")
@@ -400,10 +399,42 @@ final class AppUITests: XCTestCase {
         app.buttons[label]
     }
 
-    private func tapButton(app: XCUIApplication, label: String, timeout: TimeInterval, failureMessage: String) {
+    /// Press a submit button until the web app takes the press. A press counts
+    /// as taken once `accepted()` holds, or the button goes disabled (the form's
+    /// `disabled={busy}`) or disappears. A re-press while busy hits a disabled
+    /// button and does nothing, so retrying cannot start a second submission.
+    private func pressUntilAccepted(
+        app: XCUIApplication,
+        label: String,
+        accepted: () -> Bool,
+        maxAttempts: Int = 3,
+        perAttemptWait: TimeInterval = 10
+    ) {
         let button = buttonMatching(app, label: label)
-        XCTAssertTrue(button.waitForExistence(timeout: timeout), failureMessage)
-        webViewSafeTap(button)
+        XCTAssertTrue(button.waitForExistence(timeout: 5), "\(label) button never appeared.")
+        for attempt in 1...maxAttempts {
+            webViewSafeTap(button)
+            let deadline = Date().addingTimeInterval(perAttemptWait)
+            while Date() < deadline {
+                if accepted() || !button.exists || !button.isEnabled { return }
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+            NSLog("[VEYRNOX-XCUITEST] '\(label)' press attempt \(attempt) was not accepted; re-pressing")
+        }
+        // Not asserted here: assertFailedClosed runs next and attaches the
+        // screenshot + AX tree, which is the evidence a reader needs.
+    }
+
+    /// EntryShell's inline role="alert" banner for either known fail-closed
+    /// message. See assertFailedClosed for why both are accepted.
+    private func failClosedBanner(app: XCUIApplication) -> XCUIElement {
+        app.staticTexts.matching(
+            NSPredicate(
+                format: "label CONTAINS[c] %@ OR label CONTAINS[c] %@",
+                "device passcode",
+                "nothing was saved"
+            )
+        ).firstMatch
     }
 
 /// Press a button and confirm the next-view element appears. Retries the
@@ -526,13 +557,7 @@ final class AppUITests: XCTestCase {
     /// changes, change it here AND in
     /// src/__tests__/firebase-test-lab-onboarding.test.js.
     private func assertFailedClosed(app: XCUIApplication, action: String) {
-        let banner = app.staticTexts.matching(
-            NSPredicate(
-                format: "label CONTAINS[c] %@ OR label CONTAINS[c] %@",
-                "device passcode",
-                "nothing was saved"
-            )
-        ).firstMatch
+        let banner = failClosedBanner(app: app)
 
         // Diagnostics BEFORE the assertion, not after. setUpWithError sets
         // continueAfterFailure = false, so the first XCTAssert to fail aborts
