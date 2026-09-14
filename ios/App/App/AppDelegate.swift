@@ -107,7 +107,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // silently-ignored request.
     private static let allowedSchemes: Set<String> = ["veyrnox", "https"]
     private static let allowedUniversalHosts: Set<String> = ["veyrnox.com"]
-    private static let allowedUniversalPaths: [String] = ["/wc", "/wc/", "/buy/return"]
+    // "/r" forwards referral share links (/r/VYX-XXXXXX, #2527). JS still
+    // validates the code shape in referralAttribution.js before storing it.
+    // Omitting it made the OS hand /r/* to the app and the app refuse it (#2540).
+    private static let allowedUniversalPaths: [String] = ["/wc", "/wc/", "/buy/return", "/r"]
 
     private static func isAllowedDeepLink(_ url: URL) -> Bool {
         guard let scheme = url.scheme?.lowercased(), allowedSchemes.contains(scheme) else {

@@ -1,7 +1,13 @@
-// The three places a universal/app link for /r/<code> has to agree (#2527):
-// Apple's association file, the Android manifest, and the handler. A path
-// claimed in one and not the others is a link that opens the app and drops
-// the code — or opens the browser and never reaches the app.
+// The FOUR places a universal/app link for /r/<code> has to agree (#2527):
+// Apple's association file, the Android manifest, the iOS AppDelegate
+// allowlist, and the handler. A path claimed in one and not the others is a
+// link that opens the app and drops the code — or opens the browser and never
+// reaches the app.
+//
+// The allowlist was missed when #2532 shipped: AASA sent /r/* to the app,
+// AppDelegate.continue(userActivity:) returned false for it, and the JS handler
+// never ran. Found on a real iPhone with build 60 (#2540), where no redeem call
+// was made for a tapped link. Every JS-side test was green throughout.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -29,6 +35,24 @@ describe('/r/<code> universal-link association', () => {
     expect(rFilter.startsWith(' android:autoVerify="true"')).toBe(true);
     expect(rFilter).toContain('android:host="veyrnox.com"');
     expect(rFilter).toContain('android:scheme="https"');
+  });
+
+  it('iOS AppDelegate native allowlist forwards veyrnox.com/r/<code>', () => {
+    const swift = read('ios/App/App/AppDelegate.swift');
+    const m = swift.match(/allowedUniversalPaths:\s*\[String\]\s*=\s*\[([^\]]*)\]/);
+    expect(m).not.toBeNull();
+    const paths = [...m[1].matchAll(/"([^"]*)"/g)].map((x) => x[1]);
+    // Mirror of the Swift closure in isAllowedDeepLink:
+    //   path == $0 || path.hasPrefix($0 + "?") || path.hasPrefix($0 + "/")
+    expect(swift).toContain('path == $0 || path.hasPrefix($0 + "?") || path.hasPrefix($0 + "/")');
+    const allowed = (path) => paths.some((p) => path === p || path.startsWith(p + '?') || path.startsWith(p + '/'));
+    expect(allowed('/r/VYX-ABC234')).toBe(true);
+    expect(allowed('/r/VYX-ABC234/')).toBe(true);
+    // Neighbours must stay rejected, and the pre-existing paths must survive.
+    expect(allowed('/referral')).toBe(false);
+    expect(allowed('/rVYX-ABC234')).toBe(false);
+    expect(allowed('/wc')).toBe(true);
+    expect(allowed('/buy/return')).toBe(true);
   });
 
   it('DeepLinkHandler routes veyrnox.com/r/ to the referral capture', () => {
