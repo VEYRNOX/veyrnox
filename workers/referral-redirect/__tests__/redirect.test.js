@@ -130,7 +130,9 @@ describe('veyrnox.com/r/<code> invite page', () => {
 
   it('writes the clipboard only from a tap', async () => {
     const body = await html('/r/VYX-STRKLB');
-    const script = body.match(/<script[^>]*>([\s\S]*)<\/script\s*>/i)[1];
+    const scriptStart = body.indexOf('>', body.indexOf('<script')) + 1;
+    const scriptEnd = body.lastIndexOf('</script>');
+    const script = body.slice(scriptStart, scriptEnd);
     expect(script).toContain("addEventListener('click'");
     expect(script.match(/clipboard\.writeText/g)).toHaveLength(1);
     // copy() is defined once and called exactly once, inside the click handler.
