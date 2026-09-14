@@ -197,3 +197,7 @@ _bmad/
 *.p8
 AuthKey_*.p8
 ios/.env.fastlane
+
+# OTA release staging tree and signing key (docs/ota-updates.md). The key must never be on an online machine.
+ota-release/
+ota-signing-key.pem

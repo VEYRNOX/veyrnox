@@ -14,5 +14,10 @@
     "CapacitorHttp": {
       "enabled": true
     }
+  },
+  "cordova": {
+    "preferences": {
+      "DisableDeploy": "true"
+    }
   }
 }
