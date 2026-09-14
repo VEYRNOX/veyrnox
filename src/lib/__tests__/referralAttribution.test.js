@@ -16,7 +16,7 @@ vi.mock('@/api/trackEvent', () => ({
   EVENT: { REFERRAL_CODE_APPLIED: 'referral_code_applied' },
 }));
 
-import { captureReferralFromUrl, referralCodeFromUrl, captureInstallReferrer, playStoreReferralUrl } from '@/lib/referralAttribution';
+import { captureReferralFromUrl, captureReferralCode, referralCodeFromUrl, captureInstallReferrer, playStoreReferralUrl } from '@/lib/referralAttribution';
 import { setPendingReferral, getPendingReferral, hasRedeemed } from '@/lib/referral';
 import { getInstallReferrer } from '@/plugins/installReferrer';
 import { trackEvent } from '@/api/trackEvent';
@@ -189,5 +189,34 @@ describe('captureInstallReferrer', () => {
     vi.mocked(hasRedeemed).mockReturnValue(true);
     await captureInstallReferrer();
     expect(getInstallReferrer).not.toHaveBeenCalled();
+  });
+});
+
+// #2569: the Create Wallet invite field used to call setPendingReferral directly,
+// skipping validation, the capture event and the deniability re-check.
+describe('captureReferralCode (manual entry)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(false);
+    vi.mocked(getPendingReferral).mockReturnValue(null);
+  });
+
+  it('stores a valid code, normalised, and emits source manual_entry', () => {
+    expect(captureReferralCode('  vyx-ab3def ')).toBe(true);
+    expect(setPendingReferral).toHaveBeenCalledWith('VYX-AB3DEF');
+    expect(trackEvent).toHaveBeenCalledWith('referral_code_applied', { code: 'VYX-AB3DEF', source: 'manual_entry' });
+  });
+
+  it.each(['VYX-ABC', 'VYX-AB3DE0', 'ABC-AB3DEF', 'VYX-AB3DEF?x=1', ''])('rejects %j without storing or emitting', (raw) => {
+    expect(captureReferralCode(raw)).toBe(false);
+    expect(setPendingReferral).not.toHaveBeenCalled();
+    expect(trackEvent).not.toHaveBeenCalled();
+  });
+
+  it('reports a valid code as valid but stores nothing in a deniable session', () => {
+    vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
+    expect(captureReferralCode('VYX-AB3DEF')).toBe(true);
+    expect(setPendingReferral).not.toHaveBeenCalled();
+    expect(trackEvent).not.toHaveBeenCalled();
   });
 });

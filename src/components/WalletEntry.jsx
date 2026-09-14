@@ -135,7 +135,7 @@ import {
   clearPinSessionFloor,
   PIN_COUNTER_DEGRADED_NOTE,
 } from "@/lib/pinAttemptGuard";
-import { setPendingReferral } from "@/lib/referral";
+import { captureReferralCode } from "@/lib/referralAttribution";
 import { copySecret } from "@/lib/copySecret";
 import { sensitiveGate } from "@/rasp";
 import { getFreshLocalRaspArtifact } from "@/lib/getFreshLocalRaspArtifact";
@@ -652,6 +652,14 @@ export default function WalletEntry() {
   // so a retry re-picks rather than leaking a stale hint.
   const [chosenPath, setChosenPath] = useState(null);
   const [referralInput, setReferralInput] = useState("");
+  // #2569: validate and capture through the same path as a referral link.
+  // An optional field must not silently store a code the server will reject.
+  const applyInviteCode = () => {
+    if (!referralInput.trim()) return true;
+    if (captureReferralCode(referralInput)) return true;
+    setError("That invite code doesn't look right. Codes look like VYX-XXXXXX. Fix it or clear the field.");
+    return false;
+  };
   // True while a PIN wallet is being ATOMICALLY provisioned (create + both chaff
   // slots + cohort + salt). Holds the dashboard back until everything is committed;
   // on failure the vault is torn down (fail closed) and we show an honest error.
@@ -2125,7 +2133,7 @@ export default function WalletEntry() {
                   <p className="text-xs text-muted-foreground">Your PIN is set. Create a fresh self-custody wallet, or import an existing seed phrase — it'll be encrypted under your PIN on this device. Keys never leave it.</p>
                 </div>
                 <div className="space-y-2">
-                  <Button className="w-full gap-2" disabled={busy} onClick={() => { if (referralInput.trim()) setPendingReferral(referralInput.trim().toUpperCase()); doCreateWallet(); }}>
+                  <Button className="w-full gap-2" disabled={busy} onClick={() => { setError(""); if (applyInviteCode()) doCreateWallet(); }}>
                     <Shield className="h-4 w-4" /> Create Wallet
                   </Button>
                   <Button variant="outline" className="w-full gap-2" disabled={busy} onClick={() => { setError(""); setImportPhrasePin(""); setChoosePinImport(true); }}>
@@ -2161,7 +2169,7 @@ export default function WalletEntry() {
                   submitLabel="Restore / Import"
                   disabled={busy}
                   onSubmit={async (mnemonic) => {
-                    if (referralInput.trim()) setPendingReferral(referralInput.trim().toUpperCase());
+                    if (!applyInviteCode()) return;
                     await doImportWallet(mnemonic);
                   }}
                 />

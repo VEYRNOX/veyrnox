@@ -5,7 +5,7 @@
 // uses, and no paste-split.
 //
 // Fix: swap in `<SeedInputGrid>` whose `onSubmit(mnemonic)` closure preserves
-// the existing referral side-effect (`setPendingReferral` on non-empty input)
+// the existing referral side-effect (the invite code, via applyInviteCode since #2569)
 // and calls `doImportWallet(mnemonicOverride)`.
 //
 // Source-scan tests are the exact RED/GREEN contract here. Mount-based
@@ -55,11 +55,12 @@ describe('WalletEntry — Have flow uses <SeedInputGrid> (Slice I)', () => {
     expect(slice).toMatch(/doImportWallet\s*\(\s*mnemonic\b/);
   });
 
-  it('the Have onSubmit closure preserves the setPendingReferral side-effect on non-empty invite input', () => {
+  it('the Have onSubmit closure preserves the invite-code side-effect before importing', () => {
     const slice = haveBranchSlice();
-    // Same shape as the pre-Slice-I inline handler:
-    //   if (referralInput.trim()) setPendingReferral(referralInput.trim().toUpperCase());
-    expect(slice).toMatch(/referralInput\.trim\(\)\s*\)\s*setPendingReferral/);
+    // Was a direct `setPendingReferral(...)`; since #2569 it goes through
+    // applyInviteCode() (validated, same capture path as a link) and an invalid
+    // code stops the import instead of being stored.
+    expect(slice).toMatch(/if\s*\(\s*!applyInviteCode\(\)\s*\)\s*return;\s*await\s+doImportWallet\s*\(\s*mnemonic\b/);
   });
 
   it('doImportWallet accepts a mnemonic override parameter', () => {
