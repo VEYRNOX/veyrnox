@@ -45,9 +45,10 @@ None of the five test-level signatures recurred after #2544. The remaining failu
 all simulator provisioning. A required check that fails for runner reasons blocks every
 PR and trains `--admin`, which this repo treats as a regression signal.
 
-**Promotion criterion.** Add `xcuitest` to BOTH layers only after #2560 (or its
-successor) has landed and 20 consecutive completed `xcuitest` runs across `main` and PRs
-pass with no warm-up or provisioning failure. Any failure inside the window resets the
+**Promotion criterion.** Add `xcuitest` to BOTH layers only after 20 consecutive
+completed `xcuitest` runs across `main` and PRs pass with no simulator or provisioning
+failure. Count from the warm-up removal (#2543 experiment, 2026-09-14): #2560's warm-up
+recovery no longer exists, so runs before that change do not count. Any failure inside the window resets the
 count. Even 20 clean runs only rules out a failure rate above about 14% (95% confidence,
 rule of three). Ruling out 5% takes about 60.
 
