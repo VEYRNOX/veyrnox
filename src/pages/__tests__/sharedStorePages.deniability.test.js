@@ -126,3 +126,56 @@ describe.each(PAGES)('$file — shared-store deniability gate (#2537)', ({ file,
     }
   });
 });
+
+// SendCrypto.jsx — same store, different shape (#2537 item 2, traced 2026-09-14).
+//
+// `deniable` here deliberately omits the bare DEMO flag: SendCrypto documents that
+// a persisted demo flag must not exempt a session with a real wallet, and blanking
+// TransactionLimit for a real user would switch their spend limits off. Demo is
+// covered by `demoActive` (DEMO && no wallets).
+//
+// Writes are SKIPPED, not thrown: Transaction.create runs after the broadcast, so
+// a throw would report a failed send for funds that already left and invite a
+// second send. EVM/ERC-20 reach the software-path create in a decoy session
+// because their providers do not refuse deniable sessions (BTC/SOL do).
+describe('SendCrypto.jsx — shared-store deniability gate (#2537)', () => {
+  const code = stripComments(readFileSync(resolve(here, '..', 'SendCrypto.jsx'), 'utf8'));
+  const queries = calls(code, 'useQuery').filter((q) => /base44\.entities\./.test(q.text));
+  const ROWS = ['whitelist', 'txLimits', 'history', 'addressBook'];
+  const GUARD = /if\s*\(\s*!deniable\s*&&\s*!isDeniabilitySessionActive\(\)\s*\)\s*\{?\s*$/;
+
+  it('derives `deniable` from decoy, hidden, the live session marker and demoActive', () => {
+    expect(code).toMatch(
+      /const\s+deniable\s*=\s*isDecoy\s*\|\|\s*isHidden\s*\|\|\s*isDeniabilitySessionActive\(\)\s*\|\|\s*demoActive\s*;/,
+    );
+  });
+
+  it('every store query is disabled in a deniable session', () => {
+    expect(queries.length).toBe(ROWS.length);
+    for (const q of queries) expect(q.text, q.text).toMatch(/enabled:\s*!deniable\b/);
+  });
+
+  it.each(ROWS)('blanks `%s` locally in a deniable session', (name) => {
+    expect(code).toMatch(new RegExp(`data:\\s*${name}Raw\\s*=\\s*\\[\\]`));
+    expect(code).toMatch(new RegExp(`const\\s+${name}\\s*=\\s*deniable\\s*\\?\\s*\\[\\]\\s*:\\s*${name}Raw\\s*;`));
+  });
+
+  it('every store write is directly guarded (skip, not throw)', () => {
+    const writes = [...code.matchAll(/base44\.entities\.\w+\.(create|update|delete)\(/g)];
+    expect(writes.length).toBe(2);
+    for (const w of writes) {
+      const before = code.slice(Math.max(0, w.index - 200), w.index).replace(/await\s*$/, '');
+      expect(before, `unguarded write: ${code.slice(w.index, w.index + 50)}`).toMatch(GUARD);
+    }
+  });
+
+  it('no base44.entities read sits outside a gated query', () => {
+    const re = /base44\.entities\.\w+\.(\w+)\(/g;
+    let m;
+    while ((m = re.exec(code))) {
+      if (['create', 'update', 'delete'].includes(m[1])) continue;
+      const inside = queries.some((b) => m.index > b.start && m.index < b.end);
+      expect(inside, `ungated store read: ${code.slice(m.index, m.index + 60)}`).toBe(true);
+    }
+  });
+});
