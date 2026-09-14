@@ -196,7 +196,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@capacitor/cli": "^8.5.1",
-    "@eslint/js": "^9.39.5",
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
     "@rollup/plugin-inject": "^5.0.5",
     "@testing-library/dom": "^10.4.1",
@@ -219,7 +219,7 @@
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "esbuild": "^0.28.2",
-    "eslint": "^9.19.0",
+    "eslint": "^10.10.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.6",
@@ -268,6 +268,9 @@
     "deepmerge-ts": "^8.0.2",
     "@keystonehq/keystone-sdk": {
       "uuid": "11.1.1"
+    },
+    "eslint-plugin-react": {
+      "eslint": "$eslint"
     }
   }
 }
