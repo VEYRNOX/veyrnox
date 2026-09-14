@@ -46,7 +46,7 @@ describe('staging mobile release contract', () => {
     // this pin by prefix — 'versionCode 49' is a substring of 'versionCode 490'.
     expect(androidBuild).toContain('versionCode 49\n');
     expect(androidBuild).toContain('versionName "1.0.1"');
-    expect(iosProject.match(/CURRENT_PROJECT_VERSION = 60;/g)).toHaveLength(2);
+    expect(iosProject.match(/CURRENT_PROJECT_VERSION = 61;/g)).toHaveLength(2);
     expect(iosProject.match(/MARKETING_VERSION = 1\.0\.1;/g)).toHaveLength(2);
   });
 });
