@@ -188,118 +188,15 @@ jobs:
               exit 1
             }
 
-      - name: Warm up the app on the simulator
-        working-directory: ios/App
-        # The FIRST launch of a fresh install is far slower than any later one:
-        # in run 34747267714 (#2543) it took ~95 s to paint the entry tiles
-        # (blank white to ~40 s, then the Suspense spinner), while the next
-        # test's launch on the same simulator reached them in ~30 s. The
-        # create test's 45 s entry-tile budget cannot absorb that, and widening
-        # every wait to fit a one-time cost would slow every later check. So the
-        # one-time cost is paid here, outside any test budget: install, launch,
-        # give it the measured cold-start time plus margin, terminate.
-        #
-        # Launched with --uitest-fresh-install, the same flag both tests pass,
-        # so the warm-up runs the identical lifecycle: AppDelegate wipes
-        # WKWebsiteDataStore + UserDefaults, then the WebView boots empty. A
-        # flagless launch would warm a different path (and write the fresh-
-        # install marker the tests then have to wipe).
-        #
-        # The hand-off must leave NO running instance, or the first test's
-        # launch() has to kill it and can hit the same "Failed to terminate"
-        # this is meant to avoid. After terminate, app_state polls launchd for
-        # up to 30 s. Entries read `UIKitApplication:<bundle>[<id>]…`; the
-        # trailing `\[` stops com.veyrnox.app matching the
-        # com.veyrnox.app.AppUITests.xctrunner test runner.
-        #
-        # app_state has THREE outcomes, and only grep's no-match means gone:
-        #   0 running, 1 not running, 2 the launchd query itself failed.
-        # A failed query is an unknown state, so it fails the step rather than
-        # letting the tests inherit a possibly-live process. A plain
-        # `launchctl list | grep -q` cannot tell a failed query from "absent".
-        #
-        # The listing is captured BEFORE matching so the check stays correct if
-        # `pipefail` is ever on. It is NOT on here: this workflow sets no
-        # default shell, so every step runs `bash -e {0}` (confirmed in run
-        # 34751973935's log), and only the steps that `set -o pipefail`
-        # themselves have it. With pipefail on, `list | grep -q` would return
-        # 141 (SIGPIPE) when grep exits on the first match and read as "not
-        # running" while the app was up. The #2545 review assumed pipefail was
-        # the runner default; for this step it was not, so that failure could
-        # not have occurred before the change.
-        #
-        # Still running, OR the query failed, after 30 s: reboot the simulator
-        # for a clean slate, then require a definite "not running". A failed
-        # query is still never read as "gone"; it now earns a reboot instead of
-        # an immediate failure, because a wedged CoreSimulator is exactly what
-        # a reboot clears. The warm-up screenshot is evidence only; install/
-        # launch failures warn, since the tests are still valid cold. A failed
-        # launch still goes through terminate + verify: a launch that timed out
-        # may have started the app anyway.
-        #
-        # EVERY simctl call is bounded (#2543, runs 34753802443 and
-        # 34754922127). In both, the app was healthy (warm-up screenshot shows
-        # the entry tiles) but a simctl call never returned: one screenshot
-        # took ~6 min, and in the other run the step went silent for 3 min
-        # after the screenshot, inside terminate or the launchd query. Neither
-        # had a bound, so the step died on the job-level step timeout with no
-        # diagnosis and the tests never ran. `bounded N cmd` runs cmd with a
-        # SIGALRM after N seconds (perl, because macOS ships no `timeout`); a
-        # timed-out call exits 142 and is handled like any other failure.
-        #
-        # Recovery must survive a WEDGED CoreSimulator, not just a slow one
-        # (#2543, run 34777838366, first main run after #2557). There,
-        # screenshot, terminate, launchctl and shutdown all hit their bounds,
-        # and `simctl boot` then failed at once: a device whose shutdown never
-        # completed is still Booted/Shutting Down, and boot refuses that state.
-        # A shutdown that fails now escalates to restarting
-        # CoreSimulatorService (launchd relaunches it on the next simctl call),
-        # and `bootstatus -b` replaces the separate boot: it boots only if
-        # needed, then waits for boot to finish, so an already-booted device
-        # is not an error.
-        # Worst-case sum of the bounds is ~10 min, under the step's 11, which
-        # keeps build (15) + warm-up (11) + tests (18) inside the 50-min job.
-        timeout-minutes: 11
-        run: |
-          app="DerivedData/Build/Products/Debug-iphonesimulator/App.app"
-          bounded() { perl -e 'alarm shift; exec @ARGV or exit 127' "$@"; }
-          app_state() {
-            local listing
-            listing="$(bounded 20 xcrun simctl spawn "$IOS_SIMULATOR_UDID" launchctl list)" || return 2
-            if grep -q 'UIKitApplication:com\.veyrnox\.app\[' <<<"$listing"; then return 0; fi
-            return 1
-          }
-          wait_until_gone() {
-            local state=0
-            for _ in $(seq 1 30); do
-              app_state && state=0 || state=$?
-              [ "$state" -eq 0 ] || break
-              sleep 1
-            done
-            return "$state"
-          }
-          bounded 120 xcrun simctl install "$IOS_SIMULATOR_UDID" "$app" || { echo "::warning::warm-up install failed; tests will cold-start"; exit 0; }
-          if bounded 60 xcrun simctl launch "$IOS_SIMULATOR_UDID" com.veyrnox.app --uitest-fresh-install; then
-            sleep 120
-            bounded 30 xcrun simctl io "$IOS_SIMULATOR_UDID" screenshot warmup-after-120s.png || echo "::warning::warm-up screenshot failed or timed out"
-          else
-            echo "::warning::warm-up launch failed or timed out; tests will cold-start"
-          fi
-          bounded 30 xcrun simctl terminate "$IOS_SIMULATOR_UDID" com.veyrnox.app || echo "::warning::warm-up terminate failed or timed out"
-          wait_until_gone && state=0 || state=$?
-          if [ "$state" -ne 1 ]; then
-            echo "::warning::warm-up hand-off not verified (app_state=$state: 0 still running, 2 launchd query failed or timed out); rebooting the simulator for a clean hand-off"
-            if ! bounded 30 xcrun simctl shutdown "$IOS_SIMULATOR_UDID"; then
-              echo "::warning::simctl shutdown failed or timed out; restarting CoreSimulatorService"
-              sudo killall -9 com.apple.CoreSimulator.CoreSimulatorService 2>/dev/null || true
-            fi
-            bounded 150 xcrun simctl bootstatus "$IOS_SIMULATOR_UDID" -b || { echo "::error::simulator did not boot during warm-up recovery"; exit 1; }
-            app_state && state=0 || state=$?
-            if [ "$state" -ne 1 ]; then
-              echo "::error::com.veyrnox.app not confirmed gone after a simulator reboot (app_state=$state); the test step would inherit it"
-              exit 1
-            fi
-          fi
+      # NO WARM-UP STEP, deliberately (#2543, experiment 2026-09-14). A warm-up
+      # launch + 120 s + terminate ran here from #2544 to #2560, to absorb a
+      # ~95 s first cold launch. Measured against no warm-up across dispatched
+      # runs, it prevented nothing: the entry-tile timeout it targeted did not
+      # recur in 5/5 runs without it, while the warm-up itself hung CoreSimulator
+      # in 9 of 13 control runs and needed a service-restart recovery path. The
+      # hangs are runner capacity (the same build paints in <30 s on a 10-core
+      # Mac with every simctl call under 4 s), not any one call. Do not re-add a
+      # warm-up without new evidence; results are on #2543.
 
       - name: Run AppUITests
         working-directory: ios/App
@@ -437,7 +334,6 @@ jobs:
           path: |
             ios/App/xcodebuild.log
             ios/App/xcodebuild-build.log
-            ios/App/warmup-after-120s.png
           if-no-files-found: warn
 
       - name: Upload result bundle
