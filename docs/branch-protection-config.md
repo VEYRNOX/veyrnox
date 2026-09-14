@@ -24,6 +24,39 @@ regression signal rather than a workflow).
 
 ---
 
+## 2026-09-14 — decision: `xcuitest` stays advisory (no change)
+
+**Change.** None. `xcuitest` (`.github/workflows/ios-xcuitest-smoke.yml`) is NOT a
+required context on either layer, and it is not being added. Verified 2026-09-14:
+the ruleset `17946638` requires `verify`, `mainnet-flag-gate`, `unit-tests`,
+`Release-cert guard rejects wrong fingerprints` and `staging-gate`, and classic protection
+requires `verify`, `unit-tests` and `Release-cert guard rejects wrong fingerprints`.
+
+**Why.** Recorded for #2543. After the harness fixes (#2544, #2545, #2557), stability is
+not demonstrated:
+
+| window | completed runs | pass | failures |
+|---|---|---|---|
+| before #2544 (since #2481) | 40 | 25 | 15 (37.5%), five test-level signatures |
+| #2544/#2545, before #2557 | 15 | 11 | 2 simulator warm-up timeouts, plus 2 `npm ci` ERESOLVE (the ESLint 10 bump in #2555, not iOS) |
+| with #2557 | 2 | 1 | 1 wedged-CoreSimulator warm-up recovery (run 34777838366, fix in #2560) |
+
+None of the five test-level signatures recurred after #2544. The remaining failures are
+all simulator provisioning. A required check that fails for runner reasons blocks every
+PR and trains `--admin`, which this repo treats as a regression signal.
+
+**Promotion criterion.** Add `xcuitest` to BOTH layers only after #2560 (or its
+successor) has landed and 20 consecutive completed `xcuitest` runs across `main` and PRs
+pass with no warm-up or provisioning failure. Any failure inside the window resets the
+count. Even 20 clean runs only rules out a failure rate above about 14% (95% confidence,
+rule of three). Ruling out 5% takes about 60.
+
+**Apply.** To promote, add `{"context": "xcuitest"}` to the ruleset's
+`required_status_checks` and to the classic `required_status_checks.checks` array in the
+same session, and record it here.
+
+---
+
 ## 2026-08-21 — retire stale `web-e2e-tests` gate
 
 **Change.** Removed `web-e2e-tests` from both protection layers:
