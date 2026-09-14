@@ -322,6 +322,12 @@ export default function SendCrypto() {
 
   // A persisted demo flag must not exempt a session that has a real wallet.
   const demoActive = DEMO && wallets.length === 0;
+  // K-2 / I3 (#2537): whitelist, limits, history and contacts live in the SHARED
+  // veyrnox-appdata store with no per-session partition. A decoy/hidden session
+  // must neither read the real user's rows nor write its own sends into them.
+  // Bare DEMO is deliberately absent — see demoActive above: blanking
+  // TransactionLimit for a real wallet would switch its spend limits off.
+  const deniable = isDecoy || isHidden || isDeniabilitySessionActive() || demoActive;
 
   // Resolve the active 2FA method for this send (mirrors useActionGuard.resolveMethod;
   // see lib/send2faMethod.js). Audit H-1: keying the send gate off actionPasswordConfigured
@@ -567,26 +573,33 @@ export default function SendCrypto() {
     setAssetSymbol((cur) => defaultAssetSymbol(enabledAssets, cur));
   }, [walletId, enabledAssets.join(","), fromDetail, searchParams]);
 
-  const { data: whitelist = [] } = useQuery({
+  const { data: whitelistRaw = [] } = useQuery({
     queryKey: ["whitelisted-addresses"],
     queryFn: () => base44.entities.WhitelistedAddress.list(),
+    // Real rows would surface as the "a whitelisted address" poison-warning label.
+    enabled: !deniable,
   });
+  const whitelist = deniable ? [] : whitelistRaw;
 
-  const { data: txLimits = [] } = /** @type {{ data: any[] }} */ (useQuery({
+  const { data: txLimitsRaw = [] } = /** @type {{ data: any[] }} */ (useQuery({
     queryKey: ["tx-limits"],
     queryFn: () => base44.entities.TransactionLimit.list(),
+    // A real limit blocking a decoy send would reveal the real configuration.
+    enabled: !deniable,
   }));
+  const txLimits = deniable ? [] : txLimitsRaw;
 
   // Sources for LOCAL address-poisoning screening: the addresses the user has
   // actually interacted with. All read client-side; nothing is sent anywhere.
-  const { data: history = [] } = /** @type {{ data: any[] }} */ (useQuery({
+  const { data: historyRaw = [] } = /** @type {{ data: any[] }} */ (useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 100),
     // Same reason as address-book below: shared IndexedDB store, real-session
     // rows would surface as "your recent send to X" chips in a decoy session.
-    enabled: !isDecoy && !isHidden,
+    enabled: !deniable,
   }));
-  const { data: addressBook = [] } = useQuery({
+  const history = deniable ? [] : historyRaw;
+  const { data: addressBookRaw = [] } = useQuery({
     queryKey: ["address-book"],
     queryFn: () => base44.entities.AddressBook.list(),
     // Codex P1 2026-08-15: address-book rows live in a SHARED IndexedDB store
@@ -596,8 +609,9 @@ export default function SendCrypto() {
     // identity. Empty list in deniable sessions matches the AddressBook page's
     // own render gate; the Send flow degrades cleanly (no saved-contact chip,
     // still validates the raw address).
-    enabled: !isDecoy && !isHidden,
+    enabled: !deniable,
   });
+  const addressBook = deniable ? [] : addressBookRaw;
 
   // Remote screening via the Veyrnox TIP. When TIP is configured
   // (VITE_TIP_BASE_URL set), defaults to ON so sanctions/threat screening is
@@ -1589,18 +1603,23 @@ export default function SendCrypto() {
       // The chain-side memo is unaffected — those live in the tx call data,
       // never in this table. If encrypted-memo persistence is added later,
       // wrap it under the vault DEK; do NOT reintroduce plaintext here.
-      await base44.entities.Transaction.create({
-        wallet_id: walletId,
-        type: "send",
-        amount: parseFloat(canonicalAmount),
-        currency: selectedWallet.currency,
-        to_address: toAddress,
-        from_address: selectedWallet.address,
-        status: "pending",
-        tx_hash: hash,            // REAL chain txid / signature
-        explorer_url: explorerUrl,
-        has_note: !!(note && String(note).trim()),
-      });
+      // K-2 / I3 (#2537): EVM and ERC-20 providers do not refuse a deniable
+      // session, so a decoy send reaches here. SKIP the write rather than throw:
+      // the broadcast already happened, and an error would invite a second send.
+      if (!deniable && !isDeniabilitySessionActive()) {
+        await base44.entities.Transaction.create({
+          wallet_id: walletId,
+          type: "send",
+          amount: parseFloat(canonicalAmount),
+          currency: selectedWallet.currency,
+          to_address: toAddress,
+          from_address: selectedWallet.address,
+          status: "pending",
+          tx_hash: hash,            // REAL chain txid / signature
+          explorer_url: explorerUrl,
+          has_note: !!(note && String(note).trim()),
+        });
+      }
 
       // Refresh views. Only the EVM result exposes raw.wait(1) for a 1-conf receipt;
       // BTC is broadcast and SOL confirms internally, so for those we just invalidate
@@ -1927,18 +1946,22 @@ export default function SendCrypto() {
         };
       }
       const normalized = normalizeSendResult(digitalShieldFlow.kind, raw);
-      await base44.entities.Transaction.create({
-        wallet_id: walletId,
-        type: "send",
-        amount: parseFloat(canonicalAmount),
-        currency: selectedWallet.currency,
-        to_address: toAddress,
-        from_address: selectedWallet.address,
-        status: "pending",
-        tx_hash: normalized.hash,
-        explorer_url: normalized.explorerUrl,
-        has_note: !!(note && String(note).trim()),
-      });
+      // Unreachable in a deniable session (refused at the top of this flow);
+      // guarded here too so the write never depends on that early return.
+      if (!deniable && !isDeniabilitySessionActive()) {
+        await base44.entities.Transaction.create({
+          wallet_id: walletId,
+          type: "send",
+          amount: parseFloat(canonicalAmount),
+          currency: selectedWallet.currency,
+          to_address: toAddress,
+          from_address: selectedWallet.address,
+          status: "pending",
+          tx_hash: normalized.hash,
+          explorer_url: normalized.explorerUrl,
+          has_note: !!(note && String(note).trim()),
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["evm-balance", networkKey, selectedWallet?.address] });
       setTxResult(normalized);
