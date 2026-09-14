@@ -1,6 +1,6 @@
 # Audit Findings Tracker
-Last updated: 2026-09-07
-Analysed against: origin/main @ `d0c4423cd7ea4b535d20dcf3abce0f9f31f6c520`
+Last updated: 2026-09-14
+Analysed against: origin/main @ `885490ad309ac59e2ff12e62ed7e321b73d0711d`
 (clean branch worktree cut from `origin/main` per Step 0 — not the live checkout,
 not a `git show` fallback. macOS/zsh.)
 
@@ -13,247 +13,274 @@ not a `git show` fallback. macOS/zsh.)
 
 ## Window since last run
 
-Previous run analysed `6e8b3bef` (2026-08-24). **This run covers 14 days, not 7** — the
-2026-08-31 slot did not produce a tracker. `main` has moved **2,719 commits** since that
-pin, the largest window this tracker has ever spanned.
+Previous run analysed `d0c4423c` (2026-09-07). `main` has moved **161 commits** since.
+The 09-14 weekly audit is pinned to `845f9b4e`; the seven commits between that pin and this
+one are an iOS referral-link allowlist fix, two build bumps and the audit doc itself — none
+touches an audited surface, so the 09-14 weekly's `file:line` references hold at this pin.
 
-The window contains the corpus's **first CRITICAL that was live in production** (a Shamir
-threshold break, since fixed) and a complete rise-and-fall of a new attack surface (the
-bug-report screen-recording feature, introduced 09-02 and deleted 09-07) — which left one
-regression behind that the deletion did not close. **That regression was closed later the
-same day** (#2418 plus a three-project live audit); this section is left as written, with
-the outcome noted, rather than rewritten.
+The previous version of this file carried a long Regressed narrative (the bug-report SQL
+policy, the #2424/#2423 overwrite, the `git log <base>..<tip>` reachability lesson). That
+finding is closed and the narrative is not repeated here; read it with
+`git show acbb5ebe:docs/audit-findings-tracker.md`.
 
 ## Sources synthesised
 
-Carried from prior runs, unchanged: the 06-26 through 08-17 corpus, `docs/audit-triage/`
-(29 files) and `docs/security-audits/` (11 files) — no finding IDs beyond those already
-catalogued.
+Carried from prior runs, unchanged: the 06-26 through 09-05 corpus, `docs/audit-triage/`
+(29 files), `docs/security-audits/` (11 files), `docs/honesty-check-2026-08-31.md`.
 
 **New this run:**
 
-- **`docs/audit-2026-08-25-weekly.md`** — 4 HIGH, 10 MEDIUM, 13 LOW, 3 INFO, plus a
-  same-day 12-worktree remediation wave (#2060–#2075) and an unusually candid
-  post-wave section recording what the wave broke.
-- **`docs/audit-2026-09-05-weekly.md`** — 1 HIGH, 5 MEDIUM, 12 LOW, pinned to
-  `4ae2dbc1`, which `main` has since passed. Marks each finding **[VERIFIED]**
-  (coordinating session re-derived it) or **[AGENT]** (lead only, not re-derived) —
-  the first report in the corpus to separate those two confidence classes explicitly.
-  One agent finding REFUTED and one agent recommendation REJECTED, both recorded.
-- **`docs/audit-gemini-sweep-2026-09-06.md`** — second Gemini pass (`src/components/`,
-  269 files). Six findings: **2 real, 4 fabricated or misfiled.**
-- **`docs/security-diffs/diff-2026-08-25.md` … `diff-2026-09-07.md`** — 13 daily scans
-  (14 report-days; 09-03 and 09-05 each carry multiple runs).
-- **`docs/honesty-check-2026-08-31.md`** — zero code changes; both flags it raised were
-  wrong. See the pattern note.
-- `docs/dependency-audits/dep-audit-2026-08-24.md`, `-08-25.md`, `-09-01.md`.
-
-**No coverage gap in the daily scan this window** — 08-25 through 09-07 is unbroken.
-That is an improvement on the previous window's four-day hole.
+- **`docs/audit-2026-09-07-weekly.md`** — 2 HIGH, 6 MEDIUM, 15 LOW. Published after the
+  last tracker run. **Every finding was remediated the same day** (#2422, #2426, #2428,
+  #2430, #2431); L-2 and the disclosure half of L-3 recorded by-design.
+- **`docs/audit-2026-09-14-weekly.md`** — **5 HIGH, 8 MEDIUM, 9 LOW, 1 INFO. Findings
+  only, nothing fixed.** Four of five HIGHs are in Theft Protection, which landed four days
+  after the 09-07 audit. One is a regression created by the 09-07 H-1 fix.
+- **`docs/audit-gemini-sweep-2026-09-13.md`** — third Gemini pass (`src/pages/`, 180
+  files). 14 raw findings: one real K-2 class (seven pages, #2537), one real LOW honesty
+  defect, the rest refuted or down-rated, including a same-day self-correction.
+- **`docs/security-diffs/diff-2026-09-08.md` … `diff-2026-09-14.md`** — 7 daily scans,
+  unbroken. ~20 non-SAFE items; ~14 resolved in-window.
+- No new files in `docs/audit-triage/`, `docs/security-audits/`, or
+  `docs/dependency-audits/` this window.
 
 ## Summary
 
-- Total findings catalogued: **~300** (dedup across the corpus; MEDIUM/LOW grouped — the
+- Total findings catalogued: **~350** (dedup across the corpus; MEDIUM/LOW grouped — the
   count is approximate by construction and the delta matters more than the absolute)
-- Fixed (code-confirmed): **~237** — **~38 closed this run**, of which **9 were
-  re-verified by grep** against the pinned snapshot rather than taken from a doc
-- Still open / accepted-residual: **~46**
-- **Regressed: 0** — was 1 (the bug-report storage RLS policy). Closed 2026-09-07 by #2418
-  plus a live audit of **all three** Supabase projects, which established the negative the
-  issue existed to prove: the migration was never applied anywhere
-- Needs on-device / on-chain / live-backend verification: **24**
+- Fixed (code-confirmed): **~280** — **~43 closed this run**, of which **14 were
+  re-verified by grep** against the pinned snapshot
+- Still open / accepted-residual: **~66** — up from ~46. **The 09-14 weekly alone added
+  22 open findings**; net closures elsewhere offset about a quarter of that
+- **Regressed: 2** — was 0. See Regressed
+- Needs on-device / on-chain / live-backend verification: **28**
 
 ---
 
 ## What changed this run
 
-### A CRITICAL was live in production for 12 days, and a test edit is what surfaced it
+### Theft Protection shipped around the audit gates, not through them
 
-**DIFF-0901-SHAMIR / #2213 — the 2-of-3 threshold was worth 256 guesses, not 2^256.**
-`@stablelib/tss`'s `splitRaw()` draws its coefficient vector **once**, outside both of its
-loops (`const a = randomBytes(threshold)`), then overwrites only `a[0]` per octet. Every
-byte of a 32-byte DEK therefore shared one polynomial coefficient, so a single share
-reduced the secret to a 1-in-256 search — defeating the entire point of the split. Live
-from 2026-08-20.
+Theft Protection (#2498, `4ba80bbf`, #2518, #2519) is the source of **four of the 09-14
+weekly's five HIGHs**, plus two daily-diff items that the weekly later re-derived
+independently. Each branch of `runTheftProtectionGate` fails closed on its own; the defects
+are in how it was composed with existing helpers whose documented contracts differ from the
+new caller's assumption:
 
-**How it was found is the part worth keeping.** The daily scan flagged a *test* edit: a
-Shamir test had been made deterministic (flip one bit) rather than re-splitting randomly,
-and the stated rationale — "occasional collision" — was arithmetically implausible at the
-claimed odds. Chasing the implausible number into the library's source is what produced the
-finding. **The vulnerability was not in the diff; the excuse for a test change was.**
+| 09-14 | What TP reused | What the helper's own contract says | Confirmed |
+|---|---|---|---|
+| H-1 | `getFreshRaspArtifact` | composes remote attestation, which `attestation.js` headers as **NEVER ON UNLOCK** | **grep**: `theftProtection.js:33` imports it; `native.js:644` and `:1330` do too (M-8) |
+| H-2 | wired into `unlock()` only | the default-ON fast path is what `WalletEntry` tries first | **grep**: no TP reference in `WalletProvider.unlockBiometricOnly` |
+| H-4 | `verifyBiometric2fa` | falls back to device passcode by design | **grep**: `biometric.js:161,168` `allowDeviceCredential: true`; no `androidBiometryStrength` anywhere in `src/` |
+| H-5 | requires `TIER.ALLOW` | #2276 was accepted at WARN so genuine devices are not refused | **grep**: `theftProtection.js:181` `raspTier !== TIER.ALLOW` |
 
-**FIXED** at this pin. `shamir.js:292` now defines `splitRawPerOctet`, invoking `splitRaw`
-once per secret octet so each byte gets an independently sampled coefficient vector, with a
-`WHY THIS EXISTS — do not "simplify" it back` header at `:262-283` and a dedicated
-`shamir.coefficientReuse.test.js` (grep). Output shape is byte-identical, so no migration.
+The daily scan saw the H-4 shape first — **N-1 (09-11)** flagged the passcode fallback and
+**N-2 (09-12)** flagged that the same verify now authorises over-limit sends — three days
+before the weekly. Neither was issue-tracked. Both remain open and are folded into H-4/M-5
+below rather than listed twice.
 
-### The bug-report feature: built, breached, deleted — and one regression outlived it
+**The two TP defects that *were* tracked were fixed within hours** (#2515 → #2518, wrong-PIN
+miscount that could trigger the 10-strike wipe; #2517 → #2519, opt-in marker surviving panic
+wipe — `panic.js` residue list, grep). Pattern: an issue gets a fix the same day; a finding
+that lives only in a report does not.
 
-Introduced 09-02, shipped behind `VITE_BUG_REPORT_ENABLED` (default OFF), it accumulated
-four security findings in five days and was **removed entirely on 09-07** (`826bd1c8`).
-Verified at this pin: `functions/api/bug-report/` absent, `src/components/bugReport/` and
-`src/lib/bugReport/` absent, `create_bug_report_upload` no longer in the RPC allowlist
-(grep). That closes DIFF-0906-BUGREPORT-UPLOAD-NOAUTH (an unauthenticated 52 MiB
-service-role write path) and DIFF-0906-BUGREPORT-NOWATCHDOG by deletion.
+### The 09-07 weekly closed in a day — and one fix created a HIGH
 
-**The deletion did not close the SQL policy** — a migration already applied to a live
-project is not revoked by removing the client that called it, so the file's defect and the
-live projects' state were two separate questions. **Both are now answered and the finding is
-closed** (2026-09-07, after this section was first written): #2418 dropped the policy from
-the file, and a live audit found the migration was never applied on any of the three
-Supabase projects. Details, including a method gap in the audit's first pass, under
-Regressed below.
+All 23 findings in the 09-07 weekly were addressed by five PRs the same afternoon. The 09-14
+weekly re-derived each and confirms them, with three caveats that matter:
 
-### The right fix pattern finally propagated — after being rediscovered five times
+- **09-07 H-1** (WC refusals returned silently) is fixed — every refusal now throws — but
+  the throw skips the queue filter that previously ran unconditionally after the handler.
+  **The refused request stays queued with Approve enabled, and a retry signs and
+  broadcasts after the dApp was told "rejected"** (09-14 H-3). Confirmed at this pin: the
+  three wrappers' filters at `WalletConnectProvider.jsx:1096`, `:1115`, `:1211` are plain
+  statements after the awaited handler, not in a `finally` (grep). Listed under Regressed.
+- **09-07 M-1** (RASP OS-probe latch) is fixed for positive hard signals, but a bridge that
+  never settles hits the outer `withFailClosedTimeout` before the latch runs (09-14 M-7).
+- **09-07 M-6** (`getSecretUnauth`) is fixed as written, but `getSecret()` on the storage
+  alias is not auth-bound — `AndroidBiometricCachePlugin.kt:530-531` `requiresAuth = false`,
+  and `REQUIRES_USER_AUTH_LEGACY` at `AndroidBiometricCacheConfig.kt:64` has **no production
+  reader** (grep) — so the guard is bypassable (09-14 M-1).
 
-The previous tracker's pattern #3 named five sites needing the same
-`isDeniabilityOrDemoActive()` seal, three fixed and two not. **Both stragglers are now
-closed** (grep):
+### A fix was silently reverted, and nothing noticed for three days
 
-- `WalletConnectProvider.jsx:745` — `isUnlocked && !isDecoy && !isHidden && !isDeniabilityOrDemoActive()`
-- `WalletPortfolioPage.jsx:659` — identical predicate
+**DIFF-0911-N-4.** #2435 (`0dc4f673`, 09-08) added a `process.version` shim to
+`src/main.jsx` because `bs58check`'s bundled `readable-stream` reads
+`process.version.slice(0, 5)` at module init, which blanked the Send page on cold parse.
+#2500 (`bf68a1be`, 09-10) rewrote the same block and dropped it. **At this pin the shim is
+`{ env: {}, browser: true, versions: {}, platform: 'browser' }` — no `version`** (grep,
+`main.jsx:24-26`). The daily scan caught it on 09-11 and re-confirmed it on 09-13 and 09-14;
+no issue exists. This is exactly the class CLAUDE.md names as uncovered by any automated
+gate after the Robo waiver — the only thing standing between it and users is the owner's
+stock-device walkthrough.
 
-Both regressions from `46c5faf0` (#1929) are therefore **CLOSED**, and the regressed count
-drops from 2 to 1 — and to **0** later the same day when the bug-report SQL policy closed
-(see Regressed). `TierProvider.jsx` remains the demo-blind holdout (below).
+### Deniability (K-2): the class is still producing sites, and they are getting fixed
+
+The 09-13 Gemini sweep's substantive result — seven `src/pages/` screens reading and writing
+the shared `veyrnox-appdata` IndexedDB with no decoy gate, so a decoy session could show the
+real user's send history — was filed as #2537 and **fixed in `6042722e`** the same day. A
+sibling in `SendCrypto.jsx` (decoy send wrote a real txid; decoy read real whitelist and
+limits, under a comment falsely claiming it was gated) was **fixed in `cc9efadb`**. All seven
+pages now reference the deniability predicate (grep, 7–10 hits each).
+
+**#2537 is still OPEN** despite both fixes being on `main`. Probably correct — no decoy
+session has exercised either fix — but the issue body should say that, or it reads as
+unfixed. **One page was never in scope:** `NewsSentimentPage.jsx:47`'s saved-list query is
+still ungated (grep); low practical exposure because the only writer is behind
+`LLM_AVAILABLE && !isDeniabilityOrDemoActive()`.
 
 ### Closed this run
 
 | ID | Sev | Finding | Closed by | Confirmed by |
 |---|---|---|---|---|
-| **H-1 (09-05)** | **HIGH** | Permit2 `PermitBatchTransferFrom`/`PermitBatchWitnessTransferFrom` were in neither allowlist; an unrecognised `primaryType` falls through to `LEVEL.OK`, and OK is the **only** typed-data verdict this surface signs — so the batch drain was the one Permit-family payload the wallet would actually approve, with no banner and no acknowledgement | #2359 | **grep**: both names in `typed-data.js:15` and `wcTypedLevel.js:46`; `wcTypedLevel.test.js:192` pins `RISK` |
-| **#2213** | **CRITICAL** | Shamir coefficient reuse — one share ⇒ 256 guesses | #2216 | **grep**: `splitRawPerOctet` at `shamir.js:292`, dedicated regression test |
-| **DIFF-0821-WC-BASE44** | REGRESSION | WC Base44 queries omitted the canonical deniability predicate and `isUnlocked` | window | **grep**: `WalletConnectProvider.jsx:745` full predicate |
-| **DIFF-0821-PORTFOLIO-BASE44** | REGRESSION | Same seal missing on `WalletToken.list()` | window | **grep**: `WalletPortfolioPage.jsx:659` |
-| **L-2 (08-17) / L-4 (08-25)** | LOW | `eth_signTransaction` absent from `BLOCKED_METHODS` — carried across three consecutive audits | window | **grep**: `router.js:50` |
-| **H-4 (08-25)** | HIGH | EIP-712 `primaryType` never reconciled with `types` — **open since 2026-08-17, top item on two trackers** | #2063 | (doc) 09-05 **[VERIFIED]**: `typed-data.js:39-55` derives the root from the graph, rejects mismatch *and* ambiguity |
-| **H-1 (08-25)** | HIGH | Fast-path biometric opened the REAL vault with no duress gate, default-ON | #2071 | (doc) 09-05 **[VERIFIED]**: write gate `native.js:637`, read gate `:1326` |
-| **H-3 (08-25)** | HIGH | WC send fetched a TIP verdict then discarded it | #2067 | (doc) — S9 live in `walletConnectIntel.js:21-23` |
-| **M-6 (08-25)** | MED | Spend limits scored on native `value` only ⇒ any ERC-20 transfer bypassed them | #2068 | (doc) — `resolveWcSpendAmount` values ERC-20, fails closed on unvaluable tokens |
-| **M-7 (08-25) / M-1 (08-17)** | MED (I4) | PIN timed backoff documented, unit-tested, never enforced — **second consecutive audit** | #2070 | (doc) — checked before the attempt is spent, `WalletEntry.jsx:1016-1024` |
-| **M-8 (08-25)** | MED | Clipboard seed wipe had no `focus` trigger | #2061 | (doc) — trigger half only; the honest-failure half is open as L-9 |
-| **M-9 (08-25)** | MED (I4) | PIN counter failed OPEN and SILENT on unwritable storage | #2070 | **grep**: `pinAttemptGuard.js:112` `sessionFloor` + latching `storageDegraded`. **MITIGATED, not fixed** — session-scoped by construction; a reload clears it |
-| **M-5 (08-25)** | MED | iOS seed reveal proceeded during active screen mirroring | #2065 | (doc) — `screenCapture` split out of the `elevated` union |
-| **M-1..M-4, L-1..L-13 (08-25)** | MED/LOW | 12-worktree same-day wave | #2060–#2075 | (doc) — per that report's remediation table; **L-11 NOT ATTEMPTED**, recurs as 09-05 L-12 |
-| **DIFF-0903-ADVISOR-SNAPSHOT** | REGRESSION | `useAdvisorSnapshot()` published 61 pages' shell-state to `tip-chat` beside a persistent device_id, beyond consent scope; carried 4 days | #2349 | (doc) — `context.page_snapshot` dropped entirely |
-| **DIFF-0902-DURESS-EGRESS** | REGRESSION (I3) | `duress_configured` published to the Advisor snapshot — a coercion oracle on an untrusted backend | #2261 | (doc) — field dropped from direct publishers |
-| **DIFF-0905-FLAGSECURE-CLEARABLE** | REGRESSION | `setSecureFlag(false)` cleared FLAG_SECURE with **zero** gate and no restore on crash/background — "needs no attacker at all" | `0fb35004` | (doc) — grant-gated, self-healing on pause/resume/destroy |
-| **DIFF-0905-REVIEWPROMPT-RESIDUE** | REGRESSION | 3 review-prompt localStorage keys survived panic wipe **and** `inspectKeyMaterial()` still reported clean | #2336 | (doc) — added to `METADATA_RESIDUE_KEYS` + tests |
-| **DIFF-0906-BUGREPORT-UPLOAD-NOAUTH** | REGRESSION | Upload endpoint never checked a reservation existed, was `reserved`, or matched size — any caller could write 52 MiB via the service-role key | `826bd1c8` | **grep**: `functions/api/bug-report/` absent; RPC allowlist entry gone |
-| **DIFF-0906-BUGREPORT-SQL-POLICY** — [#2417](https://github.com/VEYRNOX/veyrnox/issues/2417) | REGRESSION | Storage RLS policy `FOR ALL` with no `TO` clause ⇒ applied to PUBLIC on the `bug-reports` bucket, where the intent was denial | #2418 (`56e2f07b`) | **live**: bucket, policy and tables absent on **all three** Supabase projects — the migration was never applied. See Regressed for the audit table and the two-vs-three enumeration gap |
-| **DIFF-0831-HUAWEIRECEIPT** | NEEDS-REVIEW | HMS IAP receipts never signature-verified; entitlements granted from unverified JSON | #2191 | (doc) — new `HuaweiReceiptVerifier.kt`, SHA256withRSA, fail-closed, both purchase and restore paths |
-| **DIFF-0831-WEBHOOKLOG** | NEEDS-REVIEW | Transak webhook log injection via unsanitised `eventID`/`orderId`/`status`, unbounded | #2190 | (doc) — `logSafe()` strips control chars, truncates to 64 |
-| **DIFF-0903-WEBHOOK-HMAC-ORACLE** | NEEDS-REVIEW | Webhook HMAC verify in `warn` mode logged the full 64-char computed digest — a signing oracle the moment it flipped to `strict` | #2289 | (doc) — 8-char prefix, both sides |
-| **GEM-0906-1 / -2** | HIGH / MED | `BackupPaywallNudge` and `ReferralPrompt` dismiss handlers wrote shared localStorage with no deniability re-check — the K-2 two-chokepoint gap, twice | #2375 | (doc) — both write paths re-check |
-| **DIFF-0903-FIXME-CLOSED-ISSUE / #2275** | MED (I4) | 17 `test.fixme('#2275: …')` markers pointed at an **already-closed** issue — coverage that reads as deferred and tracks nothing | #2296 | **grep**: 1 `test.fixme` remains in `post-audit-validation.spec.js` (was 17); replaced by 20 real source-content pins |
-| **DIFF-0904-QA-DEFERRAL** | MED (I4) | QA runner's deferral regex missed `test.describe.skip/fixme/only` and computed a Playwright report it never read — deferred e2e could report complete | #2310, #2352 | (doc) — missing/malformed report now yields `null` ⇒ recorded evidence gap, blocks a clean verdict |
-| **DIFF-0829-REFERRALPROXY** | MED | Public proxy routes for revenue-attribution and earnings RPCs | `0bd0a8c0` | (doc) — routes removed, client fails closed |
-| Others | SAFE/MED | Sentry send-time I3 re-check, WC panic-wipe IndexedDB residue, CSP font inlining, deploy-job split (PR code can no longer reach the Cloudflare token), CORS strict-origin, HSTS, canary `ref` allowlist, vault KDF ceiling 1 GiB→384 MiB, Keystone BTC `SIGHASH_ALL`, iOS Firebase opt-in gate | various | (doc) |
-
-**Also closed, and worth naming as a category:** the **iOS `App.entitlements`
-`appattest-environment=development`** defect (#2282/#2285) meant every archive through
-1.0.1 build 47 requested Apple's *development* attestation servers — the iOS attestation
-leg was **inert in distribution**, not merely unprovisioned. Fixed per build configuration.
-Not archive-verified.
+| **09-07 H-1** | HIGH | WC pre-sign gate refusals returned silently and the modal answered with a SUCCESS haptic | #2422 | (doc) 09-14 **[VERIFIED]** — throws at `:433/499/593`. **Fix introduced 09-14 H-3** |
+| **09-07 H-2** (was 09-05 L-10) | HIGH | Fast-path session read by send 2FA as five wrong PINs, then locks | #2422 | (doc) 09-14 — both SendCrypto gates branch on `bricked`. Verify-side sibling open as 09-14 L-3 |
+| **09-07 M-1** / 09-05 M-1 | MED | RASP OS-probe leg had no session latch; file header promised BLOCK where code gives WARN | #2426 | **grep**: header at `getFreshRaspArtifact.js` now states per-leg → WARN, chain → BLOCK, with a `CORRECTED 2026-09-07` note. **Partial** — stall vector open as 09-14 M-7 |
+| **09-07 M-2** | MED (I2) | WC sign-path TIP remote screen not tier-gated | #2426 | (doc) 09-14 **[VERIFIED]** |
+| **09-07 M-3** | MED | Dead `isVerifierReady` export | #2431 | (doc) — deletion |
+| **09-07 M-4** / 09-05 L-12 | MED | Equalizer KDF-count-equal but not equal to the visible outcome | #2431 | (doc) — paint timing still unbenched |
+| **09-07 M-5** / 09-05 M-2 | MED | Fast-path raw-DEK plugin comment argued the abandoned wrapped model | #2430 | **grep**: `AndroidBiometricCachePlugin.kt:328` "Do not restore the 'useless without H' reasoning". Still says "OFF by default" at `:324` — open as 09-14 L-9 |
+| **09-07 M-6** / 09-05 M-5 | MED | `getSecretUnauth` auth-free | #2430 | (doc) — **bypassable**, open as 09-14 M-1 |
+| **09-07 L-1** / 09-05 M-3 | LOW (I4) | Disclosure API stated the wrong Keychain class | #2428 | **grep**: `biometricUnlock.js:536-537` corrected; code at `:200` unchanged |
+| **09-07 L-2** / 09-05 M-4 | — | No attempt counter on password unlock | #2428 | **BY DESIGN**, recorded at `WalletEntry.jsx:919-942` (doc) |
+| **09-07 L-14** / 09-05 L-9 / 08-25 M-8 | LOW (I4) | `WIPE_EXHAUSTED_EVENT` had no consumer; TTL never re-armed | #2428 | **grep**: timer re-arm and `toast.error` at `copySecret.js:126-147` |
+| **09-07 L-3..L-13, L-15** | LOW | Fee ceiling, `estimateGas` `from`, unreachable Approve affordances, spend-limit read fail-open, nested typed-data backstop, dead WC validators, stale RASP comments, KEK plaintext scrub (read side), docstrings, KEK write-method RASP gate, dead passkey assertion | #2428 | (doc) 09-14 status table. Bypasses/siblings open as 09-14 L-4, L-5, L-6, L-7 |
+| **DIFF-0823-VC** | LOW (I4) | User-facing catalogue still said "versionCode 10" | #2473 (`d8679685`) | **grep**: `featureCatalogue.js:569` carries no versionCode "deliberately"; test `featureCatalogue.test.js:102` asserts none. **Closed the right way** — by removing the number, not updating it |
+| **DIFF-0902-SENDCRYPTO-ADDR-EGRESS** | NEEDS-REVIEW | `sender_address` sent to `tip-chat` possibly beyond consent scope | #2461, `626f16b1`, `f0075455` | (doc) — consent copy no longer promises addresses are never sent, and now discloses app language and the per-install ID. Resolved by disclosure, not by removing the field |
+| **#2537** (GEM-0913) | HIGH (I3) | Seven pages read/write shared `veyrnox-appdata` with no decoy gate | `6042722e` | **grep**: all seven carry the gate. Issue still OPEN; decoy session unexercised |
+| **DIFF-0914-SENDCRYPTO-K2** | HIGH (I3) | Decoy send wrote a real txid; decoy read real whitelist/limits; false "already gated" comment | `cc9efadb` | (doc) 09-14 diff |
+| **#2515 / DIFF-0911-R-1** | REGRESSION | TP refusal after a correct PIN counted as a wrong PIN — could reach the 10-strike wipe | #2518 | (doc) 09-14 weekly **[VERIFIED]** `WalletEntry.jsx:1134-1137`, `:878-883` |
+| **#2517 / DIFF-0911-N-2** | NEEDS-REVIEW (I3) | TP opt-in marker survived panic wipe, and the wipe reported clean | #2519 | (doc) 09-14 weekly — `panic.js:255` |
+| **#2494** | MED | Prod grants anon/authenticated CRUD on three rate-limit tables; PUBLIC EXECUTE on five functions (prod only) | #2475 + live apply 09-10 | (doc) — live state, not re-queried |
+| **#2534** | LOW | Three `/r/<code>` readers disagreed on empty path segments | #2534 | **grep**: `workers/referral-redirect/src/index.js:19` now warns against `filter(Boolean)`. **Live Worker redeploy unverified** — see verification table |
+| **DIFF-0909-F-1** | NEEDS-REVIEW | `rc-webhook` comment said keep `verify_jwt` ON; live state OFF (correctly) | #2457 | (doc) |
+| **DIFF-0910 CI** (#2495, #2496, #2492) | MED | Play-closed publish gated on `github.sha` but uploaded a `target_sha` artifact; FTL run lookup by unvalidated display string; golden-path Robo assertions deleted rather than parked | #2501, #2502, #2503 | (doc) |
+| **O-1 (09-08)** | — | Test-only latch reset export claimed to ship in prod | — | **WITHDRAWN** — tree-shaken, verified by build (doc) |
+| Doc-honesty items | — | versionCode 45 in Play doc (#2453); 1.0.1 hold text not amended (#2458); telemetry "zero real-user data" (#2508) | various | (doc) |
 
 ---
 
 ## ⚠️ Checklist drift — standing Step-2 checks that are now wrong
 
-Left unamended these produce **false readings**. Three new this run.
-
 | Check | Why it breaks | Correct check going forward |
 |---|---|---|
-| `H4: does twoFactorGate.js return an opaque error?` | **NEW.** File is `src/lib/twoFactorGate.js`, not `src/wallet-core/`. The old path greps empty, which reads as "open". | Assert against `src/lib/twoFactorGate.js`. Single opaque `WRONG: 'WRONG'` at `:32`, one message at `:77` (grep). |
-| `DIFF-0823-VC: featureCatalogue.js:515 vs build.gradle:25` | **NEW.** Both line numbers moved — now `featureCatalogue.js:562` and `build.gradle:32`. | Assert on content, not line — **and do not restate `build.gradle`'s current value here either, which this cell did (it said 47; by 2026-09-09 it was 48).** Grep both: `src/lib/featureCatalogue.js` still says **versionCode 10**, `android/app/build.gradle` says whatever it now says. The catalogue side is frozen by a test pin (`src/lib/__tests__/featureCatalogue.test.js` asserts `'1.0.1 / versionCode 10'`), so this drift cannot close by itself — moving it is a deliberate copy + test change. |
-| `H11: does ColdSign.jsx hardcode TIER.ALLOW?` | **Third run asking for this to be dropped.** File deleted in #1796. | **Delete the check.** |
-| `M20/H-NEW-4: kek.js combineKek` | Carried. Module is `src/wallet-core/keystore/kek.js`. | `zero(ikm)` at `:248` **and** `:280`; `KEK_DOMAIN` correct at `:72` (grep). |
-| `DIFF-0816-MAINSYNC: IntegrityGate.swift:88` | Carried. File is under `ios/App/CapApp-SPM/Sources/CapApp-SPM/`. | Still `DispatchQueue.main.sync` at `:88` — **still open** (grep). |
-| `M-2 (07-08): hw-send.js Ledger/Trezor` | Both paths deleted in #2032. | Re-point hardware verification at `src/wallet-core/hw/digitalShield.js`. |
-| `H6: BLOCKED_METHODS` | Carried. File is `src/wallet-core/evm/walletconnect/router.js`. | Present at `:48-53` — and `eth_signTransaction` is now **in** the set (grep). Drop the L-2/L-4 exception note. |
-| `C6/H13: CryptoSigning.jsx useRef / copySecret()` | Carried. File rewritten; signing scoped inside `withPrivateKey(index, fn)`. | Assert no `privateKey`/`mnemonic` state and `copyPlain` for copies. |
+| `H3: is PRIMARY_UNLOCK_EQUALIZER_MS ≥ 1500?` | **NEW this run.** The constant was **removed** — `WalletProvider.jsx:231` and `deniabilityUnlock.js:77,191` record that it only bridged ~1.4 of a 3-KDF deficit and was superseded by a KDF-count equalizer. Grepping for it returns only history comments, which reads as "open" or, worse, as a pass on the comment. | Assert the H-1 primary-success cost equalizer in `deniabilityUnlock.js` performs the same KDF count on all three outcomes; the 09-05 weekly counted 5 by hand. |
+| `C3/H7/C4: WalletConnectProvider.jsx` | Carried. File is `src/lib/WalletConnectProvider.jsx`, not `src/components/`. | Same assertions, correct path. Re-verified: `presignGateOrReject` ×7, `proceedAllowed` ×9, `domain.chainId` bound at `:523-544` and pre-modal `:940` (grep). |
+| `H11: does ColdSign.jsx hardcode TIER.ALLOW?` | **Fourth run asking for this to be dropped.** File deleted in #1796; still absent (grep). | **Delete the check.** |
+| `H4: twoFactorGate.js` | Carried. File is `src/lib/twoFactorGate.js`. | Single opaque `WRONG: 'WRONG'` at `:32`, one message at `:77` (grep). |
+| `DIFF-0823-VC` | **Retire.** Closed by removing the number from the catalogue. | Nothing to check; the catalogue test pins absence. |
+| `M20/H-NEW-4: kek.js combineKek` | Carried. Module is `src/wallet-core/keystore/kek.js`. | `zero(ikm)` at `:248` **and** `:280` (grep). |
+| `DIFF-0816-MAINSYNC: IntegrityGate.swift:88` | Carried. Path `ios/App/CapApp-SPM/Sources/CapApp-SPM/`. | Still `DispatchQueue.main.sync` at `:88` — **still open** (grep). |
+| `H6: BLOCKED_METHODS` | Carried. File is `src/wallet-core/evm/walletconnect/router.js`. | Present at `:48`; includes `eth_signTransaction` at `:50` (grep). |
+| `C6/H13: CryptoSigning.jsx` | Carried. Signing scoped inside `withPrivateKey(index, fn)`. | Assert no `privateKey`/`mnemonic` state and `copyPlain` for copies. Not re-checked this run. |
+| `M-2 (07-08): hw-send.js` | Carried. Paths deleted in #2032. | Re-point at `src/wallet-core/hw/digitalShield.js`. |
 
-Re-verified unchanged and still correct this run (grep): **C3** (`presignGateOrReject` ×7,
-`proceedAllowed` ×9 in `WalletConnectProvider.jsx`), **H7** (`domain.chainId` bound),
-**H15/H16** (`setIsStrongBoxBacked(true)` best-effort at `.kt:232`; `AUTH_DEVICE_CREDENTIAL`
-appears **only** in the two comments recording its removal, `:23` and `:95`), **H-NEW-1**
-(`EXPECTED_CERT_SHA256` from `BuildConfig` at `.kt:806`, blank ⇒ fail-closed), **M20**,
-**RASP-A2** (two `?? TIER.BLOCK` sites in `SendCrypto.jsx`).
+Re-verified unchanged and still correct this run (grep): **C3**, **C4** (`RequestApprovalModal.jsx:240-242`
+reads session peer metadata, never `params.proposer`), **H7**, **H6**, **H-NEW-3**
+(`copySecret.js` non-empty `WIPE_REPLACEMENT` at `:111`, `visibilitychange` at `:170`),
+**H-NEW-4** (`keystore/web.js` zeroes H/C/kek/dek on every path, e.g. `:366-383`),
+**H4**, **H15/H16** (`setIsStrongBoxBacked(true)` best-effort at `HardwareKekPlugin.kt:246`;
+`AUTH_DEVICE_CREDENTIAL` only in the two removal comments `:23`, `:95`), **H-NEW-1**
+(`RaspIntegrityPlugin.kt:821` from `BuildConfig`, blank ⇒ fail-closed at `:829`), **M20**,
+**H10** (still **16** `PLACEHOLDER_` entries — **open**), **RASP-A2** (`SendCrypto.jsx:1231`,
+`:1424` `?? TIER.BLOCK`; no `?? TIER.ALLOW`).
 
 ---
 
 ## Still Open ⚠️
 
+### New this run — 09-14 weekly (nothing fixed at this pin)
+
 | ID | Severity | Finding | File:Line | First reported |
 |---|---|---|---|---|
-| **M-1** (09-05) | MEDIUM | **RASP's OS-probe leg has no session latch**, so muting the native probe — including by hanging the bridge until `withFailClosedTimeout` fires — yields INTEGRITY_UNAVAILABLE → WARN, which **is** overridable by biometric + ack on a runtime where that boolean is itself forgeable. The Codex P2 latch covers only the *attestation* leg. **The file contradicts itself:** header `:17-18` promises `tier === TIER.BLOCK` on timeout/exception/shape-drift; inline `:46-47` says UNAVAILABLE → WARN. The inline comment matches the code; the header masks exactly this downgrade. **The doc half should be fixed regardless; the latch half conflicts with the recorded #2276 decision and needs an owner call, not a patch** | `getFreshRaspArtifact.js:17-18` vs `:46-47` (grep, both lines read) | 2026-09-05 |
-| **M-2** (09-05) | MEDIUM | **KEK fast-path stores the RAW DEK, and the plugin's safety comment still argues the pre-refactor model.** `AndroidBiometricCachePlugin.kt:243` still says the cached blob "is useless without H (KEK = HKDF(H ‖ C))". Post-refactor the slot holds the raw DEK, so a stale-but-successful decrypt yields a directly usable key. The confidentiality argument no longer holds — only the gating does — and a future reader weighing a change against that paragraph weighs it against a model the code abandoned | `AndroidBiometricCachePlugin.kt:243` (grep) | 2026-09-05 |
-| **M-3** (09-05) | MEDIUM (I4) | **The designated honest-disclosure API states the wrong Keychain protection class.** `biometricUnlock.js:188` sets `whenUnlockedThisDeviceOnly`; `:524`, inside `biometricUnlockSecurityMode()` — whose stated purpose is to surface the CURRENT protection level — claims `whenPasscodeSetThisDeviceOnly`. The classes differ behaviourally (iOS destroys the latter when the passcode is removed). **The code is correct and deliberate** (the documented class fails `errSecNotAvailable -25291` under palera1n); only the prose is wrong. Two prior weeklies cited this function as evidence of honest disclosure and 08-17 recommended rendering it in the posture UI — which would have shipped the false claim to users | `biometricUnlock.js:188` vs `:524` (grep) | 2026-09-05 |
-| **M-4** (09-05) | MEDIUM (I4) | **The wrong-attempt limit and 10-strike auto-wipe exist on one unlock handler, not both.** `runPinUnlock` (`:1008+`) checks backoff, registers the miss, raises the session floor and fires `panicWipe` at 10. `runUnlock` (`:911-951`) — the password-cohort handler bound to the password field and both escape-hatch buttons — has **zero** counter references. The PIN cohort cannot side-step it, which is what keeps this MEDIUM. The honesty half is sharper: `featureCatalogue.js:180,271` and `deniabilityUnlock.js:13` promise the wipe with **no cohort qualifier** | counter refs at `WalletEntry.jsx:1150,1154,1158,1184`, all inside `runPinUnlock`; none in `911-951` (grep) | 2026-09-05 |
-| **M-5** (09-05) | MEDIUM | `getSecretUnauth` is an auth-free secret retrieval built without `setUserAuthenticationRequired`; the only in-plugin gate is `rejectIfBlockTier`. Its documented safety rests entirely on an out-of-module caller passing `{kekEnrolled:true}` — no `kekEnrolled`, deniability, or biometric check in the plugin. **[AGENT]** — a lead, not re-derived | `AndroidBiometricCachePlugin.kt:176-205,448-459` | 2026-09-05 |
-| **H-2** (08-25) | HIGH | **KDF v2 broke chaff↔real parity — future writes only.** A device that already wrote a mixed footprint under the shipped v2 build stays distinguishable; only a rekey heals it. #2356 made the reveal-time repair fail-safe when the pool is unreadable but does **not** close the distinguisher. Compounded by DIFF-0826: the stealth-pool regression was found to be **wider** than first described, also affecting `secondary`/`tertiary` slots, where a v2 `secondary` blob announces a configured duress PIN | `stealth.js`, `deniabilityKdfProfile.js` | 2026-08-25 |
-| **M-5** (08-25) | MEDIUM | **iOS has no FLAG_SECURE equivalent.** #2354 hardened Android only. Confirmed at this pin: `FLAG_SECURE` appears in `MainActivity.java` and `RaspIntegrityPlugin.kt`; iOS has only the `UIScreen.main.isCaptured` read | `IntegrityGate.swift:82` (grep) | 2026-08-25 |
-| **DIFF-0823-TIER** | MEDIUM (I3) | `bindOwnReferralCode()` egress is **demo-blind** — gated on `isDeniabilitySessionActive()` alone at three sites, covering decoy/hidden but not demo. On a demo session `getLocalState()` reads the **real** user's code from shared localStorage and transmits it to RevenueCat on every app start. **The project has now ruled in code five separate times that a demo-blind gate is a leak; this site is the last holdout** | `TierProvider.jsx:88,134,177` (grep) | 2026-08-23 |
-| **DIFF-0823-CI** | MEDIUM | `ci_post_clone.sh:40` runs `npm install --no-audit --no-fund --legacy-peer-deps` on the path producing the **App Store archive**, so the shipped binary can be built from dependency versions never in `package-lock.json` and never reviewed; `--no-audit` disables the advisory check on that same path. **The script's own instruction — "on green sync flip this back to `npm ci`" — was satisfied on 2026-08-23 and remains unactioned 15 days later** | `ios/App/ci_scripts/ci_post_clone.sh:40` (grep) | 2026-08-23 |
-| **DIFF-0823-BACKUP** | MEDIUM (I4) | Native seed backup marks the wallet **backed up before anything is backed up**. `window.print()` at `:119` is inside the web branch; `setPrinted(true)` and `confirmWalletBackup(selectedWalletId)` at `:122-123` run **unconditionally after it**. On native the user taps a button, gets a toast telling them to write the words down by hand, and the backup nag goes quiet on a device where no backup exists | `WalletSeedQR.jsx:119-123` (grep) | 2026-08-23 |
-| **DIFF-0823-VC** | LOW (I4) | `featureCatalogue.js:562` — the **user-facing** honesty surface — still names "versionCode 10" and says a clean Pre-launch report "for versionCode 10" is pending. `build.gradle:32` is at **47**. Flagged at 33, then 34, now 47: **the drift is widening, not closing** | `featureCatalogue.js:562` vs `build.gradle:32` (grep) | 2026-08-23 |
-| **DIFF-0830-QRSCAN** | LOW | The QR-scan WalletConnect entry calls `validateWcUri()` directly (`WalletConnect.jsx:93`), bypassing `QRScanner`'s 2048-byte payload ceiling. `validateWcUri` itself imposes no length bound — it trims, prefix-checks and index-scans — so topic/query parsing runs unbounded on a hot scan loop | `WalletConnect.jsx:93`, `session.js:135-147` (grep) | 2026-08-30 |
-| **DIFF-0826-SESSTOKEN** | LOW | `ensureSessionToken()`'s writer is unguarded against the pre-hydrate race its reader (`SessionRevocationGuard`) handles; can orphan a session record, making revocation theatre. Practically unreachable — latent fragility | `SecurityCenter.jsx:93` | 2026-08-26 |
-| **DIFF-0902-SHARD-PIN** | NEEDS-REVIEW | Native shard-restore re-wrap dropped a ≥16-char passphrase to an 8-digit PIN; the claimed compensating control (mandatory hardware-KEK re-enrol) does not exist as stated. **Severity re-rated down** by the report's own Correction 2 — the real gap narrows to a permanent-suppression edge case. Tracked #2257 | `RestoreFromShares.jsx:16` | 2026-09-02 |
-| **DIFF-0902-BACKUP-V1-BREAK** | NEEDS-REVIEW | The combined-seal backup rewrite drops the legacy v1/v2 read path, so any pre-existing tester `.enc` is unrestorable. Fails honest, not silently — but it is an owner call, not a defect ruling | `vaultBackup.js` | 2026-09-02 |
-| **DIFF-0902-SENDCRYPTO-ADDR-EGRESS** | NEEDS-REVIEW | `sender_address` and `rasp.tier` added to the advisor tx context and sent to `tip-chat` alongside a persistent device_id. Consent-gated, but plausibly exceeds the disclosed scope — check the consent copy before ruling | `SendCrypto.jsx:1218-1282` | 2026-09-02 |
-| **DIFF-0902-ASSETID-FIRSTMATCH** | NEEDS-REVIEW | Four readers collapse a composite asset id to a bare symbol / first match. **Currently inert** (the duplicate rows were reverted) but a latent funds-misrouting risk if Phase 1b re-lands first. Correction 1 notes PR `74742f47` did **not** close it and removed the only in-code warning about it | `sendWalletSource.js:133`, `balanceDisplay.js:51`, `useReceiveDetector.js:100`, `walletMeta.js:81` | 2026-09-02 |
-| **DIFF-0903-PORTFOLIO-CACHE-STALE** | NEEDS-REVIEW | Cached price data can render in a session that has transitioned to decoy; the hook does not consult the live demo flag. Same D-04 shape | `usePortfolioMarketData.js:19-40` | 2026-09-03 |
-| **DIFF-0825-FASTPATH-DOC** | LOW (I4) | Three comments still describe the fast path as TARGET / opt-in / off-by-default after the code made it default-ON | `fastpathDekCache.js:13-30`, `AndroidBiometricCacheConfig.kt:89`, `FastpathToggle.jsx:4-7` | 2026-08-25 |
-| **DIFF-0829-TIPSECRET** | NEEDS-REVIEW | `TIP_SIGNING_SECRET` was exposed in git history; scrubbed from the tree. Rotation across 3 Workers + 2 Supabase envs is **claimed** (#2152, `docs/tip-signing-secret-rotation.md`) but is operational state no static scan can confirm | `docs/SecurityAdvisor-TIP-integration.md:3` | 2026-08-29 |
-| **DIFF-0905-GEMFILE-UNPINNED** | NEEDS-REVIEW | Unpinned `fastlane` gems and an unpinned Huawei AGC plugin run beside release signing credentials; `Gemfile.lock` gitignored. Fix claimed via #2342, **self-authored and unscanned** | `android/Gemfile`, `ios/Gemfile`, `.gitignore:20,25` | 2026-09-05 |
-| **DIFF-0905-IOS-REPLAYKIT** | NEEDS-REVIEW | iOS ReplayKit plugin appeared ungated like Android's; the scan recorded this as **unfinished analysis rather than cleared**. Likely moot after the 09-07 feature removal, but never actually concluded | `BugReportPlugin.swift` | 2026-09-05 |
-| **L-9** (09-05) | LOW (I4) | `WIPE_EXHAUSTED_EVENT` is dispatched at `copySecret.js:121` and **nothing in `src/` listens** — the only listener is inside a test. The "fail honest" half of the clipboard wipe still does not exist. Second-order: after a failed wipe the 30 s TTL is never re-armed. Carried from 08-25 M-8 | `copySecret.js:56,121` — zero production listeners (grep) | 2026-08-25 |
-| **L-1..L-8, L-10..L-12** (09-05) | LOW | Fee ceiling keyed on a dApp-supplied field with a 1M gas fallback (L-1/L-2); `estimateGas` called without `from`; modal offers an approval affordance the handler can never grant (L-3); `assertPersonalSignAddress` dead and divergent with a 10-case suite reading as coverage (L-4); `scoreWcTxLevel` dead export with an inaccurate comment (L-5); stale RASP wiring comments (L-6); fast-path plaintext `ByteArray`s unscrubbed where the sibling H buffer is scrubbed (L-7); `enrollApi30` docstring claims a native reject the code does not implement (L-8); SendCrypto's `TwoFactorGate` uses the non-`bricked`-aware verifier so an OOM verifier reads as "Incorrect PIN" five times (L-10); `assertPasskeyFactorSatisfied` never called and contradicts shipped behaviour (L-11); equalizer's fifth KDF straddles the visible outcome (L-12, carried, **not attempted** in the 08-25 wave) | various — all **[AGENT]**, none re-derived | 2026-09-05 |
-| **L-3..L-8** (08-25 carried) | LOW | Pre-modal chain check for `eth_sendTransaction`; EMULATOR danger-monotonicity; ≤60 s-stale artifact on seed surfaces; iOS `reject:` arg order; iOS permanent-invalidation route; `changePassword` leaves old PIN cached | per 08-25 remediation table — several marked FIXED there but **not re-derived this run** | 2026-08-17 |
-| **DIFF-0816-REJECT** | LOW | `RaspIntegrityPlugin.kt:146` still carries the `(code, message)` swap that #1835 fixed in its two siblings: `call.reject("PROBE_CANARY_FAILED", "INTEGRITY_UNAVAILABLE", e)`. The pinning test asserts only `toContain('RASP_BLOCK')`, so it could not have caught the original and cannot catch this one. **Note the recurrence risk is proven** — #2086 reintroduced this exact defect at a new site hours after #2066 fixed all 17 | `RaspIntegrityPlugin.kt:146` (grep) | 2026-08-16 |
-| **DIFF-0816-MAINSYNC** | LOW | `checkScreenCapture()` calls `DispatchQueue.main.sync` when off-main; Capacitor dispatches plugin calls off the main thread, so this deadlocks if main is ever blocked on that queue | `IntegrityGate.swift:88` (grep) | 2026-08-16 |
-| **DIFF-0730-MT** | MEDIUM (I4) | `MACHINE_TRANSLATED` is keyed by **locale** and gates the whole "machine translated, not reviewed" banner, but the review that cleared it covered only `security.json` (~249 of ~860 strings). ~71% of each locale — including the biometric backup-exposure acknowledgement and the reset/wipe confirmation in `wallet.json` — is unreviewed MT with no disclaimer. es, pt-BR and fr are all still `false`, and the source comments say `security.json reviewer-approved` **on the locale-wide flag**, so the mismatch is visible in the code | `src/i18n/index.js:83,86,87` (grep) | 2026-07-30 |
-| **DIFF-0809-GOV** | GOVERNANCE | A hand-rolled GF(2⁸) Shamir implementation sits on the path holding a DEK share, against CLAUDE.md's "No custom crypto primitives" rule. **This window supplies the argument for the rule**: the *library* swap (`@stablelib/tss`) is what carried the coefficient-reuse CRITICAL, and the audited wrapper is what caught it. Either way this belongs as a named item in the outstanding independent-audit scope, not something the audit discovers | `src/wallet-core/shamir.js`, `docs/cloud-recovery-shard-spec.md:108` | 2026-08-09 |
-| **DIFF-0822-CODERABBIT** | INFO | `.coderabbit.yaml` routes the full contents of a private repository — `sql/**`, `supabase/functions/**`, native signing code, every future diff on every branch — to a third-party AI service. A deliberate product decision, recorded so the source-code egress surface is on the record | `.coderabbit.yaml` | 2026-08-22 |
-| C-6 / C1 / weekly M-8 | CRITICAL | PIN attempt counter in clearable `localStorage`; no non-clearable backstop. Honestly disclosed in-source as an "Accepted software limit", so no I4 violation. The unwritable-store half is now mitigated by the session floor (08-25 M-9) but not persisted | `pinAttemptGuard.js:110-124`, `WalletEntry.jsx:982` (grep) | 2026-06-26 |
-| C2 | CRITICAL | 8-digit PIN offline-exhaustible on non-KEK vaults | `vault.js`, `keystore/native.js` | 2026-06-26 |
-| H10 | HIGH | Cert pinning — **16** SPKI entries still `PLACEHOLDER_*_REPLACE_ON_DEVICE`, unchanged from the last two runs | `src/wallet-core/rpc/pinning.js` (grep) | 2026-06-26 |
-| H1 / H2 / BIO-01 / H-NEW-5 | HIGH | Biometric unlock cache not OS-ACL bound to the enrollment set. **iOS remains TARGET by owner decision 2026-08-25** — the cache is read *before* H exists (`WalletProvider.jsx:2176-2181`), so all three candidate designs touch the unlock path itself; getting it wrong locks users out of their own wallets | `biometricUnlock.js:84-104` | 2026-06-26 |
-| BIO-02 | HIGH | App-layer biometric gate Frida-bypassable (fundamental; disclosed) | `biometricUnlock.js:18-36` | 2026-07-05 |
-| H5 | HIGH | `captureVerifierSafe` OOM bricks the send gate for the session. Partly mitigated (#1643); 09-05 L-10 shows one surface still uses the non-`bricked`-aware verifier | `credentialVerifier.js:64` | 2026-06-26 |
-| H-3 (07-01) | HIGH | Android biometric lockout → device-credential fallback (accepted deviation) | `BiometricService` | 2026-07-01 |
-| G2-ROOTCERT-PIN / **#2276** | HIGH → accepted residual | Play Integrity root pin has no real-token evidence and pin failures map to INTEGRITY_UNAVAILABLE → WARN, not BLOCK. **CLOSED 2026-09-04 as accepted residual** (owner decision); DoD 3 and DoD 4 deliberately unmet. If reopened, do DoD 4 **before** DoD 3 — tightening first arms the sticky latch into a self-renewing BLOCK on genuine devices. Now also in tension with 09-05 M-1, and that tension is undocumented in both places | `PlayIntegrityJwsVerifier.kt`, `attestation.js:298` | 2026-07-15 |
-| **#2275** | MED (I4) | 17 security e2e assertions were inert. **Largely closed** — 1 `test.fixme` remains and 20 real source-content pins replaced the phantom targets (#2296). Retained at low weight until the last marker clears | `e2e/post-audit-validation.spec.js` (grep) | 2026-09-03 |
-| RASP-A1 | HIGH | RASP browser probe is a module-load snapshot (partly addressed by P2-1) | `browserProbe.js:76` | 2026-07-05 |
-| D-04 | HIGH | I3 egress race: `isDecoy` React state lags the module flag. **Both realisations closed this run**, but the class keeps producing new sites — three Advisor-egress recurrences in this window alone | `WalletProvider.jsx:316-321` | 2026-07-05 |
-| C-7 / **#1111** | MEDIUM | Vault AAD v:3 — rated FIXED by the 08-17 weekly (`native.js:834-846`, PR #1649). Retained at lower confidence; the migration flag's live state was not re-derived this run either | `vault.js:274` | 2026-07-20 |
-| P2-2 / M-K / M-1 (07-08) / PW-01 | MEDIUM | WC signing timing side-channel; passkey `signCount` not persisted; EVM private key unzeroable (ethers v6, accepted residual); in-app guarded wipe requires no re-auth | various | 2026-06-28 → 2026-07-15 |
-| weekly M-4 / M-6 / L-1..L-8 (07-14) | MED/LOW | RASP-blocked WC request fails silently in the UI; RaspSecurity under-claims RASP status; `checkSystemWritable` weak; negative `txGas` unclamped; duplicated chainId helper; stale modal identity; iOS cancel misclassified; Android salt unzeroed | various | 2026-07-14 |
-| L-2 (08-03) | LOW | RASP detection-chain doc drift between the Kotlin plugin's comments and `nativeProbe.js` — and 09-05 L-6 reports the same drift at two further sites | `RaspIntegrityPlugin.kt:35,73` | 2026-08-03 |
+| **H-1** (09-14) | **HIGH** (I3/I2) | TP runs **remote attestation on unlock**, for the primary set only — a network-observable real/decoy distinguisher, against the "NEVER ON UNLOCK" rule in `attestation.js` and the rejected Option C in the egress-decision doc | `theftProtection.js:33,163` (grep) | 2026-09-14 |
+| **H-2** (09-14) | **HIGH** | TP never runs on the **default-ON fast-path biometric unlock** — the phone-snatch case TP exists for | `WalletProvider.jsx` `unlockBiometricOnly`, no TP reference (grep) | 2026-09-14 |
+| **H-4** (09-14) + DIFF-0911-N-1 | **HIGH** (I4) | TP's "biometric" accepts the **device passcode** (lockout or not-enrolled), and on Android defaults to Class-2. Copy and catalogue claim Face-ID-strict / BIOMETRIC_STRONG / Class 3. A JS boolean with no hardware key behind it. **Daily scan flagged this 09-11; unfiled** | `biometric.js:161,168` `allowDeviceCredential: true`; no `androidBiometryStrength` in `src/` (grep) | 2026-09-11 |
+| **H-5** (09-14) | **HIGH** (availability) | TP requires `TIER.ALLOW`, so every WARN — including #2276's accepted `INTEGRITY_UNAVAILABLE` — becomes an unlock refusal whose off-switch is behind the lock. Recovery is reinstall + seed | `theftProtection.js:181` (grep) | 2026-09-14 |
+| **M-1** (09-14) | MEDIUM | Android biometric-cache storage alias not auth-bound; 09-07 M-6 guard bypassable via `getSecret()`. `REQUIRES_USER_AUTH_LEGACY` has no production reader — a JVM test pins a constant that gates nothing | `AndroidBiometricCachePlugin.kt:530-531`; `AndroidBiometricCacheConfig.kt:64` (grep) | 2026-09-14 |
+| **M-2** (09-14) | MEDIUM | Import-time migration **silently re-enables Biometric Unlock** after a Settings opt-out, every cold start | `fastpathUnlock.js:117-164`, `setBiometricUnlockEnabled(true)` at `:131` (grep) | 2026-09-14 |
+| **M-3** (09-14) | MEDIUM | TP and the spend limits it enforces switch off with no step-up | `TheftProtectionSettings.jsx:17,53`; `SecurityCenter.jsx:157-165` [AGENT] | 2026-09-14 |
+| **M-4** (09-14) | MEDIUM (I3) | TP prompts only on primary unlock — coercer-visible real/decoy distinguisher; contradicts the parity reasoning in `twoFactorGate.js:48-56` | `WalletProvider.jsx:1920-1930`, `theftProtection.js:168` [AGENT] | 2026-09-14 |
+| **M-5** (09-14) + DIFF-0912-N-2 | MEDIUM | Over-limit WC sends now cleared by a generic biometric (or passcode, per H-4) prompt; the modal never shows the cap breach. **Daily scan flagged 09-12; unfiled** | `RequestApprovalModal.jsx` — zero `limit` references (grep) | 2026-09-12 |
+| **M-6** (09-14) | MEDIUM | Daily spend cap does not count WalletConnect sends — a dApp can split a drain under the per-tx cap | `txLimits.js:67-77`; WC broadcast path writes no history row [AGENT] | 2026-09-14 |
+| **M-7** (09-14) | MEDIUM (I4) | 09-07 M-1 latch fix incomplete: a stalled bridge hits the outer timeout before either latch runs | `getFreshRaspArtifact.js:88-95`, `nativeProbe.js:81,131-165` [AGENT] | 2026-09-14 |
+| **M-8** (09-14) | MEDIUM (I3/I2) | Fast-path populate and read also compose attestation on unlock (since #2051, missed 09-07) | `native.js:644`, `:1330` (grep) | 2026-09-14 |
+| **L-1..L-9** (09-14) | LOW | TP refusal leaves decrypted container in memory (L-1, [VERIFIED]); TP token not consumed on Digital Shield path (L-2); Argon2id OOM in step-up still counts as wrong PIN (L-3); unparseable-fee bypass of the 09-07 fee ceiling (L-4); Safe `SafeTx` and `address[]` spenders escape the typed-data backstop whose comment claims them (L-5); KEK `enroll`/`clearCredential` ungated by RASP (L-6); plaintext H/DEK residue on write paths (L-7); web RASP artifact can never be ALLOW (L-8); stale comments incl. fast-path "OFF by default" and a `PTRACE_TRACEME` false-positive risk (L-9) | per report; L-9 "OFF by default" re-confirmed at `native.js:1307`, `AndroidBiometricCachePlugin.kt:324` (grep) | 2026-09-14 |
+
+### New this run — daily diffs and Gemini
+
+| ID | Severity | Finding | File:Line | First reported |
+|---|---|---|---|---|
+| **DIFF-0912-N-1** | NEEDS-REVIEW | `partner-referral-codes.sql` drops only the `(text,text,text)` overload of `mint_partner_referral_code`; a surviving `(text,text)` overload defeats the platinum partner-tier default. Re-flagged 09-13 and 09-14; unfiled | `sql/partner-referral-codes.sql:98` (grep) | 2026-09-12 |
+| **DIFF-0911-N-3** | NEEDS-REVIEW (I4) | Boot watchdog's recovery UI uses an inline `onclick`, which the app's own CSP (`script-src 'self' 'wasm-unsafe-eval'`) blocks — so the "user never sees a blank screen" claim of #2500 is false on exactly the path it exists for | `index.html:127` vs CSP at `index.html:32`, `public/_headers:7` (grep) | 2026-09-11 |
+| **DIFF-0914-SOLANA-PIN** | NEEDS-REVIEW (A03) | `@solana/web3.js` is caret-ranged and absent from the H-4 exact-pin / Dependabot-ignore split despite sitting on the SOL signing path; a grouped Dependabot PR bumped it 1.98.4→1.99.0. Same gap reported for `hash-wasm`, `@stablelib/tss`, `@walletconnect/utils` | `package.json:158` `"^1.99.0"` (grep) | 2026-09-14 |
+| **DIFF-SCANLIST-WORKERS** | PROCESS | The daily scan's pattern list does not include `workers/**`; proposed 09-12 and repeated three runs. A run cannot apply it itself — applying it is the handoff | `.claude/scheduled-tasks/veyrnox-daily-security-diff/SKILL.md` (doc, via agent grep) | 2026-09-12 |
+| **GEM-0913-WIDGETS** | LOW (I4) | `/dashboard-widgets` ("Custom Widgets" in navigation) saves `dashboard-widget-config` and **nothing in `src/` reads it** — a control with no effect. Swept by panic wipe | `CustomDashboardWidgets.jsx:22`; only other reference is `panic.js:451` (grep) | 2026-09-13 |
+| **GEM-0913-NEWS** | LOW (I3) | `NewsSentimentPage.jsx` saved-list query ungated; outside #2537's seven | `NewsSentimentPage.jsx:47` (grep) | 2026-09-13 |
+
+### Carried
+
+| ID | Severity | Finding | File:Line | First reported |
+|---|---|---|---|---|
+| **H-2** (08-25) | HIGH | KDF v2 broke chaff↔real parity for already-written footprints; only a rekey heals it. Wider than first described (`secondary`/`tertiary` slots) | `stealth.js`, `deniabilityKdfProfile.js` (doc) | 2026-08-25 |
+| **M-5** (08-25) | MEDIUM | iOS has no FLAG_SECURE equivalent — only the `isCaptured` read | `IntegrityGate.swift:82`, `RaspIntegrityPlugin.m:201` (grep) | 2026-08-25 |
+| **DIFF-0823-TIER** | MEDIUM (I3) | `bindOwnReferralCode()` egress demo-blind — `isDeniabilitySessionActive()` alone at three sites. **Still the last demo-blind holdout**, now outlived two more K-2 fix waves | `TierProvider.jsx:88,134,177` (grep) | 2026-08-23 |
+| **DIFF-0823-CI** | MEDIUM | App Store archive built with `npm install --no-audit --legacy-peer-deps`; the script's own "flip back to `npm ci`" is **22 days** overdue | `ios/App/ci_scripts/ci_post_clone.sh:40` (grep) | 2026-08-23 |
+| **DIFF-0823-BACKUP** | MEDIUM (I4) | Native seed backup marks the wallet backed up before anything is backed up | `WalletSeedQR.jsx:119-123` (grep) | 2026-08-23 |
+| **DIFF-0830-QRSCAN** | LOW | QR WC entry bypasses `QRScanner`'s 2048-byte ceiling; `validateWcUri` has no length bound | `WalletConnect.jsx:93` (grep) | 2026-08-30 |
+| **DIFF-0826-SESSTOKEN** | LOW | `ensureSessionToken()` writer unguarded against the pre-hydrate race | `SecurityCenter.jsx:94` (grep) | 2026-08-26 |
+| **DIFF-0902-SHARD-PIN** | NEEDS-REVIEW | Shard-restore re-wrap drops passphrase to 8-digit PIN; narrowed to a suppression edge case. #2257 | `RestoreFromShares.jsx:16` (doc) | 2026-09-02 |
+| **DIFF-0902-BACKUP-V1-BREAK** | NEEDS-REVIEW | Legacy v1/v2 backup read path dropped; fails honest. Owner call | `vaultBackup.js` (doc) | 2026-09-02 |
+| **DIFF-0902-ASSETID-FIRSTMATCH** | NEEDS-REVIEW | Four readers collapse composite asset id to first match; inert until Phase 1b | `sendWalletSource.js:133` et al. (doc) | 2026-09-02 |
+| **DIFF-0903-PORTFOLIO-CACHE-STALE** | NEEDS-REVIEW | Cached prices can render after transition to decoy | `usePortfolioMarketData.js:19-40` (doc) | 2026-09-03 |
+| **DIFF-0825-FASTPATH-DOC** | LOW (I4) | Fast path described as opt-in/off-by-default after default-ON. **Folded into 09-14 L-9** | `native.js:1307`, `AndroidBiometricCachePlugin.kt:324` (grep) | 2026-08-25 |
+| **DIFF-0829-TIPSECRET** | NEEDS-REVIEW | `TIP_SIGNING_SECRET` in git history; rotation claimed, unverifiable statically | `docs/SecurityAdvisor-TIP-integration.md:3` (doc) | 2026-08-29 |
+| **DIFF-0905-GEMFILE-UNPINNED** | NEEDS-REVIEW | Unpinned fastlane gems beside signing credentials; fix claimed via #2342, self-authored | `android/Gemfile`, `ios/Gemfile` (doc) | 2026-09-05 |
+| **DIFF-0905-IOS-REPLAYKIT** | NEEDS-REVIEW | ReplayKit gating analysis never concluded; likely moot after feature removal | `BugReportPlugin.swift` (doc) | 2026-09-05 |
+| **DIFF-0816-REJECT** | LOW | `(code, message)` swap still present at one site | `RaspIntegrityPlugin.kt:146` (grep) | 2026-08-16 |
+| **DIFF-0816-MAINSYNC** | LOW | `DispatchQueue.main.sync` deadlock risk | `IntegrityGate.swift:88` (grep) | 2026-08-16 |
+| **DIFF-0730-MT** | MEDIUM (I4) | MT disclaimer flag is locale-wide but review covered only `security.json`; es/pt-BR/fr/it/es-419 all `false` | `src/i18n/index.js:81-114` (grep) | 2026-07-30 |
+| **DIFF-0809-GOV** | GOVERNANCE | Custom GF(2⁸) Shamir on the DEK-share path; belongs in independent-audit scope | `src/wallet-core/shamir.js` (doc) | 2026-08-09 |
+| **DIFF-0822-CODERABBIT** | INFO | `.coderabbit.yaml` routes full private source to a third party — recorded decision | `.coderabbit.yaml` (doc) | 2026-08-22 |
+| **#2275** | MED (I4) | 1 `test.fixme` remains | `e2e/post-audit-validation.spec.js` (grep: 1) | 2026-09-03 |
+| **G2-ROOTCERT-PIN / #2276** | HIGH → accepted residual | Play Integrity pin posture WARN. **Now in direct conflict with TP** — 09-14 H-5 turns this WARN into an unlock refusal | `PlayIntegrityJwsVerifier.kt`, `attestation.js:298` (doc) | 2026-07-15 |
+| C-6 / C1 / weekly M-8 | CRITICAL | PIN counter in clearable storage; session floor mitigates, not persisted. Disclosed | `pinAttemptGuard.js:112` (grep) | 2026-06-26 |
+| C2 | CRITICAL | 8-digit PIN offline-exhaustible on non-KEK vaults | `vault.js`, `keystore/native.js` (doc) | 2026-06-26 |
+| H10 | HIGH | **16** SPKI pins still `PLACEHOLDER_*` | `src/wallet-core/rpc/pinning.js` (grep) | 2026-06-26 |
+| H1 / H2 / BIO-01 / H-NEW-5 | HIGH | Biometric cache not OS-ACL bound to enrollment set; iOS TARGET by owner decision. 09-14 M-1 adds the Android storage-alias half | `biometricUnlock.js` (doc) | 2026-06-26 |
+| BIO-02 | HIGH | App-layer biometric gate Frida-bypassable (disclosed). **09-14 H-4 is the same shape applied to a new feature that claims otherwise** | `biometricUnlock.js` (doc) | 2026-07-05 |
+| H5 | HIGH | `captureVerifierSafe` OOM; 09-07 H-2 fixed the send side, 09-14 L-3 the verify side remains | `credentialVerifier.js:128-133` (doc) | 2026-06-26 |
+| H-3 (07-01) | HIGH | Android biometric lockout → device-credential fallback (accepted deviation on the KEK path). **TP reuses this deviation where it is not accepted** (09-14 H-4) | `BiometricService` (doc) | 2026-07-01 |
+| RASP-A1 | HIGH | Browser probe is a module-load snapshot | `browserProbe.js:76` (doc) | 2026-07-05 |
+| D-04 | HIGH | I3 egress race: React `isDecoy` lags the module flag; class keeps producing sites | `WalletProvider.jsx` (doc) | 2026-07-05 |
+| C-7 / #1111 | MEDIUM | Vault AAD v:3 — rated FIXED 08-17; migration flag live state not re-derived | `vault.js` (doc) | 2026-07-20 |
+| P2-2 / M-K / M-1 (07-08) / PW-01 | MEDIUM | WC timing side-channel; passkey `signCount`; EVM key unzeroable (ethers v6); guarded wipe no re-auth | various (doc) | 2026-06-28 |
+| weekly M-4 / M-6 / L-1..L-8 (07-14) | MED/LOW | RASP-blocked WC request UI; RaspSecurity under-claims; misc. **M-4 plausibly closed by 09-07 H-1** (refusals now throw) — not re-derived | various (doc) | 2026-07-14 |
+| iOS re-sign tamper (07-14) | MEDIUM | Not detected; disclosed | `RaspIntegrityPlugin.m:488-529` (doc, 09-14 re-read) | 2026-07-14 |
+| L-2 (08-03) | LOW | RASP detection-chain doc drift | `RaspIntegrityPlugin.kt` (doc) | 2026-08-03 |
+| L-3..L-8 (08-25 carried) | LOW | Several marked FIXED in the 08-25 wave, not re-derived | (doc) | 2026-08-17 |
 
 **Accepted-residual / by-design:** M1–M19, L1–L10 (06-26); M-NEW-1…12 (06-27);
 F-05/F-11/CS-1/SC-1/RASP-2/RASP-4/RASP-5 (07-04);
 D-01/D-02/D-05/D-06/SW-01/SW-02/PW-02/PW-04/PW-05/AL-01/AL-02/AL-06/BIO-03/BIO-05/BIO-06/BIO-07/RASP-A4
-(07-05); `stream-json`/`jayson` (unreachable path, verified empirically; an override breaks
-`jayson`). Consult the source audit for per-item rationale.
+(07-05); `stream-json`/`jayson`; **09-07 L-2** (no counter on password unlock) and the
+disclosure half of **09-07 L-3**; **#2497** FTL Robo never passing (owner waiver 2026-09-10,
+row 5 walkthrough is the substitute). Consult the source audit for per-item rationale.
 
 **Refuted on verification** (recorded so a future pass does not re-file): ROOTED→WARN
 biometric ladder; "Play Integrity uses JWE not JWS"; "heuristic root checks fail open
-per-check"; JS↔native bridge integrity; `HARDWARE_FACTOR_DEGENERATE` wipe-counter miscount;
-2026-07-20 weekly H-2 (ColdSign — file since deleted); the 08-23 Gemini sweep's "corrupted
-JSDoc tags" (fabricated).
-**New this run:** the 09-05 weekly's **"fast-path cache survives passkey registration"** —
-the read-path gap is real (`unlockBiometricOnly` has six gates and no passkey check) but
-the consequence is not: `passkey.js:110-134` clears the fast-path slot on any registration
-flip, with a comment naming this exact scenario. **Residual kept, narrower than the
-original claim:** that clear is fire-and-forget with errors swallowed, and the read path has
-no gate behind it, so a failed clear leaves a readable cache with no backstop.
-**Four of the six 09-06 Gemini findings are fabricated or misfiled** — three CRITICALs
-claiming `SeedVerification.jsx` / `SeedGrid.jsx` / `SeedInputGrid.jsx` lack their own
-deniability gate (they are presentational children; the gate sits upstream), and one LOW
-calling `SeedVerification.jsx` a dead file with no imports (it has six importers and a
-test). Every line number in that sweep was a corpus byte-offset, not a file line.
+per-check"; JS↔native bridge integrity; `HARDWARE_FACTOR_DEGENERATE` miscount; 07-20 weekly
+H-2 (ColdSign, deleted); 08-23 Gemini "corrupted JSDoc"; 09-05 "fast-path cache survives
+passkey registration" (narrow residual kept); 09-06 Gemini's three `Seed*` CRITICALs and dead
+`SeedVerification.jsx`.
+**New this run:** 09-08 **O-1** (test-only export ships — tree-shaken); 09-13 Gemini's
+**two "dead file" LOWs** (`CorrelationMatrix.jsx` routed at `/correlation`,
+`CustomDashboardWidgets.jsx` at `/dashboard-widgets`); 09-13 Gemini's **`Dashboard.jsx`
+CRITICALs** — the ungated queries and localStorage write sit inside `DemoDashboard`, behind
+`if (!DEMO) return <WalletPortfolioPage />`, and run on the in-memory demo client. The sweep's
+own notes first rated `Dashboard.jsx` the highest-impact instance and corrected it the same
+day (#2538). Every line number in the 09-13 sweep was again a corpus offset (1102–15214 on
+files ≤541 lines).
 
 ---
 
@@ -261,234 +288,92 @@ test). Every line number in that sweep was a corpus byte-offset, not a file line
 
 | ID | Finding | Why verification is needed |
 |---|---|---|
-| **H-3 PRODUCTION REVOKEs** | The database every prior analysis queried was *staging* (`nszlbcmcysftwyudthjz`, which is **named** `veyrnox-prod`). Production is `jwstkrtslotnjyerzzsi`. STAGE 1 of `sql/live-project-hardening-2026-08-07.sql` was applied; **STAGE 2 remains commented out.** Whether `SUPABASE_SERVICE_ROLE_KEY` is set on the Pages project, and in which scope, is dashboard state. Re-verify against the ref the shipped bundle connects to, never a project name |
-| **`ENVIRONMENT` / service-role scope** | `wrangler.toml` declares the variable and `[fn].js` 503s in production without the key, but the canary lane publishes a **third standing public deployment** on the same Pages project. If the key is bound outside the Production scope, the allowlisted RPCs are callable without RLS from an extra hostname. `ALLOWED_RPCS` is closed and rate-limits fail closed — an open question, not a demonstrated defect |
-| **`register_referral_code` / `ai-referral-attribution-plan-family.sql`** | Return-type change `void`→`text` read by `referralApi.js`, and a `CREATE OR REPLACE` preserving the H-3 REVOKEs — both **CODE only, not yet run against either project**, per the standing rule that production DDL follows the merge |
-| **RC referral chain end-to-end** | #1703 and #1704 were fixed **together** in #1955 — the coordinated release CLAUDE.md demanded. Whether the chain grants correctly needs a real purchase plus RC dashboard webhook configuration, neither of which has happened |
-| **`TIP_SIGNING_SECRET` rotation** | Claimed across 3 Workers + 2 Supabase envs (#2152). Operational state; unverifiable statically. Until confirmed, treat the historical git-history exposure as live |
-| **`tip-chat` `vault:` strip deploy state** | Stripped in repo state (#1761); no in-tree evidence `tip-chat` was redeployed |
-| **RASP on a Play-delivered install** | `detectTamper()` on a real internal-track install. Still gated by the 1.0.1 pre-submission hold. No Play Pre-launch report exists for **any** versionCode; #1960 closed 2026-09-04 as accepted residual, with Firebase Test Lab named as the substitute gate. **Corrected 2026-09-09: this cell said "(265 UI actions clean on versionCode 41)" — false. No Robo matrix has ever passed; 41, ~44 and 48 all returned `Failed` / `Test failed to run` after running to their timeout with no tool results. The substitute gate has no passing evidence either, so #1960's closure rests on a run that did not happen. Detail: `docs/RELEASE-v1.0.1-PLAY-SUBMISSION.md` gate 3.** |
-| **1.0.1 golden path on an untouched device** | Play rejected build 5 because Create Wallet failed on stock hardware. Unresolved by any static pass |
-| **iOS App Attest, as shipped** | New. #2282/#2285 fixed `appattest-environment` per build configuration, but **not archive-verified**. If codesign rejects `production`, delete the key (omission also means production) rather than reverting to `development` |
-| **Fast-path × duress** | **The single largest coverage gap on the auth surface** per the 08-25 weekly: two fast-path test files, zero mentions of duress/panic/decoy. #2071 wrote the three tests the old comment falsely claimed existed — device behaviour still unexercised |
-| **iOS native wave (#2094)** | **Every iOS native change in the 08-25 wave was written, reviewed and merged without being compiled or run on hardware.** Three separate claims rest on `errSecItemNotFound` being what an enrolment change produces; cancel-vs-mismatch attribution must be tested in both directions; and that `HardwareKekPlugin.m` compiles at all is itself item 3 |
-| **Android Enclave alias `.v1`→`.v2`** | `EnclaveKeySpecConfig.kt:54` bumped the alias with no legacy lookup. The in-file comment says existing users hit an absent `.v2` alias and re-enrol KEK on their next PIN unlock — a documented migration path, never exercised on a device that holds a `.v1` key |
-| **Digital Shield** | Sole hardware-wallet path since #2032. Response verification reads strong — per-request session TTL, single-use replay guard, SHA-256 binding hash, per-chain signer proof, per-input PSBT compare, and now `SIGHASH_ALL` enforcement on Keystone BTC (#2272) — but no physical device has ever signed through it and no txid exists |
-| **iOS XCUITest signal** | Of 30 consecutive runs: **22 cancelled, 7 running, 1 success** — `concurrency.cancel-in-progress` on this repo's merge rate, with `continue-on-error: true` reporting green regardless. A suite that completes once in thirty attempts and reports green when it fails is not telling anyone anything. Owner call, disclosed not fixed |
-| **Firebase tripwires** | Android artifact-level guards (#1782) live in `workflow_dispatch`-gated jobs and have never executed |
-| **iOS webview payload freshness** | `ios/App/App/public` is gitignored and `xcodebuild archive` does not rebuild it. Compounded by `ci_post_clone.sh` building the archive from an unpinned `npm install` |
-| H-NEW-1 / H10 / iOS App Attest / C-1 v2→v3 / C-3 / C-4 | APK tamper detection on a repackaged APK; 16 placeholder SPKI pins + MITM-proxy validation; entitlement wiring; Android KEK salt migration; native H residue on both platforms (heap dump — and the unzeroable `String` copy means a dump would still be expected to yield H) |
-| weekly H-1 (07-14) / 2026-07-20 weekly H-1 | Timing equalisation and WC session-approval BLOCK — both code-correct, both unmeasured on a hooked device. The 09-05 weekly verified the KDF ledger by hand at 5 derivations on all three outcomes; wall-clock is still unmeasured |
-| M13 / M14 / RASP hostile-device | FLAG_SECURE + WebView CDP disable on a real release build; rooted/jailbroken/Frida session with an on-chain txid |
-| Safety Plus IAP | **Corrected this run.** One real production purchase exists (`safety_plus_monthly_v2`, App Store, 5.99, active since 2026-08) — but `original_offer_type: "No offer"`. **No promotional-offer path has ever been exercised by a real purchase, on either platform**; none of the 10 store-side offers is verified end to end |
-| `@scure/bip32` zeroization | Whether the `privateKey` getter returns the internal buffer or a copy was **not** verified — package body absent from the checkout |
-| Independent audit | Entire KEK + vault-cipher + Shamir + Digital Shield + S1–S4 surface. **Still outstanding** — no internal, ECC-skill, Codex, Gemini, or CodeRabbit pass substitutes |
+| **Theft Protection, end to end** | **New.** H-2 (fast-path silent DEK read inside the Keystore auth window), H-4 (passcode after five Face ID failures passes), H-5 (prevalence of WARN on genuine devices), M-4 (visible prompt difference). Every claim is code-path only; the reachability arguments are [AGENT] |
+| **WC refusal-then-retry broadcast (09-14 H-3)** | Whether `@walletconnect/sign-client` 2.24.0 really throws "Record was recently deleted" on the post-broadcast respond, leaving the request queued, is [AGENT] from `node_modules`. A testnet dApp session with a cancelled-then-approved request would settle it — and would produce a txid if it is real |
+| **#2537 / SendCrypto K-2 in a decoy session** | **New.** Both fixes are unit-level. No decoy or hidden session has opened the seven pages or sent from `SendCrypto` since |
+| **`process.version` shim on cold Send parse** | **New.** 09-11 N-4 argues the Send chunk blanks again; it has not been reproduced on the 1.0.1 builds since #2500 |
+| **Referral Worker redeploy** | **New.** #2534 fixed `/r/<code>` path parsing in source; no CI job deploys `workers/referral-redirect`, so the live Worker may still run the pre-fix code |
+| **`partner-referral-codes.sql` live overloads** | **New.** Whether the stale `(text,text)` overload of `mint_partner_referral_code` exists on production and staging is a catalogue query, not a grep. Enumerate all three projects from the API |
+| **H-3 PRODUCTION REVOKEs** | STAGE 2 of `sql/live-project-hardening-2026-08-07.sql` still commented out. Re-verify against the ref the shipped bundle connects to |
+| **`ENVIRONMENT` / service-role scope** | Whether `SUPABASE_SERVICE_ROLE_KEY` is bound outside the Pages Production scope (canary lane) |
+| **`register_referral_code` / `ai-referral-attribution-plan-family.sql`** | CODE only per the prod-DDL-after-merge rule |
+| **RC referral chain end-to-end** | Armed 2026-09-08; #2527 records **zero redemptions ever on production**. A real sandbox purchase is still the only verification |
+| **`TIP_SIGNING_SECRET` rotation** | Claimed (#2152); operational state |
+| **`tip-chat` `vault:` strip deploy state** | No in-tree evidence of redeploy |
+| **RASP on a Play-delivered install** | No Play Pre-launch report for any versionCode; no FTL Robo matrix has ever passed (#2497 waived 09-10). Owner stock-device walkthrough is the sole evidence |
+| **1.0.1 golden path on an untouched device** | Unresolved by any static pass |
+| **iOS App Attest, as shipped** | `appattest-environment` per build config (#2282/#2285); not archive-verified. **09-14 H-1 means TP will exercise it at unlock** |
+| **Fast-path × duress** | Largest auth-surface coverage gap per 08-25; 09-14 M-8 adds an attestation-on-unlock question for decoy sets |
+| **iOS native wave (#2094)** | Written and merged without compile or hardware run |
+| **Android Enclave alias `.v1`→`.v2`** | Migration path never exercised on a device holding `.v1` |
+| **Digital Shield** | No physical device has signed through it; no txid. 09-14 L-2 adds a TP token-consumption gap on this path |
+| **iOS XCUITest signal** | #2543: ~37% failure rate with five signatures; advisory-only by decision (#2561) |
+| **Firebase tripwires** | `workflow_dispatch`-gated; never executed |
+| **iOS webview payload freshness** | Gitignored payload + unpinned `npm install` on the archive path (DIFF-0823-CI) |
+| H-NEW-1 / H10 / C-1 v2→v3 / C-3 / C-4 | Repackaged-APK tamper; 16 placeholder pins + MITM validation; KEK salt migration; native H residue (09-14 L-7 widens the residue set) |
+| weekly H-1 (07-14) / 07-20 H-1 / 09-07 M-4 | Timing equalisation and visible-outcome paint timing — code-correct, unmeasured on a hooked device |
+| M13 / M14 / RASP hostile-device | FLAG_SECURE + CDP disable on release build; Frida session with txid |
+| Safety Plus IAP | One real full-price purchase; **no promotional-offer path exercised** on either platform |
+| `@scure/bip32` zeroization | Getter copy-vs-buffer not verified |
+| Independent audit | Entire KEK + vault + Shamir + Digital Shield + Theft Protection + S1–S4 surface. **Outstanding** — no internal, ECC, Codex, Gemini or CodeRabbit pass substitutes |
 
 ---
 
 ## Regressed 🔴
 
-**No finding is currently in a regressed state**, down from two at the start of this
-window and one at first writing. Both prior Base44 regressions closed (above), and
-DIFF-0906-BUGREPORT-SQL-POLICY closed 2026-09-07 — see below.
+| ID | Finding | What broke |
+|---|---|---|
+| **09-14 H-3** (from 09-07 H-1 fix, #2422) | A refused WC request stays queued with Approve enabled; a retry passes the gates, signs and broadcasts after the dApp was told "rejected". With sign-client's post-broadcast respond throwing, each further tap may broadcast again with a fresh nonce [AGENT] | #2422 made every gate refusal `throw` so the user sees it (correct, I4). The queue filter in all three signing wrappers and `handleRejectRequest` runs **after** the awaited handler, not in a `finally`, so the throw skips it (grep: `WalletConnectProvider.jsx:1096`, `:1115`, `:1211`, `:1216`). The 09-07 report's own refutation of this path relied on the filter running "unconditionally" — true before its fix, false after. **TP (`4ba80bbf`) made it reachable by a routine action**: cancel Face ID once, approve again. **Unfiled.** |
+| **DIFF-0911-N-4** (fix `0dc4f673`/#2435 reverted by `bf68a1be`/#2500) | `process.version` shim removed; `bs58check`'s bundled `readable-stream` reads `process.version.slice(0, 5)` at module init, which is what blanked the Send page on cold parse | #2500 rewrote the `process` shim in `src/main.jsx` for a blank-on-launch guard and dropped the `version` field #2435 had added. At this pin: `{ env: {}, browser: true, versions: {}, platform: 'browser' }` (grep, `:24-26`); `git show 0dc4f673 -- src/main.jsx` shows the removed `globalThis.process.version = ''`. Flagged by the daily scan 09-11, re-confirmed 09-13 and 09-14. **Unfiled.** Not reproduced on device — listed in the verification table |
 
-### DIFF-0906-BUGREPORT-SQL-POLICY — CLOSED 2026-09-07
-
-[#2417](https://github.com/VEYRNOX/veyrnox/issues/2417), closed. `sql/bug-report-upload.sql`
-created `bug_reports_service_role_all ON storage.objects FOR ALL USING
-(bucket_id='bug-reports') WITH CHECK (bucket_id='bug-reports')` with **no `TO service_role`
-clause**, so it applied to PUBLIC — a *permissive* policy over that bucket for anon and
-authenticated, where the intent was denial. `service_role` bypassing RLS was correct but
-irrelevant: *because* it bypasses, the policy's only observable effect was on the roles it
-was meant to exclude. **The comment defending it (`:184-187`) was the hazard**, because it
-is what a future reader would have weighed a change against.
-
-**Closed by [#2418](https://github.com/VEYRNOX/veyrnox/pull/2418)** (merged `56e2f07b`),
-which drops the policy rather than adding `TO service_role` — deny-by-default is the
-stronger control. **[#2421](https://github.com/VEYRNOX/veyrnox/pull/2421) deletes the file
-outright and is in flight at this pin; this row does not depend on it either way.**
-
-**Live-project audit: the migration was never applied. Anywhere.** This is the negative the
-issue existed to establish, recorded here because the previous version of this row
-predicted it was "the one nobody writes down":
-
-| Project | Ref | Bucket | Policy | Tables | `storage.objects` RLS |
-|---|---|---|---|---|---|
-| Veyrnox PRODUCTION (live) | `jwstkrtslotnjyerzzsi` | absent | absent | absent | enabled |
-| veyrnox-STAGING (not production) | `nszlbcmcysftwyudthjz` | absent | absent | absent | enabled |
-| veyrnox-staging (us-east-2) | `yrqzwqywxfesmbvhzjgj` | absent | absent | absent | enabled |
-
-The vulnerable policy existed only in repo source. No corrective DDL was needed against any
-project, and no bucket contents exist to purge.
-
-**The audit's first pass enumerated two projects; the account has three.** #2417's audit
-comment, #2418 and #2421 all say "both projects" / "either live project", naming only
-`nszlbcmcysftwyudthjz` and `jwstkrtslotnjyerzzsi`. `yrqzwqywxfesmbvhzjgj` — ACTIVE_HEALTHY,
-created 2026-07-29 — was never queried until the 09-07 branch review queried it. **The
-conclusion survived the widening; the method did not.** Two of the three projects carry
-"staging" in their name and one is *named* `veyrnox-STAGING (not production)`, so a
-hand-listed pair reads as exhaustive when it is not. Standing rule for any future
-live-backend audit: **enumerate projects from the API, never from memory or from a prior
-report's ref list.** Same failure as the grep-list findings in this corpus — a search list
-is a floor, not a ceiling — applied to infrastructure instead of source.
-
-**The sanity check the file offered could not detect the defect.** `SELECT * FROM
-storage.objects WHERE bucket_id = 'bug-reports'` (`:189-191`) returns zero rows for `anon`
-on an empty bucket whether or not the policy is correct, so it passed vacuously — plausibly
-why the defect shipped past review. Same class as 08-25's `spyOn` that patched an object CI
-did not resolve and 08-26's `fastpathButtonVisible = false`: **a check that cannot fail
-reads as coverage and is not.**
-[#2420](https://github.com/VEYRNOX/veyrnox/pull/2420) rewrote that block to assert
-`relrowsecurity` first and wrap the role switches in `BEGIN`/`ROLLBACK` (`SET LOCAL` outside
-a transaction warns and is discarded, so the switches were no-ops and the assertions ran as
-the editor's own role). It **merged** 2026-09-07 (`c0178ff5`).
-
-**The lesson is recorded here, not in the file, because the file does not survive.** #2420
-improved the verification block and #2421 deletes the file that contains it — the two PRs
-edited and removed the same 250 lines. #2420 landed first, so #2421 simply deletes the
-improved version; there was no conflict to resolve, and no reason to sequence them the
-other way. **The net effect is that the better check existed on `main` for a matter of
-minutes and then was deleted, which is the correct outcome for a migration whose feature is
-gone but a poor place to leave a durable lesson.** Hence this paragraph.
-
-### This section replaced #2424, which had closed the same finding 30 minutes earlier
-
-**[#2424](https://github.com/VEYRNOX/veyrnox/pull/2424) merged 2026-09-07 17:54:55
-(`8397057c`) and its content is no longer in this file.** It was a 29-line `ADDENDUM` block
-above the Regressed table, written by a different session, marking DIFF-0906-BUGREPORT-SQL-POLICY
-closed. [#2423](https://github.com/VEYRNOX/veyrnox/pull/2423) (`71b24ca8`) merged 30 minutes
-later, rewrote the same region, and dropped it. **Recorded because a merged change vanishing
-one commit later, unremarked, is indistinguishable from an accident.**
-
-What was in #2424 and where it went:
-
-| #2424 said | Status here |
-|---|---|
-| The finding is closed; #2418 dropped the policy rather than adding `TO service_role`, which is right because `service_role` bypasses RLS | Kept — above, in this section's opening |
-| `DROP POLICY IF EXISTS` was retained, which is what corrects a project that had already applied the old version | Dropped as moot — #2421 deleted the whole file |
-| Verified on `origin/main`: open policy 0 occurrences, `relrowsecurity` and `BEGIN`/`ROLLBACK` present | Dropped as moot — same reason; that file no longer exists |
-| **"Both live projects were queried … absent on Staging and Production"** | **Superseded, and this is the point.** The account has three projects. #2423 replaced this with the three-project table above |
-| Keep the pinned analysis intact; a later fix does not make a finding retrospectively wrong | Kept as a convention — every correction in this file appends with the superseded wording quoted |
-
-So nothing durable was lost, and the one claim that was **wrong** — two projects, not three —
-did not survive into `main`. But the resolution was a wholesale replacement rather than a
-merge of the two, and no conflict was raised, because the two sessions edited overlapping
-prose that git reconciled without complaint.
-
-**Third instance of the concurrent-duplicate-work pattern**, after #1414/#1415 (92 seconds
-apart) and the 2026-09-03 S-2 collision (~30 minutes). Here the gap was 60 seconds between
-#2424 and #2421 merging. The standing rule from those — *when your change collides with one
-that just landed, read the other one before resolving* — held: #2424 was read, and the parts
-worth keeping were kept. **The rule that is still missing is a way to notice the collision
-before writing**, since nothing in `git status`, the PR list at the time of branching, or CI
-surfaces "another session is editing this file right now."
-
-**A related near-miss worth naming, since it cost nothing only by luck.** At 18:57 —
-**33 minutes after #2423 merged** — a session pushed `3ce9577c` to that PR's branch, merging
-`origin/main` into an already-merged branch. The push succeeded, because pushing to the
-branch of a merged PR is not an error. That is the exact shape of the #1774 failure this
-tracker already records: **a successful push is not evidence the change shipped.** Confirm by
-reading content back out of `origin/main`, never from the push output or a green check.
-
-Nothing was orphaned here, but establishing that took two attempts and the first one was
-wrong, which is the more useful half of the story. `git diff origin/main 3ce9577c` lists
-seven differing files including RASP source, and read through a truncating pipe
-(`--stat | tail -5`) it looks like a small unrelated delta. **Neither reading answers the
-question.** A diff between a branch tip and `main` conflates "the branch has work `main`
-lacks" with "`main` has moved on" — and here it was entirely the latter (#2425 and #2426
-landed after the push). The question is reachability, and only a reachability command
-answers it:
-
-```
-git log origin/main..3ce9577c --oneline   # commits in the branch, absent from main
-```
-
-That returned only the branch's own two commits, both already in `main` by content via the
-squash. **Use `git log <base>..<tip>` to ask what is orphaned; `git diff` answers a
-different question and a truncated `git diff` answers none.** Same family as this file's
-`grep -F` entry: a command that returns a confident, wrong answer is worse than one that
-returns nothing.
-
-Both regressions in the previous window (`WalletConnectProvider` and `WalletPortfolioPage`
-Base44 seals) are closed. Historical regressions on record (re-fixed; preserved, not swept
-away): the release/debug cert guard (**four** regressions, survived ~15 merges because its
-test was gated to `main`-only so no PR could fail on it); the iOS `reject:` arg swap
-(re-introduced by #2086 at a new site hours after #2066 fixed all 17, caught by a required
-tripwire, repaired in #2085); telemetry consent; C-1 KEK salt binding; C-01 RASP pre-sign
-gate; ECC F-P3-3; Digital Shield send-gate bypass; `screenAssetContract` I3 egress.
+**Both regressions share a shape with the closed ones before them: a fix rewrote a block
+and dropped a property the previous version guaranteed, and nothing pinned that property.**
+#2422 had tests that a refusal throws; none that a refused request leaves the queue. #2435
+had no test that `process.version` is a string. The historical record — the release-cert
+guard (four regressions), the iOS `reject:` arg swap, telemetry consent, C-1 salt binding,
+C-01 pre-sign gate, ECC F-P3-3, Digital Shield send-gate bypass, `screenAssetContract` I3
+egress, and the bug-report SQL policy (closed 09-07) — is in `git show
+acbb5ebe:docs/audit-findings-tracker.md`.
 
 ---
 
 ## Patterns worth naming, from this window
 
-**1. The vulnerability was not in the diff — the excuse for a test change was.** The
-Shamir CRITICAL was reached by disbelieving a one-line rationale for making a test
-deterministic, then reading the library's own source to check the arithmetic. Nothing in
-the code diff was wrong. This is the strongest argument yet for the repo's standing
-"align tests with the new flow" smell: **a test edit is a claim about the code, and a claim
-with implausible numbers in it is a lead.**
+**1. A new security feature that calls an existing gate inherits the callee's contract,
+not its name.** The 09-14 weekly's own framing, and the strongest single lesson of the
+window: `getFreshRaspArtifact` composes attestation, `verifyBiometric2fa` accepts the
+passcode, `TIER.ALLOW` excludes the WARN that #2276 was accepted at. Each fact was written in
+the callee's header. Review for a feature like TP should read every imported gate's header
+as part of the diff.
 
-**2. Deleting a feature closes its code findings and none of its deployed state.** Three
-bug-report findings died with the feature; the SQL policy did not, because it may already
-live in a database. A removal is not a rollback. **Anything a feature applied to an
-external system — a migration, a bucket, a webhook, a dashboard setting — survives the
-commit that removes the feature**, and the deletion makes it *less* visible, not more.
-The audit this forced came back negative — the migration had never run on any project — but
-**the negative is the result of asking, not a reason not to ask.** The lesson stands on the
-question being mandatory, not on which way it resolved; and the first pass at answering it
-checked two of three projects, so the widening mattered even though the verdict did not
-change.
+**2. Report-only findings wait; filed findings get fixed.** #2515 and #2517 were each fixed
+within hours of being filed. DIFF-0911-N-1 (passcode fallback), DIFF-0911-N-3 (CSP-blocked
+watchdog), DIFF-0911-N-4 (reverted shim), DIFF-0912-N-1 (SQL overload) and DIFF-0912-N-2
+(over-limit by passcode) were each re-confirmed by up to three consecutive daily scans and
+none has an issue. The daily scan is not permitted to file; nothing else in the loop does it
+for the scan. **The scan-list `workers/**` handoff is the same gap in a different place.**
+This tracker can only record the backlog; it cannot file it either.
 
-**3. A fabricated finding is now the majority output of one tool.** The 08-23 Gemini sweep
-produced 4 findings, 1 fabricated. The 09-06 sweep produced 6, of which **4 are fabricated
-or misfiled** — including three CRITICALs resting on the same misreading (a presentational
-child component "lacks" a gate that sits upstream in its parent). Every line number in both
-sweeps was a corpus byte-offset. The sweeps remain worth running — GEM-0906-1/2 were real,
-fixed in #2375, and were the K-2 two-chokepoint gap recurring — but **the ref-check is not
-overhead around the tool, it is the load-bearing half of it.** An unverified sweep folded
-into this tracker would have created three permanent phantom CRITICAL rows.
+**3. A fix that closes an audit finding can create the next one, and the next audit is
+what finds it.** 09-07 H-1 → 09-14 H-3; 09-07 M-1 → M-7; 09-07 M-6 → M-1. All three were
+merged with regression tests for the defect they fixed and none for the invariant the old
+code maintained incidentally. The 09-14 weekly caught all three only because it re-derived
+each prior finding rather than carrying its status — worth keeping as a standing rule for
+the weekly.
 
-**4. A truncated grep nearly filed a false FIXED, in this very run.** Checking
-DIFF-0823-BACKUP, `grep -rn 'confirmWalletBackup' src/ | head -5` returned five hits, none
-in `WalletSeedQR.jsx`, which reads exactly like "the call is gone". A scoped re-check found
-**two** hits in that file — `:123` still calls it unconditionally after the web-only
-`window.print()`. The finding is open and was one `head` away from being recorded closed.
-CLAUDE.md's rule is that a search list is a floor; the sharper form is that **a truncated
-result is not a search result at all**, and `| head` on a verification grep is the same
-class of error as the `-F` bug: it fails silently, in the dangerous direction.
+**4. Gemini's signal-to-noise held steady, and its self-correction is now part of the
+output.** 09-13: one real class (seven pages, fixed same day), one real LOW, the rest refuted —
+including CRITICALs on demo-only code. The sweep's notes rated `Dashboard.jsx` the
+highest-impact instance, then withdrew it the same day because **a page file's default
+export is not necessarily the component a user sees**. That generalises beyond Gemini: before
+rating any `src/pages/` finding, read `export default` and follow any `DEMO` split.
 
-**5. Documentation defects are now the plurality of open findings, and three of them sit
-inside the honesty machinery itself.** 09-05 M-2 (a KEK comment arguing a model the code
-abandoned), M-3 (the designated disclosure API stating the wrong Keychain class), and M-1
-(a file header promising BLOCK where its own inline comment and code say WARN) are all
-prose, and all three are load-bearing: two prior weeklies cited M-3's function *as evidence
-of honest disclosure*, and 08-17 recommended rendering it in the posture UI, which would
-have shipped the false claim to users. **A wrong comment in a security file is not a
-cosmetic defect when the comment is what the next change gets weighed against.**
-
-**6. The honesty check's own false negatives are the best documentation of the search
-lesson.** `docs/honesty-check-2026-08-31.md` flagged two shipping features as unimplemented
-and was wrong both times — Vigil-over-simulation and phishing-domain detection are both
-BUILT. Root cause in both: searching marketing verbs (`advisor.*simulation`, "detects")
-instead of implementation nouns (`TransactionIntelligencePanel`, `advisorTxContext`,
-`knownBadDapps`, `phishingFeed`), plus conflating the address-keyed `threatIntelStore.js`
-with the domain-keyed phishing store. Zero code changes; the report's value was the
-correction.
-
-**7. Two audit passes now disagree in the open, and that is an improvement.** 09-05 M-1
-recommends giving the RASP OS leg the same session latch attestation has; issue #2276
-deliberately keeps pin/chain failures at WARN *because* that latch would self-renew into a
-BLOCK on genuine devices. The weekly **declined to adjudicate**, recorded the tension, and
-split off the documentation half as independently fixable. Compare the previous window's
-failure mode — a closed finding kept alive by a document nobody re-derived. **A recorded
-disagreement outperforms a confident carried row.**
-
-**8. `[VERIFIED]` vs `[AGENT]` should propagate into this tracker.** The 09-05 weekly is
-the first to separate "the coordinating session re-derived this" from "an agent reported it
-with a refutation trail". That distinction is exactly what the `(grep)`/`(doc)` split does
-here, and it caught something: the one finding that turned out to be REFUTED was an
-`[AGENT]`-class lead whose author flagged that the compensating control might live outside
-its file set — **the honest hedge is what made the refutation cheap.**
+**5. A standing checklist rots even when the code it checks is healthy.** H3's
+`PRIMARY_UNLOCK_EQUALIZER_MS` was removed because a better control replaced it, and a grep
+for the old name returns only the comments recording its removal. That is the same
+absence-check-matches-its-own-documentation failure CLAUDE.md records three times, arriving
+through the runbook instead of a test pin. This is the fourth run to ask for the ColdSign
+check to be deleted; the runbook has not changed.
 
 ---
 
@@ -496,8 +381,7 @@ its file set — **the honest hedge is what made the refutation cheap.**
 on-chain, or live-backend verification. "FIXED" = the code change is present on
 `origin/main`; it is not a claim the control is verified working. SQL migrations are
 counted as unexecuted text until their own verification queries have been run against the
-**live project confirmed from the shipped client bundle**, not from a project name — and,
-per this run's Regressed row, a migration's removal from the repo is not evidence of its
-removal from a database. The independent third-party audit remains outstanding and is not
-substituted by any internal, ECC-skill, second-model (Codex), long-context (Gemini), or
-third-party-reviewer (CodeRabbit) pass.*
+**live project confirmed from the shipped client bundle**, not from a project name. The
+independent third-party audit remains outstanding and is not substituted by any internal,
+ECC-skill, second-model (Codex), long-context (Gemini), or third-party-reviewer (CodeRabbit)
+pass.*
