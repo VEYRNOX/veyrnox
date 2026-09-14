@@ -49,7 +49,7 @@ describe('veyrnox.com/r/<code> invite page', () => {
     expect(ios.indexOf('App Store')).toBeLessThan(ios.indexOf('Google Play'));
     expect(android.indexOf('Google Play')).toBeLessThan(android.indexOf('App Store'));
     expect(android).toMatch(/class="btn primary" href="https:\/\/play\.google\.com/);
-    expect(ios).toMatch(new RegExp(`class="btn primary" href="${APP_STORE_URL}"`));
+    expect(ios).toContain(`class="btn primary" href="${APP_STORE_URL}"`);
   });
 
   it('normalises case the same way the Pages function does', async () => {
@@ -115,8 +115,8 @@ describe('veyrnox.com/r/<code> invite page', () => {
     const nonce = csp.match(/script-src 'nonce-([0-9a-f]+)'/)[1];
     expect(csp).toContain(`style-src 'nonce-${nonce}'`);
     const body = await res.text();
-    expect(body.match(/<script\b[^>]*>/g)).toEqual([`<script nonce="${nonce}">`]);
-    expect(body.match(/<style\b[^>]*>/g)).toEqual([`<style nonce="${nonce}">`]);
+    expect(body.match(/<script\b[^>]*>/gi)).toEqual([`<script nonce="${nonce}">`]);
+    expect(body.match(/<style\b[^>]*>/gi)).toEqual([`<style nonce="${nonce}">`]);
     expect(hit('/r/VYX-STRKLB').headers.get('Content-Security-Policy')).not.toContain(nonce);
   });
 
@@ -130,7 +130,7 @@ describe('veyrnox.com/r/<code> invite page', () => {
 
   it('writes the clipboard only from a tap', async () => {
     const body = await html('/r/VYX-STRKLB');
-    const script = body.match(/<script[^>]*>([\s\S]*)<\/script>/)[1];
+    const script = body.match(/<script[^>]*>([\s\S]*)<\/script\s*>/i)[1];
     expect(script).toContain("addEventListener('click'");
     expect(script.match(/clipboard\.writeText/g)).toHaveLength(1);
     // copy() is defined once and called exactly once, inside the click handler.
