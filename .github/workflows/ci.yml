@@ -835,8 +835,9 @@ jobs:
   #
   # This does NOT loosen the 1.0.1 SUBMISSION HOLD. Closed testing is a
   # tester-facing track, not a review submission; open/production promotion
-  # remains a manual owner action, and `changesNotSentForReview` below still
-  # keeps every edit out of Google's review queue.
+  # remains a manual owner action. Closed-track uploads are sent through the
+  # normal Play review state when Google requires it; managed publishing keeps
+  # them from becoming a production rollout.
   #
   # status: 'completed' means "fully released to the closed track" — Alpha
   # testers get the update. It is NOT a production rollout.
@@ -950,21 +951,13 @@ jobs:
           # — the API takes internal/alpha/beta/production only.
           track: alpha
           status: completed
-          # Play refuses to auto-commit an edit while the app has unresolved
-          # review state (first submission still pending; 1.0.1 SUBMISSION
-          # HOLD). This tells the API not to send the changes for review, so
-          # the edit still commits. Removing this flag re-breaks the publish
-          # step until the first store review clears.
-          #
-          # Whether Play requires a review before an alpha release reaches
-          # testers on an app with no completed first review is UNVERIFIED.
-          # What is known: versionCode 41 was released to Closed testing –
-          # Alpha at full rollout on 2026-09-04, so the track accepts a
-          # release in this app's current state. If a closed upload lands as
-          # pending-review instead of live, that is the SUBMISSION HOLD
-          # boundary — stop and escalate, do not clear it by dropping this
-          # flag.
-          changesNotSentForReview: true
+          # Play rejected `true` for this app's current automatic-review
+          # setting (run 34765498894). Explicit false lets the edit commit and
+          # enter whatever review state Play requires. Managed publishing
+          # remains enabled in Play Console, so this cannot publish to
+          # production. If the closed release waits for review, keep it there;
+          # do not bypass the submission hold.
+          changesNotSentForReview: false
           # No release notes here — closed testers see the versionCode
           # in Play; leave prose to open/production promotions.
 

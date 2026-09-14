@@ -63,4 +63,11 @@ describe('publish-to-play-closed versionCode gate', () => {
     expect(code).toContain('force_play_upload:');
     expect(code).toMatch(/if \[ "\$FORCED" = "true" \]; then\n\s+echo "upload=true"/);
   });
+
+  it('allows Play to send a closed-track edit through its required review state', () => {
+    // Google rejects changesNotSentForReview=true when this app's track is
+    // configured to send changes for review. Managed publishing still keeps
+    // a closed-track upload from promoting to production.
+    expect(code).toMatch(/changesNotSentForReview:\s*false/);
+  });
 });
