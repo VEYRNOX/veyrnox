@@ -1,23 +1,24 @@
-# veyrnox.com/r/<code> → the app, with the referral attached.
+# veyrnox.com/r/<code> → the invite landing page (src/invitePage.js).
 #
 # WHY A WORKER (#2529). The app builds share links as https://veyrnox.com/r/CODE
 # (ReferralPrompt.jsx, ReferralTracker.jsx), but veyrnox.com is the MARKETING
 # site (uvicorn on Render behind Cloudflare, source not in this repo) — it has
-# no /r/ route and returned 404 for every share link ever generated. The
-# redirect that does the work lives in functions/r/[code].js on the Cloudflare
-# PAGES project (veyrnox-prod.pages.dev), a different host.
+# no /r/ route and returned 404 for every share link ever generated.
 #
 # This Worker sits on the veyrnox.com zone at /r/* only, in front of the
-# marketing origin, and runs THAT SAME function (imported, not copied), then
-# makes its relative Location absolute so the browser lands on the app host
-# rather than back on the marketing site.
+# marketing origin. It validates the code with the Pages function
+# (functions/r/[code].js, imported, not copied) and serves a standalone invite
+# page: the code, Copy, App Store and Google Play (with the Install Referrer).
+# Until 2026-09-14 it 302'd into the web wallet instead, which showed a demo
+# dashboard in any browser holding `veyrnox-demo=1`. People with the app
+# installed never see this page: universal/app links open the app first.
 #
 # Deploy:  npx wrangler deploy -c workers/referral-redirect/wrangler.toml
-# Accept on LIVE behaviour, never on a test of the string (the Pages function's
-# header explains why — a redirect that emits the wrong thing looks identical
-# to a visitor with no referral):
-#   curl -sSI https://veyrnox.com/r/VYX-STRKLB | grep -i location
-#   # want: location: https://veyrnox-prod.pages.dev/?ref=VYX-STRKLB
+# Accept on LIVE behaviour, never on a test of the string:
+#   curl -sS -o /dev/null -w '%{http_code}\n' https://veyrnox.com/r/VYX-STRKLB   # want: 200
+#   curl -sS https://veyrnox.com/r/VYX-STRKLB | grep -c 'referrer=ref%3DVYX-STRKLB'  # want: 1
+#   curl -sS -o /dev/null -w '%{http_code}\n' https://veyrnox.com/r/NOPE          # want: 404
+#   curl -sSI https://veyrnox.com/.well-known/apple-app-site-association | head -1  # want: 200
 #
 # Not part of the locked TIP chain (CLAUDE.md 2026-08-11): separate script,
 # separate route, no secrets, no bindings. The repo's locked-infra-guard hook
