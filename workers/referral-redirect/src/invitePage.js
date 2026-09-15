@@ -10,7 +10,8 @@
 // a seeded demo dashboard and no invite at all (src/api/demoClient.js).
 //
 // Deliberately plain: no wallet code, no cookies, no storage, no analytics, no
-// third-party requests (system fonts, inline SVG). The clipboard is written
+// third-party requests (inline SVG; system fonts only, so the CSS names no
+// brand font it cannot load). The clipboard is written
 // only from a tap. CSP allows exactly one inline <style> and one inline
 // <script>, via a per-response nonce.
 
@@ -35,7 +36,7 @@ const CSS = `
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
   background:radial-gradient(120% 70% at 50% 0%,#0f2723 0%,#050608 60%);color:#e6eaef;
-  font:16px/1.5 "Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{width:100%;max-width:420px;text-align:center}
 .logo{width:64px;height:64px;display:block;margin:0 auto 16px}
 .word{letter-spacing:.32em;font-weight:700;font-size:14px;color:#aeb7c2;margin:0 0 28px}
@@ -43,14 +44,15 @@ h1{font-size:26px;line-height:1.25;margin:0 0 8px;font-weight:700}
 .sub{color:#9aa4b1;margin:0 0 28px}
 .card{background:#0c1116;border:1px solid #1d222b;border-radius:16px;padding:20px;margin:0 0 20px}
 .label{font-size:13px;color:#9aa4b1;margin:0 0 8px}
-.code{font:600 28px/1.2 "IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;
-  color:#4adac2;user-select:all;-webkit-user-select:all;margin:0 0 16px;word-break:break-all}
+.code{font:600 28px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;
+  color:#e6eaef;user-select:all;-webkit-user-select:all;margin:0 0 16px;word-break:break-all}
 .btn{display:block;width:100%;padding:14px 16px;border-radius:12px;font-family:inherit;font-size:16px;font-weight:600;line-height:1.2;text-decoration:none;
-  border:1px solid #2f3a47;background:#111820;color:#e6eaef;cursor:pointer;margin:0 0 12px}
+  border:1px solid #546178;background:#111820;color:#e6eaef;cursor:pointer;margin:0 0 12px}
 .btn:focus-visible{outline:2px solid #4adac2;outline-offset:2px}
 .primary{background:#4adac2;border-color:#4adac2;color:#062019}
 .card .btn{margin:0}
 .status{font-size:14px;color:#4adac2;margin:0}
+.status[data-state="error"]{color:#e7b14c}
 .status:not(:empty){margin-top:10px}
 ol{text-align:left;color:#b8c0ca;padding-left:20px;margin:8px 0 24px}
 li{margin:0 0 6px}
@@ -65,14 +67,35 @@ const SCRIPT = `
     if (!code || !navigator.clipboard) return Promise.reject();
     return navigator.clipboard.writeText(code);
   }
+  // Clear, then write after a beat, so a repeated result is a real change
+  // that screen readers announce again.
+  function say(msg, state){
+    if (!status) return;
+    status.textContent = '';
+    status.setAttribute('data-state', state);
+    setTimeout(function(){ status.textContent = msg; }, 50);
+  }
   var els = document.querySelectorAll('[data-copy]');
   for (var i = 0; i < els.length; i++) {
     els[i].addEventListener('click', function(e){
-      var go = this.getAttribute('href');
+      var el = this;
+      var go = el.getAttribute('href');
+      // After a failed copy the store button is a plain link.
+      if (el.hasAttribute('data-copy-failed')) return;
       if (go) e.preventDefault();
-      copy().then(function(){ if (status) status.textContent = 'Code copied'; },
-                  function(){ if (status) status.textContent = 'Copy failed. Press and hold the code to copy it.'; })
-        .then(function(){ if (go) window.location.href = go; });
+      copy().then(function(){
+        say('Code copied', 'ok');
+        if (go) window.location.href = go;
+      }, function(){
+        // Stay on the page: leaving now would hide this and lose the code.
+        if (go) {
+          el.setAttribute('data-copy-failed', '');
+          el.textContent = 'Continue to the App Store';
+          say('Copy failed. Press and hold the code to copy it, then tap Continue to the App Store.', 'error');
+        } else {
+          say('Copy failed. Press and hold the code to copy it.', 'error');
+        }
+      });
     });
   }
 })();
