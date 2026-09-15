@@ -144,6 +144,93 @@ describe('veyrnox.com/r/<code> invite page', () => {
     expect(script).not.toMatch(/readText|DOMContentLoaded|onload/);
   });
 
+  // Runs the page script against a minimal stub DOM (no jsdom needed).
+  const runScript = async (body, { clipboard } = {}) => {
+    const scriptStart = body.indexOf('>', body.indexOf('<script')) + 1;
+    const script = body.slice(scriptStart, body.lastIndexOf('</script>'));
+    const writes = [];
+    const el = (attrs) => {
+      const a = { ...attrs };
+      const node = {
+        text: attrs.text, handler: null,
+        getAttribute: (k) => (k in a ? a[k] : null),
+        setAttribute: (k, v) => { a[k] = v; },
+        hasAttribute: (k) => k in a,
+        addEventListener: (_t, fn) => { node.handler = fn; },
+        set textContent(v) { node.text = v; writes.push(v); },
+        get textContent() { return node.text; },
+      };
+      return node;
+    };
+    const status = el({});
+    const code = body.match(/data-code="([^"]*)"/)[1];
+    const button = el({ 'data-copy': '' });
+    const store = el({ 'data-copy': '', href: APP_STORE_URL, text: 'Copy code & get it on the App Store' });
+    const document = {
+      body: { getAttribute: () => code },
+      getElementById: () => status,
+      querySelectorAll: () => [button, store],
+    };
+    const window = { location: { href: 'https://veyrnox.com/r/VYX-STRKLB' } };
+    const timers = [];
+    new Function('document', 'navigator', 'window', 'setTimeout', script)(
+      document, { clipboard }, window, (fn) => timers.push(fn));
+    const flush = async () => { await new Promise((r) => setImmediate(r)); timers.splice(0).forEach((fn) => fn()); };
+    const click = async (node) => {
+      const e = { prevented: false, preventDefault() { this.prevented = true; } };
+      node.handler.call(node, e);
+      await flush();
+      return e;
+    };
+    return { status, button, store, window, writes, click };
+  };
+
+  it('a failed copy on the App Store button stays on the page and says so', async () => {
+    const t = await runScript(await html('/r/VYX-STRKLB'), { clipboard: { writeText: () => Promise.reject(new Error('denied')) } });
+    const e = await t.click(t.store);
+    expect(e.prevented).toBe(true);
+    expect(t.window.location.href).not.toBe(APP_STORE_URL);
+    expect(t.status.textContent).toMatch(/^Copy failed/);
+    expect(t.status.getAttribute('data-state')).toBe('error');
+    expect(t.store.textContent).toBe('Continue to the App Store');
+    // Second tap is a plain link: no preventDefault, so the browser follows href.
+    const again = await t.click(t.store);
+    expect(again.prevented).toBe(false);
+  });
+
+  it('treats a missing clipboard API as a failed copy', async () => {
+    const t = await runScript(await html('/r/VYX-STRKLB'), { clipboard: undefined });
+    await t.click(t.store);
+    expect(t.window.location.href).not.toBe(APP_STORE_URL);
+    expect(t.status.getAttribute('data-state')).toBe('error');
+  });
+
+  it('a successful copy on the App Store button goes to the store', async () => {
+    const copied = [];
+    const t = await runScript(await html('/r/VYX-STRKLB'), { clipboard: { writeText: (c) => { copied.push(c); return Promise.resolve(); } } });
+    await t.click(t.store);
+    expect(copied).toEqual(['VYX-STRKLB']);
+    expect(t.window.location.href).toBe(APP_STORE_URL);
+    expect(t.status.getAttribute('data-state')).toBe('ok');
+  });
+
+  it('re-announces a repeated copy result by clearing the live region first', async () => {
+    const t = await runScript(await html('/r/VYX-STRKLB'), { clipboard: { writeText: () => Promise.resolve() } });
+    await t.click(t.button);
+    await t.click(t.button);
+    expect(t.writes).toEqual(['', 'Code copied', '', 'Code copied']);
+  });
+
+  it('keeps teal for success only, and names no brand font it cannot load', async () => {
+    const body = await html('/r/VYX-STRKLB');
+    const css = body.slice(body.indexOf('<style'), body.indexOf('</style>'));
+    expect(css).toContain('.status[data-state="error"]{color:#e7b14c}');
+    expect(css).not.toMatch(/\.code\{[^}]*#4adac2/);
+    expect(css).not.toMatch(/Schibsted Grotesk|IBM Plex Mono/);
+    // --border token (218 18% 40%): the raised-contrast value, not #2f3a47.
+    expect(css).toContain('border:1px solid #546178');
+  });
+
   it('escapes the code even if a caller skipped validation', () => {
     const page = renderInvitePage({ code: '<img src=x onerror=alert(1)>', nonce: 'n' });
     expect(page).not.toContain('<img');
