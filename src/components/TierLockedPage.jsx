@@ -4,8 +4,8 @@
 // HonestDisabledPage.jsx (which explains a feature that's off for everyone) —
 // this feature IS live, just paywalled, so the notice points at /plans instead
 // of explaining an engineering limitation.
-import { Sparkles } from 'lucide-react';
 import { Link } from 'react-router';
+import Vigil from '@/components/Vigil';
 
 export default function TierLockedPage({ tier = 'safety_plus' }) {
   const isAi = tier === 'ai_security_protection';
@@ -14,8 +14,12 @@ export default function TierLockedPage({ tier = 'safety_plus' }) {
     ? 'This feature is part of AI Security Protection. Contact sales to unlock it.'
     : 'This feature is part of Safety Plus ($5.99/mo). Upgrade to unlock it.';
   return (
-    <div className="max-w-md mx-auto mt-12 p-6 rounded-2xl border border-primary/30 bg-primary/5 flex items-start gap-3">
-      <Sparkles className="h-6 w-6 text-primary shrink-0 mt-0.5" />
+    <div className="max-w-md mx-auto mt-12 p-6 rounded-2xl border border-primary/30 bg-primary/5 flex flex-col items-center gap-4 text-center">
+      {/* Vigil asleep — this route's protection is not running for this user.
+          The sleeping state is the honest one for a paywall (I4): off duty,
+          never sad, never implying cover that has not been paid for. Vigil
+          self-gates on deniability/demo, so there is no guard here. */}
+      <Vigil state="asleep" size={72} />
       <div className="text-sm min-w-0">
         <p className="font-semibold text-foreground">{heading}</p>
         <p className="text-muted-foreground mt-1">{body}</p>
