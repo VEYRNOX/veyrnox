@@ -8,8 +8,12 @@ import { Drawer, DrawerContent, DrawerTrigger, DrawerClose } from "@/components/
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ASSET_SYMBOLS } from "@/wallet-core/assets";
 
-const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
+// Derived from the asset registry so this picklist cannot drift from what the
+// wallet can actually hold (it previously offered XRP/DOGE/ADA/TRX and omitted
+// MATIC/ARB/OP/AVAX).
+const CURRENCIES = ASSET_SYMBOLS;
 const TYPES = ["send", "receive"];
 
 export default function TransactionFilters({ filters, onChange }) {

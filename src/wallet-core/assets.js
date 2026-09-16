@@ -154,6 +154,13 @@ export const ASSETS = Object.freeze(
   ASSETS_RAW.map((a) => Object.freeze({ ...a, id: formatAssetId(a) }))
 );
 
+/** Unique asset symbols, registry order. The single source of truth for any
+ * symbol PICKLIST (transaction filters, address-book currency tags). Those
+ * lists were hardcoded in two files and had drifted: they offered XRP/DOGE/
+ * ADA/TRX — assets this wallet cannot hold — while omitting MATIC/ARB/OP/AVAX.
+ * Derive from here so a picklist can never disagree with the registry again. */
+export const ASSET_SYMBOLS = Object.freeze([...new Set(ASSETS.map(a => a.symbol))]);
+
 /** Lookup by either composite id (`"ETH:mainnet"`) or bare symbol (`"ETH"`).
  * Phase 1a migrated `enabledAssets` + DEFAULT_ENABLED_ASSETS to composite ids
  * but send picker, receive detector, portfolio balances and analytics still

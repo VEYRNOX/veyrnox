@@ -243,7 +243,7 @@ export default function CryptoDetailPage() {
           <button
             key={p}
             onClick={() => setPeriod(p)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+            className={`px-3 min-h-[44px] inline-flex items-center justify-center rounded-lg text-xs font-bold transition-colors ${
               period === p
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground"

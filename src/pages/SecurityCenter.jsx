@@ -50,6 +50,10 @@ export default function SecurityCenter() {
     requireTwoFactor(() => revokeSession.mutate(id), { title });
   };
   const deniable = isDecoy || isHidden;
+  // window.confirm broke out of the near-black UI with an OS dialog while every
+  // other destructive confirmation in this surface uses the app's own Dialog.
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [pendingSignOutId, setPendingSignOutId] = useState(/** @type {any} */ (null));
   const [showAddLimit, setShowAddLimit] = useState(false);
   const [limitCurrency, setLimitCurrency] = useState("ALL");
   const [dailyLimit, setDailyLimit] = useState("");
@@ -221,24 +225,22 @@ export default function SecurityCenter() {
                       size="sm"
                       className="text-destructive hover:bg-destructive/10 shrink-0 gap-1.5"
                       title="Lock this device and require your PIN again"
-                      onClick={() => {
-                        if (window.confirm("Sign out this device? The wallet will lock and you'll need your PIN to continue.")) {
-                          guardedRevokeSession(s.id, 'Sign out this device');
-                        }
-                      }}
+                      onClick={() => { setPendingSignOutId(s.id); setSignOutOpen(true); }}
                     >
                       <LogOut className="h-4 w-4" /> Sign out
                     </Button>
                   ) : (
+                    // Was icon-only while the current-device button two rows up is
+                    // labelled, so the same class of destructive action read as two
+                    // different affordances.
                     <Button
                       variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:bg-destructive/10 shrink-0"
+                      size="sm"
+                      className="text-destructive hover:bg-destructive/10 shrink-0 gap-1.5"
                       title="Revoke this session"
-                      aria-label="Revoke this session"
                       onClick={() => guardedRevokeSession(s.id, 'Revoke this session')}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" /> Revoke
                     </Button>
                   )}
                 </div>
@@ -347,6 +349,34 @@ export default function SecurityCenter() {
             <Button className="w-full" onClick={() => addLimit.mutate()} disabled={addLimit.isPending || (!dailyLimit && !perTxLimit)}>
               Save Limit
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Sign-out confirmation — replaces window.confirm so the coercion-resistance
+          surface keeps one visual language. The guard still runs afterwards; this
+          dialog adds friction, it does not replace the gate. */}
+      <Dialog open={signOutOpen} onOpenChange={(o) => { if (!o) { setSignOutOpen(false); setPendingSignOutId(null); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Sign out this device?</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              The wallet will lock and you'll need your PIN to continue.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={() => { setSignOutOpen(false); setPendingSignOutId(null); }}>Cancel</Button>
+              <Button
+                variant="destructive"
+                className="flex-1 gap-1.5"
+                onClick={() => {
+                  const id = pendingSignOutId;
+                  setSignOutOpen(false);
+                  setPendingSignOutId(null);
+                  if (id) guardedRevokeSession(id, 'Sign out this device');
+                }}
+              >
+                <LogOut className="h-4 w-4" /> Sign out
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

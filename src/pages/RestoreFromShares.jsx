@@ -51,7 +51,7 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Capacitor } from "@capacitor/core";
-import { ArrowLeft, Upload, FileText } from "lucide-react";
+import { ArrowLeft, Upload, FileText, Loader2 } from "lucide-react";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useWallet } from "@/lib/WalletProvider";
 import {
@@ -412,8 +412,16 @@ export default function RestoreFromShares() {
         </div>
       )}
 
+      {/* This phase runs Shamir reconstruction, an Argon2id re-encryption under a
+          brand-new credential, and a full vault write — seconds on a slow device.
+          Static text alone read as a hang; every comparable long op in
+          PersonalBackup uses this spinner treatment. aria-live so a screen reader
+          announces that work is in progress. */}
       {phase === "busy" && (
-        <p className="text-sm text-muted-foreground">Restoring wallet…</p>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">
+          <Loader2 className="h-4 w-4 motion-safe:animate-spin shrink-0" aria-hidden="true" />
+          <span>Restoring wallet… this can take a few seconds while your vault is re-encrypted.</span>
+        </div>
       )}
     </div>
   );

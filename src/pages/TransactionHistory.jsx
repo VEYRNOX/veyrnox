@@ -312,7 +312,7 @@ export default function TransactionHistory() {
           <button
             key={a.symbol}
             onClick={() => setSymbol(a.symbol)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+            className={`px-3 min-h-[44px] inline-flex items-center justify-center rounded-lg text-xs font-semibold border transition-colors ${
               a.symbol === symbol
                 ? "bg-primary text-primary-foreground border-transparent"
                 : "bg-card border-border text-muted-foreground hover:text-foreground"
@@ -427,7 +427,7 @@ export default function TransactionHistory() {
             <button
               onClick={() => refetch()}
               disabled={isFetching}
-              className="inline-flex items-center gap-1.5 font-semibold hover:text-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 min-h-[44px] px-2 -mx-2 font-semibold hover:text-foreground disabled:opacity-50"
             >
               {isFetching ? <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> : <History className="h-3.5 w-3.5" />}
               {t("tx.history.refresh")}

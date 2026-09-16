@@ -13,6 +13,7 @@ import { isValidAddressForCurrency, addressKindLabel } from "@/lib/addressValida
 import PageState from "@/components/PageState";
 import { useWallet } from "@/lib/WalletProvider";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import { ASSET_SYMBOLS } from "@/wallet-core/assets";
 
 // Codex P2 2026-08-15: cap user-authored strings before persistence. Prevents
 // a pasted multi-megabyte value from bloating IndexedDB and dragging every
@@ -20,7 +21,10 @@ import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 const CONTACT_NAME_MAX = 100;
 const CONTACT_NOTE_MAX = 500;
 
-const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
+// Derived from the asset registry so this picklist cannot drift from what the
+// wallet can actually hold (it previously offered XRP/DOGE/ADA/TRX and omitted
+// MATIC/ARB/OP/AVAX).
+const CURRENCIES = ASSET_SYMBOLS;
 const EMOJIS = ["👤", "🏢", "💼", "🏦", "👨‍👩‍👧", "🤝", "🌍", "⚡"];
 
 export default function AddressBook() {
@@ -29,6 +33,11 @@ export default function AddressBook() {
   const deniable = isDecoy || isHidden;
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+  // A trusted contact feeds the Send screen's whitelist / address-poisoning
+  // signal, so deleting one silently weakens a later send's safety net.
+  // Single-tap delete with no confirm was the only irreversible action on
+  // this page.
+  const [pendingDelete, setPendingDelete] = useState(/** @type {any} */ (null));
   const [copied, setCopied] = useState(null);
   const [form, setForm] = useState({ name: "", address: "", currency: "ETH", network: "Ethereum", emoji: "👤", note: "", is_trusted: false });
 
@@ -159,7 +168,7 @@ export default function AddressBook() {
                   className={`p-2 rounded-lg transition-colors ${c.is_trusted ? "text-caution" : "text-muted-foreground hover:text-caution"}`}>
                   <Star className="h-4 w-4" fill={c.is_trusted ? "currentColor" : "none"} />
                 </button>
-                <button onClick={() => remove.mutate(c.id)} aria-label="Delete contact" className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                <button onClick={() => setPendingDelete(c)} aria-label="Delete contact" className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -222,6 +231,33 @@ export default function AddressBook() {
             <Button className="w-full" disabled={!canSave} onClick={() => { if (!canSave) return; setOpen(false); setForm({ name: "", address: "", currency: "ETH", network: "Ethereum", emoji: "👤", note: "", is_trusted: false }); create.mutate({ ...form, address: trimmedAddress }); }}>
               {create.isPending ? "Saving..." : "Save Contact"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation. Deleting a TRUSTED contact removes a signal the
+          Send screen uses to flag look-alike / poisoned addresses, so the loss
+          is not just a row in a list. */}
+      <Dialog open={!!pendingDelete} onOpenChange={(o) => { if (!o) setPendingDelete(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Delete this contact?</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{pendingDelete?.name}</span> will be removed from your address book.
+              {pendingDelete?.is_trusted && " It is marked as trusted, so Send will stop recognising this address as one you have used before."}
+            </p>
+            <p className="text-xs mono-value break-all text-muted-foreground">{pendingDelete?.address}</p>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={() => setPendingDelete(null)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                disabled={remove.isPending}
+                onClick={() => { const id = pendingDelete?.id; setPendingDelete(null); if (id) remove.mutate(id); }}
+              >
+                Delete
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -2239,7 +2239,7 @@ export default function SendCrypto() {
             {sendUsdRate != null && selectedWallet && (
               <button
                 type="button"
-                className="text-xs font-medium text-primary hover:underline underline-offset-2"
+                className="inline-flex items-center min-h-[44px] px-2 -mx-2 text-xs font-medium text-primary hover:underline underline-offset-2"
                 onClick={() => {
                   setAmountMode((m) => {
                     if (m === 'crypto') {
@@ -2561,6 +2561,8 @@ export default function SendCrypto() {
             <TransactionIntelligencePanel
               verdict={txIntelVerdict}
               policy={txIntelPolicy}
+              acknowledged={riskAck}
+              onAcknowledge={setRiskAck}
               onAskAdvisor={handleAskAdvisorAboutTx}
             />
 
@@ -2740,6 +2742,12 @@ export default function SendCrypto() {
               {amountUsd != null && <p className="text-xs text-muted-foreground mono-value">{approxUsd(amountUsd)}</p>}
               <p className="text-sm text-muted-foreground mono-value mt-1 break-all">{toAddress}</p>
             </div>
+
+            {/* Finality. Nothing anywhere in the send flow said a transfer is
+                irreversible — the only such copy lived in TermsLegal and the chat
+                advisor. Placed on the CONFIRM step, immediately before the
+                broadcast. This is prevent-and-confirm: there is no undo to offer. */}
+            <p className="text-xs text-caution text-center px-2">{tw("send.verify.finality")}</p>
 
             {/* Network fee — compact row that opens FeeSheet (2026-08-28).
                 BTC/SOL still use an automatic fee this slice (no selector),

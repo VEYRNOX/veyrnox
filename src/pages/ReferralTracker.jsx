@@ -388,7 +388,7 @@ export default function ReferralTracker() {
           <span className="mono-value text-2xl font-bold tracking-widest text-foreground">{code}</span>
           <button
             onClick={shareOrCopy}
-            className="ms-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="ms-auto flex items-center gap-1 min-h-[44px] px-2 -me-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             {copied ? <CheckCircle2 className="h-4 w-4 text-primary" /> : navigator.share ? <Share2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             {copied ? 'Copied' : navigator.share ? 'Share' : 'Copy'}

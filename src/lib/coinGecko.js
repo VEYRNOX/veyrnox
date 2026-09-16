@@ -116,7 +116,8 @@ export async function fetchPortfolioPricesFiatCG(fiats) {
 }
 
 /**
- * 24h % change for the market basket → { [sym]: { change24h: number|null } }.
+ * Spot USD price + 24h % change for the market basket
+ * → { [sym]: { price: number|null, change24h: number|null } }.
  * Replaces fetchMarketChanges24h.
  */
 export async function fetchMarketChanges24hCG() {
@@ -128,13 +129,20 @@ export async function fetchMarketChanges24hCG() {
   });
   const out = {};
   for (const ticker of MARKET_SUPPORTED) {
-    out[ticker] = { change24h: null };
+    out[ticker] = { price: null, change24h: null };
   }
   for (const coin of raw) {
     const ticker = MARKET_SUPPORTED.find(t => TICKER_TO_CG[t] === coin.id);
     if (ticker) {
+      // `current_price` was already in this response and was being discarded.
+      // Keeping it adds NO extra request and does not change a single outbound
+      // byte, so the I2 fixed-basket property above is untouched.
+      const price = coin.current_price;
       const pct = coin.price_change_percentage_24h;
-      out[ticker] = { change24h: typeof pct === 'number' && Number.isFinite(pct) ? pct : null };
+      out[ticker] = {
+        price: typeof price === 'number' && Number.isFinite(price) ? price : null,
+        change24h: typeof pct === 'number' && Number.isFinite(pct) ? pct : null,
+      };
     }
   }
   return out;

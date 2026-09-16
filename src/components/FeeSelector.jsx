@@ -279,7 +279,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                     <Label htmlFor="fee-custom-maxbase" className="text-[10px]">Max base (Gwei)</Label>
                     <Input
                       id="fee-custom-maxbase"
-                      type="text" inputMode="decimal" className="mt-1 h-8 text-xs mono-value"
+                      type="text" inputMode="decimal" className="mt-1 h-11 text-xs mono-value"
                       value={custom.maxBaseFeeGwei}
                       placeholder={data ? fmtNative(BigInt((/** @type {any} */ (data)).baseFeePerGasWei) * 2n, 9, 2) : "0"}
                       onChange={(e) => setCustom((c) => ({ ...c, maxBaseFeeGwei: e.target.value }))}
@@ -289,7 +289,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                     <Label htmlFor="fee-custom-priority" className="text-[10px]">Priority (Gwei)</Label>
                     <Input
                       id="fee-custom-priority"
-                      type="text" inputMode="decimal" className="mt-1 h-8 text-xs mono-value"
+                      type="text" inputMode="decimal" className="mt-1 h-11 text-xs mono-value"
                       value={custom.priorityGwei}
                       placeholder={data ? fmtNative((/** @type {any} */ (data)).suggestedTipWei, 9, 3) : "0"}
                       onChange={(e) => setCustom((c) => ({ ...c, priorityGwei: e.target.value }))}
@@ -299,7 +299,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                     <Label htmlFor="fee-custom-gaslimit" className="text-[10px]">Gas limit</Label>
                     <Input
                       id="fee-custom-gaslimit"
-                      type="number" inputMode="numeric" className="mt-1 h-8 text-xs mono-value"
+                      type="number" inputMode="numeric" className="mt-1 h-11 text-xs mono-value"
                       value={custom.gasLimit}
                       placeholder={String(gasLimitHint || (/** @type {any} */ (data))?.gasLimit || 21000)}
                       onChange={(e) => setCustom((c) => ({ ...c, gasLimit: e.target.value }))}

@@ -160,7 +160,7 @@ export default function CryptoSigning() {
             <p className="text-muted-foreground">Signing with your wallet:</p>
             <div className="flex items-center gap-2">
               <p className="mono-value break-all flex-1">{address}</p>
-              <button onClick={() => copy(address, "addr")} aria-label="Copy address">{copied === "addr" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
+              <button onClick={() => copy(address, "addr")} aria-label="Copy address" className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg shrink-0">{copied === "addr" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
             </div>
           </div>
 
@@ -175,7 +175,7 @@ export default function CryptoSigning() {
             <div className="p-4 rounded-xl border border-border bg-card space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold">Signature (65 bytes / 130 hex chars)</p>
-                <button onClick={() => copy(signature, "sig")} aria-label="Copy signature">{copied === "sig" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
+                <button onClick={() => copy(signature, "sig")} aria-label="Copy signature" className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg shrink-0">{copied === "sig" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
               </div>
               <p className="text-xs mono-value break-all text-muted-foreground">{signature}</p>
               <Button size="sm" variant="outline" className="w-full mt-2 text-sm" onClick={verifySignature}>Verify Signature</Button>

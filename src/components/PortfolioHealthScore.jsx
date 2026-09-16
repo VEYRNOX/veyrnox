@@ -79,7 +79,10 @@ export default function PortfolioHealthScore({
   // Map factor objects to display format (add max from calculation)
   const factorMaxes = { security: 40, diversification: 35, growth: 25 };
   const factorIcons = { security: Shield, diversification: Layers, growth: TrendingUp };
-  const factorActions = { security: "/security", diversification: "/", growth: "/analytics" };
+  // "/" here meant the diversification row navigated to the page the user was
+  // already on. /net-worth is the real allocation view (donut built from live
+  // holdings), which is what this factor scores.
+  const factorActions = { security: "/security", diversification: "/net-worth", growth: "/analytics" };
 
   const displayFactors = health.factors.map((f) => ({
     ...f,

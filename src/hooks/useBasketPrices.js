@@ -24,9 +24,9 @@ import { DEMO } from "@/api/demoClient";
 const CACHE_MS = 10 * 60 * 1000; // constant cadence, not user-triggered
 
 /**
- * Returns { changeFor(symbol), isLive }.
- * changeFor returns a finite 24h % when live, else null.
- * When isLive is false, callers must render NO delta.
+ * Returns { priceFor(symbol), changeFor(symbol), isLive }.
+ * Each getter returns a finite number when live, else null.
+ * When isLive is false, callers must render NO value and NO delta.
  */
 export function useBasketPrices() {
   // I3 guard: live prices default ON, so the localStorage pref alone would let a
@@ -52,5 +52,12 @@ export function useBasketPrices() {
     const v = data?.[symbol]?.change24h;
     return Number.isFinite(v) ? v : null;
   };
-  return { changeFor, isLive };
+  // Spot USD price from the SAME fixed-basket response (see coinGecko.js) —
+  // no additional request, so the I2 property above still holds.
+  const priceFor = (symbol) => {
+    if (!isLive) return null;
+    const v = data?.[symbol]?.price;
+    return Number.isFinite(v) ? v : null;
+  };
+  return { priceFor, changeFor, isLive };
 }

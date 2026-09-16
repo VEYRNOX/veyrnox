@@ -286,6 +286,16 @@ export default function ReceiveCrypto() {
               </div>
             </div>
 
+            {/* Wrong-network sends are unrecoverable, so this warning must be
+                read BEFORE the address can be copied, shared or screenshotted.
+                It used to render after the QR and the Share/Copy row. */}
+            {sendOnNote && (
+              <div className={`flex items-start gap-2 p-3 rounded-lg border ${r.isErc20 ? "bg-caution/10 border-caution/40" : "bg-secondary/60 border-border"}`}>
+                <AlertTriangle className={`h-4 w-4 shrink-0 mt-0.5 ${r.isErc20 ? "text-caution" : "text-muted-foreground"}`} />
+                <p className={`text-xs ${r.isErc20 ? "text-caution" : "text-muted-foreground"}`}>{sendOnNote}</p>
+              </div>
+            )}
+
             <motion.div
               key={r.address}
               initial={reduceMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.94 }}
@@ -351,12 +361,6 @@ export default function ReceiveCrypto() {
               </div>
             </motion.div>
 
-            {sendOnNote && (
-              <div className={`flex items-start gap-2 p-3 rounded-lg border ${r.isErc20 ? "bg-caution/10 border-caution/40" : "bg-secondary/60 border-border"}`}>
-                <AlertTriangle className={`h-4 w-4 shrink-0 mt-0.5 ${r.isErc20 ? "text-caution" : "text-muted-foreground"}`} />
-                <p className={`text-xs ${r.isErc20 ? "text-caution" : "text-muted-foreground"}`}>{sendOnNote}</p>
-              </div>
-            )}
           </div>
         )}
 

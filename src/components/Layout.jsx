@@ -538,13 +538,13 @@ export default function Layout() {
               full-width pill, everywhere else shows this icon. See
               shouldShowHeaderSearch — exactly one of the two renders. */}
           {shouldShowHeaderSearch(location.pathname, mobileTab) && (
-            <button onClick={() => setCmdOpen(true)} aria-label="Search" title="Search" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
+            <button onClick={() => setCmdOpen(true)} aria-label="Search" title="Search" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[44px] min-w-[44px]">
               <Search className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
           <NotificationBell unseenCount={unseenCount} onOpen={openNotifications} />
-          <HelpMenu triggerClassName="p-2 rounded-lg hover:bg-secondary hover:text-foreground active:bg-secondary inline-flex items-center justify-center min-h-[40px] min-w-[40px]" />
-          <Link to="/settings" aria-label={t('nav.settings')} title={t('nav.settings')} className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
+          <HelpMenu triggerClassName="p-2 rounded-lg hover:bg-secondary hover:text-foreground active:bg-secondary inline-flex items-center justify-center min-h-[44px] min-w-[44px]" />
+          <Link to="/settings" aria-label={t('nav.settings')} title={t('nav.settings')} className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[44px] min-w-[44px]">
             <Settings className="h-4 w-4" aria-hidden="true" />
           </Link>
           {/* F-P2-6: mobile Lock button sits next to Settings gear; a mis-tap
@@ -557,7 +557,7 @@ export default function Layout() {
             }}
             aria-label={t('nav.lock')}
             title={t('nav.lock')}
-            className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]"
+            className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[44px] min-w-[44px]"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>

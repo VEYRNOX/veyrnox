@@ -131,7 +131,7 @@ export default function PortfolioChart({ transactions, currentBalance }) {
             <button
               key={p.key}
               onClick={() => setActivePeriod(p.key)}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+              className={`px-3 min-h-[44px] inline-flex items-center justify-center text-xs font-medium rounded-md transition-all ${
                 activePeriod === p.key
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"

@@ -209,7 +209,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
         aria-label="Submit PIN"
         disabled={disabled}
         onClick={() => press("submit")}
-        className="h-10 w-full rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 active:bg-primary/80 active:scale-[0.98] transition-all duration-100 disabled:opacity-40"
+        className="h-12 w-full rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 active:bg-primary/80 active:scale-[0.98] transition-all duration-100 disabled:opacity-40"
       >
         {submitLabel}
       </button>

@@ -486,7 +486,8 @@
       "back": "Back"
     },
     "verify": {
-      "summary_label": "You're sending"
+      "summary_label": "You're sending",
+      "finality": "Sending is final. Once it confirms on the network, this transfer cannot be reversed or refunded — check the recipient and amount."
     },
     "wizard": {
       "step_recipient": "Recipient & amount",
