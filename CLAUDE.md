@@ -104,7 +104,25 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
     Production → Refresh; then re-set via `wrangler pages secret put
     TRANSAK_API_SECRET --project-name veyrnox-prod` AND redeploy Pages
     (`wrangler pages deploy dist --project-name veyrnox-prod --branch main`)
-    — Pages Functions bake env at deploy time. Never set
+    — Pages Functions bake env at deploy time.
+    **The prod pair was published and has since been rotated — closed.** The
+    live key and secret were committed to THIS FILE at lines 67–68 in
+    `ffa77b84` (#2020, 2026-08-23) and removed in `7af9f881` (#2144,
+    2026-08-29): six days on public `main`, and the blob stays in history
+    permanently regardless of the removal. **Rotated during the 2026-08-29
+    Strix audit wave** (owner-confirmed) — the same wave as #2145, #2146 and
+    the `TIP_SIGNING_SECRET` rotation.
+    **The omission is specific, which is what makes it worth recording.** That
+    wave DID record its other rotation: `docs/tip-signing-secret-rotation.md`
+    (#2148) plus `6e251282` "mark TIP_SIGNING_SECRET rotated" (#2152). The
+    Transak pair got the removal commit and no rotation record — and #2144's
+    message ends "The published values in git history remain exploitable until
+    rotation completes", which without a closing note reads as OPEN forever. A
+    gitleaks history baseline on 2026-09-16 duly re-raised the published pair
+    as a live exposure, and closing it took a round-trip to the owner rather
+    than a file read. Two rotations, one wave, one recorded: if you rotate a
+    credential that has been published, record it in the same session. A
+    removal commit is not a rotation record. Never set
     `TRANSAK_ENVIRONMENT=PRODUCTION` on `veyrnox-staging` unless you
     genuinely intend every staging test to charge real cards.
     **Current partner state (2026-08-23):** refresh-token accepts on prod,
