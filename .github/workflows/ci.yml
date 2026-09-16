@@ -371,7 +371,16 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          ref: ${{ github.sha }}
+          # Full history: the scan walks a commit RANGE, and a shallow clone
+          # has no merge base to range against.
           fetch-depth: 0
+      - name: Check out validated target
+        env:
+          VALIDATED_SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
+        run: |
+          git fetch --no-tags origin "$VALIDATED_SHA"
+          git checkout --detach "$VALIDATED_SHA"
       - name: Install gitleaks (pinned + checksum-verified)
         env:
           GITLEAKS_VERSION: 8.30.1
@@ -391,17 +400,21 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.sha }}
           HEAD_REF: ${{ github.event.pull_request.head.sha }}
           BEFORE_SHA: ${{ github.event.before }}
-          EVENT_SHA: ${{ github.sha }}
+          # The guard's validated SHA, NOT github.sha -- it is the tree that
+          # was actually checked out above, and on a dispatched run with a
+          # target_sha the two differ.
+          VALIDATED_SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
         run: |
           set -euo pipefail
           if [ "$EVENT_NAME" = "pull_request" ]; then
             range="${BASE_REF}..${HEAD_REF}"
           elif [ -n "${BEFORE_SHA:-}" ] && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
-            range="${BEFORE_SHA}..${EVENT_SHA}"
+            range="${BEFORE_SHA}..${VALIDATED_SHA}"
           else
-            # First push of a branch, or a force-push that orphaned `before`.
-            # Scan the single head commit rather than silently scanning nothing.
-            range="${EVENT_SHA}~1..${EVENT_SHA}"
+            # First push of a branch, a force-push that orphaned `before`, or a
+            # dispatch. Scan the single head commit rather than silently
+            # scanning nothing.
+            range="${VALIDATED_SHA}~1..${VALIDATED_SHA}"
           fi
           echo "Scanning $range"
           # --redact: a finding must never print the secret into a PUBLIC build log.
