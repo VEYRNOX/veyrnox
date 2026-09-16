@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useSearchParams } from "react-router";
+import { Link, useLocation, useSearchParams } from "react-router";
+import { shellOwnsBack } from "@/lib/backNavigation";
 import BackButton from "@/components/BackButton";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS } from "@/wallet-core/assets";
@@ -38,6 +39,7 @@ export default function ReceiveCrypto() {
   const { isUnlocked, accounts, btcAccount, solAccount, isDecoy, isHidden } = useWallet();
   const deniable = isDecoy || isHidden;
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const urlAsset = searchParams.get("asset") ?? "ETH";
   const [symbol, setSymbol] = useState(urlAsset);
   const [copied, setCopied] = useState(false);
@@ -202,7 +204,8 @@ export default function ReceiveCrypto() {
 
   return (
     <div className="max-w-md mx-auto space-y-6">
-      {searchParams.get("asset") && <BackButton />}
+      {/* Same as Send: defer to the shell chevron when it is already there. */}
+      {searchParams.get("asset") && !shellOwnsBack(location) && <BackButton />}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{t("receive.heading")}</h1>
         <p className="text-sm text-muted-foreground mt-0.5">{t("receive.subheading")}</p>

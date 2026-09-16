@@ -82,7 +82,7 @@ export default function PinSetup({ onDone, onCancel }) {
                 // Reset BOTH pins and return to step 1.
                 // ponytail: matches original WalletEntry semantics so a shoulder-surfed step-1
                 // PIN doesn't get an unlimited-retry surface on step 2. Reviewer P2, Slice B.
-                setError("PINs didn't match. Start again.");
+                setError("PINs didn't match. For your security both entries are cleared — set your PIN again.");
                 setRealPin(""); setRealPinConfirm(""); setPinStep("real");
                 return;
               }

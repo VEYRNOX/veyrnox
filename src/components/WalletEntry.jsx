@@ -2140,8 +2140,16 @@ export default function WalletEntry() {
                     <Download className="h-4 w-4" /> Import an existing seed
                   </Button>
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="wallet-invite-code" className="text-xs text-muted-foreground">Got an invite code? (optional)</Label>
+                {/* Behind a disclosure: relevant only to referred users, but it
+                    sat open on the primary Create/Import decision screen for
+                    everyone. The field itself is unchanged, and applyInviteCode()
+                    still reads the same state whether or not it was opened. */}
+                <details className="group">
+                  <summary className="cursor-pointer list-none text-xs text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center">
+                    Got an invite code?
+                  </summary>
+                  <div className="space-y-1 mt-1">
+                  <Label htmlFor="wallet-invite-code" className="text-xs text-muted-foreground">Invite code (optional)</Label>
                   <Input
                     id="wallet-invite-code"
                     value={referralInput}
@@ -2152,7 +2160,8 @@ export default function WalletEntry() {
                     autoCorrect="off"
                     className="mono-value tracking-widest text-sm"
                   />
-                </div>
+                  </div>
+                </details>
                 <button type="button" onClick={() => { setError(""); enterExplore(); }} className="block w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors">
                   ← Keep exploring (view only)
                 </button>

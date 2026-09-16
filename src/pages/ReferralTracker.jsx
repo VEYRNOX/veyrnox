@@ -459,31 +459,6 @@ export default function ReferralTracker() {
         </div>
       )}
 
-      {/* Commission tiers */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest">Commission tiers</p>
-        <div className="space-y-2">
-          {displayTiers.map((t) => (
-            <TierCard
-              key={t.key}
-              tier={t}
-              isActive={dTier === t.key}
-              isFuture={tierInfo.key === 'none' || TIERS.indexOf(TIERS.find(x => x.key === dTier)) < TIERS.indexOf(t)}
-            />
-          ))}
-        </div>
-        {dExternalEligible && (
-          <a
-            href={EXTERNAL_REWARD_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 flex items-center gap-1 text-sm text-primary hover:underline"
-          >
-            Claim your reward <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        )}
-      </div>
-
       {/* Enter a code */}
       {!dRedeemed && (
         <div className="rounded-xl border border-border bg-card p-5 space-y-3">
@@ -520,6 +495,35 @@ export default function ReferralTracker() {
           )}
         </div>
       )}
+
+      {/* Everything below is reference material, not something to act on —
+          the redeem input above used to sit UNDER this static 4-row tier
+          table, competing with it for a new user's first view. */}
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-2">Program details</h2>
+      {/* Commission tiers */}
+      <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+        <p className="text-xs text-muted-foreground uppercase tracking-widest">Commission tiers</p>
+        <div className="space-y-2">
+          {displayTiers.map((t) => (
+            <TierCard
+              key={t.key}
+              tier={t}
+              isActive={dTier === t.key}
+              isFuture={tierInfo.key === 'none' || TIERS.indexOf(TIERS.find(x => x.key === dTier)) < TIERS.indexOf(t)}
+            />
+          ))}
+        </div>
+        {dExternalEligible && (
+          <a
+            href={EXTERNAL_REWARD_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 flex items-center gap-1 text-sm text-primary hover:underline"
+          >
+            Claim your reward <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        )}
+      </div>
 
       {/* How tiers work */}
       <div className="rounded-xl border border-border bg-muted/30 p-5 space-y-2">

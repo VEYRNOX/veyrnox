@@ -24,7 +24,7 @@ import {
   RotateCcw, Mic,
   ShieldOff, Gauge, KeyRound, ScanLine, Frame, Wifi, Pen,
   CloudUpload, Compass, ScanSearch, Ghost, Bomb, Scissors,
-  CreditCard, ShoppingCart, Boxes,
+  CreditCard, ShoppingCart, Boxes, Receipt,
 } from "lucide-react";
 import { isCut } from './featureRegistry';
 
@@ -109,7 +109,7 @@ const RAW_NAV_GROUPS = [
       { path: "/budget", label: "Budget Limits", icon: PieChart },
       { path: "/net-worth", label: "Net Worth", icon: TrendingUp },
       { path: "/tax", label: "Tax Report", icon: ScrollText, keywords: "tax csv export capital gains report" },
-      { path: "/invoices", label: "Invoices", icon: Pen, keywords: "invoice generator billing request payment" },
+      { path: "/invoices", label: "Invoices", icon: Receipt, keywords: "invoice generator billing request payment" },
     ],
   },
   // "Security" used to be ONE group of 22 destinations — a third of the whole

@@ -43,7 +43,8 @@ import { toast } from "@/lib/toast";
 import { successHaptic, errorHaptic, actionHaptic } from "@/lib/haptics";
 import { parseEther, parseUnits } from "ethers";
 import { useWallet } from "@/lib/WalletProvider";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
+import { shellOwnsBack } from "@/lib/backNavigation";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { MAX_BASE_FEE_GWEI, evmFeeOverrides } from "@/wallet-core/evm/fees";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
@@ -378,6 +379,7 @@ export default function SendCrypto() {
   // When navigated from CryptoDetailPage (?asset=ETH), wallet + asset are already
   // known — hide those pickers and show a simplified address+amount form.
   const fromDetail = !!searchParams.get("asset");
+  const location = useLocation();
   const [walletId, setWalletId] = useState("");
   const [assetSymbol, setAssetSymbol] = useState(searchParams.get("asset") ?? "");
   const [toAddress, setToAddress] = useState("");
@@ -2009,7 +2011,9 @@ export default function SendCrypto() {
   return (
     <>
     <div className="max-w-md mx-auto space-y-6">
-      {fromDetail && <BackButton />}
+      {/* Only when the shell is NOT already showing one — /send is a bottom-nav
+          tab, so a deep link with a stored back target rendered both. */}
+      {fromDetail && !shellOwnsBack(location) && <BackButton />}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{tw("send.heading")}</h1>
         <p className="text-sm text-muted-foreground mt-0.5">{tw("send.subheading")}</p>

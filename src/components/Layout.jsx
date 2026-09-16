@@ -24,7 +24,7 @@ import FeatureGate from './FeatureGate';
 import VeyrnoxLogo, { VeyrnoxWordmark } from "./VeyrnoxLogo";
 import { navGroups, groupColor, searchableRoutes } from "@/lib/navigation";
 import { getParentRoute } from "@/lib/parentRoute";
-import { getStoredBackTarget, hasBrowserBackHistory, rememberCurrentRoute } from "@/lib/backNavigation";
+import { getStoredBackTarget, hasBrowserBackHistory, rememberCurrentRoute, shellOwnsBack } from "@/lib/backNavigation";
 import useRecentPages from "@/hooks/useRecentPages";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { useQueryClient } from "@tanstack/react-query";
@@ -194,7 +194,7 @@ export default function Layout() {
   };
   const isHomeTab = location.pathname === '/';
   const shellBackTarget = getStoredBackTarget(location);
-  const canShowShellBack = !isHomeTab && shellBackTarget !== null;
+  const canShowShellBack = shellOwnsBack(location);
   // Render the desktop OR the mobile main-content region — never both — so a page
   // mounts exactly once (see useIsDesktop). The nav chrome (sidebar / top bar /
   // bottom nav) stays CSS-toggled; only the heavy page-hosting regions are gated.
