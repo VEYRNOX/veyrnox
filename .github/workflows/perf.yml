@@ -36,7 +36,7 @@ jobs:
       PROFILE: ${{ github.event.inputs.profile || (github.event_name == 'schedule' && 'load') || 'smoke' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Refuse to run without staging secrets
         run: |
@@ -61,7 +61,7 @@ jobs:
 
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: k6-results-${{ env.PROFILE }}-${{ github.run_id }}
           path: perf/results/

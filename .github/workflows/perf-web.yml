@@ -24,10 +24,10 @@ jobs:
       VITE_SUPABASE_ANON_KEY: ''
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           # Match ci.yml — Node 22 + npm 11. The lockfile is authored with
           # npm 11; npm 10 (Node 20 default, Node 22 default) rejects it.
@@ -82,7 +82,7 @@ jobs:
 
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: web-perf-${{ github.run_id }}
           path: |
