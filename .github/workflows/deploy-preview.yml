@@ -130,7 +130,10 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ github.ref == 'refs/heads/main' && vars.VITE_SUPABASE_ANON_KEY || '' }}
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            npm run build
+            # Pages production must set VITE_RELEASE=1. demoClient statically
+            # removes URL/localStorage demo activation in this build, so a
+            # stray `?demo=1` link cannot persist a seeded wallet dashboard.
+            npm run build:release
           else
             npm run build:staging
           fi
