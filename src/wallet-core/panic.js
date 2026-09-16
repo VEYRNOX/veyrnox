@@ -489,6 +489,33 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-review-send-count',
   'veyrnox-review-last-asked-ts',
   'veyrnox-review-declined',
+  // The two biometric markers that sit beside 'veyrnox-biometric-unlock' in
+  // LOCAL_RESIDUE_KEYS above. The pref itself has been swept since F-06; these
+  // never were, because neither holds a secret — they are pure markers, which
+  // is exactly what makes them easy to miss and what makes them a tell.
+  //
+  //   veyrnox-biometric-pref-v2       lib/biometric.js BIOMETRIC_PREF_MIGRATED_KEY.
+  //     Set by ensureLegacyOptOutPreserved(), which runs from
+  //     isBiometricUnlockEnabled() — i.e. on every unlock path. Presence proves
+  //     a real install existed here AND that it predates the default-ON flip,
+  //     since the migration only writes where an auth-model marker was already
+  //     present.
+  //   veyrnox-biometric-consent-seen  lib/biometric.js BIOMETRIC_CONSENT_SEEN_KEY.
+  //     Set by markBiometricConsentRecorded() from BiometricConsent.jsx.
+  //     Presence proves onboarding reached the biometric consent screen and the
+  //     user answered it.
+  //
+  // Both writers already return early on isDeniabilityOrDemoActive(), so a
+  // decoy session never creates them — which is what makes a survivor strictly
+  // PRIMARY-session evidence rather than ambiguous. That guard is why this list
+  // is still the authoritative sweep and not redundant: it covers anything that
+  // ever landed here, including from a build predating the guard.
+  //
+  // Same failure mode as every entry above: absent from this list, a wipe left
+  // them behind AND inspectKeyMaterial() still reported clean:true.
+  // Pinned by panic-residue-biometric-markers.test.js.
+  'veyrnox-biometric-pref-v2',
+  'veyrnox-biometric-consent-seen',
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
