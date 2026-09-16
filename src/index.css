@@ -433,6 +433,27 @@
     --border: 214 20% 58%;
     --input: 214 20% 58%;
     --ring: 172 72% 38%;
+    --caution: 38 82% 42%;
+    --caution-foreground: 0 0% 100%;
+    --risk: 6 74% 52%;
+    --risk-foreground: 0 0% 100%;
+    --info: 216 80% 50%;
+    --info-foreground: 0 0% 100%;
+    --success: 172 72% 36%;
+    --success-foreground: 0 0% 100%;
+    --chart-1: 172 72% 36%;
+    --chart-2: 216 80% 50%;
+    --chart-3: 38 82% 42%;
+    --chart-4: 6 74% 52%;
+    --chart-5: 262 52% 52%;
+    --sidebar-background: 210 28% 96%;
+    --sidebar-foreground: 220 30% 8%;
+    --sidebar-primary: 172 72% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 22% 90%;
+    --sidebar-accent-foreground: 220 30% 8%;
+    --sidebar-border: 214 20% 86%;
+    --sidebar-ring: 172 72% 38%;
   }
 
   html, body {
@@ -446,7 +467,10 @@
   aside,
   [role="navigation"],
   [role="tablist"],
-  [data-print="hide"] {
+  [data-print="hide"],
+  /* Sonner renders its own host element; it is a vendored primitive, so it is
+     named here rather than tagged in JSX. Unambiguously chrome. */
+  [data-sonner-toaster] {
     display: none !important;
   }
 

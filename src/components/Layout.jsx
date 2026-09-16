@@ -503,7 +503,8 @@ export default function Layout() {
           shows the latest notification from the one shell-level queue and
           auto-dismisses. Fixed above the mobile bottom nav; identical chrome in
           real and decoy sessions (I3 — nothing here branches on the active set). */}
-      <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center md:justify-end px-4 pointer-events-none"
+      <div data-print="hide"
+           className="fixed inset-x-0 bottom-0 z-50 flex justify-center md:justify-end px-4 pointer-events-none"
            style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}>
         <div className={`w-full max-w-sm ${latest ? 'pointer-events-auto' : 'pointer-events-none'}`}>
           <NotificationToast notification={latest} onDismiss={hideLatest} />

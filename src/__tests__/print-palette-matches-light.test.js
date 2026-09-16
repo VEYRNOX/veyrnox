@@ -20,7 +20,19 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const css = readFileSync(resolve(here, '../index.css'), 'utf8');
+const src = resolve(here, '..');
+const css = readFileSync(resolve(src, 'index.css'), 'utf8');
+
+// Files that must carry data-print="hide". An opt-in hook that nothing opts
+// into is worse than no rule at all: the stylesheet reads as if it strips
+// floating chrome while printing every bit of it. That is exactly what
+// shipped in the first version of this block, so the usage is pinned here
+// rather than left to reviewer memory.
+const MUST_TAG_CHROME = [
+  'components/Layout.jsx',          // notification toast wrapper
+  'components/SecurityAdvisor.jsx', // floating advisor launcher
+  'pages/LandingPage.jsx',          // back-to-top button
+];
 
 /** Return the body of the first block whose header matches `startRe`. */
 function blockBody(startRe) {
@@ -63,6 +75,17 @@ describe('print stylesheet', () => {
     expect(Object.keys(tokensIn(printRoot)).length).toBeGreaterThan(8);
   });
 
+  it('overrides EVERY token .light defines, not just the base set', () => {
+    // The first version stopped at --ring, so --caution, --risk, --info,
+    // --success, --chart-1..5 and every --sidebar-* kept their DARK values
+    // while printing: warning text, chart fills and sidebar surfaces missed
+    // the paper palette entirely. A subset match cannot catch an omission,
+    // so completeness is asserted directly.
+    const printTokens = tokensIn(printBlock);
+    const missing = Object.keys(tokensIn(lightBlock)).filter((n) => !(n in printTokens));
+    expect(missing).toEqual([]);
+  });
+
   it('every token the print block declares matches the .light value', () => {
     const printTokens = tokensIn(printBlock);
     const lightTokens = tokensIn(lightBlock);
@@ -88,6 +111,20 @@ describe('print stylesheet', () => {
       /\[aria-hidden\]\s*\{[^}]*display\s*:\s*none/,
     ].filter((re) => re.test(printBlock));
     expect(hideByShape).toEqual([]);
+  });
+
+  it('the data-print="hide" hook is actually used by the floating chrome', () => {
+    // Pairs with the shape test above. Removing hide-by-shape is only correct
+    // if the opt-in replacement is wired up; otherwise the toast wrapper, the
+    // advisor launcher and back-to-top all print.
+    const untagged = MUST_TAG_CHROME.filter(
+      (rel) => !readFileSync(resolve(src, rel), 'utf8').includes('data-print="hide"')
+    );
+    expect(untagged).toEqual([]);
+  });
+
+  it('hides the sonner toast host, which cannot be tagged in JSX', () => {
+    expect(printBlock).toMatch(/\[data-sonner-toaster\][^{]*\{[^}]*display\s*:\s*none/);
   });
 
   it('resets .app-shell, whose fixed/overflow-hidden clips print on mobile', () => {
