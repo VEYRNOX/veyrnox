@@ -1,4 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Every <loc> here is a CANONICAL, 200-returning URL — verified live 2026-09-16.
+
+  What was wrong before, and why it is easy to get wrong again: this file listed
+  eight URLs, six of which were not canonical.
+    · /features.html /plans.html /compare.html /download.html  → 301 to the
+      extensionless form. A sitemap must list the destination, not the redirect.
+    · /landing          → 404 on veyrnox.com. That is a route of THIS app
+      (LandingGuard, src/App.jsx), which is served from veyrnox-prod.pages.dev,
+      not from the veyrnox.com apex.
+    · /veyrnox-docs.html → 301 to /veyrnox-docs, which is 404 on veyrnox.com.
+      That file exists in this repo's public/ and is served from the Pages host.
+  With the `/* /index.html 200` SPA fallback in _redirects, a bad path does not
+  404 — it returns 200 and the app shell, i.e. a SOFT 404. That is why six dead
+  entries survived here unnoticed: nothing ever returned an error code.
+
+  KNOWN, DELIBERATELY NOT CHANGED HERE: this file is served from
+  veyrnox-prod.pages.dev but declares veyrnox.com URLs, and veyrnox.com serves
+  its own /sitemap-index.xml (our /sitemap.xml 301s to it there). Deciding which
+  host should be indexed is a site-ownership call, not a correctness fix, so this
+  pass only makes every listed URL resolve. Do not "tidy" the host without an
+  owner decision — veyrnox.com is a separate codebase (see CLAUDE.md).
+-->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://veyrnox.com/</loc>
@@ -6,34 +29,34 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://veyrnox.com/landing</loc>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://veyrnox.com/features.html</loc>
+    <loc>https://veyrnox.com/features/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://veyrnox.com/plans.html</loc>
+    <loc>https://veyrnox.com/plans/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://veyrnox.com/compare.html</loc>
+    <loc>https://veyrnox.com/download/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://veyrnox.com/compare/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://veyrnox.com/download.html</loc>
+    <loc>https://veyrnox.com/privacy/</loc>
     <changefreq>monthly</changefreq>
-    <priority>0.9</priority>
+    <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://veyrnox.com/veyrnox-docs.html</loc>
+    <loc>https://veyrnox.com/terms/</loc>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.5</priority>
   </url>
   <url>
     <loc>https://veyrnox.com/llms.txt</loc>
