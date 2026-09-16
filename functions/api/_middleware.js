@@ -4,8 +4,15 @@
 // Runs on every request before the handler. Provides:
 //   - CORS with origin allowlist
 //   - Preflight (OPTIONS) handling
-//   - Request-level validation (Content-Type on POST)
 //   - Error envelope (never leak internal details to the client)
+//
+// It does NOT validate Content-Type, or anything else about the request. This
+// list claimed "Request-level validation (Content-Type on POST)" and no such
+// check has ever existed in this file — a reader checking whether a handler
+// needed its own body validation would have been told, here, that the
+// middleware had it covered. Each handler validates its own input; see
+// api/rpc/[fn].js and api/edge/[fn].js for the body-size and allowlist checks.
+// If a shared check is ever wanted, add the code and the line together.
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://veyrnox.com',

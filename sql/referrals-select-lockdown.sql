@@ -93,9 +93,18 @@ $$;
 -- This one IS meant to be callable by the app, unlike decrement_referral and
 -- check_first_referral_bonus. The REVOKE-then-GRANT makes that an explicit
 -- decision rather than an inherited default.
+-- SUPERSEDED — these two lines granted `anon` and are the reason
+-- get_referral_{count,tier} stayed the last anon-reachable RPCs in the family.
+-- The client no longer calls PostgREST at all (functions/api/rpc/[fn].js is the
+-- only caller, on the service-role key in production), so the anon grant buys
+-- nothing and costs the proxy's per-IP rate limit: a caller who holds the
+-- client-shipped publishable key can read any code's {count,tier} straight from
+-- PostgREST, uncapped. See the get_referral_{count,tier} block in
+-- sql/api-security-hardening.sql section 6 for the REVOKE and its ordering
+-- requirement; run that, not these.
 REVOKE ALL ON FUNCTION public.get_referral_count(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.get_referral_count(text) TO anon;
-GRANT EXECUTE ON FUNCTION public.get_referral_count(text) TO authenticated;
+REVOKE ALL ON FUNCTION public.get_referral_count(text) FROM anon;
+REVOKE ALL ON FUNCTION public.get_referral_count(text) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.get_referral_count(text) TO service_role;
 
 -- ----------------------------------------------------------------------------

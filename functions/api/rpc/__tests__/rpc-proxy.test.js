@@ -306,3 +306,53 @@ describe('response hygiene', () => {
     expect(res.status).toBe(502);
   });
 });
+
+describe('body size cap', () => {
+  // This proxy forwards on the service-role key. It was the one member of the
+  // proxy family with no cap at all while the sibling edge/[fn].js had one.
+  function bodyCtx(rawBody, extraHeaders = {}) {
+    return {
+      request: new Request(`${'https://veyrnox.com/api/rpc/track_event'}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'CF-Connecting-IP': '203.0.113.1',
+          ...extraHeaders,
+        },
+        body: rawBody,
+      }),
+      env: { SUPABASE_URL: URL_BASE, SUPABASE_ANON_KEY: 'anon-key' },
+      params: { fn: 'track_event' },
+    };
+  }
+
+  it('rejects an oversized declared Content-Length before forwarding', async () => {
+    const e = await thrown(() =>
+      onRequestPost(bodyCtx('{}', { 'Content-Length': '2000000' })),
+    );
+    expect(e.status).toBe(413);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects an oversized actual body when Content-Length does not catch it', async () => {
+    const big = JSON.stringify({ pad: 'x'.repeat(1_048_600) });
+    const e = await thrown(() => onRequestPost(bodyCtx(big)));
+    expect(e.status).toBe(413);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('counts BYTES, not code points — multi-byte payloads are measured correctly', async () => {
+    // 600k × 2-byte 'é' = ~1.2 MB but only 600k JS string units. A
+    // `body.length` check would wave this through.
+    const multibyte = JSON.stringify({ pad: 'é'.repeat(600_000) });
+    expect(multibyte.length).toBeLessThan(1_048_576);
+    const e = await thrown(() => onRequestPost(bodyCtx(multibyte)));
+    expect(e.status).toBe(413);
+  });
+
+  it('forwards a normal-sized body', async () => {
+    const res = await onRequestPost(bodyCtx(JSON.stringify({ p_device_id: 'd' })));
+    expect(res.status).toBe(200);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+});
