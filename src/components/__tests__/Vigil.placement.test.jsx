@@ -29,6 +29,7 @@ vi.mock('react-router', () => ({
 }));
 
 const { default: TierLockedPage } = await import('@/components/TierLockedPage');
+const { default: RiskShield } = await import('@/components/RiskShield');
 const { isDeniabilityOrDemoActive } = await import('@/wallet-core/deniabilitySession');
 
 const src = (file) => readFile(resolve(process.cwd(), 'src/components', file), 'utf8');
@@ -53,12 +54,12 @@ describe('TierLockedPage', () => {
     expect(container.querySelector('[data-vigil="asleep"]')).not.toBeNull();
   });
 
-  // The page must still say what it says without the mascot: in a decoy
-  // session Vigil renders null, and the notice has to survive that intact.
-  it('keeps heading, body and the plans link when Vigil gates itself out', () => {
+  // A decoy session must be indistinguishable from a primary one, so the
+  // locked page looks the same in both — mascot included.
+  it('renders the same in a decoy session as in a primary one', () => {
     isDeniabilityOrDemoActive.mockReturnValue(true);
     const { container, getByText } = render(<TierLockedPage />);
-    expect(container.querySelector('[data-vigil]')).toBeNull();
+    expect(container.querySelector('[data-vigil="asleep"]')).not.toBeNull();
     expect(getByText('Safety Plus feature')).toBeTruthy();
     expect(getByText('View plans')).toBeTruthy();
   });
@@ -83,27 +84,65 @@ describe('paywall surfaces use the asleep state', () => {
 });
 
 describe('NotificationToast stays mascot-free', () => {
-  // This is a deliberate omission, not an oversight, and it is pinned so the
-  // next person does not "finish the job".
+  // Still a deliberate omission, but the REASON changed and the old one is
+  // recorded here because it was wrong.
   //
-  // NotificationToast declares its own I3 invariant at the top of the file:
-  // the toast is structurally identical in real and decoy sessions. Vigil
-  // renders null in a decoy session by design, so putting it in the toast
-  // would make the real and decoy toasts visibly different — a tell for
-  // anyone who has seen both. The per-level lucide glyph already carries the
-  // severity, so the mascot would buy a brand moment at the cost of a stated
-  // security invariant.
+  // It used to be: Vigil rendered null in a decoy session, so putting it in the
+  // toast would have broken the invariant this file declares — "the toast is
+  // structurally identical in real and decoy modes". Vigil no longer gates on
+  // deniability at all, so that blocker is gone. The toast could take the
+  // mascot today without touching its invariant.
   //
-  // If this is ever revisited, the invariant comment in NotificationToast.jsx
-  // has to change in the SAME commit, with the threat model written down.
+  // What survives is the narrower judgement: `info` carries ordinary
+  // confirmations, and a mascot on "copied to clipboard" is the fastest way to
+  // teach someone to ignore it on the one that matters. Any future wiring is
+  // caution/risk ONLY, never info — and the per-level lucide glyph stays, since
+  // it is what carries severity when the toast is scanned rather than read.
+  //
+  // This pin is now a scope fence, not a safety gate. Removing it is a design
+  // decision someone can make; it is not a security regression.
   it('imports no mascot', async () => {
     const text = await src('NotificationToast.jsx');
     expect(text).not.toMatch(/^import Vigil/m);
     expect(text).not.toMatch(/<Vigil\b/);
   });
 
-  it('still declares the invariant that keeps it out', async () => {
+  it('still declares its own structural-identity invariant', async () => {
     const text = await src('NotificationToast.jsx');
     expect(text).toMatch(/structurally identical in real and decoy modes/);
+  });
+});
+
+describe('RiskShield — the severity to expression mapping', () => {
+  // The contract between the risk model and the character. This is a signing
+  // chokepoint: a BLOCK verdict drawing a calm owl is a security-copy
+  // regression, not a cosmetic one.
+  it.each([
+    ['block', 'block'],
+    ['warn', 'alert'],
+    ['clean', 'clean'],
+  ])('severity %s draws Vigil %s', (severity, expected) => {
+    const { container } = render(<RiskShield severity={severity} />);
+    expect(container.querySelector('[data-vigil]').getAttribute('data-vigil')).toBe(expected);
+  });
+
+  it('falls back to warn for an unknown severity, never to clean', () => {
+    const { container } = render(<RiskShield severity="nonsense" />);
+    expect(container.querySelector('[data-vigil]').getAttribute('data-vigil')).toBe('alert');
+  });
+
+  it('shows the risk verdict in a decoy session too', () => {
+    isDeniabilityOrDemoActive.mockReturnValue(true);
+    const { container } = render(<RiskShield severity="block" />);
+    expect(container.querySelector('[data-vigil="block"]')).not.toBeNull();
+  });
+
+  // Vigil is static by design. The rings are the urgency signal at the
+  // chokepoint, and swapping them out for a still character would have
+  // downgraded a BLOCK warning from moving to still without anyone noticing.
+  it('keeps its pulsing rings — Vigil replaces the glyph, not the motion', async () => {
+    const text = await src('RiskShield.jsx');
+    expect(text).toMatch(/repeat: Infinity/);
+    expect(text).toMatch(/duration: 1\.4/);
   });
 });

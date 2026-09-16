@@ -16,30 +16,42 @@
 //
 // Sized to slot into a text-row header (h-6 w-6) so it doesn't disturb the
 // horizontal banner layout.
+//
+// The centre glyph is Vigil (the mascot). The severity -> expression mapping
+// lives in CONFIG below and is pinned by a test: this is a signing chokepoint,
+// so a BLOCK verdict drawing a calm owl would be a security-copy regression,
+// not a cosmetic one.
 
 import { memo } from 'react';
 import { motion, useReducedMotion } from "motion/react";
-import { ShieldAlert, ShieldCheck } from 'lucide-react';
+import Vigil from '@/components/Vigil';
 import { useInfiniteAnimation } from '@/lib/useInfiniteAnimation';
 import { easing } from '@/lib/motion-tokens';
 
+// `vigil` is the mascot expression for this severity. The mapping is the whole
+// contract between the risk model and the character, so it is pinned by a test:
+// a BLOCK verdict must never draw a calm owl.
+//
+// Vigil replaces the lucide glyph at the centre, NOT the pulsing rings. The
+// rings are the urgency signal at a pre-sign chokepoint and they stay exactly
+// as they were — Vigil itself is static by design (no idle loop), so swapping
+// the rings out for a static character would have quietly downgraded a BLOCK
+// warning from moving to still. The character says WHICH verdict; the rings say
+// how urgently.
 const CONFIG = {
   block: {
-    Icon: ShieldAlert,
+    vigil: 'block',
     ring: 'border-risk',
-    icon: 'text-risk',
     duration: 1.4,
   },
   warn: {
-    Icon: ShieldAlert,
+    vigil: 'alert',
     ring: 'border-caution',
-    icon: 'text-caution',
     duration: 2.2,
   },
   clean: {
-    Icon: ShieldCheck,
+    vigil: 'clean',
     ring: 'border-primary',
-    icon: 'text-primary',
     duration: 0, // static
   },
 };
@@ -48,7 +60,6 @@ function RiskShieldImpl({ severity = 'warn', size = 28 }) {
   const reduce = useReducedMotion();
   const visible = useInfiniteAnimation();
   const cfg = CONFIG[severity] || CONFIG.warn;
-  const { Icon } = cfg;
   const animate = !reduce && cfg.duration > 0 && visible;
   return (
     <span
@@ -72,7 +83,9 @@ function RiskShieldImpl({ severity = 'warn', size = 28 }) {
           />
         </>
       )}
-      <Icon className={`h-4 w-4 ${cfg.icon}`} strokeWidth={2} />
+      {/* Sized to sit inside the rings with room to breathe. Contact shadow
+          off: at this size it reads as dirt under the glyph, not as ground. */}
+      <Vigil state={cfg.vigil} size={Math.round(size * 0.74)} shadow={false} />
     </span>
   );
 }
