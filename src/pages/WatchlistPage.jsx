@@ -12,6 +12,8 @@ import CoinLogo from "@/components/CoinLogo";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 import { useWallet } from "@/lib/WalletProvider";
+import { DEMO } from "@/api/demoClient";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { getAsset } from "@/wallet-core/assets";
 import { useBasketPrices } from "@/hooks/useBasketPrices";
 import { formatUsd } from "@/lib/locale";
@@ -38,17 +40,17 @@ export default function WatchlistPage() {
   // AddressBook/FraudDetection in #2537. Masking as well as gating, because
   // nothing clears the react-query cache on a session flip.
   const { isDecoy, isHidden } = useWallet();
-  const deniable = isDecoy || isHidden;
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
   const denyInDeniable = () => {
     throw Object.assign(new Error('Watchlist is not available in this session'), { code: 'DENIABILITY_BLOCKED' });
   };
 
-  const { data: rawItems = [], isLoading, isError } = useQuery({
+  const { data: itemsRaw = [], isLoading, isError } = useQuery({
     queryKey: ["watchlist"],
     queryFn: () => base44.entities.PersonalWatchlist.list(),
     enabled: !deniable,
   });
-  const items = deniable ? [] : rawItems;
+  const items = deniable ? [] : itemsRaw;
 
   const add = useMutation({
     mutationFn: (/** @type {any} */ d) => { if (deniable) denyInDeniable(); return base44.entities.PersonalWatchlist.create(d); },

@@ -8,6 +8,8 @@ import { formatDistanceToNow } from "date-fns";
 import { useNotifications } from "@/notify/useNotifications";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 import { useWallet } from "@/lib/WalletProvider";
+import { DEMO } from "@/api/demoClient";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 
 // "Fraud" was removed 2026-09-16: nothing can ever tag an item with that
 // category (see the Audit M-3 note below — the FraudAlert/RASPEvent renderer was
@@ -48,20 +50,21 @@ export default function NotificationCentre() {
   // neighbour. Gate the fetch, gate the write, and mask whatever react-query
   // already holds (nothing clears the cache on a session flip).
   const { isDecoy, isHidden } = useWallet();
-  const deniable = isDecoy || isHidden;
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
+  const denyInDeniable = () => {
+    throw Object.assign(new Error('Notifications are not available in this session'), { code: 'DENIABILITY_BLOCKED' });
+  };
 
-  const { data: rawPriceAlerts = [] } = useQuery({
+  const { data: priceAlertsRaw = [] } = useQuery({
     queryKey: ["price-alerts-triggered"],
     queryFn: () => base44.entities.PriceAlert.filter({ status: "triggered" }),
     enabled: !deniable,
   });
-  const priceAlerts = deniable ? [] : rawPriceAlerts;
+  const priceAlerts = deniable ? [] : priceAlertsRaw;
 
   const dismissPrice = useMutation({
     mutationFn: (/** @type {any} */ id) => {
-      if (deniable) {
-        throw Object.assign(new Error('Notifications are not available in this session'), { code: 'DENIABILITY_BLOCKED' });
-      }
+      if (deniable) denyInDeniable();
       return base44.entities.PriceAlert.update(id, { status: "dismissed" });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["price-alerts-triggered"] }),
