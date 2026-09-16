@@ -43,6 +43,18 @@ const ALLOWED_RPCS = new Set([
 // sql/telemetry-events-allowlist.sql ('Metadata too large').
 const APP_ERRCODES = new Set(['P0001', 'P0003', 'P0004', 'P0006', 'P0007', 'P0008', '22004']);
 
+
+// Cap request body before forwarding to PostgREST. Every allowlisted RPC takes
+// a small JSON argument object — track_event's metadata is capped at 4 KB in
+// the SQL itself — so anything larger is abuse or a bug.
+//
+// This proxy forwards on the SERVICE-ROLE key, which bypasses RLS, and it was
+// the one member of the proxy family with no cap at all: the sibling
+// functions/api/edge/[fn].js has had this exact guard at the same limit since
+// it was written. Matching it rather than inventing a tighter number keeps one
+// reviewable rule across both files.
+const MAX_BODY_BYTES = 1_048_576;
+
 function err(status, message) {
   const e = new Error(message);
   e.status = status;
@@ -110,11 +122,22 @@ export async function onRequestPost(context) {
   const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseKey) err(503, 'Database not configured');
 
+  // Cheap reject via Content-Length before draining the stream; callers can lie
+  // or omit it, so the byte cap is re-checked on the actual read.
+  const declaredLen = Number(request.headers.get('Content-Length') || '0');
+  if (Number.isFinite(declaredLen) && declaredLen > MAX_BODY_BYTES) {
+    err(413, 'Request body too large');
+  }
+
   let body;
   try {
     body = await request.text();
   } catch {
     err(400, 'Invalid body');
+  }
+  // Byte length, not code-point length — non-ASCII payloads count correctly.
+  if (new TextEncoder().encode(body).length > MAX_BODY_BYTES) {
+    err(413, 'Request body too large');
   }
 
   const url = `${supabaseUrl}/rest/v1/rpc/${encodeURIComponent(fn)}`;

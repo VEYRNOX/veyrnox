@@ -6,6 +6,7 @@ import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
 import { fetchNews } from "@/api/edgeApi";
 import { safeNewsThumbUrl } from "@/lib/newsThumbUrl";
+import { safeNewsLinkUrl } from "@/lib/newsLinkUrl";
 
 function timeAgo(dateStr) {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -48,12 +49,18 @@ function htmlToText(s) {
 function NewsCard({ article }) {
   const thumbnail = article.enclosure?.link || article.thumbnail || null;
   const description = htmlToText(article.description);
+  // `article.link` is the same attacker-influenced RSS payload the thumbnail
+  // comes from. Unsafe -> no href at all, and the card renders as a plain
+  // <div>: the article still reads, the tap just goes nowhere.
+  const href = safeNewsLinkUrl(article.link);
+  const Tag = href ? "a" : "div";
+  const linkProps = href
+    ? { href, target: "_blank", rel: "noopener noreferrer" }
+    : {};
 
   return (
-    <a
-      href={article.link}
-      target="_blank"
-      rel="noopener noreferrer"
+    <Tag
+      {...linkProps}
       className="flex gap-3 p-3 rounded-xl hover:bg-secondary transition-colors group"
     >
       {/* M-10: thumbnail URL is attacker-influenced (upstream RSS).
@@ -77,7 +84,7 @@ function NewsCard({ article }) {
           <p className="text-sm font-medium leading-snug line-clamp-2 group-hover:text-primary transition-colors">
             {article.title}
           </p>
-          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+          {href && <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />}
         </div>
         {description && (
           <p className="text-xs text-muted-foreground line-clamp-1">{description}</p>
@@ -88,7 +95,7 @@ function NewsCard({ article }) {
           </span>
         </div>
       </div>
-    </a>
+    </Tag>
   );
 }
 

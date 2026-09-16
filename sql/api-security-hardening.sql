@@ -602,8 +602,52 @@ REVOKE ALL ON FUNCTION public.get_referral_leaderboard() FROM anon;
 REVOKE ALL ON FUNCTION public.get_referral_leaderboard() FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.get_referral_leaderboard() TO service_role;
 
+-- get_referral_count / get_referral_tier — ADDED 2026-09-16.
+--
+-- These two were the last functions in the referral family still granted to
+-- `anon`, and they were missed because they are READS: the STILL-OPEN batch
+-- above was built around "has a client caller with the anon key", and the
+-- reasoning tracked writes. The read grants are worth just as much to an
+-- attacker who holds the publishable key, because they reach PostgREST
+-- DIRECTLY and so bypass the per-IP cap in functions/api/rpc/[fn].js entirely:
+-- given a share code, anyone can read its referral count and tier, uncapped.
+-- Neither function rate-limits itself; the proxy was the only limiter.
+--
+-- Both ARE still called by the app, via the proxy's ALLOWED_RPCS, so the
+-- ORDERING RULE at the top of this section applies to them exactly as it does
+-- to track_event and increment_referral:
+--   1. SUPABASE_SERVICE_ROLE_KEY set on the Pages project,
+--   2. verified set AND deployed (Pages Functions bake env at deploy time),
+--   3. THEN run these.
+-- Run them first and every referral count and tier read starts failing with
+-- `permission denied for function get_referral_...` from /api/rpc/*.
+--
+-- Preview and local deploys keep the anon fallback in that proxy
+-- (env.ENVIRONMENT !== 'production'), so a preview built against a project
+-- where these have been revoked will see referral reads fail. That is the
+-- intended trade — it is the same one already accepted for the six functions
+-- above — but know it before you run this against staging.
+--
+-- Source grants corrected in the same change: sql/referrals-select-lockdown.sql
+-- and sql/get-referral-tier.sql no longer re-grant anon on re-run.
+REVOKE ALL ON FUNCTION public.get_referral_count(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_referral_count(text) FROM anon;
+REVOKE ALL ON FUNCTION public.get_referral_count(text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.get_referral_count(text) TO service_role;
+
+REVOKE ALL ON FUNCTION public.get_referral_tier(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_referral_tier(text) FROM anon;
+REVOKE ALL ON FUNCTION public.get_referral_tier(text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.get_referral_tier(text) TO service_role;
+
 -- VERIFY (run after the migration; do not take the above on trust):
 --   SELECT has_function_privilege('anon',
 --     'public.record_attribution(text,text,int,int)', 'EXECUTE');   -- expect f
 --   SELECT has_function_privilege('service_role',
 --     'public.record_attribution(text,text,int,int)', 'EXECUTE');   -- expect t
+--   SELECT has_function_privilege('anon',
+--     'public.get_referral_count(text)', 'EXECUTE');                -- expect f
+--   SELECT has_function_privilege('anon',
+--     'public.get_referral_tier(text)', 'EXECUTE');                 -- expect f
+--   SELECT has_function_privilege('service_role',
+--     'public.get_referral_tier(text)', 'EXECUTE');                 -- expect t

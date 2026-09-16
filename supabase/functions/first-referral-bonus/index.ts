@@ -197,6 +197,41 @@ function clientIp(req: Request): string | null {
   return first;
 }
 
+// Characters kept per field pulled out of a RevenueCat error body.
+const MAX_RC_FIELD = 200;
+
+/**
+ * Field-select a RevenueCat error body for logging and for the audit row.
+ *
+ * `rcResponse.text()` was logged raw and unbounded. RevenueCat's REST errors
+ * are `{ code, message }`, but the body is third-party-shaped and
+ * attribute-related failures can echo subscriber data back — and the subscriber
+ * here is identified by an app_user_id that grants entitlement to whoever holds
+ * it. Same split already applied in functions/api/rpc/[fn].js and
+ * functions/api/buy/session.js: keep what you grep for, drop the rest.
+ *
+ * The audit row's own `.slice(0, 500)` stays as a second bound; this narrows
+ * WHAT reaches it, that caps HOW MUCH.
+ */
+function rcExcerpt(text: string): string {
+  const raw = String(text ?? '');
+  const clip = (v: unknown) => {
+    if (v == null) return '';
+    const cleaned = String(v).replace(/[\u0000-\u001F\u007F\u2028\u2029]/g, '');
+    return cleaned.length > MAX_RC_FIELD ? `${cleaned.slice(0, MAX_RC_FIELD)}…` : cleaned;
+  };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    // No field structure to be selective about (an HTML error page, a gateway
+    // body). Short slice only — enough to recognise one.
+    return `unparsed=${clip(raw)}`;
+  }
+  const o = (parsed && typeof parsed === 'object' ? parsed : {}) as Record<string, unknown>;
+  return `code=${clip(o.code)} message=${clip(o.message)}`;
+}
+
 function json(body: unknown, status: number, origin: string | null): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -436,7 +471,7 @@ serve(async (req: Request) => {
       return json({ granted: true }, 200, origin);
     }
 
-    const rcBody = await rcResponse.text().catch(() => '');
+    const rcBody = rcExcerpt(await rcResponse.text().catch(() => ''));
     console.error('RevenueCat error:', rcResponse.status, rcBody);
 
     // M-8: split 4xx from 5xx. 429 and 408 are transient — treat as held so

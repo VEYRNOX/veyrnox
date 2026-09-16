@@ -240,3 +240,74 @@ describe('Transak WAF Referer requirement (T-INF-103 fix)', () => {
     }
   });
 });
+
+describe('upstream error detail is field-selected before it reaches the log', () => {
+  // The log line used to be `body=${String(text).slice(0, 500)}` — the whole
+  // response body. The request we just sent Transak carries
+  // widgetParams.walletAddress, and an API rejecting a payload commonly echoes
+  // the offending field back, so a failed create-session could write a user's
+  // wallet address into the Workers tail log.
+  function mockCreateSessionFailure(body) {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (String(url).includes('refresh-token')) {
+        return new Response(JSON.stringify({ data: { accessToken: 'tok' } }), { status: 200 });
+      }
+      return new Response(body, { status: 400 });
+    }));
+  }
+
+  it('does not log an echoed wallet address', async () => {
+    mockCreateSessionFailure(JSON.stringify({
+      error: {
+        statusCode: 400,
+        name: 'BadRequest',
+        message: 'Invalid walletAddress',
+        // Transak echoing our payload back is the whole hazard.
+        request: { walletAddress: VALID.address, apiKey: 'pk_test' },
+      },
+    }));
+
+    await thrown(() => onRequestPost(ctx(VALID)));
+
+    const line = console.error.mock.calls[0].join(' ');
+    expect(line).not.toContain(VALID.address);
+    // ...while still carrying what an operator actually greps for.
+    expect(line).toContain('BadRequest');
+    expect(line).toContain('Invalid walletAddress');
+    expect(line).toContain('code=400');
+  });
+
+  it('caps each field so a padded body cannot flood the log', async () => {
+    mockCreateSessionFailure(JSON.stringify({
+      error: { name: 'X', message: 'y'.repeat(5000) },
+    }));
+
+    await thrown(() => onRequestPost(ctx(VALID)));
+
+    const line = console.error.mock.calls[0].join(' ');
+    expect(line.length).toBeLessThan(600);
+    expect(line).toContain('…');
+  });
+
+  it('keeps a short slice of an unparseable body', async () => {
+    // A WAF challenge page has no field structure to be selective about.
+    mockCreateSessionFailure('<html><title>Just a moment…</title></html>');
+
+    await thrown(() => onRequestPost(ctx(VALID)));
+
+    const line = console.error.mock.calls[0].join(' ');
+    expect(line).toContain('unparsed=');
+    expect(line).toContain('Just a moment');
+  });
+
+  it('strips newlines so a field cannot forge a second log line', async () => {
+    mockCreateSessionFailure(JSON.stringify({
+      error: { name: 'X', message: 'ok\n[buy/session] forged line status=200' },
+    }));
+
+    await thrown(() => onRequestPost(ctx(VALID)));
+
+    const line = console.error.mock.calls[0].join(' ');
+    expect(line).not.toContain('\n');
+  });
+});

@@ -128,6 +128,11 @@ $$;
 -- This one IS meant to be anon-callable, unlike decrement_referral below. The
 -- REVOKE-then-GRANT makes that an explicit decision rather than the default
 -- PUBLIC grant Postgres applies to every new function.
+-- ⚠ SUPERSEDED 2026-09-16. The anon/authenticated grant below is no longer the
+-- intended state — see sql/referrals-select-lockdown.sql and section 6 of
+-- sql/api-security-hardening.sql. RE-RUNNING THIS FILE REINSTATES IT. Left as
+-- written because this is the dated record of what was applied on 2026-07-26;
+-- if you need to re-run it, re-run the two files above afterwards.
 REVOKE ALL ON FUNCTION public.get_referral_count(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_referral_count(text) TO anon, authenticated, service_role;
 
