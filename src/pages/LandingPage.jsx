@@ -5,13 +5,37 @@ import { Button } from "@/components/ui/button";
 import {
   Shield, Smartphone, Lock, Zap, Eye, ArrowRight,
   CheckCircle2, Bell, BarChart3, Key, Menu, X,
-  Sparkles, Bot, WifiOff, FileSearch
+  Sparkles, Bot, WifiOff, FileSearch, ArrowUp
 } from "lucide-react";
+
+// The public docs are a STATIC file in public/ — not the in-app /docs route.
+// /landing only renders on a no-vault device (LandingGuard), so every in-app
+// route is behind WalletGate and would bounce a marketing visitor to the
+// create/import front door. Link the ungated artefact instead.
+const PUBLIC_DOCS_URL = "/veyrnox-docs.html";
+// veyrnox.com is a separate site (not this repo). These MUST be absolute: a
+// relative "/terms" resolves inside the SPA, which has no such route, so it
+// rendered the 404 page. Verified live 2026-09-16: both resolve 200
+// (/terms-of-service returns 404, so those 200s are real pages, not a catch-all).
+//
+// NO TRAILING SLASH, deliberately, even though the bare path 307s to the slashed
+// form. These exact strings are what is submitted on the App Store / Play store
+// listings, and TermsLegal.privacy-url.test.jsx pins the privacy one for that
+// reason — a reviewer's click must land on the page they read from the store
+// form. Saving one redirect hop is not worth breaking store parity.
+const TERMS_URL = "https://veyrnox.com/terms";
+const PRIVACY_URL = "https://veyrnox.com/privacy";
+const CONTACT_EMAIL = "legal@veyrnox.com";
+const FOOTER_LINK =
+  "hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm";
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  // Read-progress bar + back-to-top share the ONE scroll listener below rather
+  // than registering two more — this page is long and the listener already exists.
+  const [progress, setProgress] = useState(0);
 
   // Scroll listener registered once via useEffect with a matching
   // removeEventListener cleanup so it isn't re-added on every render and is torn
@@ -20,14 +44,38 @@ export default function LandingPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
+      const y = window.scrollY;
+      setScrolled(y > 50);
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+      setProgress(scrollable > 0 ? Math.min(100, (y / scrollable) * 100) : 0);
     };
+    handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const goToSection = (id) => {
+    setMobileMenuOpen(false);
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const SECTIONS = [
+    { id: "features", label: "Features" },
+    { id: "ai-security", label: "AI Security" },
+    { id: "security", label: "Security" },
+  ];
+
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+      {/* Skip link. The in-app shell gets this from AccessibilityWrapper, but
+          /landing renders outside Layout, so it had no keyboard bypass at all. */}
+      <a
+        href="#landing-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:start-4 focus:z-[100] focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2 focus:rounded-lg focus:font-semibold focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
+
       {/* Navigation */}
       <nav
         aria-label="Site navigation"
@@ -35,42 +83,51 @@ export default function LandingPage() {
           scrolled ? "bg-background/95 backdrop-blur-xl border-b border-border" : "bg-transparent"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <Shield className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold">VEYRNOX</span>
-          </div>
+        {/* Read-progress bar. aria-hidden: it duplicates the scrollbar, which
+            assistive tech already conveys. */}
+        <div aria-hidden="true" className="absolute inset-x-0 top-0 h-0.5 bg-transparent">
+          <div className="h-full bg-primary transition-[width] duration-150" style={{ width: `${progress}%` }} />
+        </div>
 
-          {/* Desktop Nav */}
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          {/* Logo is the conventional "home" affordance — it was inert markup. */}
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            aria-label="Veyrnox — back to top"
+            className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+          >
+            <span className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+              <Shield className="h-4 w-4 text-primary-foreground" />
+            </span>
+            <span className="text-xl font-bold">VEYRNOX</span>
+          </button>
+
+          {/* Desktop Nav.
+              Login / Get Started are GONE, not restyled: there is no hosted
+              account (the seed is the identity), so /login and /register are
+              pure redirects to "/" (App.jsx). Two buttons that differed only in
+              label while doing the same thing read as a broken sign-in. One CTA
+              to the on-device front door is what actually happens. */}
           <div className="hidden md:flex gap-8 items-center">
-            <button
-              type="button"
-              onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
+            {SECTIONS.map((sec) => (
+              <button
+                key={sec.id}
+                type="button"
+                onClick={() => goToSection(sec.id)}
+                className="text-muted-foreground hover:text-foreground transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+              >
+                {sec.label}
+              </button>
+            ))}
+            <a
+              href={PUBLIC_DOCS_URL}
               className="text-muted-foreground hover:text-foreground transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
             >
-              Features
-            </button>
-            <button
-              type="button"
-              onClick={() => document.getElementById("ai-security")?.scrollIntoView({ behavior: "smooth" })}
-              className="text-muted-foreground hover:text-foreground transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
-            >
-              AI Security
-            </button>
-            <button
-              type="button"
-              onClick={() => document.getElementById("security")?.scrollIntoView({ behavior: "smooth" })}
-              className="text-muted-foreground hover:text-foreground transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
-            >
-              Security
-            </button>
-            <Button variant="outline" onClick={() => navigate("/login")} className="border-primary text-primary hover:bg-primary/10">
-              Login
-            </Button>
-            <Button onClick={() => navigate("/register")} className="bg-primary hover:bg-primary/90">
-              Get Started
+              Docs
+            </a>
+            <Button onClick={() => navigate("/")} className="bg-primary hover:bg-primary/90">
+              Open Veyrnox
             </Button>
           </div>
 
@@ -88,13 +145,31 @@ export default function LandingPage() {
         </div>
 
         {mobileMenuOpen && (
-          <div id="mobile-nav-menu" className="md:hidden bg-background/95 border-b border-border px-6 py-4 space-y-4">
-            <button type="button" onClick={() => navigate("/login")} className="block w-full text-start py-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Login</button>
-            <Button onClick={() => navigate("/register")} className="w-full bg-primary hover:bg-primary/90">Get Started</Button>
+          <div id="mobile-nav-menu" className="md:hidden bg-background/95 border-b border-border px-6 py-4 space-y-2">
+            {/* Parity with the desktop nav. The section links were desktop-only,
+                so on a phone the in-page nav simply did not exist. */}
+            {SECTIONS.map((sec) => (
+              <button
+                key={sec.id}
+                type="button"
+                onClick={() => goToSection(sec.id)}
+                className="block w-full text-start py-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+              >
+                {sec.label}
+              </button>
+            ))}
+            <a
+              href={PUBLIC_DOCS_URL}
+              className="block w-full text-start py-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+            >
+              Docs
+            </a>
+            <Button onClick={() => navigate("/")} className="w-full bg-primary hover:bg-primary/90 mt-2">Open Veyrnox</Button>
           </div>
         )}
       </nav>
 
+      <main id="landing-main" tabIndex={-1}>
       {/* Hero Section */}
       <section aria-labelledby="hero-heading" className="relative overflow-hidden py-20 md:py-32">
         {/* Background gradient orbs — decorative, hidden from assistive tech */}
@@ -117,14 +192,16 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="flex gap-4 pt-4">
-              <Button size="lg" onClick={() => navigate("/register")} className="bg-primary hover:bg-primary/90 text-lg px-8">
+            {/* flex-wrap: two size="lg" px-8 buttons side by side exceed a
+                375px viewport and pushed the hero horizontally. */}
+            <div className="flex flex-wrap gap-4 pt-4">
+              <Button size="lg" onClick={() => navigate("/")} className="bg-primary hover:bg-primary/90 text-lg px-8">
                 Launch App
                 {/* Icon mirrors under dir="rtl" — forward-flow CTA arrow. */}
                 <ArrowRight className="ms-2 h-5 w-5 rtl:-scale-x-100" />
               </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate("/docs")} className="border-border hover:bg-secondary text-lg px-8">
-                Learn More
+              <Button asChild size="lg" variant="outline" className="border-border hover:bg-secondary text-lg px-8">
+                <a href={PUBLIC_DOCS_URL}>Learn More</a>
               </Button>
             </div>
 
@@ -380,15 +457,17 @@ export default function LandingPage() {
           <h2 id="cta-heading" className="text-4xl font-bold">Take control of your crypto</h2>
           <p className="text-xl text-muted-foreground">Self-custody across 10 assets — your keys, your device, your rules.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" onClick={() => navigate("/register")} className="bg-primary hover:bg-primary/90 text-lg px-8">
+            <Button size="lg" onClick={() => navigate("/")} className="bg-primary hover:bg-primary/90 text-lg px-8">
               Start Now
             </Button>
-            <Button size="lg" variant="outline" onClick={() => navigate("/docs")} className="border-primary text-primary hover:bg-primary/10 text-lg px-8">
-              View All Features
+            <Button asChild size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/10 text-lg px-8">
+              <a href={PUBLIC_DOCS_URL}>View All Features</a>
             </Button>
           </div>
         </div>
       </section>
+
+      </main>
 
       {/* Footer */}
       <footer className="border-t border-border py-12 bg-background/50">
@@ -401,28 +480,54 @@ export default function LandingPage() {
             <div>
               <p className="font-semibold mb-4">Product</p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><button type="button" onClick={() => navigate("/docs")} className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Documentation</button></li>
+                {/* Was navigate("/docs") / navigate("/security"). Both sit behind
+                    WalletGate, and /landing only renders when NO vault exists, so
+                    every click landed on the create/import front door instead of
+                    the page named on the link. */}
+                <li><a href={PUBLIC_DOCS_URL} className={FOOTER_LINK}>Documentation</a></li>
+                <li><button type="button" onClick={() => goToSection("features")} className={FOOTER_LINK}>Features</button></li>
               </ul>
             </div>
             <div>
               <p className="font-semibold mb-4">Security</p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><button type="button" onClick={() => navigate("/security")} className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Security Center</button></li>
+                <li><button type="button" onClick={() => goToSection("security")} className={FOOTER_LINK}>Security model</button></li>
+                <li><button type="button" onClick={() => goToSection("ai-security")} className={FOOTER_LINK}>AI Security Protection</button></li>
               </ul>
             </div>
             <div>
               <p className="font-semibold mb-4">Legal</p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="https://veyrnox.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Privacy Policy</a></li>
-                <li><a href="/terms" className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Terms of Service</a></li>
+                <li><a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className={FOOTER_LINK}>Privacy Policy</a></li>
+                <li><a href={TERMS_URL} target="_blank" rel="noopener noreferrer" className={FOOTER_LINK}>Terms of Service</a></li>
+                {/* The address was published as plain text in TermsLegal and
+                    nowhere on the landing page. A contact you cannot tap is not
+                    a contact route on a phone. */}
+                <li><a href={`mailto:${CONTACT_EMAIL}`} className={FOOTER_LINK}>{CONTACT_EMAIL}</a></li>
               </ul>
             </div>
           </div>
           <div className="border-t border-border pt-8 text-center text-sm text-muted-foreground">
-            <p>&copy; 2026 <strong>VEYRNOX</strong>. All rights reserved.</p>
+            {/* Derived, not literal: the hardcoded "2026" was correct for exactly
+                one year and silently wrong afterwards. */}
+            <p>&copy; {new Date().getFullYear()} <strong>VEYRNOX</strong>. All rights reserved.</p>
           </div>
         </div>
       </footer>
+
+      {/* Back to top. Appears only once the page has actually scrolled, so it
+          never covers content on a short viewport at rest. */}
+      {scrolled && (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="Back to top"
+          className="fixed bottom-6 end-6 z-50 h-11 w-11 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          style={{ marginBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <ArrowUp className="h-5 w-5" />
+        </button>
+      )}
     </div>
   );
 }

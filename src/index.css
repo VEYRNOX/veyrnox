@@ -383,3 +383,60 @@
     }
   }
 }
+/* ── Print ──────────────────────────────────────────────────────────────────
+   There was no print stylesheet at all, so printing (or "Save as PDF") any
+   page — Terms, tax report, invoice — rendered the near-black app chrome:
+   dark backgrounds are usually dropped by the browser, leaving near-white text
+   on white paper, with the sidebar, bottom tab bar and floating advisor button
+   occupying a third of the page.
+
+   SECURITY NOTE — this block only ever HIDES. It must never reveal an element
+   the screen stylesheet hides: `.sr-only`, a collapsed seed cell, a masked
+   balance and anything gated by deniability state stay exactly as they are.
+   Do not add `display: block !important` rules here. */
+@media print {
+  /* Ink-economical, legible on paper. */
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* App chrome carries no information on paper. Keyed off role/landmark and
+     the app's own ids rather than colour utilities, so a restyle cannot
+     silently drop a rule. */
+  nav,
+  aside,
+  [role="navigation"],
+  [role="tablist"],
+  [data-print="hide"] {
+    display: none !important;
+  }
+
+  /* Viewport-pinned chrome (advisor launcher, toasts, back-to-top, lock
+     overlay) otherwise prints on top of the content at an arbitrary place.
+     HIDE rather than `position: static`: un-pinning an overlay drops it into
+     normal flow, which would PRINT an element the screen currently positions
+     out of view — the one thing this block must never do. Hiding fails closed.
+     `sticky` is safe to un-pin: it never conceals anything. */
+  .fixed {
+    display: none !important;
+  }
+  [class*="sticky"] {
+    position: static !important;
+  }
+
+  /* Let content use the full sheet instead of the scroll container's height. */
+  #main-scroll,
+  main {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Don't split a heading from its section, or a value from its label. */
+  h1, h2, h3, h4 { break-after: avoid-page; }
+  p, li, tr, blockquote { break-inside: avoid; }
+
+  a { text-decoration: underline; }
+}

@@ -20,6 +20,21 @@ import BackButton from "@/components/BackButton";
 const PRIVACY_POLICY_URL = "https://veyrnox.com/privacy";
 const TERMS_URL = "https://veyrnox.com/terms";
 const CONTACT_EMAIL = "legal@veyrnox.com";
+const PRIVACY_EMAIL = "privacy@veyrnox.com";
+
+// These three addresses shipped as plain text. On a phone — the primary target
+// for this app — an un-linked address is a copy-by-hand task, and it is the only
+// route a user has for a deletion request or a legal question.
+function MailLink({ address }) {
+  return (
+    <a
+      href={`mailto:${address}`}
+      className="text-primary underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+    >
+      {address}
+    </a>
+  );
+}
 
 function Section({ icon: Icon, title, children }) {
   return (
@@ -136,8 +151,8 @@ export default function TermsLegal() {
               <p>
                 One exception — the launch waitlist. If you choose to join it, we store the email
                 address you submit so we can tell you when the app launches. That email is never
-                required to use the wallet, and you can ask us to delete it at any time at
-                privacy@veyrnox.com.
+                required to use the wallet, and you can ask us to delete it at any time at{" "}
+                <MailLink address={PRIVACY_EMAIL} />.
               </p>
             </TermsSection>
 
@@ -386,7 +401,8 @@ export default function TermsLegal() {
 
             <TermsSection number={13} title="Contact Us" group="privacy">
               <p>
-                Questions about this Privacy Policy or our data practices: privacy@veyrnox.com
+                Questions about this Privacy Policy or our data practices:{" "}
+                <MailLink address={PRIVACY_EMAIL} />
               </p>
             </TermsSection>
           </div>
@@ -707,7 +723,7 @@ export default function TermsLegal() {
               </p>
               <p>
                 <b>Contact.</b> If you have any questions about these Terms, please contact us at{" "}
-                {CONTACT_EMAIL}.
+                <MailLink address={CONTACT_EMAIL} />.
               </p>
             </TermsSection>
           </div>
