@@ -332,6 +332,12 @@ jobs:
       # #1107: fail CI if any .env.production* file sets VITE_BYPASS_RASP=1 --
       # that disables the entire RASP pre-sign integrity gate.
       - run: npm run check:rasp-bypass
+      # Tracked .env files may carry VITE_* keys and nothing else. Vite bakes
+      # VITE_* into the shipped bundle, so those are public by construction;
+      # any other key in a tracked .env file is a real secret published to a
+      # PUBLIC repo. Exact rule, no entropy heuristics -- the complement to the
+      # `secret-scan` job below, which catches unrecognised secrets anywhere.
+      - run: npm run check:tracked-env-files
       # iOS SPM manifest gate: `npx cap sync` run on Windows rewrites
       # ios/App/CapApp-SPM/Package.swift with backslash paths. Backslash is
       # Swift's escape character, so the manifest stops parsing — but ONLY on
@@ -340,6 +346,79 @@ jobs:
       # invisible until someone opens the project there (observed 2026-07-22).
       - run: npm run check:spm-paths
       - run: npm run build
+
+  # Secret scanning over the commits a PR actually adds.
+  #
+  # GitHub's own secret scanning + push protection are already enabled on this
+  # repo (both free for public repos) and cover PARTNER PATTERNS -- provider
+  # token formats with published regexes. They do NOT catch a generic secret:
+  # a random HMAC signing key, a webhook Authorization value, a base64 partner
+  # secret. Those are exactly the shapes this repo handles (TIP_SIGNING_SECRET,
+  # REVENUECAT_WEBHOOK_AUTHORIZATION, TRANSAK_API_SECRET), so gitleaks' entropy
+  # and assignment rules are the complement, not a duplicate.
+  #
+  # SCOPE IS THE PR RANGE, DELIBERATELY. A full-history scan currently reports
+  # 147 findings that have never been triaged, so gating on it would mean
+  # either a permanently red job or a baseline file that rubber-stamps 147
+  # unread findings. Blocking NEW secrets is the control worth having today;
+  # triaging history is tracked separately. Do not widen this to full history
+  # without landing that triage in the same PR.
+  secret-scan:
+    name: Secret scan (PR range)
+    runs-on: ubuntu-latest
+    needs: target-sha-guard
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+          # Full history: the scan walks a commit RANGE, and a shallow clone
+          # has no merge base to range against.
+          fetch-depth: 0
+      - name: Check out validated target
+        env:
+          VALIDATED_SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
+        run: |
+          git fetch --no-tags origin "$VALIDATED_SHA"
+          git checkout --detach "$VALIDATED_SHA"
+      - name: Install gitleaks (pinned + checksum-verified)
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          set -euo pipefail
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSL --retry 3 -o "$tarball" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${tarball}"
+          echo "${GITLEAKS_SHA256}  ${tarball}" | sha256sum -c -
+          tar -xzf "$tarball" gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: Scan commits added by this change
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+          # The guard's validated SHA, NOT github.sha -- it is the tree that
+          # was actually checked out above, and on a dispatched run with a
+          # target_sha the two differ.
+          VALIDATED_SHA: ${{ needs.target-sha-guard.outputs.effective_sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            range="${BASE_REF}..${HEAD_REF}"
+          elif [ -n "${BEFORE_SHA:-}" ] && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            range="${BEFORE_SHA}..${VALIDATED_SHA}"
+          else
+            # First push of a branch, a force-push that orphaned `before`, or a
+            # dispatch. Scan the single head commit rather than silently
+            # scanning nothing.
+            range="${VALIDATED_SHA}~1..${VALIDATED_SHA}"
+          fi
+          echo "Scanning $range"
+          # --redact: a finding must never print the secret into a PUBLIC build log.
+          gitleaks git --redact --log-opts="$range" .
 
   # Unit tests run in their OWN job, deliberately NOT inside `verify`.
   #

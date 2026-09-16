@@ -76,6 +76,15 @@ secrets.json
 # ...and the production build config (client-exposed build flags only, no
 # secrets — Vite bakes VITE_* vars into the shipped bundle regardless).
 !.env.production
+# ...and the canary build config, read by `vite build --mode canary` in
+# .github/workflows/canary-release.yml. This negation was MISSING while the
+# file was tracked: `.env.canary` landed in bef30253 (#1931) before the rule
+# existed, and .gitignore does not untrack an already-tracked file, so it sat
+# committed with no stated intent for anyone to check against. Stated now.
+#
+# Same rationale as the two above, and `npm run check:tracked-env-files`
+# enforces it for all three: VITE_* only. This repo is PUBLIC.
+!.env.canary
 
 # Logs
 *.log
