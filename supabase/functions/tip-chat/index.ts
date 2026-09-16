@@ -91,9 +91,59 @@ const MAX_USER_CONTENT = 8192;
 // fit that but well under the Llama-3.1-8B ~24K-token context window.
 const MAX_SYSTEM_CONTENT = 32768;
 const ENTITLEMENT_CACHE_TTL_MS = 60_000;
+// Negative verdicts are cached too, on a SHORTER clock.
+//
+// Without this, only the `ok` path cached, so every unentitled or unknown id
+// re-hit RevenueCat — and the id is an unauthenticated request header, so an
+// outbound RevenueCat call per inbound request is something any caller could
+// drive. That is our own API quota, spent by someone else, at their rate.
+//
+// Short because this is the side that costs a real subscriber: someone who
+// purchases mid-session waits at most this long for the gate to notice. 10s is
+// invisible to them and still collapses a probing flood by orders of magnitude.
+const ENTITLEMENT_NEG_CACHE_TTL_MS = 10_000;
 const REVENUECAT_TIMEOUT_MS = 3_000;
 const REQUIRED_ENTITLEMENT = 'ai_security_protection';
+// Caching a caller-supplied key makes the map itself a target — unbounded, it
+// is a memory sink fed by whoever sends the most distinct ids. Cleared wholesale
+// rather than evicted LRU: the map is a latency optimisation, so the worst a
+// flush can do is make the next request per id pay for a lookup it would have
+// paid for anyway.
+const MAX_ENTITLEMENT_CACHE_ENTRIES = 5_000;
 const entitlementCache = new Map<string, { ok: boolean, expiresAt: number }>();
+
+function rememberEntitlement(appUserId: string, ok: boolean): void {
+  if (entitlementCache.size >= MAX_ENTITLEMENT_CACHE_ENTRIES) entitlementCache.clear();
+  entitlementCache.set(appUserId, {
+    ok,
+    expiresAt: Date.now() + (ok ? ENTITLEMENT_CACHE_TTL_MS : ENTITLEMENT_NEG_CACHE_TTL_MS),
+  });
+}
+
+// X-Rc-User-Id is an IDENTIFIER, not a credential: nothing binds the caller to
+// the id they claim, so possession of someone's RevenueCat app_user_id is
+// enough to use their entitlement. Anonymous RC ids are high-entropy
+// (`$RCAnonymousID:<32 hex>`) so they are not enumerable, and upstream still
+// applies its own per-device_id cap, which bounds what a stolen id is worth.
+// Do not read this gate as authentication — closing it properly needs a
+// server-authored proof (a signed RC-webhook token), which does not exist yet.
+//
+// What IS enforced here: the value reaches a URL path segment, so it is bounded
+// and screened before use. RevenueCat caps app_user_id at 1500 chars. A control
+// character is rejected outright rather than stripped — fetch() would throw on
+// it anyway, and a 500 is a worse answer than a clean 403. Deliberately the same
+// rule as safeRcUserId() in functions/api/edge/[fn].js, which screens the same
+// header on the proxy route; this function is ALSO reachable directly
+// (SecurityAdvisor's LEGACY_TIP_CHAT_URL), so it cannot rely on that one.
+const MAX_RC_USER_ID = 1500;
+
+function safeRcUserId(raw: string | null): string | null {
+  if (typeof raw !== 'string') return null;
+  const v = raw.trim();
+  if (!v || v.length > MAX_RC_USER_ID) return null;
+  if (/[\u0000-\u001F\u007F]/.test(v)) return null;
+  return v;
+}
 
 // Kept identical to tip-screen so both proxies accept the same set of origins.
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -152,7 +202,14 @@ async function hasRequiredEntitlement(appUserId: string): Promise<boolean> {
       },
       signal: controller.signal,
     });
-    if (!resp.ok) return false;
+    if (!resp.ok) {
+      // A 4xx is a verdict about this id (404 = no such subscriber, 401/403 =
+      // our key cannot see it) and is safe to remember briefly. A 5xx is
+      // RevenueCat having a bad minute — never cached, so an outage does not
+      // compound into a self-inflicted lockout on top of it.
+      if (resp.status >= 400 && resp.status < 500) rememberEntitlement(appUserId, false);
+      return false;
+    }
     const body = await resp.json().catch(() => null) as Record<string, unknown> | null;
     const subscriber = body?.subscriber;
     const entitlements = subscriber && typeof subscriber === 'object'
@@ -162,7 +219,7 @@ async function hasRequiredEntitlement(appUserId: string): Promise<boolean> {
       ? (entitlements as Record<string, unknown>).active
       : null;
     const ok = !!(active && typeof active === 'object' && REQUIRED_ENTITLEMENT in active);
-    entitlementCache.set(appUserId, { ok, expiresAt: now + ENTITLEMENT_CACHE_TTL_MS });
+    rememberEntitlement(appUserId, ok);
     return ok;
   } catch {
     return false;
@@ -188,7 +245,7 @@ serve(async (req) => {
   if (!bearer && !apikey) {
     return json({ error: 'unauthorized' }, 401, origin);
   }
-  const rcUserId = (req.headers.get('x-rc-user-id') ?? '').trim();
+  const rcUserId = safeRcUserId(req.headers.get('x-rc-user-id'));
   if (!rcUserId) {
     return json({ error: 'entitlement_required' }, 403, origin);
   }

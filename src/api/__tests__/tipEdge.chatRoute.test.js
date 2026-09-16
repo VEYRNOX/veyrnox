@@ -203,3 +203,67 @@ describe('edge proxy allows streaming tip-chat', () => {
     expect(edgeProxySrc).toMatch(/new Response\(res\.body/);
   });
 });
+
+// The entitlement gate's input is an unauthenticated request header, and its
+// verdict is an outbound call to RevenueCat on OUR API key. Two properties have
+// to hold, and neither is visible from the happy path.
+//
+// Asserted against `chatCode` (comments stripped) throughout: the reasoning for
+// each of these lives in a comment in the source that necessarily NAMES the
+// thing it replaced, so a raw-source assertion would match its own explanation.
+describe('tip-chat entitlement lookup is bounded and cached in both directions', () => {
+  it('screens X-Rc-User-Id before it reaches a URL path segment', () => {
+    // The value is interpolated into api.revenuecat.com/v1/subscribers/<id>.
+    // Bounds + control-character screening, same rule as safeRcUserId() in
+    // functions/api/edge/[fn].js — this function is reachable directly via
+    // SecurityAdvisor's LEGACY_TIP_CHAT_URL, so it cannot lean on the proxy's.
+    expect(chatCode).toMatch(/function safeRcUserId/);
+    expect(chatCode).toMatch(/MAX_RC_USER_ID = 1500/);
+    expect(chatCode).toMatch(/safeRcUserId\(req\.headers\.get\('x-rc-user-id'\)\)/);
+  });
+
+  it('does not read the raw header straight into the lookup', () => {
+    // The pre-fix form. Scoped to the assignment rather than the header name,
+    // which legitimately still appears in the CORS allow-headers list.
+    expect(chatCode).not.toMatch(/rcUserId\s*=\s*\(req\.headers\.get\('x-rc-user-id'\)\s*\?\?\s*''\)/);
+  });
+
+  it('caches negative verdicts, not only positive ones', () => {
+    // Only the `ok` path used to cache, so every unentitled or unknown id
+    // re-hit RevenueCat — one outbound call per inbound request, on an id any
+    // caller supplies. Both verdicts now go through one writer.
+    expect(chatCode).toMatch(/function rememberEntitlement/);
+    expect(chatCode).toMatch(/rememberEntitlement\(appUserId, false\)/);
+    expect(chatCode).toMatch(/rememberEntitlement\(appUserId, ok\)/);
+    expect(chatCode).toMatch(/ENTITLEMENT_NEG_CACHE_TTL_MS/);
+  });
+
+  it('writes the cache in exactly one place', () => {
+    // A second `entitlementCache.set(` would be a write that skips the size cap
+    // and the positive/negative TTL split. One writer is the invariant.
+    expect(chatCode.match(/entitlementCache\.set\(/g) ?? []).toHaveLength(1);
+  });
+
+  it('bounds the cache, which is keyed by caller-supplied ids', () => {
+    // Caching a negative for an attacker-chosen key turns the map into a memory
+    // sink unless it is capped.
+    expect(chatCode).toMatch(/MAX_ENTITLEMENT_CACHE_ENTRIES/);
+    expect(chatCode).toMatch(/entitlementCache\.clear\(\)/);
+  });
+
+  it('remembers a 4xx verdict but never a 5xx', () => {
+    // A 404 is a fact about the id. A 503 is RevenueCat having a bad minute,
+    // and caching it would turn their outage into a lockout of our own
+    // subscribers on top of it.
+    expect(chatCode).toMatch(/resp\.status >= 400 && resp\.status < 500/);
+  });
+
+  it('keeps the negative TTL shorter than the positive one', () => {
+    // The negative side is the one a real subscriber pays for: someone who buys
+    // mid-session waits this long for the gate to notice.
+    const pos = Number(/ENTITLEMENT_CACHE_TTL_MS = ([\d_]+)/.exec(chatCode)?.[1].replace(/_/g, ''));
+    const neg = Number(/ENTITLEMENT_NEG_CACHE_TTL_MS = ([\d_]+)/.exec(chatCode)?.[1].replace(/_/g, ''));
+    expect(Number.isFinite(pos) && Number.isFinite(neg)).toBe(true);
+    expect(neg).toBeLessThan(pos);
+  });
+});
