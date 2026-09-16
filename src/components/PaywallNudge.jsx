@@ -13,7 +13,7 @@
 // same day count as one "session day".
 
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { Shield, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useModalA11y } from '@/lib/useModalA11y';
@@ -56,21 +56,35 @@ export function shouldShowPaywallNudge(currentTier) {
   }
 }
 
+// Routes where an upsell modal must never interrupt. The nudge fires on the
+// first render after the tier resolves, and incrementSessionDayCount() runs at
+// SESSION_START (i.e. at unlock) — so on day 3 the full-screen modal could land
+// straight on top of whatever the user unlocked the wallet to do, including a
+// send or a security screen. Restricted to the dashboard, after a short settle
+// delay, so it reads as an interstitial rather than an ambush.
+const NUDGE_ROUTES = ['/', '/dashboard'];
+const SETTLE_MS = 2500;
+
 export default function PaywallNudge() {
   const { currentTier } = useTier();
   const navigate = useNavigate();
+  const location = useLocation();
   const [visible, setVisible] = useState(false);
   const containerRef = useModalA11y({ active: visible, onEscape: () => handleDismiss() });
 
   const trackedRef = useRef(false);
   useEffect(() => {
     if (trackedRef.current) return;
-    if (shouldShowPaywallNudge(currentTier)) {
+    if (!NUDGE_ROUTES.includes(location.pathname)) return;
+    if (!shouldShowPaywallNudge(currentTier)) return;
+    const timer = setTimeout(() => {
+      if (trackedRef.current) return;
       trackedRef.current = true;
       setVisible(true);
       void trackEvent(EVENT.PAYWALL_SHOWN, { trigger: 'day_3' }).catch(() => {});
-    }
-  }, [currentTier]);
+    }, SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [currentTier, location.pathname]);
 
   // Codex P2 2026-08-16: shouldShowPaywallNudge is only re-evaluated when
   // currentTier changes, so a nudge shown in a primary session stays

@@ -354,7 +354,9 @@
     "tab_home": "Home",
     "tab_send": "Send",
     "tab_receive": "Receive",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "You'll need your PIN to get back in.",
+    "lock_confirm_cancel": "Cancel"
   },
   "back": {
     "default_label": "Back"
