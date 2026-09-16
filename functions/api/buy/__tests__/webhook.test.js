@@ -8,7 +8,9 @@ const SECRET = 'test-transak-secret';
 // Transak traffic is captured in `warn` mode with matching signatures, flip
 // TRANSAK_WEBHOOK_VERIFY_MODE=strict on Cloudflare Pages.
 const ENV_STRICT = { TRANSAK_WEBHOOK_SECRET: SECRET, TRANSAK_WEBHOOK_VERIFY_MODE: 'strict' };
-const ENV_OFF = { TRANSAK_WEBHOOK_SECRET: SECRET }; // default mode = off
+// `off` is now an EXPLICIT opt-out — the default moved to `warn` so the
+// evidence the flip to `strict` waits on actually accumulates.
+const ENV_OFF = { TRANSAK_WEBHOOK_SECRET: SECRET, TRANSAK_WEBHOOK_VERIFY_MODE: 'off' };
 const ENV_WARN = { TRANSAK_WEBHOOK_SECRET: SECRET, TRANSAK_WEBHOOK_VERIFY_MODE: 'warn' };
 
 async function signedReq(method, bodyObj, { rawBody, secret = SECRET, signature } = {}) {
@@ -125,7 +127,7 @@ describe('buy/webhook', () => {
     });
   });
 
-  describe('off mode (default)', () => {
+  describe('off mode (explicit)', () => {
     it('unsigned request returns 200 + logs the raw event', async () => {
       const request = unsignedReq('POST', {
         eventID: 'ORDER_CREATED',
@@ -140,14 +142,41 @@ describe('buy/webhook', () => {
       expect(line).toContain('mode=off');
     });
 
-    it('no env var at all defaults to off (no 500)', async () => {
+    it('no secret at all still degrades to off (no 500)', async () => {
+      // The secret, not the mode, is what makes verification impossible. With
+      // no secret the default `warn` must still fall back to off rather than
+      // 500 — a rotating or unset secret must never drop a webhook.
       const request = unsignedReq('POST', { eventID: 'ORDER_CREATED' });
       const res = await onRequestPost({ request, env: {} });
       expect(res.status).toBe(200);
       expect(res.headers.get('X-Verify-Mode')).toBeNull();
+      const logLine = console.log.mock.calls[0][0];
+      expect(logLine).toContain('mode=off');
+    });
+  });
+
+  describe('default mode', () => {
+    it('unset TRANSAK_WEBHOOK_VERIFY_MODE with a secret present defaults to warn', async () => {
+      // Regression pin for the default move. An unsigned request must be
+      // VERIFIED (and fail) rather than waved through uncomputed — and must
+      // still ack 200, which is the whole reason warn is safe as a default.
+      const request = unsignedReq('POST', {
+        eventID: 'ORDER_CREATED',
+        webhookData: { id: 'default-1' },
+      });
+      const res = await onRequestPost({
+        request,
+        env: { TRANSAK_WEBHOOK_SECRET: SECRET },
+      });
+      expect(res.status).toBe(200);
+      const warnLine = console.warn.mock.calls[0][0];
+      expect(warnLine).toContain('verify_warn');
+      expect(warnLine).toContain('reason=missing_signature');
+      const logLine = console.log.mock.calls[0][0];
+      expect(logLine).toContain('mode=warn');
     });
 
-    it('invalid mode value (e.g. "true") warns once and resolves to off', async () => {
+    it('invalid mode value (e.g. "true") warns once and resolves to warn', async () => {
       const request = unsignedReq('POST', { eventID: 'ORDER_CREATED' });
       const res = await onRequestPost({
         request,
@@ -156,10 +185,43 @@ describe('buy/webhook', () => {
       expect(res.status).toBe(200);
       const warnLine = console.warn.mock.calls[0][0];
       expect(warnLine).toContain('invalid TRANSAK_WEBHOOK_VERIFY_MODE=true');
-      expect(warnLine).toContain('falling back to off');
-      // resolved to off → main log line reports mode=off
+      expect(warnLine).toContain('falling back to warn');
       const logLine = console.log.mock.calls[0][0];
-      expect(logLine).toContain('mode=off');
+      expect(logLine).toContain('mode=warn');
+    });
+  });
+
+  describe('body size cap', () => {
+    it('rejects an oversized declared Content-Length without reading the body', async () => {
+      const request = new Request('https://veyrnox-prod.pages.dev/api/buy/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': '2000000' },
+        body: JSON.stringify({ eventID: 'ORDER_CREATED' }),
+      });
+      const res = await onRequestPost({ request, env: ENV_OFF });
+      expect(res.status).toBe(413);
+      expect(await res.json()).toEqual({ ok: false, error: 'payload_too_large' });
+    });
+
+    it('rejects an oversized actual body when Content-Length is absent or lies', async () => {
+      // 1 MiB + 1 byte of payload, no honest Content-Length to reject on.
+      const big = JSON.stringify({ eventID: 'ORDER_CREATED', pad: 'x'.repeat(1_048_600) });
+      const request = new Request('https://veyrnox-prod.pages.dev/api/buy/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: big,
+      });
+      const res = await onRequestPost({ request, env: ENV_OFF });
+      expect(res.status).toBe(413);
+    });
+
+    it('accepts a normal-sized event', async () => {
+      const request = unsignedReq('POST', {
+        eventID: 'ORDER_COMPLETED',
+        webhookData: { id: 'size-ok' },
+      });
+      const res = await onRequestPost({ request, env: ENV_OFF });
+      expect(res.status).toBe(200);
     });
   });
 

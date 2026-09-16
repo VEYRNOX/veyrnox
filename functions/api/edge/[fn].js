@@ -27,6 +27,37 @@ function err(status, message) {
 // forwarding it would waste both our egress and the Supabase invocation cost.
 const MAX_BODY_BYTES = 1_048_576;
 
+// The ONLY client header forwarded upstream, and it is copied by name rather
+// than passed through — this proxy injects SUPABASE_ANON_KEY server-side, so a
+// blanket passthrough would let a caller override Authorization/apikey.
+//
+// WHY IT EXISTS: supabase/functions/tip-chat reads `x-rc-user-id` and resolves
+// it against RevenueCat to decide entitlement. The header set here was fixed at
+// {Content-Type, Authorization, apikey}, so the id never arrived and every
+// Advisor chat request from an entitled subscriber got 403 entitlement_required
+// on this path. SecurityAdvisor.jsx then fell through to LEGACY_TIP_CHAT_URL
+// (Supabase direct), which does carry it — so the feature "worked" only via the
+// route this proxy exists to replace, at the cost of a wasted round trip, and
+// not at all on a native build with no legacy URL configured.
+//
+// It is an IDENTIFIER, not a credential: possession of someone's RevenueCat
+// app_user_id is enough to use their entitlement. Anonymous RC ids are
+// high-entropy (`$RCAnonymousID:<32 hex>`) so they are not enumerable, but do
+// not treat this as authentication.
+//
+// Bounds: RevenueCat caps app_user_id at 1500 chars. Anything with a control
+// character is rejected outright rather than stripped — fetch() would throw on
+// it anyway, and a 500 is a worse answer than proceeding without entitlement.
+const MAX_RC_USER_ID = 1500;
+
+function safeRcUserId(raw) {
+  if (typeof raw !== 'string') return null;
+  const v = raw.trim();
+  if (!v || v.length > MAX_RC_USER_ID) return null;
+  if (/[\u0000-\u001F\u007F]/.test(v)) return null;
+  return v;
+}
+
 export async function onRequestPost(context) {
   const { request, env, params } = context;
   const fn = params.fn;
@@ -61,13 +92,17 @@ export async function onRequestPost(context) {
   }
 
   const url = `${supabaseUrl}/functions/v1/${encodeURIComponent(fn)}`;
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${supabaseKey}`,
+    'apikey': supabaseKey,
+  };
+  const rcUserId = safeRcUserId(request.headers.get('X-Rc-User-Id'));
+  if (rcUserId) headers['X-Rc-User-Id'] = rcUserId;
+
   const res = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${supabaseKey}`,
-      'apikey': supabaseKey,
-    },
+    headers,
     body,
   });
 

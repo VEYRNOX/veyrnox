@@ -14,7 +14,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { Shield, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import Vigil from '@/components/Vigil';
 import { Button } from '@/components/ui/button';
 import { useModalA11y } from '@/lib/useModalA11y';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
@@ -132,10 +133,11 @@ export default function PaywallNudge() {
         className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xl"
       >
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-bold">Upgrade to Safety Plus</h2>
-          </div>
+          {/* Vigil, asleep: protection is NOT running on this wallet. The
+              sleeping state is the honest one for a paywall (I4) — off duty,
+              never sad, never implying cover the user has not paid for.
+              Vigil self-gates on deniability/demo, so no guard here. */}
+          <h2 className="text-lg font-bold">Upgrade to Safety Plus</h2>
           <button
             onClick={handleDismiss}
             className="text-muted-foreground hover:text-foreground"
@@ -143,6 +145,9 @@ export default function PaywallNudge() {
           >
             <X className="h-4 w-4" />
           </button>
+        </div>
+        <div className="flex justify-center">
+          <Vigil state="asleep" size={84} />
         </div>
         <p className="text-sm text-muted-foreground">
           You&rsquo;ve been using Veyrnox for a few days. Safety Plus adds hardware-bound

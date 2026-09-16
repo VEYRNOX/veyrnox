@@ -73,8 +73,55 @@ function err(status, message) {
  */
 function upstreamErr(stage, res, text) {
   const ref = crypto.randomUUID().slice(0, 8);
-  console.error(`[buy/session] ${stage} failed ref=${ref} status=${res.status} body=${String(text).slice(0, 500)}`);
+  console.error(`[buy/session] ${stage} failed ref=${ref} status=${res.status} ${upstreamDetail(text)}`);
   err(502, `Buy is temporarily unavailable (ref ${ref})`);
+}
+
+// Characters kept per logged field. Transak's longest useful value is a
+// `message`; 160 is enough to read one and short enough that a padded field
+// cannot flood the tail log.
+const MAX_LOG_FIELD = 160;
+
+function logField(value) {
+  if (value == null) return '';
+  // Strip C0 controls, DEL and the Unicode line separators so a field cannot
+  // forge a second log line.
+  const cleaned = String(value).replace(/[\u0000-\u001F\u007F\u2028\u2029]/g, '');
+  return cleaned.length > MAX_LOG_FIELD ? `${cleaned.slice(0, MAX_LOG_FIELD)}…` : cleaned;
+}
+
+/**
+ * Field-select an upstream Transak error for the tail log.
+ *
+ * This used to log `String(text).slice(0, 500)` — the whole response body. The
+ * request we just sent Transak carries `widgetParams.walletAddress`, and an API
+ * that rejects a payload commonly echoes the offending field back, so a failed
+ * create-session could write a user's wallet address into the Workers log.
+ * CLAUDE.md's logging rule is explicit: never log full addresses.
+ *
+ * Same split as the one in functions/api/rpc/[fn].js. Transak's error envelope
+ * is `{ error: { statusCode, name, message, ... } }`; `name` and `message` say
+ * what went wrong (`T-INF-103 Missing referer header`, `Invalid api-secret`,
+ * errorCode 1002) and are what you actually grep for. Everything else is
+ * dropped — including any echoed request payload.
+ *
+ * An unparseable body has no field structure to be selective about (a WAF
+ * challenge page, a gateway error), so it keeps a short slice: enough to
+ * recognise one, too short to carry a 42-char address plus context.
+ */
+function upstreamDetail(text) {
+  const raw = String(text ?? '');
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return `unparsed=${logField(raw)}`;
+  }
+  const e = (parsed && typeof parsed === 'object' && parsed.error) || parsed || {};
+  const name = logField(e.name);
+  const message = logField(e.message ?? (typeof parsed === 'string' ? parsed : null));
+  const code = logField(e.errorCode ?? e.statusCode ?? e.code);
+  return `code=${code} name=${name} message=${message}`;
 }
 
 // Per-IP fixed-window cap on session creation.

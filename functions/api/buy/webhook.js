@@ -17,8 +17,9 @@
 // `X-Transak-Signature` header. docs.transak.com does not spell this out, so
 // if Transak actually sends `sha256=<hex>`, base64, JWT, or Ed25519, every
 // legitimate webhook 401s. Gate verification behind env.TRANSAK_WEBHOOK_VERIFY_MODE:
-//   - "off"    (default) — log-only, no crypto, return 200. Current pre-round-9 behaviour.
-//   - "warn"   — attempt HMAC verify; on mismatch log a WARN with 8-char
+//   - "off"    — log-only, no crypto, return 200. The pre-round-9 behaviour;
+//                no longer the default (see DEFAULT_MODE below).
+//   - "warn"   (DEFAULT) — attempt HMAC verify; on mismatch log a WARN with 8-char
 //                PREFIXES of the received header and the computed HMAC (never
 //                the full digests — see logSigPrefix) and STILL return 200.
 //                Use to confirm the scheme against real Transak traffic before
@@ -34,6 +35,16 @@
 //
 // TODO: once real Transak traffic is captured in `warn` mode with matching
 // signatures, flip TRANSAK_WEBHOOK_VERIFY_MODE=strict on Cloudflare Pages.
+
+// Cap the request body. This endpoint is UNAUTHENTICATED by design — Transak
+// signs but we do not yet enforce that signature (see the mode switch below) —
+// so anyone who knows the URL can POST to it. Without a cap, each such POST
+// buys an unbounded read plus an HMAC over the whole body, in `warn` and
+// `strict` alike. A real Transak order event is a couple of KB.
+//
+// Same guard, same limit, as functions/api/edge/[fn].js and
+// functions/api/rpc/[fn].js.
+const MAX_BODY_BYTES = 1_048_576;
 
 function reqId() {
   return crypto.randomUUID().slice(0, 8);
@@ -142,15 +153,34 @@ function jsonResponse(status, body, extraHeaders) {
 }
 
 const VALID_MODES = new Set(['off', 'warn', 'strict']);
+
+// Default is `warn`, not `off`.
+//
+// `off` was chosen when the mode switch was added so that a wrong guess at
+// Transak's signing scheme could not 401 legitimate traffic. `warn` cannot do
+// that either — it computes the HMAC, logs a prefix comparison, and returns 200
+// regardless — while `off` computes nothing and so can never produce the
+// evidence the flip to `strict` is waiting on. A default that generates no
+// evidence for a step gated on evidence is a step that never happens; this one
+// sat at `off` from the day it was written.
+//
+// An unset TRANSAK_WEBHOOK_SECRET still degrades to `off` on its own (see
+// onRequestPost), so a fresh deploy or a mid-rotation gap is unaffected.
+//
+// The remaining flip to `strict` IS a behaviour change and stays an explicit
+// env decision: set TRANSAK_WEBHOOK_VERIFY_MODE=strict once warn logs show
+// header and computed prefixes agreeing on real Transak traffic.
+const DEFAULT_MODE = 'warn';
+
 function resolveMode(env) {
   const rawRaw = (env && env.TRANSAK_WEBHOOK_VERIFY_MODE) || '';
   const raw = String(rawRaw).toLowerCase();
-  if (!raw) return 'off';
+  if (!raw) return DEFAULT_MODE;
   if (VALID_MODES.has(raw)) return raw;
   console.warn(
-    `[buy/webhook] invalid TRANSAK_WEBHOOK_VERIFY_MODE=${logSafe(rawRaw)}, falling back to off`,
+    `[buy/webhook] invalid TRANSAK_WEBHOOK_VERIFY_MODE=${logSafe(rawRaw)}, falling back to ${DEFAULT_MODE}`,
   );
-  return 'off';
+  return DEFAULT_MODE;
 }
 
 export async function onRequestPost({ request, env }) {
@@ -164,6 +194,14 @@ export async function onRequestPost({ request, env }) {
     mode = 'off';
   }
 
+  // Cheap reject via Content-Length before draining the stream; callers can lie
+  // or omit it, so the byte cap is re-checked on the actual read.
+  const declaredLen = Number(request.headers.get('Content-Length') || '0');
+  if (Number.isFinite(declaredLen) && declaredLen > MAX_BODY_BYTES) {
+    console.warn(`[buy/webhook] ref=${ref} payload_too_large declared=${declaredLen}`);
+    return jsonResponse(413, { ok: false, error: 'payload_too_large' });
+  }
+
   // Read raw body ONCE for both HMAC verify and JSON parse — a second read
   // would drain nothing (Request bodies are single-use).
   let rawBody;
@@ -172,6 +210,11 @@ export async function onRequestPost({ request, env }) {
   } catch {
     console.error(`[buy/webhook] ref=${ref} read_error`);
     return jsonResponse(400, { ok: false, error: 'read_error' });
+  }
+  // Byte length, not code-point length — non-ASCII payloads count correctly.
+  if (new TextEncoder().encode(rawBody).length > MAX_BODY_BYTES) {
+    console.warn(`[buy/webhook] ref=${ref} payload_too_large`);
+    return jsonResponse(413, { ok: false, error: 'payload_too_large' });
   }
 
   if (mode !== 'off') {
