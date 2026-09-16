@@ -21,6 +21,11 @@
 import XCTest
 
 final class AppUITests: XCTestCase {
+
+    /// Stable leading fragment of PinSetup.jsx's confirm-mismatch copy. Pinned
+    /// against the real string by the JS copy-drift guard; see above.
+    private let MISMATCH_COPY_PREFIX = "PINs didn't match"
+
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
@@ -216,7 +221,9 @@ final class AppUITests: XCTestCase {
     /// fail-closed provisioning result.
     private func setPinCeremony(app: XCUIApplication, pin: String, maxAttempts: Int = 3) {
         let confirmHeading = app.staticTexts["Confirm your PIN"]
-        let mismatch = app.staticTexts["PINs didn't match. Start again."]
+        let mismatch = app.staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH %@", MISMATCH_COPY_PREFIX)
+        ).firstMatch
         // PinSetup's stage-one rejection copy for a lost-digit buffer. Source of
         // truth is checkPinStrength in src/lib/pinStrength.js; the copy-drift
         // guard in src/__tests__/firebase-test-lab-onboarding.test.js checks
@@ -357,21 +364,28 @@ final class AppUITests: XCTestCase {
     /// Case B is real and is the common one on CI. Run 33617705223: the
     /// confirm-PIN entry desynced against a slow WKWebView (8 digits spread over
     /// 39 s, then a 28 s stall before the submit button resolved), PinSetup.jsx
-    /// showed "PINs didn't match. Start again." and reset to stage one, and the
+    /// showed its PIN-mismatch banner and reset to stage one, and the
     /// app sat on the PIN pad for the whole 45 s window. The recorded frames
     /// show a PIN pad, not a dashboard — nothing was ever provisioned.
     ///
     /// Unlike the sonner toast described above, this string IS published to the
     /// accessibility tree — verified as a `StaticText` in that run's AX dump at
     /// failure time — so it can be asserted on directly. Source of truth is the
-    /// `setError(...)` call in src/components/PinSetup.jsx; if that copy changes,
-    /// this string must change with it.
+    /// `setError(...)` call in src/components/PinSetup.jsx. Matched on a PREFIX
+    /// rather than the full sentence, because the full sentence HAS drifted
+    /// (#2589 lengthened it to explain why both entries are cleared) and this
+    /// file was not updated with it — a 15-minute iOS red for a copy edit. The
+    /// prefix is pinned to PinSetup.jsx from the JS side by
+    /// src/__tests__/firebase-test-lab-onboarding.test.js, so the next drift
+    /// fails in seconds instead.
     ///
     /// Deliberately NOT a retry or a longer timeout: the wait was never too
     /// short, the app was never going to leave that screen. Widening it would
     /// only turn an inaccurate red into a slower inaccurate red.
     private func assertPinFlowLeftPinSetup(app: XCUIApplication) {
-        let mismatch = app.staticTexts["PINs didn't match. Start again."]
+        let mismatch = app.staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH %@", MISMATCH_COPY_PREFIX)
+        ).firstMatch
         XCTAssertFalse(
             mismatch.waitForExistence(timeout: 5),
             "PIN confirm desynced and PinSetup reset to stage one, so the flow never reached provisioning. This is a test-harness failure against a slow WKWebView, NOT a fail-closed result and NOT evidence about secure-store handling — the run proves nothing either way about provisioning."

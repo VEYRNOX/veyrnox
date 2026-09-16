@@ -111,6 +111,31 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(swift).toMatch(/submitPinUntilAdvanced\(app: app, stage: "set", [^\n]*rejected: \{ padRejected\.exists \}/);
   });
 
+  // #2593: PinSetup's confirm-mismatch copy is the source of truth for the
+  // iOS ceremony's "did we actually leave PinSetup?" guard. #2589 lengthened
+  // that sentence and did NOT update AppUITests.swift, which hardcoded it
+  // verbatim — so the matcher stopped matching, the guard stopped firing, and
+  // the import smoke test went red 15 minutes into an iOS job for a copy edit.
+  // Swift now matches a PREFIX; this pins the prefix to the real string so the
+  // next drift fails here, in seconds, instead.
+  it('matches the iOS PIN-mismatch prefix to PinSetup copy', () => {
+    const pinSetup = read('src/components/PinSetup.jsx');
+    const copy = pinSetup.match(/setError\("(PINs didn[^"]*)"\)/)?.[1];
+    expect(copy, 'confirm-mismatch setError() not found in PinSetup.jsx').toBeTruthy();
+
+    const prefix = swift.match(/MISMATCH_COPY_PREFIX = "([^"]+)"/)?.[1];
+    expect(prefix, 'MISMATCH_COPY_PREFIX not found in AppUITests.swift').toBeTruthy();
+
+    // The whole point: the Swift matcher must still match what React renders.
+    expect(copy.startsWith(prefix), `PinSetup renders "${copy}", which does not start with the Swift prefix "${prefix}"`).toBe(true);
+    // A prefix so short it would match unrelated banners is not a guard.
+    expect(prefix.length).toBeGreaterThan(10);
+
+    // And both call sites must go through the constant, not a literal.
+    expect(swift).not.toMatch(/staticTexts\["PINs didn/);
+    expect((swift.match(/BEGINSWITH %@", MISMATCH_COPY_PREFIX/g) || []).length).toBe(2);
+  });
+
   // #2543 run 34825618785: a single Restore / Import press with the keyboard
   // still up never submitted, so the fail-closed banner assertion failed on a
   // form that was never sent. The press must be confirmed, and "confirmed" must
