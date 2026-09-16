@@ -217,11 +217,31 @@ describe('Content-Security-Policy — static strictness (XSS defence)', () => {
     });
   });
 
-  // If (as on main) more than one policy exists, prove they genuinely conflict —
-  // i.e. the duplicate is not a harmless copy. Uses real CSP host-source matching
-  // (a wildcard like *.solana.com DOES cover api.devnet.solana.com) so it reports
-  // only hosts an enforcing browser would actually block under the intersection,
-  // not cosmetic token differences.
+  // Every policy the browser ENFORCES, not just the ones inside index.html.
+  //
+  // This used to read `metas` alone and open with `if (metas.length < 2) return;`
+  // — while a sibling test 160 lines up asserts index.html declares EXACTLY ONE
+  // meta. The two together made this test unreachable: it could never run, and
+  // so could never fail. It read as cross-policy coverage for months and was
+  // not.
+  //
+  // What it should have been comparing all along is the meta against
+  // public/_headers, because on the Pages host BOTH are delivered and a browser
+  // enforces each one separately — the effective policy is their INTERSECTION.
+  // A host present in one and absent from the other is therefore blocked in
+  // production while both files look individually correct. That had happened:
+  // connect-src had drifted by three hosts (openrouter.ai and
+  // updates.veyrnox.com in the meta only; the staging Supabase project in
+  // _headers only), so OTA update checks and every staging Supabase call were
+  // blocked on the web host by a policy neither file admits to.
+  //
+  // Only `font-src` was ever compared across the two files (#2115, below) —
+  // which is exactly why the font drift was caught and this was not. Compare
+  // whole directives here, and let the font test stay as the narrower pin.
+  //
+  // Uses real CSP host-source matching (a wildcard like *.solana.com DOES cover
+  // api.devnet.solana.com) so it reports only hosts an enforcing browser would
+  // actually block under the intersection, not cosmetic token differences.
   //
   // Per CSP host-source matching (simplified to what this policy uses):
   //   '*'                      → any URL
@@ -239,9 +259,33 @@ describe('Content-Security-Policy — static strictness (XSS defence)', () => {
     return tokens.some((t) => tokenMatchesHost(t, host));
   }
 
-  it('does not carry conflicting connect-src/img-src allowlists across policies', () => {
-    if (metas.length < 2) return; // single policy → nothing to compare
-    const sets = metas.map(parsePolicy);
+  // The CSP line out of public/_headers, as a policy string. Returns null when
+  // the file carries none — a separate assertion below owns that case, so this
+  // helper does not have to decide whether absence is a failure.
+  function headersCspPolicy() {
+    const line = headers.split('\n').find((l) => /content-security-policy\s*:/i.test(l));
+    if (!line) return null;
+    return line.slice(line.indexOf(':') + 1).trim();
+  }
+
+  it('public/_headers declares a CSP at all', () => {
+    // Without this, the cross-file test below would silently degrade to
+    // comparing the meta against itself the moment the _headers line is
+    // dropped or renamed — the same "cannot fail" shape this block replaced.
+    expect(headersCspPolicy(), 'no Content-Security-Policy line in public/_headers').toBeTruthy();
+  });
+
+  it('does not carry conflicting connect-src/img-src allowlists across enforced policies', () => {
+    const headerCsp = headersCspPolicy();
+    const enforced = [...metas, ...(headerCsp ? [headerCsp] : [])];
+    // Two sources minimum: one meta (pinned to exactly one above) + _headers.
+    // If this ever drops to a single policy the comparison is meaningless, so
+    // say so out loud rather than returning green.
+    expect(
+      enforced.length,
+      'expected at least two enforced policies (index.html meta + public/_headers) to compare',
+    ).toBeGreaterThan(1);
+    const sets = enforced.map(parsePolicy);
     const conflicts = [];
     for (const dir of ['connect-src', 'img-src']) {
       const lists = sets.map((s) => s.get(dir) ?? s.get('default-src') ?? []);
@@ -265,7 +309,9 @@ describe('Content-Security-Policy — static strictness (XSS defence)', () => {
     }
     expect(
       conflicts,
-      `the duplicate CSP metas genuinely conflict — the browser-enforced intersection breaks these:\n  ${conflicts.join('\n  ')}`,
+      'index.html and public/_headers genuinely conflict — a browser enforces both '
+        + `and the intersection blocks these:\n  ${conflicts.join('\n  ')}\n`
+        + 'Fix by making the two connect-src/img-src lists identical, not by relaxing this test.',
     ).toEqual([]);
   });
 });
