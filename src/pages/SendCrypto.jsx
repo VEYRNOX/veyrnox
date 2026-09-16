@@ -43,7 +43,8 @@ import { toast } from "@/lib/toast";
 import { successHaptic, errorHaptic, actionHaptic } from "@/lib/haptics";
 import { parseEther, parseUnits } from "ethers";
 import { useWallet } from "@/lib/WalletProvider";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
+import { shellOwnsBack } from "@/lib/backNavigation";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { MAX_BASE_FEE_GWEI, evmFeeOverrides } from "@/wallet-core/evm/fees";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
@@ -378,6 +379,7 @@ export default function SendCrypto() {
   // When navigated from CryptoDetailPage (?asset=ETH), wallet + asset are already
   // known — hide those pickers and show a simplified address+amount form.
   const fromDetail = !!searchParams.get("asset");
+  const location = useLocation();
   const [walletId, setWalletId] = useState("");
   const [assetSymbol, setAssetSymbol] = useState(searchParams.get("asset") ?? "");
   const [toAddress, setToAddress] = useState("");
@@ -2009,7 +2011,9 @@ export default function SendCrypto() {
   return (
     <>
     <div className="max-w-md mx-auto space-y-6">
-      {fromDetail && <BackButton />}
+      {/* Only when the shell is NOT already showing one — /send is a bottom-nav
+          tab, so a deep link with a stored back target rendered both. */}
+      {fromDetail && !shellOwnsBack(location) && <BackButton />}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{tw("send.heading")}</h1>
         <p className="text-sm text-muted-foreground mt-0.5">{tw("send.subheading")}</p>
@@ -2239,7 +2243,7 @@ export default function SendCrypto() {
             {sendUsdRate != null && selectedWallet && (
               <button
                 type="button"
-                className="text-xs font-medium text-primary hover:underline underline-offset-2"
+                className="inline-flex items-center min-h-[44px] px-2 -mx-2 text-xs font-medium text-primary hover:underline underline-offset-2"
                 onClick={() => {
                   setAmountMode((m) => {
                     if (m === 'crypto') {
@@ -2358,6 +2362,26 @@ export default function SendCrypto() {
                         ? <>{tw("send.amount.balance_prefix")} {nativeLiveBalance != null ? <span className="mono-value">{nativeLiveBalance} {selectedWallet.currency}</span> : tw("send.amount.reading_from_network")} <span className="text-[10px]">{tw("send.amount.live_suffix")}</span></>
                         : <>{tw("send.amount.balance_prefix")} <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
                     {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span></>}
+                    {/* Max — deliberately OPT-IN (a tap), never applied for the
+                        user, and deliberately ERC-20 ONLY. On a native asset
+                        (ETH/BNB/AVAX/MATIC/BTC/SOL) the fee comes out of this
+                        same balance, so a "max" that filled the full figure
+                        would reliably build a transaction that cannot pay for
+                        itself. For a token, gas is paid in the native asset, so
+                        the whole token balance is always a valid amount. */}
+                    {amountMode === 'crypto' && isErc20 && !balanceIndeterminate && Number.isFinite(effectiveBalance) && effectiveBalance > 0 && (
+                      <>
+                        {' '}
+                        <button
+                          type="button"
+                          onClick={() => { setAmount(String(effectiveBalance)); setAmountTouched(true); }}
+                          aria-label={tw("send.amount.max_chip_aria", { currency: selectedWallet.currency })}
+                          className="inline-flex items-center min-h-[44px] px-2 align-middle text-xs font-semibold text-primary hover:underline underline-offset-2"
+                        >
+                          {tw("send.amount.max_chip")}
+                        </button>
+                      </>
+                    )}
                   </p>
                 )}
                 {/* One node, one id — the helper already decided precedence, so there
@@ -2561,6 +2585,8 @@ export default function SendCrypto() {
             <TransactionIntelligencePanel
               verdict={txIntelVerdict}
               policy={txIntelPolicy}
+              acknowledged={riskAck}
+              onAcknowledge={setRiskAck}
               onAskAdvisor={handleAskAdvisorAboutTx}
             />
 
@@ -2740,6 +2766,12 @@ export default function SendCrypto() {
               {amountUsd != null && <p className="text-xs text-muted-foreground mono-value">{approxUsd(amountUsd)}</p>}
               <p className="text-sm text-muted-foreground mono-value mt-1 break-all">{toAddress}</p>
             </div>
+
+            {/* Finality. Nothing anywhere in the send flow said a transfer is
+                irreversible — the only such copy lived in TermsLegal and the chat
+                advisor. Placed on the CONFIRM step, immediately before the
+                broadcast. This is prevent-and-confirm: there is no undo to offer. */}
+            <p className="text-xs text-caution text-center px-2">{tw("send.verify.finality")}</p>
 
             {/* Network fee — compact row that opens FeeSheet (2026-08-28).
                 BTC/SOL still use an automatic fee this slice (no selector),

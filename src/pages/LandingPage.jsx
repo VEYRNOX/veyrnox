@@ -257,13 +257,19 @@ export default function LandingPage() {
 
           <div className="mt-12">
             <h3 className="text-2xl font-bold mb-6 text-center">What Vigil covers</h3>
-            <div className="grid md:grid-cols-2 gap-x-8 gap-y-3 max-w-5xl mx-auto">
+            {/* 18 undifferentiated bullets in one two-column list was a wall of
+                text. Same 18 items, same copy — grouped under three headings so
+                the list can be skimmed by what the reader cares about. */}
+            <div className="max-w-5xl mx-auto space-y-8">
               {[
+                { group: "Before you sign", items: [
                 { title: "Per-page context awareness", desc: "Detects surface (send, approvals, seed reveal, dApps, deniability, backup, and more) and tailors guidance" },
                 { title: "Pre-sign risk explanation", desc: "Address poisoning, wrong chain, excessive fees, scam addresses; recipient and amount checks; gas fee context" },
                 { title: "Token approval guidance", desc: "Unlimited approvals, revocation, stale-approval abuse by malicious dApps" },
                 { title: "Address screening interpretation", desc: "Explains BLOCKED / CAUTION / CLEAR / UNKNOWN honestly; reminds local verification still matters" },
                 { title: "Spam and suspicious asset triage", desc: "Unsolicited tokens as phishing lures; separates local heuristics from contract fields from unknowns" },
+                ] },
+                { group: "Keys, backup & deniability", items: [
                 { title: "Seed and key hygiene", desc: "Discourages screenshots, cloud sync, digital copying; whoever sees the seed controls the funds" },
                 { title: "Deniability explainer", desc: "Decoy vs stealth wallets, panic wipe consequences, I3 (zero network calls in deniability mode)" },
                 { title: "Duress PIN guidance", desc: "Decoy session must look ordinary and leave zero distinctive network traces" },
@@ -271,18 +277,28 @@ export default function LandingPage() {
                 { title: "Personal Backup coaching", desc: "Plaintext keys never leave device; test recovery before relying on it; 2-of-3 shard export needs Hardware Protection ON" },
                 { title: "Biometric framing", desc: "Biometrics are a convenience gate over hardware-bound crypto — not a seed replacement" },
                 { title: "dApp / WalletConnect guidance", desc: "dApp legitimacy checks, permission risks, approval hazards, when to disconnect sessions" },
+                ] },
+                { group: "How the advisor itself behaves", items: [
                 { title: "Panic wipe consequences", desc: "Device wiped; chain funds recoverable only from the seed phrase" },
                 { title: "Tax and analytics honesty", desc: "Records vs legal determination; informational vs on-chain-verified" },
                 { title: "Secret scrubbing", desc: "Seed phrases, private keys, and PINs stripped from prompts before egress" },
                 { title: "Prompt-injection resistance", desc: "Hardened against instructions embedded in on-chain data or dApp metadata" },
                 { title: "Fail-closed offline fallback", desc: "If TIP cap hit or offline, local knowledge base still answers" },
                 { title: "Deniability suppression", desc: "Zero network calls whenever a decoy or duress session is active (I3 invariant)" },
-              ].map((item) => (
-                <div key={item.title} className="flex gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="font-semibold text-foreground">{item.title}</p>
-                    <p className="text-sm text-muted-foreground">{item.desc}</p>
+                ] },
+              ].map((section) => (
+                <div key={section.group}>
+                  <h4 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">{section.group}</h4>
+                  <div className="grid md:grid-cols-2 gap-x-8 gap-y-3">
+                    {section.items.map((item) => (
+                      <div key={item.title} className="flex gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
+                        <div>
+                          <p className="font-semibold text-foreground">{item.title}</p>
+                          <p className="text-sm text-muted-foreground">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}

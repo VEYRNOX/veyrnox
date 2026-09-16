@@ -36,8 +36,7 @@ import { checkPinStrength } from "@/lib/pinStrength";
 import PinPad from "@/components/security/PinPad";
 import {
   KeyRound, ShieldCheck, ShieldOff, AlertTriangle, Eye, EyeOff, CheckCircle2,
-  Lock, Unlock, RefreshCw, FlaskConical, Info, Download,
-} from "lucide-react";
+  Lock, Unlock, FlaskConical, Info, Download, Loader2,} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
@@ -527,7 +526,7 @@ export default function WalletAccessReset() {
               disabled={!curPw || !newPw || !confirmPw || cpBusy}
               onClick={handleChangePassword}
             >
-              {cpBusy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <KeyRound className="h-4 w-4" />}
+              {cpBusy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" /> : <KeyRound className="h-4 w-4" />}
               Change password
             </Button>
             <p className="text-[11px] text-muted-foreground">
@@ -621,7 +620,7 @@ export default function WalletAccessReset() {
           disabled={!recPhrase.trim() || !recPw || recBusy}
           onClick={handleRecover}
         >
-          {recBusy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Download className="h-4 w-4" />}
+          {recBusy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" />}
           Recover &amp; set new password
         </Button>
         </>

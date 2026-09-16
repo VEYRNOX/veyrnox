@@ -130,8 +130,21 @@ export default function QRScanner({
         </div>
 
         {error ? (
-          <div className="rounded-xl bg-destructive/20 border border-destructive/30 p-4 text-sm text-destructive-foreground text-center">
-            {error}
+          /* The only affordance here used to be the close X in the corner — a
+             permission denial dead-ended the whole flow. Retry re-requests the
+             camera (the browser may now have a remembered grant); the close
+             button doubles as "enter the address by hand" since the caller's
+             field is still behind this overlay. */
+          <div className="rounded-xl bg-destructive/20 border border-destructive/30 p-4 text-sm text-destructive-foreground text-center space-y-3">
+            <p>{error}</p>
+            <div className="flex gap-2 justify-center">
+              <Button size="sm" variant="secondary" className="min-h-[44px]" onClick={() => { setError(null); startCamera(); }}>
+                Try again
+              </Button>
+              <Button size="sm" variant="ghost" className="min-h-[44px] text-white hover:text-white hover:bg-white/10" onClick={onClose}>
+                Enter address manually
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="relative rounded-2xl overflow-hidden border-2 border-primary shadow-[0_0_30px_hsl(28,95%,54%,0.3)]">

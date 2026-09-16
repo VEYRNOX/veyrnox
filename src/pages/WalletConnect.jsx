@@ -287,8 +287,10 @@ function WalletConnectInner() {
         </p>
       )}
 
-      <PopularDapps />
-
+      {/* The 14-card dApp directory used to render above this, pushing the
+          page's actual primary action below it — including for anyone arriving
+          via a wc: deep link, who already has a URI and needs nothing from the
+          directory. Pairing first, discovery second. */}
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Pair with dApp</h2>
         {fromDeepLink ? (
@@ -345,6 +347,8 @@ function WalletConnectInner() {
           </p>
         )}
       </section>
+
+      <PopularDapps />
 
       {pendingRequests.length > 0 && (
         <section className={styles.section}>

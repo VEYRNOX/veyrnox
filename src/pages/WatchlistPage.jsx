@@ -11,6 +11,8 @@ import { TOP_SYMBOLS } from "@/lib/cryptos";
 import CoinLogo from "@/components/CoinLogo";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import { useBasketPrices } from "@/hooks/useBasketPrices";
+import { formatUsd } from "@/lib/locale";
 
 const POPULAR = TOP_SYMBOLS;
 
@@ -19,6 +21,12 @@ export default function WatchlistPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ symbol: "", name: "", note: "", target_buy: "", target_sell: "" });
+  // Watchlist rows used to render a hardcoded "Price unavailable / Connect a
+  // live feed" for every asset — no price hook was imported at all, so the one
+  // thing this screen exists to show was permanently absent. This reads the
+  // SAME fixed market basket the token list already polls: the watchlist
+  // symbols are never sent upstream, so a watchlist cannot leak (I2).
+  const { priceFor, changeFor, isLive } = useBasketPrices();
 
   const { data: items = [], isLoading, isError } = useQuery({
     queryKey: ["watchlist"],
@@ -72,7 +80,7 @@ export default function WatchlistPage() {
             const has = items.find(i => i.symbol === s);
             return (
               <button key={s} onClick={() => addQuick(s)} disabled={!!has}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${has ? "border-primary/50 text-primary bg-primary/10 cursor-default" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>
+                className={`text-xs px-3 min-h-[44px] inline-flex items-center justify-center rounded-full border transition-colors ${has ? "border-primary/50 text-primary bg-primary/10 cursor-default" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>
                 {has ? <Check className="inline h-3 w-3 me-1" /> : null}{s}
               </button>
             );
@@ -93,6 +101,8 @@ export default function WatchlistPage() {
       ) : (
         <div className="space-y-2">
           {items.map(item => {
+            const price = priceFor(item.symbol);
+            const change = changeFor(item.symbol);
             return (
               <div key={item.id} className="bg-card border border-border rounded-2xl p-4 transition-colors">
                 <div className="flex items-center gap-3">
@@ -111,18 +121,33 @@ export default function WatchlistPage() {
                     )}
                   </div>
                   <div className="text-end">
-                    <p className="text-xs text-muted-foreground">Price unavailable</p>
-                    <p className="text-[10px] text-muted-foreground">Connect a live feed</p>
+                    {price != null ? (
+                      <>
+                        <p className="text-sm font-semibold mono-value">
+                          {formatUsd(price, undefined, { maximumFractionDigits: price < 1 ? 4 : 2, minimumFractionDigits: 2 })}
+                        </p>
+                        {change != null && (
+                          <p className={`text-[10px] mono-value ${change >= 0 ? "text-primary" : "text-risk"}`}>
+                            {change >= 0 ? "+" : ""}{change.toFixed(2)}%
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      // I4 fail-honest: feed off, deniable/demo session, or a symbol
+                      // outside the fixed basket renders NO number — never a stale or
+                      // placeholder price.
+                      <p className="text-sm text-muted-foreground mono-value" title={isLive ? "No price for this symbol" : "Live prices are off"}>—</p>
+                    )}
                   </div>
                   <div className="flex gap-1">
                     <button onClick={() => { setEditId(item.id); setForm({ symbol: item.symbol, name: item.name || "", note: item.note || "", target_buy: item.target_buy || "", target_sell: item.target_sell || "" }); }}
                       aria-label={`Edit ${item.symbol}`}
-                      className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground transition-colors">
+                      className="p-1.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg hover:bg-secondary text-muted-foreground transition-colors">
                       <Edit2 className="h-3.5 w-3.5" />
                     </button>
                     <button onClick={() => remove.mutate(item.id)}
                       aria-label={`Remove ${item.symbol} from watchlist`}
-                      className="p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors">
+                      className="p-1.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -132,20 +157,20 @@ export default function WatchlistPage() {
                   <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-2">
                     <div>
                       <Label htmlFor="watchlist-buy-below" className="text-[10px]">Buy below ($)</Label>
-                      <Input id="watchlist-buy-below" value={form.target_buy} onChange={e => setForm(f => ({ ...f, target_buy: e.target.value }))} placeholder="65000" type="text" inputMode="decimal" className="h-7 text-xs mt-0.5" />
+                      <Input id="watchlist-buy-below" value={form.target_buy} onChange={e => setForm(f => ({ ...f, target_buy: e.target.value }))} placeholder="65000" type="text" inputMode="decimal" className="h-11 text-xs mt-0.5" />
                     </div>
                     <div>
                       <Label htmlFor="watchlist-sell-above" className="text-[10px]">Sell above ($)</Label>
-                      <Input id="watchlist-sell-above" value={form.target_sell} onChange={e => setForm(f => ({ ...f, target_sell: e.target.value }))} placeholder="75000" type="text" inputMode="decimal" className="h-7 text-xs mt-0.5" />
+                      <Input id="watchlist-sell-above" value={form.target_sell} onChange={e => setForm(f => ({ ...f, target_sell: e.target.value }))} placeholder="75000" type="text" inputMode="decimal" className="h-11 text-xs mt-0.5" />
                     </div>
                     <div className="col-span-2">
                       <Label htmlFor="watchlist-note" className="text-[10px]">Note</Label>
-                      <Input id="watchlist-note" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Your note..." className="h-7 text-xs mt-0.5" />
+                      <Input id="watchlist-note" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Your note..." className="h-11 text-xs mt-0.5" />
                     </div>
-                    <Button size="sm" className="h-7 text-xs" onClick={() => update.mutate({ id: item.id, ...form, target_buy: form.target_buy ? parseLocaleNumber(form.target_buy, resolveLocale()) : undefined, target_sell: form.target_sell ? parseLocaleNumber(form.target_sell, resolveLocale()) : undefined })}>
+                    <Button size="sm" className="h-11 text-xs" onClick={() => update.mutate({ id: item.id, ...form, target_buy: form.target_buy ? parseLocaleNumber(form.target_buy, resolveLocale()) : undefined, target_sell: form.target_sell ? parseLocaleNumber(form.target_sell, resolveLocale()) : undefined })}>
                       <Check className="h-3 w-3 me-1" /> Save
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditId(null)}>Cancel</Button>
+                    <Button size="sm" variant="ghost" className="h-11 text-xs" onClick={() => setEditId(null)}>Cancel</Button>
                   </div>
                 )}
               </div>

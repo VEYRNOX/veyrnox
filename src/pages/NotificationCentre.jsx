@@ -8,7 +8,12 @@ import { formatDistanceToNow } from "date-fns";
 import { useNotifications } from "@/notify/useNotifications";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
-const TABS = ["All", "Alerts", "Security", "Fraud"];
+// "Fraud" was removed 2026-09-16: nothing can ever tag an item with that
+// category (see the Audit M-3 note below — the FraudAlert/RASPEvent renderer was
+// dropped and no write path exists), so the tab always rendered the generic
+// "All clear" state, which is indistinguishable from "nothing detected". Restore
+// it only alongside a real source that emits into it.
+const TABS = ["All", "Alerts", "Security"];
 
 // In-app notification display level -> the Centre's severity bucket.
 const INAPP_SEVERITY = { risk: "high", caution: "medium", info: "low" };
@@ -144,7 +149,7 @@ export default function NotificationCentre() {
                 <p className="text-[10px] text-muted-foreground/60 mt-1">{n.time && !isNaN(new Date(n.time).getTime()) ? formatDistanceToNow(new Date(n.time), { addSuffix: true }) : '—'}</p>
               </div>
               {n.onDismiss && (
-                <button onClick={n.onDismiss} aria-label="Dismiss notification" className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors shrink-0">
+                <button onClick={n.onDismiss} aria-label="Dismiss notification" className="p-1 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors shrink-0">
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}

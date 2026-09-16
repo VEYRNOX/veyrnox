@@ -24,7 +24,7 @@ import {
   RotateCcw, Mic,
   ShieldOff, Gauge, KeyRound, ScanLine, Frame, Wifi, Pen,
   CloudUpload, Compass, ScanSearch, Ghost, Bomb, Scissors,
-  CreditCard, ShoppingCart, Boxes,
+  CreditCard, ShoppingCart, Boxes, Receipt,
 } from "lucide-react";
 import { isCut } from './featureRegistry';
 
@@ -41,6 +41,8 @@ export const GROUP_COLORS = {
   Assets:   "#E7B14C", // amber
   Finance:  "#56C7D8", // cyan
   Security: "#F06A5A", // coral
+  Screening: "#E08A6F", // warm clay — sits beside Security without competing
+  Emergency: "#D4566B", // deep rose
   Connect:  "#B98CF0", // violet
   Preferences: "#8FA0B5", // slate
 };
@@ -106,33 +108,50 @@ const RAW_NAV_GROUPS = [
       { path: "/savings", label: "Savings Goals", icon: Target },
       { path: "/budget", label: "Budget Limits", icon: PieChart },
       { path: "/net-worth", label: "Net Worth", icon: TrendingUp },
+      { path: "/tax", label: "Tax Report", icon: ScrollText, keywords: "tax csv export capital gains report" },
+      { path: "/invoices", label: "Invoices", icon: Receipt, keywords: "invoice generator billing request payment" },
     ],
   },
+  // "Security" used to be ONE group of 22 destinations — a third of the whole
+  // nav, and by some margin the worst choice-overload in the app. Split into
+  // three groups that answer different questions ("how is my wallet protected",
+  // "is this thing I am about to touch safe", "something has gone wrong"), which
+  // is also how the screens themselves divide. No destination was added or
+  // removed here; Voice Commands moved to Preferences, where it belongs.
   {
     label: "Security",
     items: [
       { path: "/security-dashboard", label: "Security Dashboard", icon: ShieldCheck },
       { path: "/security", label: "Security Center", icon: ShieldAlert },
       { path: "/wallet-access", label: "Access & Recovery", icon: KeyRound },
-      { path: "/session-manager", label: "Session Manager", icon: ShieldCheck },
-      { path: "/login-activity", label: "Login Activity", icon: Activity },
-      { path: "/duress-pin", label: "Duress PIN", icon: Lock },
-      { path: "/stealth-wallets", label: "Stealth Wallets", icon: Ghost },
-      { path: "/panic-wipe", label: "Panic Wipe", icon: Bomb },
-      { path: "/address-checker", label: "Address Screening", icon: ShieldQuestion },
+      { path: "/personal-backup", label: "Personal Backup", icon: CloudUpload },
       { path: "/wallet-seed-qr", label: "Seed Key QR", icon: Key },
       { path: "/hardware-wallet", label: "Hardware Wallets", icon: Cpu },
-      { path: "/personal-backup", label: "Personal Backup", icon: CloudUpload },
+      { path: "/biometric-auth", label: "Biometric Auth", icon: Fingerprint },
+      { path: "/rasp-security", label: "RASP Security", icon: Cpu },
+    ],
+  },
+  {
+    label: "Screening",
+    items: [
+      { path: "/address-checker", label: "Address Screening", icon: ShieldQuestion },
       { path: "/dapp-alerts", label: "dApp Domain Check", icon: ShieldAlert },
       { path: "/security-scanner", label: "Pre-Sign Scanner", icon: ScanSearch },
-      { path: "/biometric-auth", label: "Biometric Auth", icon: Fingerprint },
-      { path: "/anomaly-detection", label: "Anomaly Detection", icon: ShieldAlert },
-      { path: "/rasp-security", label: "RASP Security", icon: Cpu },
-      { path: "/voice-commands", label: "Voice Commands", icon: Mic },
       { path: "/token-approvals", label: "Token Approvals", icon: ShieldOff },
       { path: "/trust-score", label: "Token Spam Screening", icon: ScanLine },
       { path: "/suspicious-assets", label: "Suspicious Assets", icon: Boxes },
       { path: "/fraud", label: "Fraud Detection", icon: ShieldAlert },
+      { path: "/anomaly-detection", label: "Anomaly Detection", icon: ShieldAlert },
+    ],
+  },
+  {
+    label: "Emergency",
+    items: [
+      { path: "/duress-pin", label: "Duress PIN", icon: Lock },
+      { path: "/stealth-wallets", label: "Stealth Wallets", icon: Ghost },
+      { path: "/panic-wipe", label: "Panic Wipe", icon: Bomb },
+      { path: "/session-manager", label: "Session Manager", icon: ShieldCheck },
+      { path: "/login-activity", label: "Login Activity", icon: Activity },
     ],
   },
   {
@@ -153,6 +172,7 @@ const RAW_NAV_GROUPS = [
     items: [
       { path: "/settings", label: "Settings", icon: Settings },
       { path: "/plans", label: "Subscriptions", icon: CreditCard },
+      { path: "/voice-commands", label: "Voice Commands", icon: Mic },
       { path: "/docs", label: "Documentation", icon: BookOpen },
     ],
   },

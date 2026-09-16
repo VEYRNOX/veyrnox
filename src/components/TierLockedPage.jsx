@@ -12,7 +12,9 @@ export default function TierLockedPage({ tier = 'safety_plus' }) {
   const heading = isAi ? 'AI Security Protection feature' : 'Safety Plus feature';
   const body = isAi
     ? 'This feature is part of AI Security Protection. Contact sales to unlock it.'
-    : 'This feature is part of Safety Plus ($5.99/mo). Upgrade to unlock it.';
+    // No price here: /plans renders the STORE-returned price (and any offer),
+    // so a number typed in this file can only ever be a second, drifting source.
+    : 'This feature is part of Safety Plus. Upgrade to unlock it.';
   return (
     <div className="max-w-md mx-auto mt-12 p-6 rounded-2xl border border-primary/30 bg-primary/5 flex items-start gap-3">
       <Sparkles className="h-6 w-6 text-primary shrink-0 mt-0.5" />

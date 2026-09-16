@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
+import { toast } from "@/lib/toast";
 
 // Renders a QR code for a receive address.
 //
@@ -80,11 +81,11 @@ export default function QRCodeDisplay({ address, size = 200 }) {
           });
         } catch {
           // Share sheet dismissed or unavailable — file is still in cache, let
-          // the user know via a non-blocking alert so they can try again.
-          alert("QR saved to device storage. Open it from your Files app.");
+          // the user know so they can try again.
+          toast.success("QR saved to device storage. Open it from your Files app.");
         }
       } catch {
-        alert("Could not save QR code. Please screenshot the QR instead.");
+        toast.error("Could not save QR code. Please screenshot the QR instead.");
       }
       return;
     }

@@ -96,8 +96,8 @@ export default function FirstReceiveCard({ address, onDismiss }) {
       )}
 
       {address && (
-        <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-400/30 bg-amber-400/5 text-start">
-          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2 p-3 rounded-lg border border-caution/40 bg-caution/10 text-start">
+          <AlertTriangle className="h-4 w-4 text-caution shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground">
             Only send <strong>ETH</strong> on the <strong>Ethereum Mainnet</strong>. The same address also
             receives assets on Arbitrum, Optimism, Polygon, Avalanche, and BNB — pick the right network in

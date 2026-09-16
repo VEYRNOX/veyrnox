@@ -24,7 +24,7 @@ import FeatureGate from './FeatureGate';
 import VeyrnoxLogo, { VeyrnoxWordmark } from "./VeyrnoxLogo";
 import { navGroups, groupColor, searchableRoutes } from "@/lib/navigation";
 import { getParentRoute } from "@/lib/parentRoute";
-import { getStoredBackTarget, hasBrowserBackHistory, rememberCurrentRoute } from "@/lib/backNavigation";
+import { getStoredBackTarget, hasBrowserBackHistory, rememberCurrentRoute, shellOwnsBack } from "@/lib/backNavigation";
 import useRecentPages from "@/hooks/useRecentPages";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { useQueryClient } from "@tanstack/react-query";
@@ -35,6 +35,7 @@ import { useReceiveDetector } from "@/notify/useReceiveDetector";
 import LockSealingOverlay from "./LockSealingOverlay";
 import Spinner from "./Spinner";
 import PaywallNudge from "./PaywallNudge";
+import { useModalA11y } from "@/lib/useModalA11y";
 // SecurityAdvisor is a large post-unlock surface (1672 LOC + @revenuecat +
 // TIP client + threat-intel store). Lazy-load it so its module graph is not
 // parsed during cold-unlock hydration; SafeSuspense keeps the shell painted
@@ -193,7 +194,7 @@ export default function Layout() {
   };
   const isHomeTab = location.pathname === '/';
   const shellBackTarget = getStoredBackTarget(location);
-  const canShowShellBack = !isHomeTab && shellBackTarget !== null;
+  const canShowShellBack = shellOwnsBack(location);
   // Render the desktop OR the mobile main-content region — never both — so a page
   // mounts exactly once (see useIsDesktop). The nav chrome (sidebar / top bar /
   // bottom nav) stays CSS-toggled; only the heavy page-hosting regions are gated.
@@ -202,6 +203,11 @@ export default function Layout() {
     MOBILE_TABS.includes(location.pathname) ? location.pathname : '/'
   );
   const [cmdOpen, setCmdOpen] = useState(false);
+  // window.confirm broke out of the near-black UI with an OS dialog. Hand-rolled
+  // overlay + useModalA11y, matching PaywallNudge (already in this chunk) rather
+  // than pulling Radix Dialog into the shell's cold-unlock path.
+  const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
+  const lockConfirmRef = useModalA11y({ active: lockConfirmOpen, onEscape: () => setLockConfirmOpen(false) });
   const [collapsed, setCollapsed] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState({ Overview: true, Wallet: true });
@@ -507,6 +513,40 @@ export default function Layout() {
       {/* Day-3 soft paywall nudge (Task 6). Renders nothing until
           shouldShowPaywallNudge() is true; I3-gated internally. */}
       <PaywallNudge />
+
+      {/* Lock confirmation — a mis-tap here mid-Send clears session state and
+          forces re-auth, so the guard stays; only the OS dialog goes. */}
+      {lockConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+          <div
+            ref={lockConfirmRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('nav.lock_confirm_prompt')}
+            className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xl"
+          >
+            <div>
+              <p className="font-semibold">{t('nav.lock_confirm_prompt')}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('nav.lock_confirm_body')}</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setLockConfirmOpen(false)}
+                className="flex-1 min-h-[44px] rounded-lg border border-border text-sm font-medium hover:bg-secondary transition-colors"
+              >
+                {t('nav.lock_confirm_cancel')}
+              </button>
+              <button
+                onClick={() => { setLockConfirmOpen(false); signOut(); }}
+                className="flex-1 min-h-[44px] rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors inline-flex items-center justify-center gap-2"
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" /> {t('nav.lock')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <SafeSuspense fallback={null}>
         <SecurityAdvisor walletChain={advisorWalletChain} pageSnapshot={advisorPageSnapshot} />
       </SafeSuspense>
@@ -538,26 +578,23 @@ export default function Layout() {
               full-width pill, everywhere else shows this icon. See
               shouldShowHeaderSearch — exactly one of the two renders. */}
           {shouldShowHeaderSearch(location.pathname, mobileTab) && (
-            <button onClick={() => setCmdOpen(true)} aria-label="Search" title="Search" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
+            <button onClick={() => setCmdOpen(true)} aria-label="Search" title="Search" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[44px] min-w-[44px]">
               <Search className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
           <NotificationBell unseenCount={unseenCount} onOpen={openNotifications} />
-          <HelpMenu triggerClassName="p-2 rounded-lg hover:bg-secondary hover:text-foreground active:bg-secondary inline-flex items-center justify-center min-h-[40px] min-w-[40px]" />
-          <Link to="/settings" aria-label={t('nav.settings')} title={t('nav.settings')} className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
+          <HelpMenu triggerClassName="p-2 rounded-lg hover:bg-secondary hover:text-foreground active:bg-secondary inline-flex items-center justify-center min-h-[44px] min-w-[44px]" />
+          <Link to="/settings" aria-label={t('nav.settings')} title={t('nav.settings')} className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[44px] min-w-[44px]">
             <Settings className="h-4 w-4" aria-hidden="true" />
           </Link>
           {/* F-P2-6: mobile Lock button sits next to Settings gear; a mis-tap
               mid-Send would clear session state and force re-auth. Confirm before
               actually locking to prevent that class of mis-tap. */}
           <button
-            onClick={() => {
-              if (typeof window !== 'undefined' && window.confirm && !window.confirm(t('nav.lock_confirm_prompt'))) return;
-              signOut();
-            }}
+            onClick={() => setLockConfirmOpen(true)}
             aria-label={t('nav.lock')}
             title={t('nav.lock')}
-            className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]"
+            className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[44px] min-w-[44px]"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>

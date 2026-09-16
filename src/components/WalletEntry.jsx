@@ -231,7 +231,7 @@ function EntryShell({ error, children, chromeless = false }) {
 // a source scan around any one call site's testid sees the chip class right
 // there too, not only in this shared definition.
 const BACK_BUTTON_CHIP_CLASS =
-  "inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground";
+  "inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 min-h-[44px] text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground";
 function BackButton({ onClick, label = "Back", className = BACK_BUTTON_CHIP_CLASS, ...rest }) {
   return (
     <button type="button" onClick={onClick} className={className} {...rest}>
@@ -2140,8 +2140,16 @@ export default function WalletEntry() {
                     <Download className="h-4 w-4" /> Import an existing seed
                   </Button>
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="wallet-invite-code" className="text-xs text-muted-foreground">Got an invite code? (optional)</Label>
+                {/* Behind a disclosure: relevant only to referred users, but it
+                    sat open on the primary Create/Import decision screen for
+                    everyone. The field itself is unchanged, and applyInviteCode()
+                    still reads the same state whether or not it was opened. */}
+                <details className="group">
+                  <summary className="cursor-pointer list-none text-xs text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center">
+                    Got an invite code?
+                  </summary>
+                  <div className="space-y-1 mt-1">
+                  <Label htmlFor="wallet-invite-code" className="text-xs text-muted-foreground">Invite code (optional)</Label>
                   <Input
                     id="wallet-invite-code"
                     value={referralInput}
@@ -2152,7 +2160,8 @@ export default function WalletEntry() {
                     autoCorrect="off"
                     className="mono-value tracking-widest text-sm"
                   />
-                </div>
+                  </div>
+                </details>
                 <button type="button" onClick={() => { setError(""); enterExplore(); }} className="block w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors">
                   ← Keep exploring (view only)
                 </button>
@@ -2160,7 +2169,7 @@ export default function WalletEntry() {
             ) : (
               // Phase-2 import sub-form: back to the create/import picker above.
               <>
-                <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setImportPhrasePin(""); setChoosePinImport(false); setChosenPath(null); leaveExplore(); setView("entry-tiles"); }} />
+                <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 min-h-[44px] text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setImportPhrasePin(""); setChoosePinImport(false); setChosenPath(null); leaveExplore(); setView("entry-tiles"); }} />
                 <div className="p-3 rounded-xl border border-caution/30 bg-caution/10 text-xs text-caution flex items-start gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                   <span>Never type your seed phrase anywhere you don't trust. It is validated and encrypted locally under your PIN — it never leaves this device.</span>
@@ -2223,7 +2232,7 @@ export default function WalletEntry() {
           {/* PIN-FIRST: Back returns to the entry-tiles picker (the fresh-device
               landing ahead of the PIN), NOT a dashboard — the empty dashboard is
               only reachable AFTER the PIN is set. */}
-          <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); clearPendingPin(); autoEnrollPinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setChosenPath(null); setView("entry-tiles"); }} />
+          <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 min-h-[44px] text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); clearPendingPin(); autoEnrollPinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setChosenPath(null); setView("entry-tiles"); }} />
 
           <PinSetup
             onDone={finishPinSetup}
@@ -2242,7 +2251,7 @@ export default function WalletEntry() {
     return (
       <EntryShell error={error}>
         <div className="space-y-5">
-          <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setRecovering(false); setView("unlock"); }} />
+          <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 min-h-[44px] text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setRecovering(false); setView("unlock"); }} />
 
           {pinStep === "seed" && (
             <div className="space-y-4">
@@ -2285,7 +2294,7 @@ export default function WalletEntry() {
       <EntryShell error={error}>
         {!generatedSeed ? (
           <div className="space-y-4">
-            <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setView("choose"); }} />
+            <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 min-h-[44px] text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setView("choose"); }} />
             <div className="p-4 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
               Your seed phrase will be shown ONCE on the next step. You'll write it down and confirm before entering the wallet — anyone with it has full access to your funds, and it is the only way to recover this wallet.
             </div>
@@ -2302,6 +2311,15 @@ export default function WalletEntry() {
               <Label htmlFor="wallet-vault-password-entry">Vault Password</Label>
               <PasswordInput id="wallet-vault-password-entry" className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" aria-label="New vault password" onKeyDown={e => { if (e.key === "Enter" && !busy) handleGenerate(); }} />
               <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. At least 12 characters · any characters allowed. This is your real key — required, never skipped.</p>
+              {/* checkVaultPasswordStrength already runs inside handleGenerate,
+                  but only on submit — so a weak password was rejected AFTER the
+                  tap, with no way to see it coming. Same verdict, surfaced while
+                  typing. The gate itself is unchanged. */}
+              {genPassword.length > 0 && (
+                checkVaultPasswordStrength(genPassword).ok
+                  ? <p className="text-xs text-primary mt-1" role="status" aria-live="polite">Strong enough to encrypt your vault.</p>
+                  : <p className="text-xs text-caution mt-1" role="status" aria-live="polite">{checkVaultPasswordStrength(genPassword).reason}</p>
+              )}
             </div>
             <Button className="w-full gap-2" disabled={busy} onClick={handleGenerate}>
               {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <RefreshCw className="h-4 w-4" />} Set Password & Generate Seed
@@ -2343,7 +2361,7 @@ export default function WalletEntry() {
   return (
     <EntryShell error={error}>
       <div className="space-y-4">
-        <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setView(vaultExists ? "unlock" : "choose"); setRecovering(false); }} />
+        <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 min-h-[44px] text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setView(vaultExists ? "unlock" : "choose"); setRecovering(false); }} />
         {recovering && (
           <div className="p-3 rounded-xl border border-caution/30 bg-caution/10 text-xs text-caution flex items-start gap-2">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />

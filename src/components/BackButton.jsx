@@ -32,7 +32,7 @@ export default function BackButton({ to = undefined, label = undefined, classNam
     <button
       type="button"
       onClick={handleBack}
-      className={`flex items-center gap-1 -ms-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors ${className}`}
+      className={`flex items-center gap-1 -ms-1 min-h-[44px] pe-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors ${className}`}
     >
       {/* Icon mirrors under dir="rtl" so the chevron always points "backwards
           in reading direction" — right-facing for RTL locales. */}

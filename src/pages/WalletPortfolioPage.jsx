@@ -952,7 +952,14 @@ export default function WalletPortfolioPage() {
       {/* Active-portfolio total */}
       <div className="text-center py-3">
         <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{t("portfolio.totalValueHeading", { name: activePortfolioName })}</p>
-        <p className="text-4xl font-bold">{fmtFiat(pfTotal)}</p>
+        {/* byWallet defaults to {} while the portfolio query is in flight, so
+            pfTotal falls back to 0 and this rendered a confident "$0.00" for a
+            funded wallet before the real figure resolved. A skeleton of the same
+            height says "not known yet" instead of asserting emptiness (I4), and
+            keeps the block from reflowing when the number lands. */}
+        {portfolioLoading
+          ? <div className="h-10 w-40 mx-auto rounded-lg bg-secondary animate-pulse" role="status" aria-label="Loading total value" />
+          : <p className="text-4xl font-bold">{fmtFiat(pfTotal)}</p>}
         {/* I4 fail-closed: when a balance read failed, the total is incomplete —
             say so rather than presenting a silently-understated figure as fact.
             Same copy in decoy and real sessions (no isDecoy branch). */}

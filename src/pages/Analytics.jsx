@@ -250,7 +250,7 @@ export default function Analytics() {
               <button
                 key={r.days}
                 onClick={() => setRange(r.days)}
-                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                className={`px-3 min-h-[44px] inline-flex items-center justify-center rounded text-xs font-medium transition-colors ${
                   range === r.days ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
               >

@@ -55,7 +55,7 @@ import { deriveAddressFromMnemonic } from "@/hooks/useDeriveAddress";
 import {
   EyeOff, Eye, Shield, CheckCircle2, AlertTriangle, Lock, Unlock, FlaskConical,
   Copy, Check, Coins, ExternalLink, Ghost, Globe, Wifi,
-  FolderInput, ShieldAlert, Wallet as WalletIcon, Trash2,
+  FolderInput, ShieldAlert, Wallet as WalletIcon, Trash2, Loader2,
 } from "lucide-react";
 import { Button as ButtonBase } from "@/components/ui/button";
 import { Input as InputBase } from "@/components/ui/input";
@@ -350,7 +350,7 @@ function MoveExistingWallet() {
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <Button variant="destructive" className="w-full gap-1.5" disabled={busy} onClick={handleMove}>
-            <FolderInput className="h-4 w-4" /> {busy ? t("stealth.move.hide_cta_busy") : t("stealth.move.hide_cta")}
+            {busy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" /> : <FolderInput className="h-4 w-4" />} {busy ? t("stealth.move.hide_cta_busy") : t("stealth.move.hide_cta")}
           </Button>
         </div>
       )}

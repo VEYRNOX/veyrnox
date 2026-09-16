@@ -67,3 +67,13 @@ export function hasBrowserBackHistory() {
   if (Number.isInteger(idx)) return idx > 0;
   return window.history.length > 1;
 }
+
+/** True when the app shell (Layout) is already rendering a back affordance for
+ * this location. Pages that render their own in-page BackButton should check
+ * this first so the two cannot both appear. Mirrors Layout's `canShowShellBack`,
+ * which now calls this rather than recomputing it. */
+export function shellOwnsBack(locationLike) {
+  const pathname = locationLike?.pathname ?? '';
+  if (pathname === '/') return false;
+  return getStoredBackTarget(locationLike) !== null;
+}

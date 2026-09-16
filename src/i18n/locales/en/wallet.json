@@ -354,7 +354,9 @@
     "tab_home": "Home",
     "tab_send": "Send",
     "tab_receive": "Receive",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "You'll need your PIN to get back in.",
+    "lock_confirm_cancel": "Cancel"
   },
   "back": {
     "default_label": "Back"
@@ -460,7 +462,9 @@
       "mode_crypto_aria": "Enter amount in {{currency}}",
       "mode_fiat_aria": "Enter amount in USD",
       "fiat_placeholder": "$0.00",
-      "approx_crypto": "≈ {{amount}} {{currency}}"
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Max",
+      "max_chip_aria": "Use your full {{currency}} balance"
     },
     "errors": {
       "amount_missing": "Amount is required",
@@ -486,7 +490,8 @@
       "back": "Back"
     },
     "verify": {
-      "summary_label": "You're sending"
+      "summary_label": "You're sending",
+      "finality": "Sending is final. Once it confirms on the network, this transfer cannot be reversed or refunded — check the recipient and amount."
     },
     "wizard": {
       "step_recipient": "Recipient & amount",
