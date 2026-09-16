@@ -5,7 +5,8 @@
 // (hardware binding) as the next step. I3: suppressed in deniability/demo.
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { Shield, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import Vigil from '@/components/Vigil';
 import { Button } from '@/components/ui/button';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { trackEvent, EVENT } from '@/api/trackEvent';
@@ -57,8 +58,10 @@ export default function BackupPaywallNudge({ currentTier }) {
   return (
     <div className="mt-4 p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-3">
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-primary" />
+        <div className="flex items-center gap-2.5">
+          {/* Vigil asleep: hardware binding is not protecting this backup yet.
+              Self-gates on deniability/demo — no guard needed here. */}
+          <Vigil state="asleep" size={36} shadow={false} />
           <p className="text-sm font-medium">Protect this backup</p>
         </div>
         <button onClick={handleDismiss} className="text-muted-foreground hover:text-foreground" aria-label="Dismiss">

@@ -227,8 +227,13 @@ function VigilImpl({ state = 'clean', size = 96, shadow, className = '' }) {
       width={size}
       height={size * (208 / 200)}
       className={`shrink-0 ${className}`}
+      // Stable hook for tests and for anyone auditing where the mascot ended
+      // up in the DOM. Carries no accessible meaning — see aria-hidden below.
+      data-vigil={state}
       // The sentence next to Vigil is the accessible signal — the mascot
-      // repeats it, it never carries it alone (color-not-only).
+      // repeats it, it never carries it alone (color-not-only). It is
+      // deliberately NOT labelled: a screen reader announcing "Vigil, asleep"
+      // would make the mascot the message rather than the echo of it.
       aria-hidden
       focusable="false"
     >
