@@ -19,11 +19,27 @@
 // crying variant — that is the exact turn this style takes against a product
 // that handles someone's savings.
 //
-// DENIABILITY (I3) — the gate lives HERE, in the one chokepoint, and must not
-// be duplicated at call sites. A branded character is a loud tell that a real
-// wallet lives on this device, so Vigil renders nothing in a decoy/demo
-// session. Re-guarding at every call site is how the third unguarded writer
-// ships (see lib/consent.js and the K-2 history in CLAUDE.md).
+// DENIABILITY (I3) — Vigil renders IDENTICALLY in a decoy/hidden session and a
+// primary one, and that is the invariant, not an oversight.
+//
+// An earlier version of this file gated the render on
+// isDeniabilityOrDemoActive() and returned null in a decoy session. That was
+// backwards. Read deniabilitySession.js: it is an EGRESS marker, and its whole
+// docstring is about making "ZERO backend/device calls" from a coerced session.
+// Vigil makes no calls — it draws an SVG from a prop. Gating the render bought
+// nothing against egress and cost the thing that actually matters: a decoy
+// session whose UI is missing a mascot the primary session shows is
+// distinguishable from the primary session, which is the exact tell a decoy
+// exists to deny. It also made Vigil unusable at a signing chokepoint, where a
+// risk indicator vanishing is the worst possible failure.
+//
+// The convention in this codebase is narrower than "gate everything": suppress
+// a render when the thing either egresses (SecurityAdvisor) or when its mere
+// PRESENCE discloses cross-session state (PaywallNudge discloses tier). Vigil
+// does neither — its state arrives as a prop, derived from the current
+// session's own data, so it cannot leak the other session.
+//
+// The real I3 property here is NO PERSISTENCE, below. That one is pinned.
 //
 // NO PERSISTENCE. Vigil writes no localStorage key, ever. Anything persisted
 // becomes panic-wipe residue and would have to join ALL_RESIDUE_KEYS; the
@@ -44,7 +60,6 @@
 // Render the actual model in Blender for store screenshots and marketing.
 
 import { memo, useId } from 'react';
-import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 // Materials. `off` is desaturated but deliberately NOT dim: at the first
 // near-black mid-tone it measured 1.8:1 against the card surface and the
@@ -201,12 +216,7 @@ function Brows({ state, material }) {
  * @param {string} [props.className]
  */
 function VigilImpl({ state = 'clean', size = 96, shadow, className = '' }) {
-  // Hooks run before any early return — the I3 gate below is conditional,
-  // useId must not be.
   const uid = useId().replace(/:/g, '');
-
-  // I3 — single render chokepoint. Do not re-guard at call sites.
-  if (isDeniabilityOrDemoActive()) return null;
 
   const material = MATERIAL[STATE_MATERIAL[state]] || MATERIAL.teal;
   const angle = TUFT_ANGLE[state] ?? 0;
@@ -227,8 +237,13 @@ function VigilImpl({ state = 'clean', size = 96, shadow, className = '' }) {
       width={size}
       height={size * (208 / 200)}
       className={`shrink-0 ${className}`}
+      // Stable hook for tests and for anyone auditing where the mascot ended
+      // up in the DOM. Carries no accessible meaning — see aria-hidden below.
+      data-vigil={state}
       // The sentence next to Vigil is the accessible signal — the mascot
-      // repeats it, it never carries it alone (color-not-only).
+      // repeats it, it never carries it alone (color-not-only). It is
+      // deliberately NOT labelled: a screen reader announcing "Vigil, asleep"
+      // would make the mascot the message rather than the echo of it.
       aria-hidden
       focusable="false"
     >

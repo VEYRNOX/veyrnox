@@ -1,14 +1,24 @@
 // src/components/__tests__/Vigil.test.jsx
 //
-// Vigil is a branded character. Its presence on screen asserts that a real
-// Veyrnox wallet lives on this device, which is exactly the fact a decoy
-// session exists to deny (I3). The gate lives in ONE place — inside the
-// component — so every call site inherits it and nobody has to remember.
-// These pins guard that arrangement, plus the two properties that keep the
-// mascot out of the panic-wipe residue list and off the battery.
+// Vigil's I3 property is that it renders IDENTICALLY in a decoy/hidden session
+// and a primary one.
 //
-// Mutation-checked 2026-09-16: each `it` below was confirmed red by
-// reintroducing the specific defect it names, then restored.
+// This file previously pinned the opposite — that Vigil renders NOTHING in a
+// decoy session — and those pins were wrong in a way worth recording, because
+// they were green, mutation-checked, and enforcing a defect.
+//
+// deniabilitySession.js is an EGRESS marker; its docstring is entirely about
+// making "ZERO backend/device calls" from a coerced session. Vigil makes no
+// calls. Gating its render bought nothing against egress, and cost the thing
+// that matters: a decoy session missing a mascot the primary session shows is
+// DISTINGUISHABLE from the primary session. The pins enforced the tell.
+//
+// The lesson is not "the gate was in the wrong place" — it is that a test can
+// be rigorous about the wrong invariant. Mutation-checking proves a pin has
+// teeth; it says nothing about whether the property is the right one.
+//
+// Mutation-checked 2026-09-16: each `it` below confirmed red by reintroducing
+// the specific defect it names, then restored.
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -25,62 +35,65 @@ const { default: Vigil } = await import('@/components/Vigil');
 
 const STATES = ['clean', 'alert', 'block', 'asleep'];
 
+// gradient ids are per-instance by design, so they have to come out before two
+// renders can be compared
+const shapeOf = (el) => el.innerHTML.replace(/vg-[a-z]+-[^"')]*/g, 'ID');
+
 beforeEach(() => {
   isDeniabilityOrDemoActive.mockReturnValue(false);
   vi.clearAllMocks();
 });
 
 describe('Vigil — deniability (I3)', () => {
-  it('renders nothing in a decoy/demo session, in every state', () => {
-    isDeniabilityOrDemoActive.mockReturnValue(true);
+  it('renders byte-identically in a decoy session and a primary one', () => {
     for (const state of STATES) {
-      const { container, unmount } = render(<Vigil state={state} />);
-      expect(container.querySelector('svg')).toBeNull();
-      expect(container.textContent).toBe('');
-      unmount();
+      isDeniabilityOrDemoActive.mockReturnValue(false);
+      const primary = render(<Vigil state={state} />);
+      const primaryShape = shapeOf(primary.container);
+      primary.unmount();
+
+      isDeniabilityOrDemoActive.mockReturnValue(true);
+      const decoy = render(<Vigil state={state} />);
+      expect(shapeOf(decoy.container)).toBe(primaryShape);
+      expect(decoy.container.querySelector('svg')).not.toBeNull();
+      decoy.unmount();
     }
   });
 
-  it('renders in a primary session', () => {
-    const { container } = render(<Vigil state="asleep" />);
-    expect(container.querySelector('svg')).not.toBeNull();
+  it('does not read the deniability marker at all', () => {
+    isDeniabilityOrDemoActive.mockClear();
+    for (const state of STATES) render(<Vigil state={state} />);
+    expect(isDeniabilityOrDemoActive).not.toHaveBeenCalled();
   });
 
-  it('renders null after a mid-session flip from primary to decoy', () => {
-    const { container, rerender } = render(<Vigil state="clean" />);
-    expect(container.querySelector('svg')).not.toBeNull();
+  // A risk indicator that disappears under coercion is the worst possible
+  // failure mode, so the absence of a render gate is pinned at source too.
+  //
+  // COMMENTS ARE STRIPPED FIRST, and that is not tidiness. The header of
+  // Vigil.jsx explains this rule at length and necessarily NAMES the call it
+  // forbids — so the first version of this pin matched its own documentation
+  // and failed on correct code. A file that records a correction will always
+  // contain the thing it corrected; assert against the code, not the prose.
+  it('calls no deniability gate in its code', async () => {
+    const src = await readFile(resolve(process.cwd(), 'src/components/Vigil.jsx'), 'utf8');
+    const code = src
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('//'))
+      .join('\n');
+
+    expect(code).not.toMatch(/deniabilitySession/);
+    expect(code).not.toMatch(/isDeniabilityOrDemoActive/);
+    // the stripping must not be what makes this pass
+    expect(code).toMatch(/function VigilImpl/);
+  });
+
+  it('stays visible when a session flips from primary to decoy mid-render', () => {
+    const { container, rerender } = render(<Vigil state="block" />);
+    expect(container.querySelector('[data-vigil="block"]')).not.toBeNull();
 
     isDeniabilityOrDemoActive.mockReturnValue(true);
-    rerender(<Vigil state="clean" size={97} />);
-    expect(container.querySelector('svg')).toBeNull();
-  });
-
-  // The I3 gate is a conditional early return, so every hook must sit ABOVE
-  // it or the hook count changes between a primary and a decoy render.
-  //
-  // This is pinned structurally because it cannot be pinned behaviourally:
-  // mutation-checked 2026-09-16 on React 19.3 by moving `useId` below the
-  // return, and the component neither threw nor logged — the flip test above
-  // and a console.error spy both stayed green. React did not report it at
-  // all. The source order is the only signal available.
-  //
-  // Scoped to the two exact code spellings, not to the words: the comments in
-  // Vigil.jsx name both `useId` and the gate, and an unscoped search would
-  // match the prose that documents this rule and pass for the wrong reason.
-  it('declares every hook above the deniability gate', async () => {
-    // import.meta.url is not a file: URL in this environment; resolve from
-    // the repo root, which is vitest's cwd.
-    const src = await readFile(resolve(process.cwd(), 'src/components/Vigil.jsx'), 'utf8');
-    const gate = src.indexOf('if (isDeniabilityOrDemoActive()) return null;');
-    const hook = src.indexOf("useId().replace");
-
-    expect(gate).toBeGreaterThan(-1);
-    expect(hook).toBeGreaterThan(-1);
-    expect(hook).toBeLessThan(gate);
-
-    // and no OTHER hook sneaks in below the gate
-    const below = src.slice(gate);
-    expect(below).not.toMatch(/\buse[A-Z]\w*\(/);
+    rerender(<Vigil state="block" size={97} />);
+    expect(container.querySelector('[data-vigil="block"]')).not.toBeNull();
   });
 });
 
