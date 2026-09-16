@@ -61,6 +61,59 @@ describe('/api CORS — allowlisted origins are reflected', () => {
   });
 });
 
+// The Vite dev origin was in the unconditional default list, so production
+// reflected http://localhost:5173 for /api/rpc/[fn] and /api/buy/session. It is
+// now gated on env.ENVIRONMENT, which wrangler.toml sets per Pages environment
+// and which functions/api/rpc/[fn].js already reads for the same purpose.
+describe('/api CORS — the dev origin is not a production allowance', () => {
+  const PROD = { ENVIRONMENT: 'production' };
+
+  it('refuses http://localhost:5173 in production', async () => {
+    expect(await acao('http://localhost:5173', { env: PROD })).toBeNull();
+  });
+
+  it('still reflects it when ENVIRONMENT is preview or unset', async () => {
+    expect(await acao('http://localhost:5173', { env: { ENVIRONMENT: 'preview' } }))
+      .toBe('http://localhost:5173');
+    // Unset covers local `wrangler dev` and this test file's own default env.
+    expect(await acao('http://localhost:5173', { env: {} })).toBe('http://localhost:5173');
+  });
+
+  it.each([
+    'capacitor://localhost',
+    'https://localhost',
+  ])('keeps the native WebView origin %s in production', async (origin) => {
+    // These share the word "localhost" with the dev server and are the opposite
+    // case: they are the origins the SHIPPED iOS/Android app runs on. A fix that
+    // swept every localhost entry would pass the first test here and break every
+    // native build.
+    expect(await acao(origin, { env: PROD })).toBe(origin);
+  });
+
+  it.each([
+    'https://veyrnox.com',
+    'https://www.veyrnox.com',
+    'https://veyrnox-staging.pages.dev',
+  ])('leaves the shipped web origin %s alone in production', async (origin) => {
+    expect(await acao(origin, { env: PROD })).toBe(origin);
+  });
+
+  it('lets an operator re-add the dev origin explicitly, in production too', async () => {
+    // ALLOWED_ORIGINS is the escape hatch and must keep working — the point of
+    // the change is that nobody gets this by default, not that it is forbidden.
+    const env = { ...PROD, ALLOWED_ORIGINS: 'http://localhost:5173' };
+    expect(await acao('http://localhost:5173', { env })).toBe('http://localhost:5173');
+  });
+
+  it('preflight makes the same production decision as a plain request', async () => {
+    // OPTIONS returns early on its own path, so it has to be asserted
+    // separately or a regression could land on one branch only.
+    expect(await acao('http://localhost:5173', { env: PROD, method: 'OPTIONS' })).toBeNull();
+    expect(await acao('https://veyrnox.com', { env: PROD, method: 'OPTIONS' }))
+      .toBe('https://veyrnox.com');
+  });
+});
+
 describe('/api CORS — everything else is refused, not reflected', () => {
   it.each([
     // The bug. Free, self-service namespace: anyone can hold one of these.

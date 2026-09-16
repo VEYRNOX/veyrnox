@@ -14,20 +14,47 @@
 // api/rpc/[fn].js and api/edge/[fn].js for the body-size and allowlist checks.
 // If a shared check is ever wanted, add the code and the line together.
 
-const DEFAULT_ALLOWED_ORIGINS = [
+// Origins the SHIPPED app actually runs on. Allowed everywhere, production
+// included. `capacitor://localhost` and `https://localhost` are the WebView's
+// own origins on Android and iOS — they are not dev conveniences and removing
+// them breaks every native build.
+const APP_ORIGINS = [
   'https://veyrnox.com',
   'https://www.veyrnox.com',
   'https://veyrnox-staging.pages.dev',
   'capacitor://localhost',
   'https://localhost',
-  'http://localhost:5173',
 ];
 
+// The Vite dev server. NOT an origin the shipped app ever uses, and the only
+// plaintext-http entry the list has ever carried.
+//
+// It was unconditional, so production reflected it: a page served from a
+// developer's own machine — or from anything else listening on :5173 while a
+// user has a browser open — got Access-Control-Allow-Origin back from
+// veyrnox.com/api/*, and those routes are not inert. /api/rpc/[fn] injects the
+// Supabase key server-side and proxies referral + telemetry writes;
+// /api/buy/session mints a Transak widget URL. No cookies and no
+// Allow-Credentials, so this was never session-riding — it is an unnecessary
+// production allowance, removed rather than argued about.
+//
+// Gated on env.ENVIRONMENT, which wrangler.toml sets per Pages environment
+// ("production" / "preview") and which functions/api/rpc/[fn].js already reads
+// for the same purpose. Undefined (local `wrangler dev`, vitest) is treated as
+// not-production, so the dev origin keeps working where it is meant to.
+const DEV_ORIGINS = ['http://localhost:5173'];
+
 function getAllowedOrigins(env) {
+  const base = env.ENVIRONMENT === 'production'
+    ? APP_ORIGINS
+    : [...APP_ORIGINS, ...DEV_ORIGINS];
   const extra = env.ALLOWED_ORIGINS;
-  if (!extra) return DEFAULT_ALLOWED_ORIGINS;
+  if (!extra) return base;
+  // ALLOWED_ORIGINS stays the deliberate escape hatch, in production too: an
+  // operator who genuinely needs an extra origin names it explicitly, which is
+  // a decision on the record rather than a default nobody chose.
   return [
-    ...DEFAULT_ALLOWED_ORIGINS,
+    ...base,
     ...extra.split(',').map(s => s.trim()).filter(Boolean),
   ];
 }
