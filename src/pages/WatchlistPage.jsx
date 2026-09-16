@@ -11,6 +11,8 @@ import { TOP_SYMBOLS } from "@/lib/cryptos";
 import CoinLogo from "@/components/CoinLogo";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import { useWallet } from "@/lib/WalletProvider";
+import { getAsset } from "@/wallet-core/assets";
 import { useBasketPrices } from "@/hooks/useBasketPrices";
 import { formatUsd } from "@/lib/locale";
 
@@ -28,23 +30,38 @@ export default function WatchlistPage() {
   // symbols are never sent upstream, so a watchlist cannot leak (I2).
   const { priceFor, changeFor, isLive } = useBasketPrices();
 
-  const { data: items = [], isLoading, isError } = useQuery({
+  // K-2 (I3): PersonalWatchlist rows live in the SHARED veyrnox-appdata store
+  // with no per-session partitioning, and a watchlist plus its buy/sell targets
+  // is a statement about the real user's intentions. components/WatchlistWidget
+  // was gated for exactly this reason; this page — the one that can also ADD,
+  // EDIT and DELETE those rows — was not. Same near-miss-neighbour shape as
+  // AddressBook/FraudDetection in #2537. Masking as well as gating, because
+  // nothing clears the react-query cache on a session flip.
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = isDecoy || isHidden;
+  const denyInDeniable = () => {
+    throw Object.assign(new Error('Watchlist is not available in this session'), { code: 'DENIABILITY_BLOCKED' });
+  };
+
+  const { data: rawItems = [], isLoading, isError } = useQuery({
     queryKey: ["watchlist"],
     queryFn: () => base44.entities.PersonalWatchlist.list(),
+    enabled: !deniable,
   });
+  const items = deniable ? [] : rawItems;
 
   const add = useMutation({
-    mutationFn: (/** @type {any} */ d) => base44.entities.PersonalWatchlist.create(d),
+    mutationFn: (/** @type {any} */ d) => { if (deniable) denyInDeniable(); return base44.entities.PersonalWatchlist.create(d); },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["watchlist"] }); setOpen(false); setForm({ symbol: "", name: "", note: "", target_buy: "", target_sell: "" }); },
   });
 
   const update = useMutation({
-    mutationFn: (/** @type {any} */ vars) => { const { id, ...d } = vars; return base44.entities.PersonalWatchlist.update(id, d); },
+    mutationFn: (/** @type {any} */ vars) => { if (deniable) denyInDeniable(); const { id, ...d } = vars; return base44.entities.PersonalWatchlist.update(id, d); },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["watchlist"] }); setEditId(null); },
   });
 
   const remove = useMutation({
-    mutationFn: (/** @type {any} */ id) => base44.entities.PersonalWatchlist.delete(id),
+    mutationFn: (/** @type {any} */ id) => { if (deniable) denyInDeniable(); return base44.entities.PersonalWatchlist.delete(id); },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
   });
 
@@ -101,8 +118,13 @@ export default function WatchlistPage() {
       ) : (
         <div className="space-y-2">
           {items.map(item => {
-            const price = priceFor(item.symbol);
-            const change = changeFor(item.symbol);
+            // ARB/OP hold native ETH on their rollups, so the registry points
+            // them at ETH's feed; the raw ticker resolves to the governance
+            // token and showed the wrong price and 24h move. Same resolution
+            // WalletPortfolioPage and portfolioBalances already do.
+            const priceKey = getAsset(item.symbol)?.priceSymbol || item.symbol;
+            const price = priceFor(priceKey);
+            const change = changeFor(priceKey);
             return (
               <div key={item.id} className="bg-card border border-border rounded-2xl p-4 transition-colors">
                 <div className="flex items-center gap-3">

@@ -148,7 +148,7 @@ const SPECS = Object.freeze({
   [CONDITION.INTEGRITY_FAIL]: {
     tier: TIER.BLOCK,
     sentence:
-      'This device failed an integrity check, so signing and key access are turned off. Reinstalling Veyrnox from the App Store or Google Play is the usual fix.',
+      'This device failed an integrity check, so signing and key access are turned off. Veyrnox needs a supported device with an untampered system and an official store install.',
     blockedActions: [...SENSITIVE],
     requiresBiometric: false,
   },
@@ -162,7 +162,7 @@ const SPECS = Object.freeze({
   [CONDITION.TAMPERED]: {
     tier: TIER.BLOCK,
     sentence:
-      'This app appears to have been altered, so signing and key access are turned off. Reinstall Veyrnox from the App Store or Google Play.',
+      'This app appears to have been altered, so signing and key access are turned off. Reinstall Veyrnox from the App Store or Google Play — make sure you have your recovery phrase first, as reinstalling clears on-device data.',
     blockedActions: [...SENSITIVE],
     requiresBiometric: false,
   },
