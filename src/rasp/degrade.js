@@ -141,28 +141,28 @@ const SPECS = Object.freeze({
     // key-material access than the weaker one. Now the full SENSITIVE set, which
     // restores danger-monotonicity (pinned generally by l5-tier-monotonicity.test.js).
     tier: TIER.BLOCK,
-    sentence: 'Signing and key access are turned off in emulated environments.',
+    sentence: 'Signing and key access are turned off in emulated environments. Install Veyrnox on a physical device to sign.',
     blockedActions: [...SENSITIVE],
     requiresBiometric: false,
   },
   [CONDITION.INTEGRITY_FAIL]: {
     tier: TIER.BLOCK,
     sentence:
-      'This device failed an integrity check, so signing and key access are turned off.',
+      'This device failed an integrity check, so signing and key access are turned off. Reinstalling Veyrnox from the App Store or Google Play is the usual fix.',
     blockedActions: [...SENSITIVE],
     requiresBiometric: false,
   },
   [CONDITION.HOOKED]: {
     tier: TIER.BLOCK,
     sentence:
-      'Another program appears to be inspecting this app, so signing and key access are turned off until it stops.',
+      'Another program appears to be inspecting this app, so signing and key access are turned off until it stops. Close any debugging, screen-recording or automation tools and reopen Veyrnox.',
     blockedActions: [...SENSITIVE],
     requiresBiometric: false,
   },
   [CONDITION.TAMPERED]: {
     tier: TIER.BLOCK,
     sentence:
-      'This app appears to have been altered, so signing and key access are turned off.',
+      'This app appears to have been altered, so signing and key access are turned off. Reinstall Veyrnox from the App Store or Google Play.',
     blockedActions: [...SENSITIVE],
     requiresBiometric: false,
   },

@@ -105,14 +105,18 @@ export default function CandlestickChart({ symbol, period }) {
           </button>
         </div>
       )}
+      {/* Reserve the SAME height the loaded chart occupies. This box was h-32
+          (128px) against a 280px chart, so the page jumped 152px the moment data
+          arrived — shoving the Send/Receive buttons below it down under the
+          user's thumb. */}
       {livePricesOn && isLoading && (
-        <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+        <div className="flex items-center justify-center text-sm text-muted-foreground" style={{ height: CHART_H }}>
           <Spinner size="sm" className="me-2" label="Loading chart…" />
           Loading chart…
         </div>
       )}
       {livePricesOn && isError && (
-        <p className="text-xs text-destructive text-center py-6">
+        <p className="text-xs text-destructive text-center flex items-center justify-center" style={{ height: CHART_H }}>
           {/* Generic copy on purpose: raw provider errors (HTTP codes, guard
               strings) must never render — see the H2 sanitisation pattern. */}
           Chart unavailable — price sources didn't respond. Try again in a minute.

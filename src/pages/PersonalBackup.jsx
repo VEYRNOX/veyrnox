@@ -21,6 +21,7 @@ import {
 } from "@/wallet-core/recoveryShare";
 import { markPersonalBackupExported } from "@/lib/personalBackupState";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
 import {
   markBackupCompleted,
   markBackupPendingConfirmation,
@@ -297,7 +298,25 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
             className="w-full"
           />
         </div>
-        <p className="text-xs text-muted-foreground mt-1">At least {BACKUP_PASSWORD_MIN_LENGTH} characters · any characters allowed</p>
+        {/* The 16-char floor was the ONLY feedback, and it is satisfied by
+            "aaaaaaaaaaaaaaaa". This page's own copy says forgetting or weakening
+            this password loses the funds permanently, so weakness is surfaced
+            while typing rather than after submit. Reuses the shared vault-password
+            checks (repeated character, common/predictable) — length still comes
+            from BACKUP_PASSWORD_MIN_LENGTH, which is stricter than the vault's. */}
+        {password.length === 0 ? (
+          <p className="text-xs text-muted-foreground mt-1">At least {BACKUP_PASSWORD_MIN_LENGTH} characters · any characters allowed</p>
+        ) : password.length < BACKUP_PASSWORD_MIN_LENGTH ? (
+          <p className="text-xs text-caution mt-1" role="status" aria-live="polite">
+            {password.length}/{BACKUP_PASSWORD_MIN_LENGTH} characters
+          </p>
+        ) : !checkVaultPasswordStrength(password).ok ? (
+          <p className="text-xs text-caution mt-1" role="status" aria-live="polite">
+            {checkVaultPasswordStrength(password).reason}
+          </p>
+        ) : (
+          <p className="text-xs text-primary mt-1" role="status" aria-live="polite">Long enough, and not a predictable password.</p>
+        )}
         {password.length > 0 && password.length < BACKUP_PASSWORD_MIN_LENGTH && (
           <p className="text-xs text-destructive">Use at least {BACKUP_PASSWORD_MIN_LENGTH} characters.</p>
         )}

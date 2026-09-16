@@ -462,7 +462,9 @@
       "mode_crypto_aria": "Enter amount in {{currency}}",
       "mode_fiat_aria": "Enter amount in USD",
       "fiat_placeholder": "$0.00",
-      "approx_crypto": "≈ {{amount}} {{currency}}"
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Max",
+      "max_chip_aria": "Use your full {{currency}} balance"
     },
     "errors": {
       "amount_missing": "Amount is required",

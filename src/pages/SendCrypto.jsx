@@ -2358,6 +2358,26 @@ export default function SendCrypto() {
                         ? <>{tw("send.amount.balance_prefix")} {nativeLiveBalance != null ? <span className="mono-value">{nativeLiveBalance} {selectedWallet.currency}</span> : tw("send.amount.reading_from_network")} <span className="text-[10px]">{tw("send.amount.live_suffix")}</span></>
                         : <>{tw("send.amount.balance_prefix")} <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
                     {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span></>}
+                    {/* Max — deliberately OPT-IN (a tap), never applied for the
+                        user, and deliberately ERC-20 ONLY. On a native asset
+                        (ETH/BNB/AVAX/MATIC/BTC/SOL) the fee comes out of this
+                        same balance, so a "max" that filled the full figure
+                        would reliably build a transaction that cannot pay for
+                        itself. For a token, gas is paid in the native asset, so
+                        the whole token balance is always a valid amount. */}
+                    {amountMode === 'crypto' && isErc20 && !balanceIndeterminate && Number.isFinite(effectiveBalance) && effectiveBalance > 0 && (
+                      <>
+                        {' '}
+                        <button
+                          type="button"
+                          onClick={() => { setAmount(String(effectiveBalance)); setAmountTouched(true); }}
+                          aria-label={tw("send.amount.max_chip_aria", { currency: selectedWallet.currency })}
+                          className="inline-flex items-center min-h-[44px] px-2 align-middle text-xs font-semibold text-primary hover:underline underline-offset-2"
+                        >
+                          {tw("send.amount.max_chip")}
+                        </button>
+                      </>
+                    )}
                   </p>
                 )}
                 {/* One node, one id — the helper already decided precedence, so there

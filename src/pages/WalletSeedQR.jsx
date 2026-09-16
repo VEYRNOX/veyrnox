@@ -217,23 +217,23 @@ export default function WalletSeedQR() {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant={showSeed ? "default" : "outline"}
-              className="gap-2"
-              onClick={() => setShowSeed((s) => !s)}
-            >
-              {showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              {showSeed ? "Hide Words" : "Reveal Words"}
-            </Button>
-            <div className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-left">
-              <p className="text-xs font-medium">Seed Key QR unavailable</p>
-              <p className="text-[11px] text-muted-foreground">
-                In-app QR restore is not built yet. Use Personal Backup for an encrypted export with a restore path.
-              </p>
-            </div>
-          </div>
+          {/* The honest "QR restore isn't built" notice used to sit in a 2-column
+              grid directly beside Reveal Words — an unrelated, non-actionable
+              block competing for attention with the only action on the single
+              most sensitive screen in the app. Action first, footnote below. */}
+          <Button
+            type="button"
+            variant={showSeed ? "default" : "outline"}
+            className="w-full gap-2"
+            onClick={() => setShowSeed((s) => !s)}
+          >
+            {showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {showSeed ? "Hide Words" : "Reveal Words"}
+          </Button>
+          <p className="text-[11px] text-muted-foreground">
+            <span className="font-medium text-foreground">Seed Key QR unavailable.</span>{" "}
+            In-app QR restore is not built yet. Use Personal Backup for an encrypted export with a restore path.
+          </p>
 
           {showSeed ? (
             <>

@@ -2302,6 +2302,15 @@ export default function WalletEntry() {
               <Label htmlFor="wallet-vault-password-entry">Vault Password</Label>
               <PasswordInput id="wallet-vault-password-entry" className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" aria-label="New vault password" onKeyDown={e => { if (e.key === "Enter" && !busy) handleGenerate(); }} />
               <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. At least 12 characters · any characters allowed. This is your real key — required, never skipped.</p>
+              {/* checkVaultPasswordStrength already runs inside handleGenerate,
+                  but only on submit — so a weak password was rejected AFTER the
+                  tap, with no way to see it coming. Same verdict, surfaced while
+                  typing. The gate itself is unchanged. */}
+              {genPassword.length > 0 && (
+                checkVaultPasswordStrength(genPassword).ok
+                  ? <p className="text-xs text-primary mt-1" role="status" aria-live="polite">Strong enough to encrypt your vault.</p>
+                  : <p className="text-xs text-caution mt-1" role="status" aria-live="polite">{checkVaultPasswordStrength(genPassword).reason}</p>
+              )}
             </div>
             <Button className="w-full gap-2" disabled={busy} onClick={handleGenerate}>
               {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <RefreshCw className="h-4 w-4" />} Set Password & Generate Seed
