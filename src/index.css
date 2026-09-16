@@ -385,53 +385,118 @@
 }
 /* ── Print ──────────────────────────────────────────────────────────────────
    There was no print stylesheet at all, so printing (or "Save as PDF") any
-   page — Terms, tax report, invoice — rendered the near-black app chrome:
-   dark backgrounds are usually dropped by the browser, leaving near-white text
-   on white paper, with the sidebar, bottom tab bar and floating advisor button
-   occupying a third of the page.
+   page — Terms, tax report, invoice — rendered the near-black app chrome.
 
-   SECURITY NOTE — this block only ever HIDES. It must never reveal an element
-   the screen stylesheet hides: `.sr-only`, a collapsed seed cell, a masked
-   balance and anything gated by deniability state stay exactly as they are.
-   Do not add `display: block !important` rules here. */
+   SECURITY NOTE — READ BEFORE ADDING A RULE. Nothing here may reveal content
+   the screen stylesheet conceals. The first version of this block got that
+   backwards: it carried `.fixed { display: none }` to stop toasts and the
+   advisor launcher printing. But several full-viewport `fixed` overlays exist
+   to CONCEAL — LockSealingOverlay (`fixed inset-0 z-[80] bg-background/95`)
+   covers a still-mounted wallet page while the vault seals, and the Radix
+   dialog/sheet/drawer/alert-dialog overlays do the same. Hiding a concealer
+   is a reveal, so that rule printed the wallet content underneath it.
+   Hiding is therefore OPT-IN (`[data-print="hide"]`), never blanket: a new
+   overlay is safe by default and only becomes printable chrome when someone
+   deliberately tags it. Do not reintroduce a selector that hides by shape
+   (`.fixed`, `[class*="z-"]`, `[aria-hidden]`) — shape does not tell you
+   whether an element is chrome or a curtain. */
 @media print {
-  /* Ink-economical, legible on paper. */
+  /* Paper palette. `html, body { background/color }` alone did NOT do this:
+     descendants use the semantic Tailwind utilities (bg-background, bg-card,
+     text-foreground, text-muted-foreground), which resolve from the tokens
+     below, so they stayed near-black with near-white text — invisible once a
+     browser drops the background fill. Overriding the TOKENS flips every
+     descendant at once, with no per-utility rules to maintain.
+
+     Values are copied from the `.light` block above, which is already
+     contrast-audited (WCAG AA). They are duplicated rather than shared because
+     CSS cannot apply a class from inside a media query — and
+     `print-palette-matches-light.test.js` fails if the two ever drift. */
+  :root {
+    color-scheme: light;
+    --background: 210 30% 98%;
+    --foreground: 220 30% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 30% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 8%;
+    --primary: 172 72% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 93%;
+    --secondary-foreground: 220 20% 20%;
+    --muted: 210 20% 93%;
+    --muted-foreground: 215 16% 40%;
+    --accent: 172 72% 36%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 6 74% 44%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 20% 58%;
+    --input: 214 20% 58%;
+    --ring: 172 72% 38%;
+    --caution: 38 82% 42%;
+    --caution-foreground: 0 0% 100%;
+    --risk: 6 74% 52%;
+    --risk-foreground: 0 0% 100%;
+    --info: 216 80% 50%;
+    --info-foreground: 0 0% 100%;
+    --success: 172 72% 36%;
+    --success-foreground: 0 0% 100%;
+    --chart-1: 172 72% 36%;
+    --chart-2: 216 80% 50%;
+    --chart-3: 38 82% 42%;
+    --chart-4: 6 74% 52%;
+    --chart-5: 262 52% 52%;
+    --sidebar-background: 210 28% 96%;
+    --sidebar-foreground: 220 30% 8%;
+    --sidebar-primary: 172 72% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 22% 90%;
+    --sidebar-accent-foreground: 220 30% 8%;
+    --sidebar-border: 214 20% 86%;
+    --sidebar-ring: 172 72% 38%;
+  }
+
   html, body {
     background: #fff !important;
     color: #000 !important;
   }
 
-  /* App chrome carries no information on paper. Keyed off role/landmark and
-     the app's own ids rather than colour utilities, so a restyle cannot
-     silently drop a rule. */
+  /* Navigation carries no information on paper. These are structural
+     landmarks, never curtains. */
   nav,
   aside,
   [role="navigation"],
   [role="tablist"],
-  [data-print="hide"] {
+  [data-print="hide"],
+  /* Sonner renders its own host element; it is a vendored primitive, so it is
+     named here rather than tagged in JSX. Unambiguously chrome. */
+  [data-sonner-toaster] {
     display: none !important;
   }
 
-  /* Viewport-pinned chrome (advisor launcher, toasts, back-to-top, lock
-     overlay) otherwise prints on top of the content at an arbitrary place.
-     HIDE rather than `position: static`: un-pinning an overlay drops it into
-     normal flow, which would PRINT an element the screen currently positions
-     out of view — the one thing this block must never do. Hiding fails closed.
-     `sticky` is safe to un-pin: it never conceals anything. */
-  .fixed {
-    display: none !important;
-  }
-  [class*="sticky"] {
+  /* On mobile `.app-shell` is `position: fixed; inset: 0; overflow: hidden`
+     and #main-scroll is its only scroll region — so un-clipping the child
+     alone still left the fixed PARENT cropping a long page to one viewport.
+     Reset the parent too, or printing from a phone loses everything below
+     the fold. */
+  .app-shell {
     position: static !important;
+    inset: auto !important;
+    overflow: visible !important;
   }
 
-  /* Let content use the full sheet instead of the scroll container's height. */
   #main-scroll,
   main {
     overflow: visible !important;
     height: auto !important;
     max-height: none !important;
     padding-bottom: 0 !important;
+  }
+
+  /* `sticky` is safe to un-pin — it never conceals anything — and otherwise
+     repeats its header partway down the sheet. */
+  [class*="sticky"] {
+    position: static !important;
   }
 
   /* Don't split a heading from its section, or a value from its label. */

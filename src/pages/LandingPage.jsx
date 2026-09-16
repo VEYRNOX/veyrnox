@@ -26,6 +26,24 @@ const PUBLIC_DOCS_URL = "/veyrnox-docs.html";
 const TERMS_URL = "https://veyrnox.com/terms";
 const PRIVACY_URL = "https://veyrnox.com/privacy";
 const CONTACT_EMAIL = "legal@veyrnox.com";
+// One scroll helper for all three callers (section nav, logo, back-to-top).
+// `behavior: "smooth"` ignores the OS reduced-motion setting, and this page had
+// three separate hardcoded smooth scrolls — for a user who opts out of motion,
+// an animated jump is the exact thing they opted out of. Read at call time, not
+// module load, so a mid-session OS change is honoured.
+function scrollToY(target) {
+  const reduce =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const behavior = reduce ? "auto" : "smooth";
+  if (target === 0) {
+    window.scrollTo({ top: 0, behavior });
+    return;
+  }
+  target?.scrollIntoView({ behavior });
+}
+
 const FOOTER_LINK =
   "hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm";
 
@@ -56,7 +74,7 @@ export default function LandingPage() {
 
   const goToSection = (id) => {
     setMobileMenuOpen(false);
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    scrollToY(document.getElementById(id));
   };
 
   const SECTIONS = [
@@ -93,7 +111,7 @@ export default function LandingPage() {
           {/* Logo is the conventional "home" affordance — it was inert markup. */}
           <button
             type="button"
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            onClick={() => scrollToY(0)}
             aria-label="Veyrnox — back to top"
             className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
           >
@@ -520,8 +538,9 @@ export default function LandingPage() {
       {scrolled && (
         <button
           type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          onClick={() => scrollToY(0)}
           aria-label="Back to top"
+          data-print="hide"
           className="fixed bottom-6 end-6 z-50 h-11 w-11 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           style={{ marginBottom: "env(safe-area-inset-bottom)" }}
         >

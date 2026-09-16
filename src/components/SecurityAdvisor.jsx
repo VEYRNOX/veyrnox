@@ -1515,6 +1515,7 @@ Additional public knowledge you should apply:
       <button
         type="button"
         onClick={() => setOpen(true)}
+        data-print="hide"
         className="fixed bottom-[calc(6.75rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-primary/45 bg-primary text-primary-foreground shadow-[0_0_28px_hsl(var(--primary)/0.45)] transition-transform hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:bottom-6"
         aria-label={t('advisor.open_aria', { defaultValue: 'Open Vigil - Security Advisor' })}
       >
