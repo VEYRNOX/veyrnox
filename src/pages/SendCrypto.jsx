@@ -795,6 +795,19 @@ export default function SendCrypto() {
         ? parseFloat(String(nativeLiveBalance))
         : (selectedWallet?.balance || 0));
 
+  // The exact balance as a DECIMAL STRING, for the Max chip. Round-tripping
+  // through effectiveBalance (a parseFloat) loses precision on long fractional
+  // token balances, and String() emits exponent notation for small values —
+  // "0.00000001" becomes "1e-8", which isFormAmountWellFormed rejects outright,
+  // so Max could leave the form invalid or under-send. Mirrors the same branch
+  // the balance line renders, so the chip fills exactly what is displayed.
+  const maxAmountString = demoActive
+    ? String(demoBalance ?? '')
+    : (flowSendEnabled && nativeLiveBalance != null
+        ? String(nativeLiveBalance)
+        : String(selectedWallet?.balance ?? ''));
+  const maxAmountUsable = isFormAmountWellFormed(maxAmountString);
+
   // USD conversions for the Send screen (DISPLAY ONLY — derived from the static
   // USD_RATES reference table, never a live feed; disclosed via USD_REFERENCE_NOTE).
   // `null` for an asset we have no reference price for (e.g. MATIC/AVAX) so we render
@@ -2369,12 +2382,12 @@ export default function SendCrypto() {
                         would reliably build a transaction that cannot pay for
                         itself. For a token, gas is paid in the native asset, so
                         the whole token balance is always a valid amount. */}
-                    {amountMode === 'crypto' && isErc20 && !balanceIndeterminate && Number.isFinite(effectiveBalance) && effectiveBalance > 0 && (
+                    {amountMode === 'crypto' && isErc20 && !balanceIndeterminate && maxAmountUsable && (
                       <>
                         {' '}
                         <button
                           type="button"
-                          onClick={() => { setAmount(String(effectiveBalance)); setAmountTouched(true); }}
+                          onClick={() => { setAmount(maxAmountString); setAmountTouched(true); }}
                           aria-label={tw("send.amount.max_chip_aria", { currency: selectedWallet.currency })}
                           className="inline-flex items-center min-h-[44px] px-2 align-middle text-xs font-semibold text-primary hover:underline underline-offset-2"
                         >

@@ -12,6 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { isValidAddressForCurrency, addressKindLabel } from "@/lib/addressValidation";
 import PageState from "@/components/PageState";
 import { useWallet } from "@/lib/WalletProvider";
+import { DEMO } from "@/api/demoClient";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 import { ASSET_SYMBOLS } from "@/wallet-core/assets";
 
@@ -30,7 +32,7 @@ const EMOJIS = ["👤", "🏢", "💼", "🏦", "👨‍👩‍👧", "🤝", "�
 export default function AddressBook() {
   const queryClient = useQueryClient();
   const { isDecoy, isHidden } = useWallet();
-  const deniable = isDecoy || isHidden;
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   // A trusted contact feeds the Send screen's whitelist / address-poisoning
@@ -48,11 +50,18 @@ export default function AddressBook() {
   // Gate reads at the query and writes at each mutation; render a neutral
   // empty state in deniable sessions matching the K-2 pattern used across
   // WalletProvider / SecurityCenter.
-  const { data: contacts = [], isLoading, isError } = useQuery({
+  const { data: contactsRaw = [], isLoading, isError } = useQuery({
     queryKey: ["address-book"],
     queryFn: () => base44.entities.AddressBook.list("-created_date"),
     enabled: !deniable,
   });
+  // `enabled: false` stops a REFETCH; it does not drop what react-query already
+  // holds. Nothing in the app clears the query cache on a session flip, so a
+  // primary session that had opened this page left ["address-book"] populated
+  // and a subsequent decoy/hidden session rendered those rows (and fed their
+  // count to the advisor snapshot) without ever issuing a request. Mask the
+  // result as well as gating the fetch.
+  const contacts = deniable ? [] : contactsRaw;
 
   const denyInDeniable = () => {
     throw Object.assign(new Error('Address Book is not available in this session'), { code: 'DENIABILITY_BLOCKED' });

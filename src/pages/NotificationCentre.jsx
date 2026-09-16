@@ -7,6 +7,9 @@ import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useNotifications } from "@/notify/useNotifications";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import { useWallet } from "@/lib/WalletProvider";
+import { DEMO } from "@/api/demoClient";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 
 // "Fraud" was removed 2026-09-16: nothing can ever tag an item with that
 // category (see the Audit M-3 note below — the FraudAlert/RASPEvent renderer was
@@ -40,13 +43,30 @@ export default function NotificationCentre() {
   // events, which surfaced as "All clear" even with unseen items on the bell.
   const { notifications: inAppNotes = [], dismiss: dismissInApp } = useNotifications();
 
-  const { data: priceAlerts = [] } = useQuery({
+  // K-2 (I3): PriceAlert rows live in the SHARED veyrnox-appdata store with no
+  // per-session partitioning, and a triggered alert carries the real user's
+  // asset symbols and thresholds. PriceAlerts.jsx was gated for exactly this
+  // reason; this page reads the same entity and was not — the near-miss
+  // neighbour. Gate the fetch, gate the write, and mask whatever react-query
+  // already holds (nothing clears the cache on a session flip).
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
+  const denyInDeniable = () => {
+    throw Object.assign(new Error('Notifications are not available in this session'), { code: 'DENIABILITY_BLOCKED' });
+  };
+
+  const { data: priceAlertsRaw = [] } = useQuery({
     queryKey: ["price-alerts-triggered"],
     queryFn: () => base44.entities.PriceAlert.filter({ status: "triggered" }),
+    enabled: !deniable,
   });
+  const priceAlerts = deniable ? [] : priceAlertsRaw;
 
   const dismissPrice = useMutation({
-    mutationFn: (/** @type {any} */ id) => base44.entities.PriceAlert.update(id, { status: "dismissed" }),
+    mutationFn: (/** @type {any} */ id) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.PriceAlert.update(id, { status: "dismissed" });
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["price-alerts-triggered"] }),
   });
 

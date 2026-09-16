@@ -68,6 +68,14 @@ const PAGES = [
   { file: 'RecurringPayments.jsx', rows: ['payments', 'wallets'], mutations: 3 },
   { file: 'SavingsGoals.jsx', rows: ['goals'], mutations: 3 },
   { file: 'InvoiceGenerator.jsx', rows: ['invoices'], mutations: 3 },
+  // Added 2026-09-16 (#2593). These three are NOT part of the original #2537
+  // seven — they are its near-miss neighbours, which is exactly why they were
+  // missed: AddressBook gated the fetch but not the cache; PriceAlerts.jsx was
+  // gated while NotificationCentre read the same entity; WatchlistWidget was
+  // gated while WatchlistPage, the one that can also write, was not.
+  { file: 'AddressBook.jsx', rows: ['contacts'], mutations: 3 },
+  { file: 'NotificationCentre.jsx', rows: ['priceAlerts'], mutations: 1 },
+  { file: 'WatchlistPage.jsx', rows: ['items'], mutations: 3 },
 ];
 
 describe.each(PAGES)('$file — shared-store deniability gate (#2537)', ({ file, rows, mutations }) => {
