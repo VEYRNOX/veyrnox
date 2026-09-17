@@ -11,7 +11,11 @@ export default function TierLockedPage({ tier = 'safety_plus' }) {
   const isAi = tier === 'ai_security_protection';
   const heading = isAi ? 'AI Security Protection feature' : 'Safety Plus feature';
   const body = isAi
-    ? 'This feature is part of AI Security Protection. Contact sales to unlock it.'
+    // Was "Contact sales to unlock it." — AI Security Protection is sold as an
+    // in-app subscription on /plans, so that line contradicted the paywall it
+    // links to AND steered a digital unlock outside IAP (App Store 3.1.1).
+    // No price here, same reason as the Safety Plus line below.
+    ? 'This feature is part of AI Security Protection. Upgrade to unlock it.'
     // No price here: /plans renders the STORE-returned price (and any offer),
     // so a number typed in this file can only ever be a second, drifting source.
     : 'This feature is part of Safety Plus. Upgrade to unlock it.';

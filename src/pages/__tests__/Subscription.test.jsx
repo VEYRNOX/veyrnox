@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router';
 
@@ -73,6 +73,18 @@ vi.mock('@/api/referralApi', () => ({
   recordAttribution: (...a) => recordAttribution(...a),
   fetchReferralTier: (...a) => fetchReferralTier(...a),
   claimFirstReferralBonus: (...a) => claimFirstReferralBonus(...a),
+}));
+
+// Params declared (not `() =>`) so tsc types mock.calls as a 2-tuple: a bare
+// zero-arg implementation infers `[]`, which makes both the spread at the call
+// site and the `[, meta]` destructure below hard type errors.
+const trackEventMock = vi.fn(
+  (/** @type {string} */ _event, /** @type {Record<string, unknown>} */ _meta) =>
+    Promise.resolve()
+);
+vi.mock('@/api/trackEvent', () => ({
+  trackEvent: (/** @type {string} */ event, /** @type {Record<string, unknown>} */ meta) => trackEventMock(event, meta),
+  EVENT: { PAYWALL_SHOWN: 'paywall_shown' },
 }));
 
 const refreshTier = vi.fn();
@@ -847,5 +859,129 @@ describe('Subscription page — outcome-first preamble gating', () => {
     useTierMock.mockReturnValue({ currentTier: 'safety_plus', refreshTier, loading: false });
     renderPage();
     await waitFor(() => expect(screen.queryByTestId('outcome-step')).toBeNull());
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Paywall reachability + honest failure states.
+//
+// Both blocks below exist because of the same measurement: on production
+// `public.events`, paywall_shown had fired TWICE in eight weeks against 2,304
+// wallet_ready devices. Two causes, both pinned here.
+// ---------------------------------------------------------------------------
+
+describe('Subscription page — /plans view is tracked', () => {
+  beforeEach(() => {
+    isNativePlatform.mockReturnValue(true);
+    getOfferings.mockResolvedValue({
+      availablePackages: [{ identifier: '$rc_monthly', product: { priceString: '$5.99' } }],
+    });
+  });
+
+  // Before this, the ONLY paywall_shown emitters were the two nudge components,
+  // so a visit to the paywall itself was invisible: "nobody opens /plans" and
+  // "everybody opens it and bounces" produced identical (empty) data.
+  // RevenueCat cannot fill the gap — every offering has paywall_id null, so RC
+  // paywall encounters are zero by construction on a custom screen.
+  it('emits paywall_shown with the plans_view trigger', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(trackEventMock).toHaveBeenCalledWith('paywall_shown', { trigger: 'plans_view' })
+    );
+  });
+
+  it('emits it once per mount, not once per render', async () => {
+    const { rerender } = renderPage();
+    await waitFor(() => expect(trackEventMock).toHaveBeenCalled());
+    rerender(
+      <MemoryRouter>
+        <Subscription />
+      </MemoryRouter>
+    );
+    const views = trackEventMock.mock.calls.filter(
+      ([, meta]) => meta?.trigger === 'plans_view'
+    );
+    expect(views).toHaveLength(1);
+  });
+});
+
+describe('Subscription page — offerings unavailable is stated, not hidden', () => {
+  beforeEach(() => {
+    isNativePlatform.mockReturnValue(true);
+  });
+
+  // A RESOLVED offering carrying no purchasable package is the real-world case,
+  // not a hypothetical: an App Store product that has not been approved is
+  // simply absent from StoreKit. AI Security Protection has been
+  // READY_TO_SUBMIT since 2026-08-31, so every user who reached that card met a
+  // button that claimed to be loading and never stopped.
+  it('Safety Plus: a resolved-but-empty offering offers a retry, not "loading"', async () => {
+    getOfferings.mockResolvedValue({ availablePackages: [] });
+    renderPage();
+    const cta = await screen.findByRole('button', { name: /Pricing unavailable — tap to retry/i });
+    expect(cta).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /loading pricing/i })).toBeNull();
+  });
+
+  it('Safety Plus: a rejected offerings fetch offers a retry too', async () => {
+    getOfferings.mockRejectedValue(new Error('store unavailable'));
+    renderPage();
+    expect(
+      await screen.findByRole('button', { name: /Pricing unavailable — tap to retry/i })
+    ).toBeEnabled();
+  });
+
+  it('Safety Plus: tapping retry re-runs the offerings fetch and recovers', async () => {
+    getOfferings.mockRejectedValueOnce(new Error('transient'));
+    renderPage();
+    const cta = await screen.findByRole('button', { name: /Pricing unavailable — tap to retry/i });
+
+    // Both periods: `billing` defaults to "annual", so a monthly-only offering
+    // leaves selectedPackage null and the CTA would stay in its loading label
+    // for an unrelated pre-existing reason. Not what this test is pinning.
+    getOfferings.mockResolvedValue({
+      availablePackages: [
+        { identifier: '$rc_monthly', product: { priceString: '$5.99' } },
+        { identifier: '$rc_annual', product: { priceString: '$49.99' } },
+      ],
+    });
+    fireEvent.click(cta);
+
+    await waitFor(() => expect(getOfferings).toHaveBeenCalledTimes(2));
+    // Recovery is the point: the retry state clears and the real store price
+    // reaches the CTA. Matched loosely on the label + strictly on the price so
+    // a copy edit does not fail the test for the wrong reason.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Upgrade to Safety Plus/i })).toBeEnabled()
+    );
+    expect(
+      screen.queryByRole('button', { name: /Pricing unavailable/i })
+    ).toBeNull();
+  });
+
+  it('Safety Plus: retry does NOT start a purchase', async () => {
+    getOfferings.mockRejectedValue(new Error('store unavailable'));
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /Pricing unavailable — tap to retry/i }));
+    await waitFor(() => expect(getOfferings).toHaveBeenCalledTimes(2));
+    expect(purchasePackage).not.toHaveBeenCalled();
+  });
+
+  it('AI tier: an unapproved (absent) product offers a retry, not "loading"', async () => {
+    getOfferings.mockResolvedValue({
+      availablePackages: [{ identifier: '$rc_monthly', product: { priceString: '$5.99' } }],
+    });
+    getAiSecurityProtectionOfferingId.mockReturnValue('ai-security-protection');
+    getTierOffering.mockResolvedValue({ availablePackages: [] });
+    renderPage();
+
+    const aiCard = await screen.findByTestId('ai-security-protection-card');
+    await waitFor(() =>
+      expect(
+        within(aiCard).getByRole('button', { name: /Pricing unavailable — tap to retry/i })
+      ).toBeEnabled()
+    );
+    expect(within(aiCard).queryByRole('button', { name: /loading pricing/i })).toBeNull();
   });
 });

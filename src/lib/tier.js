@@ -73,7 +73,12 @@ export const TIERS = [
   {
     id: TIER.AI_SECURITY_PROTECTION,
     name: 'AI Security Protection',
-    price: 'Contact sales',
+    // NOT a price. AI Security Protection is an in-app subscription
+    // ($19.99/mo, $159.99/yr at Apple's USD base), not a sales-led plan, and
+    // "Contact sales" read as the opposite. No number typed here either: the
+    // paywall renders the STORE-returned price, and a literal in this file
+    // could only ever become a second, drifting source.
+    price: 'See plans',
     tagline: 'Everything in Free and Safety Plus, plus live online TIP-backed Vigil guidance.',
   },
 ];
