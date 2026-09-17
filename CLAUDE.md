@@ -1601,6 +1601,41 @@ m/44'/60' address; BTC (m/84'/UTXO/PSBT) and SOL (ed25519/SLIP-0010) have their 
 - **`iOS native build needs a Mac` no longer gates anything.** That line sat here while
   iOS archives, exports and TestFlight uploads were being produced on this machine
   (1.0.1 build 47 uploaded 2026-09-02). Read it as satisfied, not as a blocker.
+- **iOS Simulator builds MUST be code-signed, or the wallet cannot be created.**
+  `xcodebuild ... CODE_SIGNING_ALLOWED=NO` produces a binary with **no
+  `__entitlements` section at all** (`otool -s __TEXT __entitlements <App.app>/App`
+  prints nothing), so every Keychain write returns `errSecMissingEntitlement`
+  (`-34018`) and onboarding fails closed with *"Wallet setup couldn't finish
+  securely, so nothing was saved."* — the same sentence as the Play build-5
+  rejection, which is what makes it expensive: it reads as a KEK/RASP defect and
+  sends you chasing Secure Enclave, Face ID enrolment and a device passcode, none
+  of which are the cause. Build with signing left on instead:
+
+  ```bash
+  xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+    -sdk iphonesimulator -destination 'platform=iOS Simulator,id=<udid>' \
+    -derivedDataPath /tmp/vx-dd DEVELOPMENT_TEAM=R54268MWFV build
+  ```
+
+  Xcode ad-hoc signs ("Sign to Run Locally") and writes
+  `application-identifier R54268MWFV.com.veyrnox.app` into
+  `Entitlements-Simulated.plist`. **`codesign -d --entitlements` is not the check** —
+  simulator builds carry entitlements in a Mach-O section (`ENTITLEMENTS_DESTINATION
+  = __entitlements`), so an empty `[Dict]` there is normal; use the `otool` command
+  above. Verified 2026-09-16 on iPhone 17 Pro / iOS 26.5.
+- **A simulator cannot exercise a decoy session, and the two ways round it are
+  mutually exclusive.** Recorded so it is not re-attempted (full write-up:
+  https://github.com/VEYRNOX/veyrnox/issues/2537#issuecomment-5709674012).
+  Duress PIN is Safety-Plus-gated and a simulator holds no entitlement;
+  `VITE_FORCE_TIER` cannot stand in because `vite build` emits `DEV:!1` in **every**
+  mode (`--mode development` included), so `entitlement.js`'s `import.meta.env.DEV`
+  guard makes it dead code in any build. Pointing Capacitor at the Vite dev server
+  does arm the override — and arms the decoy successfully — but `demoClient.js`'s
+  `import.meta.env.DEV && Capacitor.isNativePlatform()` then forces demo mode, so
+  BOTH sessions are deniable: lists render empty, writes throw `denyInDeniable()`,
+  and primary is indistinguishable from decoy. Deniability walkthroughs need a
+  physical device.
+
 - **Use a heredoc for multi-line commit messages** — `git commit -F - <<'EOF' ... EOF`,
   quoting the delimiter so `$` and backticks stay literal.
   *Windows-era history, kept because the failure is permanent once pushed:* PowerShell
