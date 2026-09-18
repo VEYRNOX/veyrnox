@@ -16,6 +16,7 @@ import { safeFormat } from "@/lib/safeDate";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import Spinner from "@/components/Spinner";
 
 const STATUS_COLORS = { draft: "secondary", sent: "default", paid: "outline", overdue: "destructive" };
 
@@ -117,7 +118,7 @@ export default function InvoiceGenerator() {
 
       {/* Invoice List */}
       {isLoading ? (
-        <div className="text-center py-12 text-sm text-muted-foreground">Loading...</div>
+        <Spinner className="py-12" label="Loading invoices…" />
       ) : isError ? (
         <div className="text-center py-12 text-sm text-destructive">Couldn't load invoices. Please try again.</div>
       ) : invoices.length === 0 ? (

@@ -302,7 +302,11 @@ function DemoDashboard() {
           <ShoppingCart className="h-5 w-5" />
           <span className="text-xs">{t("dashboard.actions.buy", "Buy")}</span>
         </Button>
-        <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/send")}>
+        {/* Send is THE primary action of a wallet, so it carries the primary
+            variant while the other four stay secondary. Previously all five
+            tiles were `secondary` — five equal-weight choices and nothing
+            telling a new user where to start. Keep exactly one primary here. */}
+        <Button className="flex-col h-16 gap-1" onClick={() => navigate("/send")}>
           <ArrowUpRight className="h-5 w-5" />
           <span className="text-xs">{t("dashboard.actions.send")}</span>
         </Button>
