@@ -17,6 +17,7 @@ import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { getAsset } from "@/wallet-core/assets";
 import { useBasketPrices } from "@/hooks/useBasketPrices";
 import { formatUsd } from "@/lib/locale";
+import Spinner from "@/components/Spinner";
 
 const POPULAR = TOP_SYMBOLS;
 
@@ -109,7 +110,7 @@ export default function WatchlistPage() {
 
       {/* Watchlist Table */}
       {isLoading ? (
-        <div className="text-center py-12 text-sm text-muted-foreground">Loading...</div>
+        <Spinner className="py-12" label="Loading watchlist…" />
       ) : isError ? (
         <div className="text-center py-12 text-sm text-destructive">Couldn't load your watchlist. Please try again.</div>
       ) : items.length === 0 ? (

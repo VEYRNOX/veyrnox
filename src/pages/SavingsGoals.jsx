@@ -16,6 +16,7 @@ import { differenceInDays } from "date-fns";
 import { safeFormat } from "@/lib/safeDate";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import Spinner from "@/components/Spinner";
 
 const EMOJIS = ["🎯","🏠","🚀","✈️","💎","🏖️","🎓","💻","🏋️","🎸"];
 
@@ -117,7 +118,7 @@ export default function SavingsGoals() {
 
       {/* Goals */}
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">Loading...</div>
+        <Spinner className="py-12" label="Loading savings goals…" />
       ) : isError ? (
         <div className="text-center py-12 text-destructive text-sm">Couldn't load savings goals. Please try again.</div>
       ) : goals.length === 0 ? (

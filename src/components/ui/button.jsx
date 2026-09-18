@@ -25,10 +25,22 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground active:bg-accent/80",
         link: "text-primary underline-offset-4 hover:underline",
       },
+      // Every size is >= 44px tall. That is the touch-target floor (Apple HIG
+      // 44pt / WCAG 2.5.5), not a style preference — this is a mobile wallet and
+      // the default button is the one that signs and sends money.
+      //
+      // `sm` and `default` are deliberately the SAME HEIGHT. They differ in
+      // padding and text size, not in target area. Do NOT "fix" that apparent
+      // duplication by shrinking `default` back to h-9: that is exactly the state
+      // this replaced, where ~208 of 311 call sites rendered a 36px target and
+      // `lg` (h-10/40px) was SMALLER than `sm` (h-11/44px).
+      //
+      // twMerge means a `className="h-7"` at a call site still wins over these.
+      // Those overrides are per-site decisions and are not governed here.
       size: {
-        default: "h-9 px-4 py-2",
+        default: "h-11 px-4 py-2",
         sm: "h-11 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
+        lg: "h-12 rounded-md px-8",
         icon: "h-11 w-11",
       },
     },
