@@ -10,6 +10,7 @@
 // via /api/edge/[fn].js if needed in the future.
 
 import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+import { fetchUpstream, readCapped } from '../_lib/upstream.js';
 
 const ALLOWED_RPCS = new Set([
   'track_event',
@@ -141,7 +142,7 @@ export async function onRequestPost(context) {
   }
 
   const url = `${supabaseUrl}/rest/v1/rpc/${encodeURIComponent(fn)}`;
-  const res = await fetch(url, {
+  const res = await fetchUpstream(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -152,7 +153,7 @@ export async function onRequestPost(context) {
     body,
   });
 
-  const responseBody = await res.text();
+  const responseBody = await readCapped(res);
 
   if (!res.ok) {
     // An error the SQL AUTHOR wrote is for the client. An error POSTGRES wrote

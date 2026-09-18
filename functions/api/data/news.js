@@ -5,6 +5,7 @@
 // Cached at the edge for 5 minutes.
 
 import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+import { fetchUpstream, readCapped } from '../_lib/upstream.js';
 
 const RSS_FEEDS = [
   { url: 'https://cointelegraph.com/rss', source: 'CoinTelegraph' },
@@ -55,9 +56,9 @@ export async function onRequestGet(context) {
 
   const results = await Promise.allSettled(
     RSS_FEEDS.map(async ({ url, source }) => {
-      const res = await fetch(url);
+      const res = await fetchUpstream(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const xml = await res.text();
+      const xml = await readCapped(res);
       return parseRssItems(xml, source);
     })
   );

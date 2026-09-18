@@ -25,6 +25,12 @@
 // 0-5 only), so the unused tail is zero-filled rather than guessed.
 
 import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+import { fetchUpstream, readCapped } from '../_lib/upstream.js';
+
+// These handlers try several hosts in sequence, so the per-host deadline has to
+// be well under the default: the bound a caller experiences is hosts x timeout,
+// not one timeout. 4s x 6 Binance hosts is already the worst case here.
+const PER_HOST_TIMEOUT_MS = 4000;
 
 const BINANCE_ENDPOINTS = [
   'https://data-api.binance.vision/api/v3/klines',
@@ -92,7 +98,7 @@ async function fetchViaOkx(symbol, interval, limit) {
   for (const base of OKX_ENDPOINTS) {
     let res;
     try {
-      res = await fetch(`${base}${qs}`);
+      res = await fetchUpstream(`${base}${qs}`, { timeoutMs: PER_HOST_TIMEOUT_MS });
     } catch {
       continue;
     }
@@ -100,7 +106,7 @@ async function fetchViaOkx(symbol, interval, limit) {
 
     let parsed;
     try {
-      parsed = JSON.parse(await res.text());
+      parsed = JSON.parse(await readCapped(res));
     } catch {
       continue;
     }
@@ -162,9 +168,9 @@ export async function onRequestGet(context) {
   let lastStatus = 0;
   for (const base of BINANCE_ENDPOINTS) {
     try {
-      const res = await fetch(`${base}${qs}`);
+      const res = await fetchUpstream(`${base}${qs}`, { timeoutMs: PER_HOST_TIMEOUT_MS });
       if (res.ok) {
-        const body = await res.text();
+        const body = await readCapped(res);
         const ttl = interval === '1m' ? 15 : interval === '1h' ? 30 : 60;
 
         const response = new Response(body, {

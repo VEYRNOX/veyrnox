@@ -5,6 +5,7 @@
 // the server) and returns a one-time widget URL with a sessionId.
 
 import { enforceRateLimit as sharedEnforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+import { fetchUpstream, readCapped } from '../_lib/upstream.js';
 //
 // Flow:
 //   1. Refresh Partner Access Token (cached ~6 days via Cache API)
@@ -151,7 +152,7 @@ async function getPartnerToken(env, clientIp) {
   const apiKey = env.TRANSAK_API_KEY;
   if (!apiSecret || !apiKey) err(503, 'Transak not configured');
 
-  const res = await fetch(urls.refreshToken, {
+  const res = await fetchUpstream(urls.refreshToken, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -169,11 +170,11 @@ async function getPartnerToken(env, clientIp) {
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
+    const text = await readCapped(res).catch(() => '');
     upstreamErr('refresh-token', res, text);
   }
 
-  const data = await res.json();
+  const data = JSON.parse(await readCapped(res));
   const accessToken = data?.data?.accessToken || data?.accessToken;
   if (!accessToken) err(502, 'No access token in Transak response');
 
@@ -254,7 +255,7 @@ export async function onRequestPost(context) {
   };
 
   async function callCreateSession(token, urls) {
-    return fetch(urls.createSession, {
+    return fetchUpstream(urls.createSession, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -279,11 +280,11 @@ export async function onRequestPost(context) {
   }
 
   if (!sessionRes.ok) {
-    const text = await sessionRes.text().catch(() => '');
+    const text = await readCapped(sessionRes).catch(() => '');
     upstreamErr('create-session', sessionRes, text);
   }
 
-  const sessionData = await sessionRes.json();
+  const sessionData = JSON.parse(await readCapped(sessionRes));
   const widgetUrl = sessionData?.data?.widgetUrl;
   if (!widgetUrl) err(502, 'No widgetUrl in Transak response');
 

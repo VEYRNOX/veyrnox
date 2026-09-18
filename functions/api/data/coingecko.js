@@ -8,6 +8,7 @@
 //   simple/price, coins/markets, coins/:id/ohlc
 
 import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+import { fetchUpstream, readCapped } from '../_lib/upstream.js';
 
 const CG_BASE = 'https://api.coingecko.com/api/v3';
 
@@ -91,10 +92,10 @@ export async function onRequestGet(context) {
   const apiKey = context.env?.COINGECKO_API_KEY;
   if (apiKey) headers['x-cg-demo-api-key'] = apiKey;
 
-  const res = await fetch(upstream.toString(), { headers });
+  const res = await fetchUpstream(upstream.toString(), { headers });
   if (!res.ok) err(502, `CoinGecko returned ${res.status}`);
 
-  const body = await res.text();
+  const body = await readCapped(res);
   const ttl = CACHE_TTL[endpoint] || 30;
 
   const response = new Response(body, {

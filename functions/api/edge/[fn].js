@@ -100,6 +100,19 @@ export async function onRequestPost(context) {
   const rcUserId = safeRcUserId(request.headers.get('X-Rc-User-Id'));
   if (rcUserId) headers['X-Rc-User-Id'] = rcUserId;
 
+  // DELIBERATELY a bare fetch(), not _lib/upstream.js's fetchUpstream().
+  //
+  // Every sibling Pages Function moved to a deadline + response-size cap. This
+  // one cannot: tip-chat answers with text/event-stream (see the SSE branch
+  // below), and AbortSignal.timeout() aborts the whole exchange INCLUDING body
+  // streaming — so any wall-clock deadline here truncates a legitimate long
+  // Advisor answer mid-sentence, and a byte cap would have to buffer the stream
+  // it exists to pass through. The upstream is Supabase Edge, allowlisted by
+  // ALLOWED_FUNCTIONS above, and the functions behind it carry their own
+  // AbortController timeouts (supabase/functions/tip-chat/index.ts).
+  //
+  // If you bound this, bound the non-SSE case only, and prove the Advisor
+  // still streams a long answer before merging.
   const res = await fetch(url, {
     method: 'POST',
     headers,

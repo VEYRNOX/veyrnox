@@ -8,6 +8,7 @@
 //   pricemulti, pricemultifull, v2/histoday, v2/histohour, v2/histominute
 
 import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+import { fetchUpstream, readCapped } from '../_lib/upstream.js';
 
 const CC_BASE = 'https://min-api.cryptocompare.com/data';
 
@@ -62,10 +63,10 @@ export async function onRequestGet(context) {
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
-  const res = await fetch(upstream.toString());
+  const res = await fetchUpstream(upstream.toString());
   if (!res.ok) err(502, `CryptoCompare returned ${res.status}`);
 
-  const body = await res.text();
+  const body = await readCapped(res);
   const ttl = CACHE_TTL[endpoint] || 30;
 
   const response = new Response(body, {
