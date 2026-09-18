@@ -3,9 +3,9 @@
 //
 // Soft paywall: a non-blocking upgrade nudge shown to free-tier users after
 // DAY_THRESHOLD distinct calendar days of app usage — currently 1, i.e. the
-// first unlock day (see the constant for why, and for what that costs).
-// Never shown in deniability/
-// demo sessions (I3 — no upsell surface exists in a decoy/hidden session),
+// first unlock day (see the constant for why, and for what that costs). Never
+// shown in deniability/demo sessions (I3 — no upsell surface exists in a
+// decoy/hidden session),
 // never shown to already-subscribed users, and only shown once (dismissal
 // is sticky in localStorage — no re-prompt nagging).
 //
@@ -28,39 +28,26 @@ import { isPaidTier } from '@/lib/tier';
 const SESSION_COUNT_KEY = 'veyrnox-session-day-count';
 const SESSION_LAST_DAY_KEY = 'veyrnox-session-last-day';
 const NUDGE_DISMISSED_KEY = 'veyrnox-paywall-nudge-dismissed';
-// Measured on production `public.events` 2026-09-17. Re-derive rather than
-// trusting these numbers — a measurement written into a file has an expiry
-// date and no alarm:
+// 1 means the FIRST unlock day, not a return visit: incrementSessionDayCount()
+// runs on the first unlock and only once per calendar day, so `count === 1` is
+// routinely reached minutes after wallet creation (one auto-lock cycle). A
+// return visit would be `>= 2`, and the data says a return-visit nudge is
+// unreachable at ANY threshold >= 2 — so raising this back does not tune the
+// nudge down, it switches it off. Leaving it at 1 accepts a first-day upsell
+// 2.5s (SETTLE_MS) after unlock, in the window where the user may still be
+// completing seed backup and BackupPaywallNudge already upsells inline. Owner
+// call, not a tuning detail.
+//
+// Measured on production `public.events` 2026-09-17: of 2,139 devices that had
+// ever emitted session_start, 2,114 (98.8%) did so on exactly ONE calendar day,
+// 18 on two, SEVEN ever reached three. Re-derive rather than trusting those
+// numbers — a measurement in a file has an expiry date and no alarm:
 //
 //   select count(distinct device_id) as devices, days
 //   from (select device_id, count(distinct created_at::date) as days
 //         from public.events where event = 'session_start'
 //         group by device_id) t
 //   group by days order by days;
-//
-// At the time of writing: of 2,139 devices that have ever emitted
-// session_start, 2,114 (98.8%) did so on exactly ONE calendar day, 18 on two,
-// and SEVEN have ever reached three. A day-3 threshold put this nudge out of
-// reach of the entire install base — paywall_shown had fired twice, ever,
-// against 2,304 wallet_ready devices.
-//
-// SAY WHAT THIS ACTUALLY DOES. An earlier version of this comment claimed "one
-// day still means 'came back at least once'". It does not, and the difference
-// matters: incrementSessionDayCount() runs on the FIRST unlock and only once
-// per calendar day, so `count === 1` is reached at the first unlock — routinely
-// the same day as, and minutes after, wallet creation (one auto-lock cycle is
-// enough). A return visit would be `>= 2`. So the nudge now fires on the first
-// unlock day, NOT on a return.
-//
-// Two consequences the owner should weigh, neither of them hidden by this
-// comment any more:
-//   - the full-screen modal can land 2.5s (SETTLE_MS) after a new user's first
-//     unlock, which is the window where they are still completing seed backup
-//     — and BackupPaywallNudge already upsells that exact moment inline;
-//   - the data above says a return-visit nudge is unreachable at ANY threshold
-//     >= 2, so this is not "day 3 tuned down", it is a different nudge.
-// Raising it back re-breaks reachability; leaving it at 1 accepts a first-day
-// upsell. That is an owner call, not a tuning detail.
 export const DAY_THRESHOLD = 1;
 
 // Called once per SESSION_START. No-op in deniability/demo (I3 — must not

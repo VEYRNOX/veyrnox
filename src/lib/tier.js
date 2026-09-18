@@ -2,7 +2,7 @@
 //
 // SUBSCRIPTION / TIER DISPLAY CATALOGUE.
 //
-// This file is the presentation model for the tier UI (TIERS, FREE_FEATURES,
+// This file is the presentation model for the tier UI (FREE_FEATURES,
 // SAFETY_PLUS_FEATURES — consumed by the Plans and Safety Plus screens). It does
 // NOT resolve entitlement.
 //
@@ -50,38 +50,13 @@ export function hasAdvisorOnlineAccess(tier) {
   return tier === TIER.AI_SECURITY_PROTECTION;
 }
 
-// Two tiers: Free (the complete self-custody wallet + core security) and Safety
-// Plus (deeper security controls + advanced analytics). This catalogue mirrors
-// the public plans page at https://veyrnox.com/plans — that page is the source
-// of truth for what sits in each tier. Display catalogue only — real
-// purchasing/entitlement lives in the billing layer above; these cards drive
-// the Plans UI, and route access is enforced by components/FeatureGate against
-// SAFETY_PLUS_ROUTES.
-export const TIERS = [
-  {
-    id: TIER.FREE,
-    name: 'Free',
-    price: '$0',
-    tagline: 'Complete self-custody wallet — everything you need to hold, send and secure your crypto, free forever.',
-  },
-  {
-    id: TIER.SAFETY_PLUS,
-    name: 'Safety Plus',
-    price: '$5.99/mo',
-    tagline: 'Everything in Free, plus deeper security controls and advanced analytics.',
-  },
-  {
-    id: TIER.AI_SECURITY_PROTECTION,
-    name: 'AI Security Protection',
-    // NOT a price. AI Security Protection is an in-app subscription
-    // ($19.99/mo, $159.99/yr at Apple's USD base), not a sales-led plan, and
-    // "Contact sales" read as the opposite. No number typed here either: the
-    // paywall renders the STORE-returned price, and a literal in this file
-    // could only ever become a second, drifting source.
-    price: 'See plans',
-    tagline: 'Everything in Free and Safety Plus, plus live online TIP-backed Vigil guidance.',
-  },
-];
+// A TIERS catalogue (id/name/price/tagline per tier) used to live here. It was
+// rendered by nothing: its only consumer was TierProvider's `tiers` value,
+// which only a test read, and only for `.length`. /plans builds its own cards
+// from the *_FEATURES lists below and renders the STORE-returned price, so the
+// catalogue's price strings were a second source that could only ever drift —
+// and did, silently, until they were edited in #2599 with no user-visible
+// effect. Do not reintroduce a price literal in this file.
 
 // Free tier features — shown on the plan card. Mirrors the FREE column of
 // https://veyrnox.com/plans.
