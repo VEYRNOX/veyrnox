@@ -399,7 +399,12 @@ export default function Subscription() {
   // DEFAULT view. The fix is to ask about the package the button would buy.
   //
   // `settled` — not `=== 'unavailable'` — because 'ready' with no package for
-  // this period is just as terminal to the user as a rejection was.
+  // this period is just as terminal to the user as a rejection was. Which means
+  // the CTA no longer reads the 'ready' vs 'unavailable' split at all, only
+  // loading-vs-settled. The split is kept because the two are genuinely
+  // different failures to diagnose (a rejection is logged, an empty offering is
+  // an unapproved product) — but nothing branches on it today, so do not add a
+  // behaviour here that assumes it does without checking it is still set right.
   //
   // `ctaRetry` also stays true across a retry that is still in flight. A button
   // that disables itself on activation drops focus to <body> in WebKit, so the
