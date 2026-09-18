@@ -200,6 +200,10 @@ export default function Subscription() {
   const [offeringsState, setOfferingsState] = useState('loading');
   const [aiOfferingsState, setAiOfferingsState] = useState('loading');
   const [reloadKey, setReloadKey] = useState(0);
+  // Sticky: once a lookup has failed and the user has asked for a retry, the
+  // CTA stays a retry control rather than reverting to a disabled "loading"
+  // button mid-interaction. See ctaRetry.
+  const [retriedOnce, setRetriedOnce] = useState(false);
 
   // /plans itself emitted NOTHING. The two nudge components were the only
   // paywall_shown emitters, so a visit to the paywall was invisible and
@@ -210,6 +214,10 @@ export default function Subscription() {
   // on deniability/demo at its own chokepoint (api/trackEvent.js), so there is
   // deliberately no guard here — adding one is the three-place duplication
   // that lib/consent.js exists to prevent.
+  // Referral code whose tier has already been fetched this mount. See the
+  // guard in the offerings effect.
+  const referralTierFetchedFor = useRef(null);
+
   const plansViewTracked = useRef(false);
   useEffect(() => {
     if (plansViewTracked.current) return;
@@ -267,7 +275,14 @@ export default function Subscription() {
 
     if (hasReferral) {
       const refCode = getRedeemedCode();
-      if (refCode) {
+      // `reloadKey` is a dep of this whole effect, so a retry of the STORE
+      // lookup was also re-issuing get_referral_tier — which is rate-limited
+      // per IP at the Pages proxy (sql/get-referral-tier.sql). Exhaust it and
+      // referralMonthly/Annual stay null, hasDiscount goes false, and a
+      // referred user is quoted full price by their own retries. One fetch per
+      // code; the ref is cleared on failure so a genuine error can still retry.
+      if (refCode && referralTierFetchedFor.current !== refCode) {
+        referralTierFetchedFor.current = refCode;
         // The tier is resolved SERVER-side (sql/get-referral-tier.sql): a
         // partner code's contracted tier_override, else the owner's paid-count
         // bucket. The client never sees a count, so nothing here derives a
@@ -314,9 +329,10 @@ export default function Subscription() {
               setAiReferralAnnual(null);
             }
           })
-          .catch(() => {});
+          .catch(() => { referralTierFetchedFor.current = null; });
       }
     } else {
+      referralTierFetchedFor.current = null;
       setReferralMonthly(null);
       setReferralAnnual(null);
       setReferralOfferTag(null);
@@ -354,9 +370,14 @@ export default function Subscription() {
   const hasAiDiscount = hasReferral && Boolean(aiReferralMonthly || aiReferralAnnual);
   const effectiveAiMonthly = (hasAiDiscount && aiReferralMonthly) ? aiReferralMonthly : aiMonthlyPackage;
   const effectiveAiAnnual = (hasAiDiscount && aiReferralAnnual) ? aiReferralAnnual : aiAnnualPackage;
-  const selectedAiPackage = billing === "annual"
-    ? (effectiveAiAnnual ?? effectiveAiMonthly)
-    : (effectiveAiMonthly ?? effectiveAiAnnual);
+  // NO cross-period fallback. This resolves the package that `handleAiUpgrade`
+  // actually purchases, and the previous `??` chain substituted the OTHER
+  // billing period when the selected one had no product: with `billing`
+  // defaulting to "annual" and a monthly-only offering, the CTA rendered
+  // enabled with no price and a tap bought a MONTHLY subscription from someone
+  // who had annual selected. A missing period is an unpriceable period — say so
+  // (see aiCtaRetry below), never quietly sell the other one.
+  const selectedAiPackage = billing === "annual" ? effectiveAiAnnual : effectiveAiMonthly;
   const aiOfferingConfigured = Boolean(aiOfferingId);
   const aiPurchaseAvailable = Boolean(selectedAiPackage);
 
@@ -368,6 +389,31 @@ export default function Subscription() {
   const hasAnnualToggle = true;
   const effectiveBilling = billing;
   const selectedPackage = effectiveBilling === "annual" ? effectiveAnnual : effectiveMonthly;
+
+  // offeringsState is per-OFFERING; the CTA buys the SELECTED PERIOD. Those are
+  // not the same question, and reading the first while rendering the second put
+  // back the exact state this screen's three-state model exists to remove: an
+  // offering that resolves with only one period is 'ready', `billing` defaults
+  // to "annual" (see useState above), so a monthly-only offering left the CTA
+  // disabled and reading "loading pricing" forever — no error, no retry, on the
+  // DEFAULT view. The fix is to ask about the package the button would buy.
+  //
+  // `settled` — not `=== 'unavailable'` — because 'ready' with no package for
+  // this period is just as terminal to the user as a rejection was. Which means
+  // the CTA no longer reads the 'ready' vs 'unavailable' split at all, only
+  // loading-vs-settled. The split is kept because the two are genuinely
+  // different failures to diagnose (a rejection is logged, an empty offering is
+  // an unapproved product) — but nothing branches on it today, so do not add a
+  // behaviour here that assumes it does without checking it is still set right.
+  //
+  // `ctaRetry` also stays true across a retry that is still in flight. A button
+  // that disables itself on activation drops focus to <body> in WebKit, so the
+  // control the user just pressed must stay focusable and report progress with
+  // aria-busy instead (see the CTA below).
+  const offeringsSettled = offeringsState !== "loading";
+  const ctaRetry = !selectedPackage && (offeringsSettled || retriedOnce);
+  const aiOfferingsSettled = aiOfferingsState !== "loading";
+  const aiCtaRetry = !selectedAiPackage && (aiOfferingsSettled || retriedOnce);
 
   // Name the offer ONLY when the package actually being bought is the
   // discounted one. If a tier resolved for monthly but not annual, the annual
@@ -640,6 +686,7 @@ export default function Subscription() {
   // has just been approved), and before this the only recovery was to kill the
   // app — the button sat disabled reading "loading pricing" indefinitely.
   function retryOfferings() {
+    setRetriedOnce(true);
     setReloadKey((k) => k + 1);
   }
 
@@ -939,11 +986,14 @@ export default function Subscription() {
                   string overflows the base Button's whitespace-nowrap on
                   narrow iPhones. Let it wrap. */}
               <Button
-                disabled={!isNative || busy || (!selectedPackage && offeringsState !== "unavailable")}
+                disabled={!isNative || busy || (!selectedPackage && !ctaRetry)}
+                aria-busy={ctaRetry && !offeringsSettled}
                 className="w-full whitespace-normal h-auto min-h-10 py-3 text-center leading-snug"
                 onClick={
-                  !selectedPackage && offeringsState === "unavailable"
-                    ? retryOfferings
+                  // Enabled-but-inert while a retry is in flight: disabling it
+                  // would take focus away from the user mid-interaction.
+                  ctaRetry
+                    ? (offeringsSettled ? retryOfferings : undefined)
                     : handleUpgrade
                 }
               >
@@ -961,10 +1011,21 @@ export default function Subscription() {
                   ? "Upgrade to Safety Plus — mobile only"
                   : selectedPriceString
                     ? `Upgrade to Safety Plus — ${selectedPriceString}`
-                    : offeringsState === "unavailable"
-                      ? "Pricing unavailable — tap to retry"
+                    : ctaRetry
+                      ? (offeringsSettled ? "Pricing unavailable — tap to retry" : "Checking pricing…")
                       : "Upgrade to Safety Plus — loading pricing"}
               </Button>
+              {/* The CTA's own accessible name is the only place the failure
+                  was stated, so a screen-reader user whose focus had moved on
+                  was never told pricing had failed or that a retry existed.
+                  Polite live region, same pattern as the Send amount error. */}
+              <p role="status" className="sr-only">
+                {ctaRetry
+                  ? (offeringsSettled
+                      ? "Safety Plus pricing is unavailable. Activate the button above to retry."
+                      : "Checking Safety Plus pricing.")
+                  : ""}
+              </p>
 
               {/* Renewal terms. Both stores require this disclosure at the
                   point of purchase, so it sits with the CTA rather than in
@@ -1128,15 +1189,12 @@ export default function Subscription() {
                     <Button
                       className="w-full bg-sky-600 hover:bg-sky-700 text-white whitespace-normal h-auto min-h-10 py-3 text-center leading-snug"
                       onClick={
-                        !aiPurchaseAvailable && aiOfferingsState === "unavailable"
-                          ? retryOfferings
+                        aiCtaRetry
+                          ? (aiOfferingsSettled ? retryOfferings : undefined)
                           : handleAiUpgrade
                       }
-                      disabled={
-                        !isNative ||
-                        busy ||
-                        (!aiPurchaseAvailable && aiOfferingsState !== "unavailable")
-                      }
+                      aria-busy={aiCtaRetry && !aiOfferingsSettled}
+                      disabled={!isNative || busy || (!aiPurchaseAvailable && !aiCtaRetry)}
                     >
                       {busy
                         ? <Loader2 className="h-4 w-4 animate-spin" />
@@ -1144,10 +1202,18 @@ export default function Subscription() {
                           ? `Subscribe to AI Security Protection — mobile only`
                           : aiPurchaseAvailable
                             ? `Subscribe to AI Security Protection${aiSelectedPriceString ? ` — ${aiSelectedPriceString}` : ''}`
-                            : aiOfferingsState === "unavailable"
-                              ? "Pricing unavailable — tap to retry"
+                            : aiCtaRetry
+                              ? (aiOfferingsSettled ? "Pricing unavailable — tap to retry" : "Checking pricing…")
                               : "Subscribe — loading pricing"}
                     </Button>
+                    {/* Polite live region — see the Safety Plus CTA above. */}
+                    <p role="status" className="sr-only">
+                      {aiCtaRetry
+                        ? (aiOfferingsSettled
+                            ? "AI Security Protection pricing is unavailable. Activate the button above to retry."
+                            : "Checking AI Security Protection pricing.")
+                        : ""}
+                    </p>
                     {isNative && (
                       <>
                         <p className="text-xs text-muted-foreground text-center">

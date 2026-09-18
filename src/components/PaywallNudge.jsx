@@ -1,8 +1,10 @@
 // @ts-nocheck
 // src/components/PaywallNudge.jsx
 //
-// Day-3 soft paywall: a non-blocking upgrade nudge shown to free-tier users
-// after 3+ distinct calendar days of app usage. Never shown in deniability/
+// Soft paywall: a non-blocking upgrade nudge shown to free-tier users after
+// DAY_THRESHOLD distinct calendar days of app usage — currently 1, i.e. the
+// first unlock day (see the constant for why, and for what that costs).
+// Never shown in deniability/
 // demo sessions (I3 — no upsell surface exists in a decoy/hidden session),
 // never shown to already-subscribed users, and only shown once (dismissal
 // is sticky in localStorage — no re-prompt nagging).
@@ -26,13 +28,39 @@ import { isPaidTier } from '@/lib/tier';
 const SESSION_COUNT_KEY = 'veyrnox-session-day-count';
 const SESSION_LAST_DAY_KEY = 'veyrnox-session-last-day';
 const NUDGE_DISMISSED_KEY = 'veyrnox-paywall-nudge-dismissed';
-// Measured on production `public.events` 2026-09-17: of 2,139 devices that
-// have ever emitted session_start, 2,114 (98.8%) did so on exactly ONE
-// calendar day, 18 on two, and SEVEN have ever reached three. A day-3
-// threshold put this nudge out of reach of the entire install base —
-// paywall_shown has fired twice, ever, against 2,304 wallet_ready devices.
-// One day still means "came back at least once", which is the behaviour the
-// nudge was reaching for; it is simply the first day that actually exists.
+// Measured on production `public.events` 2026-09-17. Re-derive rather than
+// trusting these numbers — a measurement written into a file has an expiry
+// date and no alarm:
+//
+//   select count(distinct device_id) as devices, days
+//   from (select device_id, count(distinct created_at::date) as days
+//         from public.events where event = 'session_start'
+//         group by device_id) t
+//   group by days order by days;
+//
+// At the time of writing: of 2,139 devices that have ever emitted
+// session_start, 2,114 (98.8%) did so on exactly ONE calendar day, 18 on two,
+// and SEVEN have ever reached three. A day-3 threshold put this nudge out of
+// reach of the entire install base — paywall_shown had fired twice, ever,
+// against 2,304 wallet_ready devices.
+//
+// SAY WHAT THIS ACTUALLY DOES. An earlier version of this comment claimed "one
+// day still means 'came back at least once'". It does not, and the difference
+// matters: incrementSessionDayCount() runs on the FIRST unlock and only once
+// per calendar day, so `count === 1` is reached at the first unlock — routinely
+// the same day as, and minutes after, wallet creation (one auto-lock cycle is
+// enough). A return visit would be `>= 2`. So the nudge now fires on the first
+// unlock day, NOT on a return.
+//
+// Two consequences the owner should weigh, neither of them hidden by this
+// comment any more:
+//   - the full-screen modal can land 2.5s (SETTLE_MS) after a new user's first
+//     unlock, which is the window where they are still completing seed backup
+//     — and BackupPaywallNudge already upsells that exact moment inline;
+//   - the data above says a return-visit nudge is unreachable at ANY threshold
+//     >= 2, so this is not "day 3 tuned down", it is a different nudge.
+// Raising it back re-breaks reachability; leaving it at 1 accepts a first-day
+// upsell. That is an owner call, not a tuning detail.
 export const DAY_THRESHOLD = 1;
 
 // Called once per SESSION_START. No-op in deniability/demo (I3 — must not
@@ -66,10 +94,15 @@ export function shouldShowPaywallNudge(currentTier) {
 
 // Routes where an upsell modal must never interrupt. The nudge fires on the
 // first render after the tier resolves, and incrementSessionDayCount() runs at
-// SESSION_START (i.e. at unlock) — so on day 3 the full-screen modal could land
-// straight on top of whatever the user unlocked the wallet to do, including a
-// send or a security screen. Restricted to the dashboard, after a short settle
-// delay, so it reads as an interstitial rather than an ambush.
+// SESSION_START (i.e. at unlock) — so the full-screen modal could land straight
+// on top of whatever the user unlocked the wallet to do, including a send or a
+// security screen. Restricted to the dashboard, after a short settle delay, so
+// it reads as an interstitial rather than an ambush.
+//
+// This gating carries MORE weight at DAY_THRESHOLD = 1 than it did at 3: the
+// unlock it now fires on can be a new user's first, minutes after wallet
+// creation. Do not loosen the route list or SETTLE_MS without re-reading the
+// constant's note.
 const NUDGE_ROUTES = ['/', '/dashboard'];
 const SETTLE_MS = 2500;
 
@@ -89,6 +122,10 @@ export default function PaywallNudge() {
       if (trackedRef.current) return;
       trackedRef.current = true;
       setVisible(true);
+      // 'day_3' is a STABLE SERIES KEY, not a description — it names this
+      // nudge in production `public.events` from before DAY_THRESHOLD moved.
+      // Renaming it would split the series and silently reset the only
+      // measurement that justifies the threshold. Leave it.
       void trackEvent(EVENT.PAYWALL_SHOWN, { trigger: 'day_3' }).catch(() => {});
     }, SETTLE_MS);
     return () => clearTimeout(timer);
