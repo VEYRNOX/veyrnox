@@ -34,10 +34,10 @@ describe('shouldShowPaywallNudge', () => {
     expect(shouldShowPaywallNudge('free')).toBe(true);
   });
 
-  // Separate, deliberate pin on the VALUE. The boundary tests above follow the
-  // constant wherever it goes; this one does not, so changing the threshold is
-  // a red test that sends the reader to the reason rather than a silent
-  // regression.
+  // Deliberate pin on the VALUE and on the behaviour it produces. The boundary
+  // tests above follow the constant wherever it goes; this one does not, so
+  // raising the threshold back to a return-visit value goes red and sends the
+  // reader to the reason instead of regressing silently.
   //
   // The reason lives in PaywallNudge.jsx beside the constant, including the SQL
   // to re-derive it — deliberately NOT restated here. An earlier version of
@@ -46,14 +46,8 @@ describe('shouldShowPaywallNudge', () => {
   // so count === 1 is the first unlock day, not a return visit. A test that
   // pins a value to a false reason is worse than no pin, because the reason is
   // what the next reader acts on.
-  it('threshold is 1 — the first unlock day, NOT a return visit (see the constant)', () => {
+  it('threshold is 1 — eligible at the first unlock day, NOT a return visit', () => {
     expect(DAY_THRESHOLD).toBe(1);
-  });
-
-  // The behavioural half of the above: with the counter at its post-first-
-  // unlock value, the nudge is eligible. Goes red if DAY_THRESHOLD is raised
-  // back to a return-visit value, which is the change that needs a decision.
-  it('is eligible after a single session day — the first unlock', () => {
     localStorage.setItem(SESSION_COUNT_KEY, '1');
     expect(shouldShowPaywallNudge('free')).toBe(true);
   });

@@ -22,7 +22,6 @@ import {
   SAFETY_PLUS_ENTITLEMENT,
   AI_SECURITY_PROTECTION_ENTITLEMENT,
 } from '@/lib/purchases';
-import { TIERS } from '@/lib/tier';
 import { setCachedTier } from '@/lib/tierCache';
 import {
   isDeniabilitySessionActive,
@@ -196,7 +195,7 @@ export function TierProvider({ children }) {
     return () => window.removeEventListener(DENIABILITY_SESSION_CHANGED_EVENT, onChange);
   }, [FORCED_TIER, refreshTier, bumpResolveGeneration]);
 
-  const value = { currentTier, tiers: TIERS, loading, refreshTier };
+  const value = { currentTier, loading, refreshTier };
 
   return <TierCtx.Provider value={value}>{children}</TierCtx.Provider>;
 }

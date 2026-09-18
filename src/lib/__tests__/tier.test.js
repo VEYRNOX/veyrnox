@@ -2,7 +2,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   getCurrentTier,
-  TIERS,
   FREE_FEATURES,
   SAFETY_PLUS_FEATURES,
   AI_SECURITY_PROTECTION_FEATURES,
@@ -10,26 +9,10 @@ import {
 } from '../tier';
 
 describe('tier catalogue', () => {
-  it('is the three-tier model in order: free, safety_plus, ai_security_protection', () => {
-    expect(TIERS.map((t) => t.id)).toEqual(['free', 'safety_plus', 'ai_security_protection']);
-  });
-
-  it('every tier has a name, price, and tagline', () => {
-    for (const t of TIERS) {
-      expect(t.name, `${t.id} name`).toBeTruthy();
-      expect(t.price, `${t.id} price`).toBeTruthy();
-      expect(t.tagline, `${t.id} tagline`).toBeTruthy();
-    }
-  });
-
-  it('Free tier is $0, Safety Plus is $5.99/mo, and AI Security Protection is separately listed', () => {
-    const free = TIERS.find((t) => t.id === 'free');
-    const plus = TIERS.find((t) => t.id === 'safety_plus');
-    const ai = TIERS.find((t) => t.id === 'ai_security_protection');
-    expect(free.price).toBe('$0');
-    expect(plus.price).toBe('$5.99/mo');
-    expect(ai.price).toBeTruthy();
-  });
+  // The TIERS catalogue these three tests covered was deleted: nothing rendered
+  // it, so they pinned the shape of dead data (and `expect(ai.price).toBeTruthy()`
+  // passed for the wrong string it was written to catch). The live presentation
+  // model is the *_FEATURES lists, covered below.
 
   it('getCurrentTier is a legacy display stub that always returns free (real tier comes from resolveTier)', () => {
     expect(getCurrentTier()).toBe('free');

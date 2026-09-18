@@ -22,12 +22,11 @@ vi.mock('../purchases', () => ({
 const { TierProvider, useTier } = await import('../TierProvider');
 
 function Probe() {
-  const { currentTier, loading, tiers } = useTier();
+  const { currentTier, loading } = useTier();
   return (
     <div>
       <span data-testid="tier">{currentTier}</span>
       <span data-testid="loading">{String(loading)}</span>
-      <span data-testid="tier-count">{tiers.length}</span>
     </div>
   );
 }
@@ -73,13 +72,6 @@ describe('TierProvider', () => {
     expect(screen.getByTestId('loading').textContent).toBe('true');
     await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
     expect(screen.getByTestId('tier').textContent).toBe('safety_plus');
-  });
-
-  it('exposes the full tier catalogue', async () => {
-    resolveTier.mockResolvedValue('free');
-    render(<TierProvider><Probe /></TierProvider>);
-    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
-    expect(Number(screen.getByTestId('tier-count').textContent)).toBe(3);
   });
 
   it('updates currentTier live when the customer-info listener fires', async () => {
