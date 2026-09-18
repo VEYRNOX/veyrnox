@@ -70,7 +70,7 @@ class OtaUpdatePlugin : Plugin() {
         private fun isValid(ctx: Context, v: Long, channel: String): Boolean {
             val dir = dirFor(ctx, v)
             val m = OtaBundleVerifier.readVerifiedManifest(
-                dir, v, channel, OtaConfig.PUBLIC_KEY_SPKI_B64, ::decode,
+                dir, v, channel, OtaConfig.PUBLIC_KEYS_SPKI_B64, ::decode,
             ) ?: return false
             return OtaBundleVerifier.verifyFiles(dir, m)
         }
@@ -95,7 +95,7 @@ class OtaUpdatePlugin : Plugin() {
             resolved = true
 
             val emb = embedded(ctx)
-            if (OtaConfig.PUBLIC_KEY_SPKI_B64.isEmpty() || emb == null) {
+            if (OtaConfig.PUBLIC_KEYS_SPKI_B64.isEmpty() || emb == null) {
                 root(ctx).deleteRecursively()
                 running = 0
                 return null // resolvedDir stays null
@@ -120,7 +120,7 @@ class OtaUpdatePlugin : Plugin() {
         val emb = embedded(context)
         val st = synchronized(lock) { load(context) }
         call.resolve(JSObject().apply {
-            put("enabled", OtaConfig.PUBLIC_KEY_SPKI_B64.isNotEmpty() && emb != null)
+            put("enabled", OtaConfig.PUBLIC_KEYS_SPKI_B64.isNotEmpty() && emb != null)
             put("channel", emb?.channel ?: "")
             put("nativeApi", OtaConfig.NATIVE_API)
             put("runningVersion", if (running != 0L) running else (emb?.bundleVersion ?: 0))
@@ -133,7 +133,7 @@ class OtaUpdatePlugin : Plugin() {
     fun begin(call: PluginCall) {
         val v = versionArg(call) ?: return call.reject("OTA_BAD_ARGS")
         val emb = embedded(context) ?: return call.reject("OTA_DISABLED")
-        if (OtaConfig.PUBLIC_KEY_SPKI_B64.isEmpty()) return call.reject("OTA_DISABLED")
+        if (OtaConfig.PUBLIC_KEYS_SPKI_B64.isEmpty()) return call.reject("OTA_DISABLED")
         synchronized(lock) {
             if (!OtaBundleVerifier.canAccept(load(context), emb.bundleVersion, v)) return call.reject("OTA_NOT_NEWER")
             val dir = dirFor(context, v)
@@ -154,7 +154,7 @@ class OtaUpdatePlugin : Plugin() {
         val emb = embedded(context) ?: return call.reject("OTA_DISABLED")
         val dir = dirFor(context, v)
         val m = OtaBundleVerifier.readVerifiedManifest(
-            dir, v, emb.channel, OtaConfig.PUBLIC_KEY_SPKI_B64, ::decode,
+            dir, v, emb.channel, OtaConfig.PUBLIC_KEYS_SPKI_B64, ::decode,
         ) ?: return call.reject("OTA_BAD_SIGNATURE")
         try {
             val st = synchronized(lock) { load(context) }

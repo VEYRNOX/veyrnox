@@ -1,8 +1,23 @@
 # OTA web-bundle updates
 
-**Status: BUILT, INTERNAL.** Not device-verified. No signing key is provisioned,
-so OTA is **inert in every build** until the steps under *One-time setup* are
-done and a store binary carrying the key has shipped.
+**Status: BUILT, INTERNAL.** Not device-verified.
+
+**Signing keys are provisioned (2026-09-18).** Two YubiKey 5C NFC tokens, each
+holding a non-extractable P-256 key generated on-token in PIV slot 9c, with
+touch required per signature:
+
+| Token | Serial | Pinned |
+|---|---|---|
+| A | 39744850 | `OtaConfig` on both platforms, first in the list |
+| B | 39744871 | `OtaConfig` on both platforms, second in the list |
+
+Both were proven end to end against a real 1066-file bundle: each token's
+signature verified under its own pinned key and under no other. That is tooling
+evidence, not device evidence.
+
+OTA stays **inert on every install already out there**. It only becomes live for
+installs from a store release built with these keys, and nothing has been
+published to `updates.veyrnox.com`.
 
 Ships fixes to the web bundle (`dist/`) without a store submission. Native code
 (Swift, Kotlin, Capacitor plugins) still ships only through the stores.
@@ -16,21 +31,24 @@ without Apple or Google review. The design keeps the update host and CI
 
 | Guarantee | Where |
 |---|---|
-| The manifest carries an ECDSA P-256 signature from an **offline** key whose public half is compiled into the store binary. An OTA bundle cannot change the pinned key. | `OtaConfig` in `VeyrnoxOta.swift` / `OtaBundleVerifier.kt` |
+| The manifest carries an ECDSA P-256 signature from an **offline** key held on a hardware token. The public half of every token's key is compiled into the store binary, and a signature from any one of them is accepted. An OTA bundle cannot change the pinned keys. | `OtaConfig` in `VeyrnoxOta.swift` / `OtaBundleVerifier.kt` |
 | Every file matches its sha256, and **no extra files** are allowed. This is re-checked natively on **every cold start**, not just at download. | `verifyFiles` |
 | Versions only move forward. A replayed older (validly signed) bundle is refused. | `canAccept`, `floor` |
 | A bundle that boots but never reports ready is rolled back, and that version is never accepted again. | `resolveLaunch`, `OtaBootSignal` in `main.jsx` |
 | A bundle that needs newer native code (`minNativeApi`) is refused. So is one from the other channel. | `readVerifiedManifest` |
 | A store update newer than the OTA bundle wins, and the OTA bundle is deleted. | `resolveLaunch` |
-| An empty pinned key, or a missing embedded manifest, disables OTA completely (I4). | `resolveLaunchDir` |
+| An empty pinned key list, or a missing embedded manifest, disables OTA completely (I4). | `resolveLaunchDir` |
 | Capacitor's own `serverBasePath` persistence loads code **with no verification**. It is switched off with `DisableDeploy` in `capacitor.config.json`, and also cleared on every Activity/VC creation, including warm relaunches. This closes a pre-existing path where XSS could persist code across restarts. | `capacitor.config.json`, `resolveLaunchDir` |
 | A bundle built with `VITE_BYPASS_RASP`, `VITE_DEV_UNGATE_SEND` or `VITE_DEMO_MODE` set to `1` is refused at release time. The check reads the build's recorded flag values (`ota-build-flags.json`), because obfuscated store builds hide the inlined string. | `scripts/ota/release.mjs` |
 
 ### What it does NOT guarantee (read before enabling)
 
 - **Key compromise means every wallet is exposed.** The whole design rests on the
-  offline key. Store it on a hardware token, with a backup token in a separate
-  location. Never put it in CI, GitHub Secrets, Cloudflare or a laptop keychain.
+  offline keys. Each lives on its own YubiKey and cannot be extracted; keep the two
+  tokens in separate places. Never put a signing key in CI, GitHub Secrets,
+  Cloudflare or a laptop keychain. **Any pinned key can ship code**, so a stolen
+  token is as dangerous as a stolen key: if one goes missing, treat it as
+  compromised, drop it from the list and ship a store release.
 - **Freeze attacks.** Whoever controls the host or network can withhold updates. They
   cannot downgrade, but they can keep a user on the current bundle. `latest.json`
   is unsigned by design, since every accepted version is signed.
@@ -48,9 +66,9 @@ without Apple or Google review. The design keeps the update host and CI
 - **Version order is build time, not code order.** A store binary built *later*
   from an *older* commit (for example a resubmission) outranks, and deletes, a newer
   OTA fix. Before a store build, check it contains every OTA fix already shipped.
-- **Staging and production share one key**; only the signed `channel` differs.
-  Every staging release therefore needs the offline key. Don't let that convenience
-  pull the key online. Use a separate staging key if staging releases are frequent.
+- **Staging and production share the same keys**; only the signed `channel` differs.
+  Every staging release therefore needs a token in hand. Don't let that convenience
+  pull a key online. Use a separate staging token if staging releases are frequent.
 - **Attestation does not cover OTA code.** App Attest and Play Integrity attest the
   store binary, not JS loaded afterwards.
 - **"Ready" is a first-render heuristic.** A bundle that renders but breaks later
@@ -69,37 +87,51 @@ without Apple or Google review. The design keeps the update host and CI
 
 ## One-time setup
 
-1. **Generate the key offline — no hardware token needed.** Never create or use
-   it on your everyday machine, or on any machine that has touched this repo's CI
-   or Cloudflare credentials.
-   - Boot a spare laptop from a live USB (for example Tails), with networking off.
-   - Generate an **encrypted** key; you choose a passphrase:
+1. **Generate one key per YubiKey — the key never leaves the token.** Do this on a
+   machine that is offline, and repeat it on the second token so each has its own key.
+   Install the tools first (`brew install ykman yubico-piv-tool opensc`), then, with
+   one token plugged in:
 
-     ```bash
-     openssl ecparam -name prime256v1 -genkey -noout | openssl ec -aes256 -out ota-signing-key.pem
-     ```
+   ```bash
+   ykman piv access change-pin && ykman piv access change-puk && ykman piv access change-management-key --generate --protect
+   ```
 
-   - Print the public key (SPKI base64). Copy it out on paper or a camera photo —
-     it is public, but no removable media should go back to the online machine
-     carrying the private key:
+   That replaces the factory PIN (`123456`), PUK (`12345678`) and management key.
+   Write the new PIN and PUK into your password manager, per token.
 
-     ```bash
-     openssl ec -in ota-signing-key.pem -pubout -outform DER | base64
-     ```
+   ```bash
+   ykman piv keys generate --algorithm eccp256 --pin-policy once --touch-policy always 9c pubkey-token-a.pem
+   ```
 
-   - Copy `ota-signing-key.pem` onto **two** USB sticks kept in separate places,
-     plus the passphrase in a password manager. Losing both sticks means OTA stops
-     until a store release pins a new key; it never means lost funds.
-   - A YubiKey (PIV slot 9c, ECCP256) is a later upgrade: it makes the key
-     non-extractable. The manifest format does not change, but switching keys needs
-     a store release.
-2. **Pin the public key.** Put that base64 into **both**
-   `OtaConfig.publicKeySpkiB64` (iOS) and `OtaConfig.PUBLIC_KEY_SPKI_B64`
-   (Android). `ota-manifest.test.js` fails if the two differ. Before the store
-   release, prove the pasted key is right: prepare any bundle, sign it offline,
-   and run `release.mjs verify <releaseDir>` with no key argument — it reads the
-   pinned key from source. A typo there only disables OTA (fail closed), but you
-   would not find out until the first release.
+   The private key is generated **inside** the token and cannot be exported, which is
+   the point. `--touch-policy ALWAYS` means every signature needs a physical tap, so
+   malware on the signing machine cannot sign silently.
+
+   ```bash
+   ykman piv certificates generate --subject "CN=Veyrnox OTA token A" 9c pubkey-token-a.pem
+   ```
+
+   PIV needs a certificate in the slot alongside the key; this self-signed one is
+   never verified by the app, which pins the raw public key.
+
+   ```bash
+   openssl ec -pubin -in pubkey-token-a.pem -pubout -outform DER | base64
+   ```
+
+   That prints the SPKI base64 to pin. Repeat everything for token B
+   (`pubkey-token-b.pem`, `CN=Veyrnox OTA token B`).
+
+   **Losing a token is recoverable, losing both is not.** With both keys pinned, a
+   lost token costs nothing: keep signing with the other and drop the lost key in the
+   next store release. If both are lost, OTA stops until a store release pins new
+   keys. Neither case ever risks funds.
+2. **Pin both public keys.** Put them into `OtaConfig.publicKeysSpkiB64` (iOS) and
+   `OtaConfig.PUBLIC_KEYS_SPKI_B64` (Android), same keys in the same order;
+   `ota-manifest.test.js` fails if the two lists differ. Before the store release,
+   prove the pasted keys are right: prepare any bundle, sign it with **each** token
+   in turn, and run `release.mjs verify <releaseDir>` with no key argument after
+   each — it reads the pinned keys from source and passes if any matches. A typo
+   only disables that key (fail closed), but you would not find out until a release.
 3. **Hosting.** Create an R2 bucket with public read, served at
    `https://updates.veyrnox.com` (already in CSP `connect-src`). Give `latest.json`
    `Cache-Control: no-cache`. Everything else is immutable.
@@ -126,15 +158,28 @@ This refuses the release if `dist` changed after the build or if it carries a de
 flag. It writes `ota-release/<channel>/<version>/…` and
 `ota-release/<channel>/latest.json`.
 
-**Sign on the offline machine.** Carry only `ota-manifest.json` across, on a
-USB stick used for nothing else. Boot the live USB with networking off, then
-sign. The output must be a base64 DER signature over the exact manifest bytes:
+**Sign with a YubiKey.** Plug in either token; both are equally valid. Neither
+`ykman` nor `yubico-piv-tool` can sign arbitrary data, so signing goes through
+PKCS#11. The token asks for your PIN and a physical tap:
 
 ```bash
-openssl dgst -sha256 -sign ota-signing-key.pem ota-manifest.json | base64 > ota-manifest.sig
+pkcs11-tool --module /opt/homebrew/lib/libykcs11.dylib --sign --mechanism ECDSA-SHA256 --id 02 --input-file ota-release/production/<version>/ota-manifest.json --output-file /tmp/ota-manifest.rawsig
 ```
 
-Bring `ota-manifest.sig` back into `ota-release/<channel>/<version>/`. Then check it:
+`--id 02` is PIV slot 9c. Check the id on your token with
+`pkcs11-tool --module /opt/homebrew/lib/libykcs11.dylib --list-objects --type privkey`.
+
+Store the signature with `seal`. PKCS#11 emits a raw signature while the app
+verifies DER, so this converts it and refuses to write anything that does not
+verify under a pinned key — which is also what proves the signature and the pinned
+keys agree:
+
+```bash
+node scripts/ota/release.mjs seal ota-release/production/<version> /tmp/ota-manifest.rawsig
+```
+
+`seal` already verified it. Run `verify` too if you want the check on its own, for
+example on a signature someone handed you:
 
 ```bash
 node scripts/ota/release.mjs verify ota-release/production/<version>

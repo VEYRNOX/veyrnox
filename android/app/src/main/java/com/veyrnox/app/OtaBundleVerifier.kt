@@ -30,10 +30,21 @@ object OtaConfig {
     const val NATIVE_API = 1
 
     /**
-     * SPKI DER (base64) of the offline P-256 OTA signing key.
+     * SPKI DER (base64) of every offline P-256 OTA signing key, one per hardware
+     * token. A manifest signed by ANY of them is accepted, so losing one token
+     * costs nothing: keep signing with the other and drop the lost key in the next
+     * store release. A key on a YubiKey cannot be backed up, which is why this is
+     * a list — pin one key per token, never copy a key between tokens.
+     *
      * EMPTY = OTA DISABLED: no downloaded bundle is ever loaded.
+     * Must equal publicKeysSpkiB64 on iOS, in the same order (pinned by a test).
      */
-    const val PUBLIC_KEY_SPKI_B64 = ""
+    val PUBLIC_KEYS_SPKI_B64: List<String> = listOf(
+        // Token A — YubiKey 5C NFC serial 39744850, PIV slot 9c, generated on-token 2026-09-18
+        "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbJRsfXCSdRweSxBeZ7J4SvKY4zlbMgvZHlvOnt6hbo1ml67IZ19HrMyD2DCrN8iNeqhDJtktwty/CX7acvTT1Q==",
+        // Token B — YubiKey 5C NFC serial 39744871, PIV slot 9c, generated on-token 2026-09-18
+        "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPXtup2m80bcCIC9ocQ198AFnZKhyxr2zu/a7IDKKn14FRq0BtBshJRGfOPpcCSy1FMmLcqIKw44Zi6MGfkczxA==",
+    )
 }
 
 data class OtaManifest(
@@ -80,16 +91,16 @@ object OtaBundleVerifier {
         null
     }
 
+    /** True if the signature verifies under ANY pinned key. Empty list = never. */
     fun verifySignature(
         bytes: ByteArray,
         signatureB64: String,
-        publicKeySpkiB64: String,
+        publicKeysSpkiB64: List<String>,
         b64Decode: (String) -> ByteArray,
-    ): Boolean {
-        if (publicKeySpkiB64.isEmpty()) return false
-        return try {
+    ): Boolean = publicKeysSpkiB64.any { keyB64 ->
+        keyB64.isNotEmpty() && try {
             val key = KeyFactory.getInstance("EC")
-                .generatePublic(X509EncodedKeySpec(b64Decode(publicKeySpkiB64)))
+                .generatePublic(X509EncodedKeySpec(b64Decode(keyB64)))
             Signature.getInstance("SHA256withECDSA").run {
                 initVerify(key)
                 update(bytes)
@@ -108,12 +119,12 @@ object OtaBundleVerifier {
         dir: File,
         expectedVersion: Long,
         channel: String,
-        publicKeySpkiB64: String,
+        publicKeysSpkiB64: List<String>,
         b64Decode: (String) -> ByteArray,
     ): OtaManifest? = try {
         val bytes = File(dir, MANIFEST_NAME).readBytes()
         val sig = File(dir, SIGNATURE_NAME).readText()
-        if (!verifySignature(bytes, sig, publicKeySpkiB64, b64Decode)) {
+        if (!verifySignature(bytes, sig, publicKeysSpkiB64, b64Decode)) {
             null
         } else {
             parseManifest(bytes)?.takeIf {

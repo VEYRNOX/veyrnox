@@ -24,7 +24,7 @@ class OtaBundleVerifierTest {
     private val decode: (String) -> ByteArray = { Base64.getMimeDecoder().decode(it) }
     private val keys = KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec("secp256r1")) }.generateKeyPair()
     private val otherKeys = KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec("secp256r1")) }.generateKeyPair()
-    private val pub = Base64.getEncoder().encodeToString(keys.public.encoded)
+    private val pub = listOf(Base64.getEncoder().encodeToString(keys.public.encoded))
 
     private fun sha(b: ByteArray) = MessageDigest.getInstance("SHA-256").digest(b).joinToString("") { "%02x".format(it) }
 
@@ -47,8 +47,8 @@ class OtaBundleVerifierTest {
         return dir to OtaBundleVerifier.parseManifest(manifest)!!
     }
 
-    private fun verified(dir: File, version: Long = 202609141230, channel: String = "production", key: String = pub) =
-        OtaBundleVerifier.readVerifiedManifest(dir, version, channel, key, decode)
+    private fun verified(dir: File, version: Long = 202609141230, channel: String = "production", keys: List<String> = pub) =
+        OtaBundleVerifier.readVerifiedManifest(dir, version, channel, keys, decode)
 
     // ── signature / manifest ────────────────────────────────────────────────
 
@@ -59,9 +59,28 @@ class OtaBundleVerifierTest {
         assertTrue(OtaBundleVerifier.verifyFiles(dir, m!!))
     }
 
-    @Test fun `empty pinned key disables OTA`() {
+    @Test fun `empty pinned key list disables OTA`() {
         val (dir, _) = bundle()
-        assertNull(verified(dir, key = ""))
+        assertNull(verified(dir, keys = emptyList()))
+        assertNull(verified(dir, keys = listOf("")))
+    }
+
+    // One key per hardware token: a YubiKey key cannot be backed up, so either
+    // token's signature must be accepted, and a dropped token's must not be.
+    @Test fun `a signature from ANY pinned token verifies`() {
+        val tokenB = KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec("secp256r1")) }.generateKeyPair()
+        val pubB = Base64.getEncoder().encodeToString(tokenB.public.encoded)
+        val bothPinned = pub + pubB
+
+        val (dirA, _) = bundle()
+        assertNotNull(verified(dirA, keys = bothPinned))
+        val (dirB, _) = bundle(signer = tokenB.private)
+        assertNotNull(verified(dirB, keys = bothPinned))
+
+        // Unpinned signer stays rejected, and dropping a lost token drops its signatures.
+        val (dirOther, _) = bundle(signer = otherKeys.private)
+        assertNull(verified(dirOther, keys = bothPinned))
+        assertNull(verified(dirA, keys = listOf(pubB)))
     }
 
     @Test fun `signature from another key is rejected`() {

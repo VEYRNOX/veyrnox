@@ -23,9 +23,20 @@ import Foundation
 enum OtaConfig {
     /// Must equal NATIVE_API in scripts/ota/manifest.mjs and OtaConfig.NATIVE_API on Android.
     static let nativeApi = 1
-    /// SPKI DER (base64) of the offline P-256 OTA signing key.
+    /// SPKI DER (base64) of every offline P-256 OTA signing key, one per hardware
+    /// token. A manifest signed by ANY of them is accepted, so losing one token
+    /// costs nothing: keep signing with the other and drop the lost key in the next
+    /// store release. A key on a YubiKey cannot be backed up, which is why this is
+    /// a list — pin one key per token, never copy a key between tokens.
+    ///
     /// EMPTY = OTA DISABLED: no downloaded bundle is ever loaded.
-    static let publicKeySpkiB64 = ""
+    /// Must equal PUBLIC_KEYS_SPKI_B64 on Android, in the same order (pinned by a test).
+    static let publicKeysSpkiB64: [String] = [
+        // Token A — YubiKey 5C NFC serial 39744850, PIV slot 9c, generated on-token 2026-09-18
+        "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbJRsfXCSdRweSxBeZ7J4SvKY4zlbMgvZHlvOnt6hbo1ml67IZ19HrMyD2DCrN8iNeqhDJtktwty/CX7acvTT1Q==",
+        // Token B — YubiKey 5C NFC serial 39744871, PIV slot 9c, generated on-token 2026-09-18
+        "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPXtup2m80bcCIC9ocQ198AFnZKhyxr2zu/a7IDKKn14FRq0BtBshJRGfOPpcCSy1FMmLcqIKw44Zi6MGfkczxA==",
+    ]
 }
 
 struct OtaManifest {
@@ -72,21 +83,25 @@ enum OtaVerifier {
         return OtaManifest(channel: channel, bundleVersion: version, minNativeApi: minApi, files: files)
     }
 
-    static func verifySignature(_ data: Data, signatureB64: String, publicKeySpkiB64: String) -> Bool {
-        guard !publicKeySpkiB64.isEmpty,
-              let keyDer = Data(base64Encoded: publicKeySpkiB64),
-              let sigDer = Data(base64Encoded: signatureB64.trimmingCharacters(in: .whitespacesAndNewlines),
+    /// True if the signature verifies under ANY pinned key. Empty list = never.
+    static func verifySignature(_ data: Data, signatureB64: String, publicKeysSpkiB64: [String]) -> Bool {
+        guard let sigDer = Data(base64Encoded: signatureB64.trimmingCharacters(in: .whitespacesAndNewlines),
                                 options: .ignoreUnknownCharacters),
-              let key = try? P256.Signing.PublicKey(derRepresentation: keyDer),
               let sig = try? P256.Signing.ECDSASignature(derRepresentation: sigDer)
         else { return false }
-        return key.isValidSignature(sig, for: data)
+        return publicKeysSpkiB64.contains { keyB64 in
+            guard !keyB64.isEmpty,
+                  let keyDer = Data(base64Encoded: keyB64),
+                  let key = try? P256.Signing.PublicKey(derRepresentation: keyDer)
+            else { return false }
+            return key.isValidSignature(sig, for: data)
+        }
     }
 
     static func readVerifiedManifest(dir: URL, expectedVersion: Int64, channel: String) -> OtaManifest? {
         guard let data = try? Data(contentsOf: dir.appendingPathComponent(manifestName)),
               let sig = try? String(contentsOf: dir.appendingPathComponent(signatureName), encoding: .utf8),
-              verifySignature(data, signatureB64: sig, publicKeySpkiB64: OtaConfig.publicKeySpkiB64),
+              verifySignature(data, signatureB64: sig, publicKeysSpkiB64: OtaConfig.publicKeysSpkiB64),
               let m = parseManifest(data),
               m.bundleVersion == expectedVersion, m.channel == channel, m.minNativeApi <= OtaConfig.nativeApi
         else { return nil }
@@ -196,7 +211,7 @@ enum OtaStore {
         return OtaVerifier.parseManifest(data)
     }
 
-    static var enabled: Bool { !OtaConfig.publicKeySpkiB64.isEmpty && embedded() != nil }
+    static var enabled: Bool { !OtaConfig.publicKeysSpkiB64.isEmpty && embedded() != nil }
 
     static func isValid(_ v: Int64, channel: String) -> Bool {
         guard let m = OtaVerifier.readVerifiedManifest(dir: dir(v), expectedVersion: v, channel: channel) else { return false }
@@ -210,7 +225,7 @@ enum OtaStore {
         // as failed, or swap in a bundle staged this session mid-session.
         if resolved { return resolvedDir }
         resolved = true
-        guard !OtaConfig.publicKeySpkiB64.isEmpty, let emb = embedded() else {
+        guard !OtaConfig.publicKeysSpkiB64.isEmpty, let emb = embedded() else {
             try? FileManager.default.removeItem(at: root)
             running = 0
             return nil
@@ -256,7 +271,7 @@ public class VeyrnoxOtaPlugin: CAPPlugin {
         OtaStore.lock.lock(); let st = OtaStore.load(); OtaStore.lock.unlock()
         let embVersion = emb?.bundleVersion ?? 0
         call.resolve([
-            "enabled": !OtaConfig.publicKeySpkiB64.isEmpty && emb != nil,
+            "enabled": !OtaConfig.publicKeysSpkiB64.isEmpty && emb != nil,
             "channel": emb?.channel ?? "",
             "nativeApi": OtaConfig.nativeApi,
             "runningVersion": NSNumber(value: OtaStore.running != 0 ? OtaStore.running : embVersion),
