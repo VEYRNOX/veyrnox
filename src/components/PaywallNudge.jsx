@@ -26,7 +26,14 @@ import { isPaidTier } from '@/lib/tier';
 const SESSION_COUNT_KEY = 'veyrnox-session-day-count';
 const SESSION_LAST_DAY_KEY = 'veyrnox-session-last-day';
 const NUDGE_DISMISSED_KEY = 'veyrnox-paywall-nudge-dismissed';
-const DAY_THRESHOLD = 3;
+// Measured on production `public.events` 2026-09-17: of 2,139 devices that
+// have ever emitted session_start, 2,114 (98.8%) did so on exactly ONE
+// calendar day, 18 on two, and SEVEN have ever reached three. A day-3
+// threshold put this nudge out of reach of the entire install base —
+// paywall_shown has fired twice, ever, against 2,304 wallet_ready devices.
+// One day still means "came back at least once", which is the behaviour the
+// nudge was reaching for; it is simply the first day that actually exists.
+export const DAY_THRESHOLD = 1;
 
 // Called once per SESSION_START. No-op in deniability/demo (I3 — must not
 // write any state that could distinguish a real session from a decoy one).

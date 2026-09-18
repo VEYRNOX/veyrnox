@@ -64,6 +64,7 @@ import OutcomeSteps, {
 import CancelOfferDialog from "@/components/subscription/CancelOfferDialog";
 import { useLocalePreferences } from "@/lib/useLocale";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import { trackEvent, EVENT } from "@/api/trackEvent";
 
 const CURRENT_BADGE = "bg-success/10 text-success border-success/20";
 
@@ -187,9 +188,40 @@ export default function Subscription() {
   const [retentionAnnual, setRetentionAnnual] = useState(null);
   const aiOfferingId = getAiSecurityProtectionOfferingId();
 
+  // Three states, not two. A rejected getOfferings() and a RESOLVED offering
+  // carrying no purchasable package both leave the packages null, and the CTA
+  // used to render "loading pricing" forever in either case — no error, no
+  // retry, no way for the user or for us to tell the two apart. The second
+  // case is not hypothetical: it is exactly what an unapproved App Store
+  // product does (AI Security Protection has been READY_TO_SUBMIT since
+  // 2026-08-31, so every user who reached that card met a dead button).
+  // 'loading' -> 'ready' | 'unavailable'. Tracked per tier because the tiers
+  // genuinely fail independently.
+  const [offeringsState, setOfferingsState] = useState('loading');
+  const [aiOfferingsState, setAiOfferingsState] = useState('loading');
+  const [reloadKey, setReloadKey] = useState(0);
+
+  // /plans itself emitted NOTHING. The two nudge components were the only
+  // paywall_shown emitters, so a visit to the paywall was invisible and
+  // "nobody opens /plans" could not be distinguished from "everybody opens it
+  // and bounces". RevenueCat cannot supply this either: every offering has
+  // paywall_id null (this is a custom screen), so RC paywall encounters are
+  // zero by construction and always will be. trackEvent gates on consent and
+  // on deniability/demo at its own chokepoint (api/trackEvent.js), so there is
+  // deliberately no guard here — adding one is the three-place duplication
+  // that lib/consent.js exists to prevent.
+  const plansViewTracked = useRef(false);
+  useEffect(() => {
+    if (plansViewTracked.current) return;
+    plansViewTracked.current = true;
+    void trackEvent(EVENT.PAYWALL_SHOWN, { trigger: 'plans_view' }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!isNative) return;
     let cancelled = false;
+    setOfferingsState('loading');
+    setAiOfferingsState('loading');
 
     function extractPackages(offering) {
       const packages = offering?.availablePackages ?? [];
@@ -205,9 +237,13 @@ export default function Subscription() {
         const { monthly, annual } = extractPackages(offering);
         setMonthlyPackage(monthly);
         setAnnualPackage(annual);
+        // Resolved-but-empty is a failure to the user even though the promise
+        // kept its word, so it lands in the same bucket as a rejection.
+        setOfferingsState(monthly || annual ? 'ready' : 'unavailable');
       })
       .catch((err) => {
         console.warn("Safety Plus offerings unavailable:", err);
+        if (!cancelled) setOfferingsState('unavailable');
       });
 
     if (aiOfferingId) {
@@ -217,11 +253,16 @@ export default function Subscription() {
           const { monthly, annual } = extractPackages(offering);
           setAiMonthlyPackage(monthly);
           setAiAnnualPackage(annual);
+          setAiOfferingsState(monthly || annual ? 'ready' : 'unavailable');
         })
-        .catch(() => {});
+        // getTierOffering already swallows its own rejection and resolves to
+        // null, so this arm is belt-and-braces — but the state must be settled
+        // on both paths or the button reads "loading" forever.
+        .catch(() => { if (!cancelled) setAiOfferingsState('unavailable'); });
     } else {
       setAiMonthlyPackage(null);
       setAiAnnualPackage(null);
+      setAiOfferingsState('unavailable');
     }
 
     if (hasReferral) {
@@ -305,7 +346,7 @@ export default function Subscription() {
     }
 
     return () => { cancelled = true; };
-  }, [aiOfferingId, isNative, hasReferral, currentTier, isPaidPlan]);
+  }, [aiOfferingId, isNative, hasReferral, currentTier, isPaidPlan, reloadKey]);
 
   const hasDiscount = hasReferral && Boolean(referralMonthly || referralAnnual);
   const effectiveMonthly = (hasDiscount && referralMonthly) ? referralMonthly : monthlyPackage;
@@ -592,6 +633,14 @@ export default function Subscription() {
     } catch {
       toast.error("Couldn't open subscription settings");
     }
+  }
+
+  // Re-runs the whole offerings effect. A store lookup can fail for reasons
+  // that clear on their own (cold StoreKit, transient network, a product that
+  // has just been approved), and before this the only recovery was to kill the
+  // app — the button sat disabled reading "loading pricing" indefinitely.
+  function retryOfferings() {
+    setReloadKey((k) => k + 1);
   }
 
   function renderManageSubscriptionControls() {
@@ -890,9 +939,13 @@ export default function Subscription() {
                   string overflows the base Button's whitespace-nowrap on
                   narrow iPhones. Let it wrap. */}
               <Button
-                disabled={!isNative || !selectedPackage || busy}
+                disabled={!isNative || busy || (!selectedPackage && offeringsState !== "unavailable")}
                 className="w-full whitespace-normal h-auto min-h-10 py-3 text-center leading-snug"
-                onClick={handleUpgrade}
+                onClick={
+                  !selectedPackage && offeringsState === "unavailable"
+                    ? retryOfferings
+                    : handleUpgrade
+                }
               >
                 {busy ? <Loader2 className="h-4 w-4 me-2 motion-safe:animate-spin" /> : <Sparkles className="h-4 w-4 me-2" />}
                 {/* Action-verb + outcome-named CTA — matches the pattern used
@@ -900,7 +953,17 @@ export default function Subscription() {
                     Bitwarden "Get Premium"). Keeping the "Upgrade" verb so the
                     existing role/name assertions in Subscription.test.jsx keep
                     working; the outcome now sits next to it. */}
-                {isNative ? (selectedPriceString ? `Upgrade to Safety Plus — ${selectedPriceString}` : "Upgrade to Safety Plus — loading pricing") : "Upgrade to Safety Plus — mobile only"}
+                {/* "loading pricing" used to be the terminal state for BOTH a
+                    failed lookup and an empty offering, so a permanently dead
+                    button claimed to be mid-flight. Say which it is, and make
+                    the failed case actionable. */}
+                {!isNative
+                  ? "Upgrade to Safety Plus — mobile only"
+                  : selectedPriceString
+                    ? `Upgrade to Safety Plus — ${selectedPriceString}`
+                    : offeringsState === "unavailable"
+                      ? "Pricing unavailable — tap to retry"
+                      : "Upgrade to Safety Plus — loading pricing"}
               </Button>
 
               {/* Renewal terms. Both stores require this disclosure at the
@@ -1064,8 +1127,16 @@ export default function Subscription() {
                         2026-09-05 — text was spilling past the right edge. */}
                     <Button
                       className="w-full bg-sky-600 hover:bg-sky-700 text-white whitespace-normal h-auto min-h-10 py-3 text-center leading-snug"
-                      onClick={handleAiUpgrade}
-                      disabled={!isNative || busy || !aiPurchaseAvailable}
+                      onClick={
+                        !aiPurchaseAvailable && aiOfferingsState === "unavailable"
+                          ? retryOfferings
+                          : handleAiUpgrade
+                      }
+                      disabled={
+                        !isNative ||
+                        busy ||
+                        (!aiPurchaseAvailable && aiOfferingsState !== "unavailable")
+                      }
                     >
                       {busy
                         ? <Loader2 className="h-4 w-4 animate-spin" />
@@ -1073,7 +1144,9 @@ export default function Subscription() {
                           ? `Subscribe to AI Security Protection — mobile only`
                           : aiPurchaseAvailable
                             ? `Subscribe to AI Security Protection${aiSelectedPriceString ? ` — ${aiSelectedPriceString}` : ''}`
-                            : "Subscribe — loading pricing"}
+                            : aiOfferingsState === "unavailable"
+                              ? "Pricing unavailable — tap to retry"
+                              : "Subscribe — loading pricing"}
                     </Button>
                     {isNative && (
                       <>
