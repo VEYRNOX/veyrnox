@@ -35,15 +35,27 @@ describe('shouldShowPaywallNudge', () => {
   });
 
   // Separate, deliberate pin on the VALUE. The boundary tests above follow the
-  // constant wherever it goes; this one does not, so raising the threshold is
+  // constant wherever it goes; this one does not, so changing the threshold is
   // a red test that sends the reader to the reason rather than a silent
-  // regression. Production public.events, 2026-09-17: of 2,139 devices that
-  // ever emitted session_start, 2,114 did so on exactly one calendar day and
-  // seven ever reached three. At 3 this nudge was unreachable — paywall_shown
-  // had fired twice, ever, against 2,304 wallet_ready devices. Do not raise it
-  // without new retention data saying the population has changed.
-  it('threshold is 1 — a higher value is unreachable for ~99% of devices', () => {
+  // regression.
+  //
+  // The reason lives in PaywallNudge.jsx beside the constant, including the SQL
+  // to re-derive it — deliberately NOT restated here. An earlier version of
+  // this test quoted a rationale ("one day means came back at least once") that
+  // was factually wrong: incrementSessionDayCount() runs on the FIRST unlock,
+  // so count === 1 is the first unlock day, not a return visit. A test that
+  // pins a value to a false reason is worse than no pin, because the reason is
+  // what the next reader acts on.
+  it('threshold is 1 — the first unlock day, NOT a return visit (see the constant)', () => {
     expect(DAY_THRESHOLD).toBe(1);
+  });
+
+  // The behavioural half of the above: with the counter at its post-first-
+  // unlock value, the nudge is eligible. Goes red if DAY_THRESHOLD is raised
+  // back to a return-visit value, which is the change that needs a decision.
+  it('is eligible after a single session day — the first unlock', () => {
+    localStorage.setItem(SESSION_COUNT_KEY, '1');
+    expect(shouldShowPaywallNudge('free')).toBe(true);
   });
 
   it('returns false when already dismissed', () => {

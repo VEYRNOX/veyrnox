@@ -891,14 +891,21 @@ describe('Subscription page — /plans view is tracked', () => {
     );
   });
 
-  it('emits it once per mount, not once per render', async () => {
-    const { rerender } = renderPage();
-    await waitFor(() => expect(trackEventMock).toHaveBeenCalled());
-    rerender(
-      <MemoryRouter>
-        <Subscription />
-      </MemoryRouter>
+  // Rendered under StrictMode ON PURPOSE. An earlier version of this test used
+  // a plain rerender, which cannot fail: the effect's dep array is `[]`, so it
+  // would not re-run even with the `plansViewTracked` ref deleted — the test
+  // read as coverage of the ref and covered nothing. StrictMode double-invokes
+  // effects, so the ref is the only thing keeping this at one emit. Verified by
+  // deleting the ref guard and watching this go red (2 calls).
+  it('emits once per mount even under StrictMode double-invoke', async () => {
+    render(
+      <React.StrictMode>
+        <MemoryRouter>
+          <Subscription />
+        </MemoryRouter>
+      </React.StrictMode>
     );
+    await waitFor(() => expect(trackEventMock).toHaveBeenCalled());
     const views = trackEventMock.mock.calls.filter(
       ([, meta]) => meta?.trigger === 'plans_view'
     );
@@ -983,5 +990,132 @@ describe('Subscription page — offerings unavailable is stated, not hidden', ()
       ).toBeEnabled()
     );
     expect(within(aiCard).queryByRole('button', { name: /loading pricing/i })).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Follow-up to the block above (review of PR #2599).
+//
+// The three-state model landed keyed on the OFFERING, while the CTA buys the
+// SELECTED PERIOD. Those diverge whenever an offering resolves with only one
+// billing period, and `billing` defaults to "annual" — so the dead button
+// claiming to be mid-flight survived on the DEFAULT view. These pin the
+// per-period verdict, the focus behaviour of the retry, and the mis-sale the
+// AI card's cross-period fallback allowed.
+// ---------------------------------------------------------------------------
+
+describe('Subscription page — CTA verdict follows the selected period', () => {
+  beforeEach(() => {
+    isNativePlatform.mockReturnValue(true);
+  });
+
+  // The headline case: the offering RESOLVED and is 'ready', but the annual
+  // period — the default — has no product. Keyed on the offering this rendered
+  // a disabled "loading pricing" button forever.
+  it('monthly-only offering: the default annual CTA is honest, not "loading"', async () => {
+    getOfferings.mockResolvedValue({
+      availablePackages: [{ identifier: '$rc_monthly', product: { priceString: '$5.99' } }],
+    });
+    renderPage();
+    const cta = await screen.findByRole('button', { name: /Pricing unavailable — tap to retry/i });
+    expect(cta).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /loading pricing/i })).toBeNull();
+  });
+
+  // ...and the period that DOES have a product still buys normally, so the fix
+  // cannot have been "disable everything".
+  it('monthly-only offering: switching to Monthly restores a real priced CTA', async () => {
+    getOfferings.mockResolvedValue({
+      availablePackages: [{ identifier: '$rc_monthly', product: { priceString: '$5.99' } }],
+    });
+    purchasePackage.mockResolvedValue({});
+    refreshTier.mockResolvedValue('safety_plus');
+    renderPage();
+    await screen.findByRole('button', { name: /Pricing unavailable/i });
+    fireEvent.click(screen.getByRole('radio', { name: /monthly/i }));
+    const cta = await screen.findByRole('button', { name: /Upgrade to Safety Plus — \$5\.99/i });
+    fireEvent.click(cta);
+    await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith(
+      { identifier: '$rc_monthly', product: { priceString: '$5.99' } },
+      { offerTag: null }
+    ));
+  });
+
+  // WebKit moves focus to <body> when the focused element becomes disabled, so
+  // the control the user just activated has to survive its own retry.
+  it('the retry button stays enabled and focusable while the retry is in flight', async () => {
+    let release;
+    getOfferings
+      .mockRejectedValueOnce(new Error('transient'))
+      .mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+    renderPage();
+    const cta = await screen.findByRole('button', { name: /Pricing unavailable — tap to retry/i });
+    cta.focus();
+    fireEvent.click(cta);
+
+    const busy = await screen.findByRole('button', { name: /Checking pricing/i });
+    expect(busy).toBeEnabled();
+    expect(busy).toHaveAttribute('aria-busy', 'true');
+    expect(document.activeElement).toBe(busy);
+
+    release({ availablePackages: [{ identifier: '$rc_annual', product: { priceString: '$49.99' } }] });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Upgrade to Safety Plus — \$49\.99/i })).toBeEnabled()
+    );
+  });
+
+  it('announces the failure in a polite live region, not only in the button name', async () => {
+    getOfferings.mockRejectedValue(new Error('store unavailable'));
+    renderPage();
+    await screen.findByRole('button', { name: /Pricing unavailable — tap to retry/i });
+    expect(
+      screen.getByText(/Safety Plus pricing is unavailable\. Activate the button above to retry\./i)
+    ).toHaveAttribute('role', 'status');
+  });
+
+  // A store lookup failing must not spend the per-IP budget on
+  // get_referral_tier — exhaust it and the referred user is quoted full price
+  // by their own retries.
+  it('retry does not re-issue the rate-limited referral tier lookup', async () => {
+    hasRedeemedMock.mockReturnValue(true);
+    getRedeemedCodeMock.mockReturnValue('FRIEND10');
+    fetchReferralTier.mockResolvedValue('referral_gold');
+    getOfferings.mockRejectedValue(new Error('store unavailable'));
+    renderPage();
+    const cta = await screen.findByRole('button', { name: /Pricing unavailable — tap to retry/i });
+    await waitFor(() => expect(fetchReferralTier).toHaveBeenCalledTimes(1));
+    fireEvent.click(cta);
+    await waitFor(() => expect(getOfferings).toHaveBeenCalledTimes(2));
+    expect(fetchReferralTier).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Subscription page — AI tier never substitutes the other billing period', () => {
+  beforeEach(() => {
+    isNativePlatform.mockReturnValue(true);
+    getOfferings.mockResolvedValue({
+      availablePackages: [
+        { identifier: '$rc_monthly', product: { priceString: '$5.99' } },
+        { identifier: '$rc_annual', product: { priceString: '$49.99' } },
+      ],
+    });
+    getAiSecurityProtectionOfferingId.mockReturnValue('ai-security-protection');
+  });
+
+  // selectedAiPackage used to fall back across periods (`annual ?? monthly`).
+  // With annual selected by default and only a monthly product present, the CTA
+  // rendered enabled with no price and a tap charged a MONTHLY subscription to
+  // someone who had annual selected. Wrong-plan charge, so it fails closed.
+  it('monthly-only AI offering does not sell monthly to an annual selection', async () => {
+    getTierOffering.mockResolvedValue({
+      availablePackages: [{ identifier: '$rc_monthly', product: { priceString: '$19.99' } }],
+    });
+    renderPage();
+    const aiCard = await screen.findByTestId('ai-security-protection-card');
+    const cta = await within(aiCard).findByRole('button', {
+      name: /Pricing unavailable — tap to retry/i,
+    });
+    fireEvent.click(cta);
+    expect(purchasePackage).not.toHaveBeenCalled();
   });
 });
