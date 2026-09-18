@@ -62,6 +62,7 @@ import OutcomeSteps, {
   markOutcomeSeen,
 } from "@/components/subscription/OutcomeSteps";
 import CancelOfferDialog from "@/components/subscription/CancelOfferDialog";
+import BillingPeriodToggle from "@/components/subscription/BillingPeriodToggle";
 import { useLocalePreferences } from "@/lib/useLocale";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 import { trackEvent, EVENT } from "@/api/trackEvent";
@@ -177,19 +178,6 @@ export default function Subscription() {
   // APG pattern deviation rather than a keyboard block — but a real
   // radiogroup should move (and select) with the arrow keys, matching native
   // <input type="radio"> group behaviour.
-  const monthlyRadioRef = useRef(null);
-  const annualRadioRef = useRef(null);
-  const BILLING_ORDER = ["monthly", "annual"];
-  const billingRadioRefs = { monthly: monthlyRadioRef, annual: annualRadioRef };
-  function handleBillingKeyDown(e) {
-    if (!["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(e.key)) return;
-    e.preventDefault();
-    const dir = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1;
-    const idx = BILLING_ORDER.indexOf(billing);
-    const next = BILLING_ORDER[(idx + dir + BILLING_ORDER.length) % BILLING_ORDER.length];
-    setBilling(next);
-    billingRadioRefs[next].current?.focus();
-  }
   const isNative = Capacitor.isNativePlatform();
   const hasReferral = hasRedeemed();
 
@@ -405,13 +393,12 @@ export default function Subscription() {
   const aiPurchaseAvailable = Boolean(selectedAiPackage);
 
   // Both monthly and annual plans always exist as product offerings, so the
-  // toggle always renders. On sideloaded builds where Play Billing is
-  // unavailable, `effectiveMonthly`/`effectiveAnnual` are null — the toggle
-  // still shows both plans with fallback price strings, and `handleUpgrade`
-  // early-returns on a falsy `selectedPackage` (I4, fail-honest).
-  const hasAnnualToggle = true;
-  const effectiveBilling = billing;
-  const selectedPackage = effectiveBilling === "annual" ? effectiveAnnual : effectiveMonthly;
+  // toggle always renders — it used to sit behind a `hasAnnualToggle` constant
+  // that had been unconditionally `true` since #1248. On sideloaded builds
+  // where Play Billing is unavailable, `effectiveMonthly`/`effectiveAnnual` are
+  // null — the toggle still shows both plans with fallback price strings, and
+  // `handleUpgrade` early-returns on a falsy `selectedPackage` (I4, fail-honest).
+  const selectedPackage = billing === "annual" ? effectiveAnnual : effectiveMonthly;
 
   // `settled` is per-OFFERING; the CTA buys the SELECTED PERIOD. Ask about the
   // package the button would actually buy: an offering that resolves with only
@@ -440,14 +427,14 @@ export default function Subscription() {
     hasDiscount && effectiveAnnual != null && effectiveAnnual === referralAnnual;
 
   const usingReferralPackage =
-    effectiveBilling === "annual" ? usingReferralAnnual : usingReferralMonthly;
+    billing === "annual" ? usingReferralAnnual : usingReferralMonthly;
   const activeOfferTag = usingReferralPackage ? referralOfferTag : null;
   const usingAiReferralMonthly =
     hasAiDiscount && effectiveAiMonthly != null && effectiveAiMonthly === aiReferralMonthly;
   const usingAiReferralAnnual =
     hasAiDiscount && effectiveAiAnnual != null && effectiveAiAnnual === aiReferralAnnual;
   const usingAiReferralPackage =
-    effectiveBilling === "annual" ? usingAiReferralAnnual : usingAiReferralMonthly;
+    billing === "annual" ? usingAiReferralAnnual : usingAiReferralMonthly;
   const aiActiveOfferTag = usingAiReferralPackage ? aiReferralOfferTag : null;
 
   // A discounted package still reports the BASE price in product.priceString —
@@ -478,16 +465,16 @@ export default function Subscription() {
     referralAnnualPrice ?? effectiveAnnual?.product?.priceString ?? null;
   const regularMonthlyPrice = monthlyPackage?.product?.priceString;
   const regularAnnualPrice = annualPackage?.product?.priceString;
-  const selectedPriceString = effectiveBilling === "annual" ? annualPriceString : monthlyPriceString;
-  const selectedRegularPrice = effectiveBilling === "annual" ? regularAnnualPrice : regularMonthlyPrice;
+  const selectedPriceString = billing === "annual" ? annualPriceString : monthlyPriceString;
+  const selectedRegularPrice = billing === "annual" ? regularAnnualPrice : regularMonthlyPrice;
   const aiMonthlyPriceString =
     aiReferralMonthlyPrice ?? effectiveAiMonthly?.product?.priceString ?? null;
   const aiAnnualPriceString =
     aiReferralAnnualPrice ?? effectiveAiAnnual?.product?.priceString ?? null;
   const aiRegularMonthlyPrice = aiMonthlyPackage?.product?.priceString;
   const aiRegularAnnualPrice = aiAnnualPackage?.product?.priceString;
-  const aiSelectedPriceString = effectiveBilling === "annual" ? aiAnnualPriceString : aiMonthlyPriceString;
-  const aiSelectedRegularPrice = effectiveBilling === "annual" ? aiRegularAnnualPrice : aiRegularMonthlyPrice;
+  const aiSelectedPriceString = billing === "annual" ? aiAnnualPriceString : aiMonthlyPriceString;
+  const aiSelectedRegularPrice = billing === "annual" ? aiRegularAnnualPrice : aiRegularMonthlyPrice;
 
   // The NUMBERS behind the two strings above, so the annual-saving claim is
   // derived from exactly what is on screen rather than hardcoded. Same
@@ -519,17 +506,17 @@ export default function Subscription() {
   // off), and FX rounding erases the discount entirely in some territories
   // (Bronze is full price in Albania/Armenia) where the banner still promised
   // "2.5% off". Unresolvable or erased => null => no percentage is claimed (I4).
-  const selectedBasePrice = effectiveBilling === "annual"
+  const selectedBasePrice = billing === "annual"
     ? annualPackage?.product?.price
     : monthlyPackage?.product?.price;
-  const selectedOfferPrice = effectiveBilling === "annual"
+  const selectedOfferPrice = billing === "annual"
     ? annualPriceNumber
     : monthlyPriceNumber;
   const referralDiscount = discountPercent(selectedBasePrice, selectedOfferPrice);
-  const aiSelectedBasePrice = effectiveBilling === "annual"
+  const aiSelectedBasePrice = billing === "annual"
     ? aiAnnualPackage?.product?.price
     : aiMonthlyPackage?.product?.price;
-  const aiSelectedOfferPrice = effectiveBilling === "annual"
+  const aiSelectedOfferPrice = billing === "annual"
     ? aiAnnualPriceNumber
     : aiMonthlyPriceNumber;
   const aiReferralDiscount = discountPercent(aiSelectedBasePrice, aiSelectedOfferPrice);
@@ -540,7 +527,7 @@ export default function Subscription() {
     offerTag = null,
     expectedTier = TIER.SAFETY_PLUS,
     attributionPlanId = TIER.SAFETY_PLUS,
-    billingPeriod = effectiveBilling,
+    billingPeriod = billing,
     basePrice = null,
     offerPrice = null,
     successLabel,
@@ -631,7 +618,7 @@ export default function Subscription() {
       offerTag: activeOfferTag,
       expectedTier: TIER.SAFETY_PLUS,
       attributionPlanId: TIER.SAFETY_PLUS,
-      billingPeriod: effectiveBilling,
+      billingPeriod: billing,
       basePrice: selectedBasePrice,
       offerPrice: selectedOfferPrice,
       successLabel: 'Safety Plus unlocked',
@@ -644,7 +631,7 @@ export default function Subscription() {
       offerTag: aiActiveOfferTag,
       expectedTier: TIER.AI_SECURITY_PROTECTION,
       attributionPlanId: TIER.AI_SECURITY_PROTECTION,
-      billingPeriod: effectiveBilling,
+      billingPeriod: billing,
       basePrice: aiSelectedBasePrice,
       offerPrice: aiSelectedOfferPrice,
       successLabel: 'AI Security Protection unlocked',
@@ -775,17 +762,17 @@ export default function Subscription() {
         // never a client-side computed "discount". With no promotional offer
         // configured in App Store Connect / Play Console this is null and the
         // dialog shows no price, which is correct.
-        offerPackage={effectiveBilling === "annual" ? retentionAnnual : retentionMonthly}
+        offerPackage={billing === "annual" ? retentionAnnual : retentionMonthly}
         // The retention package wraps the same product as the current one, so
         // its priceString is the FULL price. Without the real offer price the
         // dialog rendered "$5.99 struck through, $5.99" under "Stay for less".
         // Null here means the dialog shows no price at all, which is correct.
         offerPrice={offerPriceInfo(
-          effectiveBilling === "annual" ? retentionAnnual : retentionMonthly,
+          billing === "annual" ? retentionAnnual : retentionMonthly,
           RETENTION_OFFERING_ID
         )}
-        currentPackage={effectiveBilling === "annual" ? annualPackage : monthlyPackage}
-        currentPriceString={effectiveBilling === "annual" ? regularAnnualPrice : regularMonthlyPrice}
+        currentPackage={billing === "annual" ? annualPackage : monthlyPackage}
+        currentPriceString={billing === "annual" ? regularAnnualPrice : regularMonthlyPrice}
       />
 
       <div>
@@ -906,76 +893,18 @@ export default function Subscription() {
           ) : (
             <>
               {/* Month / Year selector */}
-              {hasAnnualToggle && (
-                <div
-                  role="radiogroup"
-                  aria-label="Billing period"
-                  onKeyDown={handleBillingKeyDown}
-                  // Asymmetric grid anchors Annual as the primary choice — same
-                  // pattern used by Duolingo Super, Calm, Blinkist. Symmetric
-                  // toggles leave Annual as a peer of Monthly; giving it 2fr
-                  // vs 1fr makes it the visual default without hiding Monthly.
-                  className="grid grid-cols-[1fr_2fr] gap-2 p-1 rounded-lg bg-muted/40 border border-border"
-                >
-                  <button
-                    ref={monthlyRadioRef}
-                    type="button"
-                    role="radio"
-                    aria-checked={effectiveBilling === "monthly"}
-                    tabIndex={effectiveBilling === "monthly" ? 0 : -1}
-                    onClick={() => setBilling("monthly")}
-                    className={
-                      "text-sm rounded-md px-3 py-2 transition-colors text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
-                      (effectiveBilling === "monthly"
-                        ? "bg-background border border-border font-medium"
-                        : "text-muted-foreground hover:text-foreground")
-                    }
-                  >
-                    Monthly
-                    <span className="block text-xs text-muted-foreground font-normal mono-value">
-                      {monthlyPriceString ?? "—"}
-                      {hasDiscount && regularMonthlyPrice && regularMonthlyPrice !== monthlyPriceString && (
-                        <span className="ms-1 line-through opacity-60">{regularMonthlyPrice}</span>
-                      )}
-                    </span>
-                  </button>
-                  <button
-                    ref={annualRadioRef}
-                    type="button"
-                    role="radio"
-                    aria-checked={effectiveBilling === "annual"}
-                    tabIndex={effectiveBilling === "annual" ? 0 : -1}
-                    onClick={() => setBilling("annual")}
-                    className={
-                      "text-sm rounded-md px-3 py-2 transition-colors text-center relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
-                      (effectiveBilling === "annual"
-                        ? "bg-background border border-primary/40 font-medium"
-                        : "text-muted-foreground hover:text-foreground")
-                    }
-                  >
-                    Annual
-                    {/* Derived from the two prices actually rendered, not a
-                        hardcoded "30%". Monthly and annual resolve through two
-                        independent offer lookups, so annual can end up the worse
-                        deal; when it does — or when either price is unresolvable —
-                        annualSavingPercent returns null and no badge is shown. */}
-                    {savingPercent != null && (
-                      <Badge
-                        variant="outline"
-                        className="absolute -top-2 end-1 text-[9px] leading-none px-1.5 py-0.5 h-auto border-primary/40 bg-background text-primary whitespace-nowrap"
-                      >
-                        Save {savingPercent}%
-                      </Badge>
-                    )}
-                    <span className="block text-xs text-muted-foreground font-normal mono-value">
-                      {annualPriceString ?? "—"}
-                      {hasDiscount && regularAnnualPrice && regularAnnualPrice !== annualPriceString && (
-                        <span className="ms-1 line-through opacity-60">{regularAnnualPrice}</span>
-                      )}
-                    </span>
-                  </button>
-                </div>
-              )}
+              <BillingPeriodToggle
+                ariaLabel="Billing period"
+                value={billing}
+                onChange={setBilling}
+                accent="primary"
+                monthlyPrice={monthlyPriceString}
+                annualPrice={annualPriceString}
+                monthlyRegularPrice={regularMonthlyPrice}
+                annualRegularPrice={regularAnnualPrice}
+                showRegularPrices={hasDiscount}
+                savingPercent={savingPercent}
+              />
 
               {/* Selected price */}
               <div className="flex items-baseline gap-2">
@@ -993,7 +922,7 @@ export default function Subscription() {
                     </span>
                   )}
               </div>
-              {effectiveBilling === "annual" && (
+              {billing === "annual" && (
                 <p className="text-xs text-muted-foreground -mt-2">
                   {/* Was "4 months free vs. monthly." — wrong even at USD base
                       (12 - 49.99/5.99 = 3.65), and a second hand-maintained number
@@ -1036,7 +965,7 @@ export default function Subscription() {
                   small print further down. */}
               <p className="text-xs text-muted-foreground text-center">
                 <span className="font-semibold text-foreground">Cancel anytime.</span>{" "}
-                Renews {effectiveBilling === "annual" ? "yearly" : "monthly"} at{" "}
+                Renews {billing === "annual" ? "yearly" : "monthly"} at{" "}
                 {selectedPriceString ?? "the store price"} until cancelled — manage or cancel in your{" "}
                 {Capacitor.getPlatform() === "ios" ? "App Store" : "Google Play"} account settings.
               </p>
@@ -1121,60 +1050,18 @@ export default function Subscription() {
                       web too (with "—" prices and a disabled CTA) so the paywall
                       keeps its shape; matches the pattern the Safety Plus card
                       already uses so both tiers look identical on web preview. */}
-                    <div
-                      role="radiogroup"
-                      aria-label="AI Security Protection billing period"
-                      className="grid grid-cols-[1fr_2fr] gap-2 p-1 rounded-lg bg-muted/40 border border-border"
-                    >
-                      <button
-                        type="button"
-                        role="radio"
-                        aria-checked={effectiveBilling === "monthly"}
-                        onClick={() => setBilling("monthly")}
-                        className={
-                          "text-sm rounded-md px-3 py-2 transition-colors text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
-                          (effectiveBilling === "monthly"
-                            ? "bg-background border border-sky-500/40 font-medium"
-                            : "text-muted-foreground hover:text-foreground")
-                        }
-                      >
-                        Monthly
-                        <span className="block text-xs text-muted-foreground font-normal mono-value">
-                          {aiMonthlyPriceString ?? "—"}
-                          {hasAiDiscount && aiRegularMonthlyPrice && aiRegularMonthlyPrice !== aiMonthlyPriceString && (
-                            <span className="ms-1 line-through opacity-60">{aiRegularMonthlyPrice}</span>
-                          )}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        role="radio"
-                        aria-checked={effectiveBilling === "annual"}
-                        onClick={() => setBilling("annual")}
-                        className={
-                          "text-sm rounded-md px-3 py-2 transition-colors text-center relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
-                          (effectiveBilling === "annual"
-                            ? "bg-background border border-sky-500/40 font-medium"
-                            : "text-muted-foreground hover:text-foreground")
-                        }
-                      >
-                        Annual
-                        {aiSavingPercent != null && (
-                          <Badge
-                            variant="outline"
-                            className="absolute -top-2 end-1 text-[9px] leading-none px-1.5 py-0.5 h-auto border-sky-500/40 bg-background text-sky-600 whitespace-nowrap"
-                          >
-                            Save {aiSavingPercent}%
-                          </Badge>
-                        )}
-                        <span className="block text-xs text-muted-foreground font-normal mono-value">
-                          {aiAnnualPriceString ?? "—"}
-                          {hasAiDiscount && aiRegularAnnualPrice && aiRegularAnnualPrice !== aiAnnualPriceString && (
-                            <span className="ms-1 line-through opacity-60">{aiRegularAnnualPrice}</span>
-                          )}
-                        </span>
-                      </button>
-                    </div>
+                    <BillingPeriodToggle
+                      ariaLabel="AI Security Protection billing period"
+                      value={billing}
+                      onChange={setBilling}
+                      accent="sky"
+                      monthlyPrice={aiMonthlyPriceString}
+                      annualPrice={aiAnnualPriceString}
+                      monthlyRegularPrice={aiRegularMonthlyPrice}
+                      annualRegularPrice={aiRegularAnnualPrice}
+                      showRegularPrices={hasAiDiscount}
+                      savingPercent={aiSavingPercent}
+                    />
 
                     <div className="flex items-baseline gap-2">
                       <p className="text-sm font-medium text-foreground mono-value">

@@ -330,6 +330,66 @@ describe('Subscription page — billing radiogroup arrow-key navigation', () => 
     expect(annual.getAttribute('aria-checked')).toBe('true');
   });
 
+  // The AI Security Protection card's toggle was a COPY of the Safety Plus one
+  // that never inherited this fix: no refs, no onKeyDown, no roving tabindex —
+  // a radiogroup the arrow keys did not operate. Both now render the same
+  // BillingPeriodToggle component, so these assertions are the copy's half of
+  // the F-radiogroup fix, and they go red if a future card re-inlines its own
+  // toggle instead of using the shared one.
+  describe('AI Security Protection card', () => {
+    beforeEach(() => {
+      getAiSecurityProtectionOfferingId.mockReturnValue('ai-security-protection');
+      getTierOffering.mockResolvedValue({
+        availablePackages: [
+          { identifier: '$rc_monthly', product: { priceString: '$19.99' } },
+          { identifier: '$rc_annual', product: { priceString: '$159.99' } },
+        ],
+      });
+    });
+
+    it('only the selected radio is in the tab order (roving tabindex)', async () => {
+      renderPage();
+      const aiCard = await screen.findByTestId('ai-security-protection-card');
+      const group = within(aiCard).getByRole('radiogroup', { name: /AI Security Protection billing period/i });
+      const monthly = within(group).getByRole('radio', { name: /monthly/i });
+      const annual = within(group).getByRole('radio', { name: /annual/i });
+      expect(annual.getAttribute('tabindex')).toBe('0');
+      expect(monthly.getAttribute('tabindex')).toBe('-1');
+    });
+
+    it('ArrowLeft from Annual moves focus to and selects Monthly', async () => {
+      renderPage();
+      const aiCard = await screen.findByTestId('ai-security-protection-card');
+      const group = within(aiCard).getByRole('radiogroup', { name: /AI Security Protection billing period/i });
+      const monthly = within(group).getByRole('radio', { name: /monthly/i });
+      const annual = within(group).getByRole('radio', { name: /annual/i });
+      annual.focus();
+
+      fireEvent.keyDown(annual, { key: 'ArrowLeft' });
+
+      await waitFor(() => expect(document.activeElement).toBe(monthly));
+      expect(monthly.getAttribute('aria-checked')).toBe('true');
+      expect(annual.getAttribute('aria-checked')).toBe('false');
+    });
+
+    // The two cards drive the SAME `billing` state. That is pre-existing and
+    // deliberate — the CTA buys the period last chosen anywhere on the screen —
+    // but it is invisible in the markup, so pin it: selecting Monthly on the AI
+    // toggle must also select it on the Safety Plus one.
+    it('shares the billing period with the Safety Plus toggle', async () => {
+      renderPage();
+      const aiCard = await screen.findByTestId('ai-security-protection-card');
+      const aiGroup = within(aiCard).getByRole('radiogroup', { name: /AI Security Protection billing period/i });
+      const plusGroup = screen.getByRole('radiogroup', { name: /^billing period$/i });
+
+      fireEvent.click(within(aiGroup).getByRole('radio', { name: /monthly/i }));
+
+      await waitFor(() =>
+        expect(within(plusGroup).getByRole('radio', { name: /monthly/i }).getAttribute('aria-checked')).toBe('true')
+      );
+    });
+  });
+
   it('ArrowDown/ArrowUp behave the same as ArrowRight/ArrowLeft', async () => {
     renderPage();
     const monthly = await screen.findByRole('radio', { name: /monthly/i });
