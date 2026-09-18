@@ -22,6 +22,12 @@ const OKX_ENDPOINTS = [
 ];
 
 import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+import { fetchUpstream, readCapped } from '../_lib/upstream.js';
+
+// This handler walks OKX_ENDPOINTS in sequence, so the per-host deadline has to
+// be well under the default: the bound a caller experiences is hosts x timeout,
+// not one timeout. 4s x 3 OKX hosts is the worst case here.
+const PER_HOST_TIMEOUT_MS = 4000;
 
 // Fixed allowlist — never derived from the caller's holdings (I2).
 const ALLOWED_INST_IDS = new Set([
@@ -108,7 +114,7 @@ export async function onRequestGet(context) {
     const host = new URL(base).host;
     let res;
     try {
-      res = await fetch(`${base}${qs}`);
+      res = await fetchUpstream(`${base}${qs}`, { timeoutMs: PER_HOST_TIMEOUT_MS });
     } catch (e) {
       // Network error on this host — try the next.
       lastDetail = 'network error';
@@ -121,7 +127,7 @@ export async function onRequestGet(context) {
       continue;
     }
 
-    const body = await res.text();
+    const body = await readCapped(res);
     // A 200 carrying a non-zero OKX code is an application-level failure (bad
     // instId, rate limit). Treat it as this host failing rather than caching it
     // — caching an error for 60s would turn a blip into a visible outage.

@@ -6,6 +6,7 @@
 // happy and gives the client a single round-trip instead of three.
 
 import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+import { fetchUpstream, readCapped } from '../_lib/upstream.js';
 
 const BTC_FEES_URL = 'https://mempool.space/api/v1/fees/recommended';
 const ETH_GAS_URL = 'https://api.etherscan.io/api?module=gastracker&action=gasoracle';
@@ -20,9 +21,9 @@ function err(status, message) {
 }
 
 async function fetchBtcFees() {
-  const res = await fetch(BTC_FEES_URL);
+  const res = await fetchUpstream(BTC_FEES_URL);
   if (!res.ok) return null;
-  const data = await res.json();
+  const data = JSON.parse(await readCapped(res));
   return {
     slow: data.hourFee,
     standard: data.halfHourFee,
@@ -31,9 +32,9 @@ async function fetchBtcFees() {
 }
 
 async function fetchEthGas() {
-  const res = await fetch(ETH_GAS_URL);
+  const res = await fetchUpstream(ETH_GAS_URL);
   if (!res.ok) return null;
-  const data = await res.json();
+  const data = JSON.parse(await readCapped(res));
   if (!data?.result) return null;
   return {
     slow: parseFloat(data.result.SafeGasPrice),
@@ -44,7 +45,7 @@ async function fetchEthGas() {
 
 async function fetchSolFees(rpcUrl) {
   try {
-    const res = await fetch(rpcUrl, {
+    const res = await fetchUpstream(rpcUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -55,7 +56,7 @@ async function fetchSolFees(rpcUrl) {
       }),
     });
     if (!res.ok) return { baseLamports: 5000, priorityMicroLamports: null };
-    const data = await res.json();
+    const data = JSON.parse(await readCapped(res));
     if (!Array.isArray(data?.result)) return { baseLamports: 5000, priorityMicroLamports: null };
 
     const vals = data.result
