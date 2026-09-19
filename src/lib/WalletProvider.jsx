@@ -144,6 +144,7 @@ import { setLivePricesEnabled } from '@/lib/priceFeed';
 import { initCode, getPendingReferral, clearPendingReferral, hasRedeemed, markRedeemed, applyRedemption, getLocalState as getReferralState } from '@/lib/referral';
 import { generateServerCode, redeemCode } from '@/api/referralApi';
 import { trackEvent, EVENT } from '@/api/trackEvent';
+import { toast } from '@/lib/toast';
 import { incrementSessionDayCount } from '@/components/PaywallNudge';
 // D-05: localStorage marker recording that biometric unlock was enabled SOLELY to
 // let Face ID open the DECOY (via enableDecoyBiometricUnlock). removeDuressPin reads
@@ -2091,13 +2092,30 @@ export function WalletProvider({ children }) {
       if (!isPrimary) return;
       const pending = getPendingReferral();
       if (!pending) return;
-      clearPendingReferral();
-      if (hasRedeemed() || pending === getReferralState()?.code) return;
+      // A stale pending marker cannot be redeemed for a wallet that already
+      // owns/redeemed that code. Clearing this local duplicate is safe; every
+      // other path retains its code until the server accepts it.
+      if (hasRedeemed() || pending === getReferralState()?.code) {
+        clearPendingReferral();
+        return;
+      }
       try {
         const { newCount } = await redeemCode(pending);
         markRedeemed(pending);
         applyRedemption(newCount);
-      } catch { /* best-effort — never blocks unlock */ }
+        // #2640: only a confirmed redemption consumes the pending referral.
+        clearPendingReferral();
+      } catch (error) {
+        // A server-confirmed invalid code cannot recover on a later unlock.
+        // Network/5xx failures keep the code so the next primary unlock can
+        // retry without ever blocking access to the wallet.
+        if (error?.status === 400 || error?.status === 404) {
+          clearPendingReferral();
+          toast.error("Referral code couldn't be applied. Check the code and try another one.");
+        } else {
+          toast.warning("Referral code will be retried when you're connected.");
+        }
+      }
     })();
     touch();
     deriveActiveAndAll();

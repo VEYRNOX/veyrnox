@@ -72,7 +72,14 @@ describe('captureReferralFromUrl', () => {
 
   it('does not re-store a code that is already pending', () => {
     vi.mocked(getPendingReferral).mockReturnValue('VYX-STRKLB');
-    captureReferralFromUrl(new URL('https://veyrnox.com/r/VYX-STRKLB'), 'universal_link');
+    expect(captureReferralFromUrl(new URL('https://veyrnox.com/r/VYX-STRKLB'), 'universal_link')).toBe('duplicate');
+    expect(setPendingReferral).not.toHaveBeenCalled();
+    expect(trackEvent).not.toHaveBeenCalled();
+  });
+
+  it('keeps the first pending code when a later invite carries a different code (#2639)', () => {
+    vi.mocked(getPendingReferral).mockReturnValue('VYX-STRKLB');
+    expect(captureReferralFromUrl(new URL('https://veyrnox.com/r/VYX-AB3DEF'), 'universal_link')).toBe('already_pending');
     expect(setPendingReferral).not.toHaveBeenCalled();
     expect(trackEvent).not.toHaveBeenCalled();
   });

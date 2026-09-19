@@ -50,12 +50,14 @@ export function referralCodeFromUrl(url) {
 }
 
 export function captureReferralFromUrl(url = new URL(window.location.href), source = 'deep_link') {
-  if (isDeniabilityOrDemoActive()) return;
+  if (isDeniabilityOrDemoActive()) return 'denied';
   const ref = referralCodeFromUrl(url);
-  if (!ref) return;
-  if (getPendingReferral() === ref) return;
+  if (!ref) return 'invalid';
+  const pending = getPendingReferral();
+  if (pending) return pending === ref ? 'duplicate' : 'already_pending';
   setPendingReferral(ref);
   void trackEvent(EVENT.REFERRAL_CODE_APPLIED, { code: ref, source }).catch(() => {});
+  return 'captured';
 }
 
 // Manual entry (the Create Wallet invite field, #2569). Same validator, event

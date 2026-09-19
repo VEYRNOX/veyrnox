@@ -62,7 +62,7 @@ export default function ReferralHandoff() {
   if (pending) {
     return (
       <p className="mt-4 text-center text-xs text-muted-foreground" data-testid="referral-handoff-pending">
-        Referral code <span className="mono-value">{pending}</span> will be applied when you finish setup.
+        Referral code <span className="mono-value">{pending}</span> will be applied when you finish setup. Only the first referral code opened before setup can be used.
       </p>
     );
   }
@@ -71,9 +71,11 @@ export default function ReferralHandoff() {
     setError("");
     const url = new URL("http://localhost/");
     url.searchParams.set("ref", raw);
-    captureReferralFromUrl(url, "first_run_entry");
+    const result = captureReferralFromUrl(url, "first_run_entry");
     const stored = getPendingReferral();
-    if (stored) setPending(stored);
+    if (result === "already_pending") {
+      setError("A referral code is already saved for this setup. Only the first code can be applied.");
+    } else if (stored) setPending(stored);
     else setError("That isn't a Veyrnox referral code. Codes look like VYX-ABC234.");
   };
 
