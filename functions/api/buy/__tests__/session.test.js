@@ -86,6 +86,68 @@ describe('happy path', () => {
   });
 });
 
+describe('request shape matches the Create Widget URL spec', () => {
+  it('sends widgetParams and nothing else at the top level', async () => {
+    await onRequestPost(ctx(VALID));
+
+    const call = fetch.mock.calls.find(([u]) => String(u).includes('auth/session'));
+    const body = JSON.parse(call[1].body);
+    // https://docs.transak.com/reference/create-widget-url — the endpoint takes
+    // `widgetParams` only; apiKey/referrerDomain are mandatory INSIDE it.
+    expect(Object.keys(body)).toEqual(['widgetParams']);
+    expect(body.widgetParams.apiKey).toBe('pk_test');
+    expect(body.widgetParams.referrerDomain).toBe('veyrnox.com');
+  });
+
+  it('sends the three headers the spec marks required', async () => {
+    await onRequestPost(ctx(VALID));
+
+    const call = fetch.mock.calls.find(([u]) => String(u).includes('auth/session'));
+    expect(call[1].headers['access-token']).toBe('tok');
+    expect(call[1].headers['x-api-key']).toBe('pk_test');
+    expect(call[1].headers['x-user-ip']).toBe('203.0.113.7');
+  });
+});
+
+describe('token re-mint is bounded', () => {
+  function mock401CreateSession() {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (String(url).includes('refresh-token')) {
+        return new Response(JSON.stringify({ data: { accessToken: 'tok' } }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ error: 'invalid_api_key' }), { status: 401 });
+    }));
+  }
+
+  it('does NOT re-mint when the token was freshly minted this request', async () => {
+    // A token created seconds ago cannot be expired, so a 401 is about
+    // something else. Re-minting here is what turned a live outage into a
+    // token-regeneration storm against an endpoint Transak rate-limits.
+    mock401CreateSession();
+
+    await thrown(() => onRequestPost(ctx(VALID)));
+
+    const refreshes = fetch.mock.calls.filter(([u]) => String(u).includes('refresh-token'));
+    expect(refreshes).toHaveLength(1);
+  });
+
+  it('re-mints once when the token came from cache', async () => {
+    // Prime the cache so the request starts with a possibly-stale token.
+    await cache.put(
+      new Request('https://edge-cache.internal/transak-partner-token-STAGING'),
+      new Response(JSON.stringify({ accessToken: 'stale' })),
+    );
+    mock401CreateSession();
+
+    await thrown(() => onRequestPost(ctx(VALID)));
+
+    const refreshes = fetch.mock.calls.filter(([u]) => String(u).includes('refresh-token'));
+    expect(refreshes).toHaveLength(1); // exactly one re-mint, not a loop
+    const sessions = fetch.mock.calls.filter(([u]) => String(u).includes('auth/session'));
+    expect(sessions).toHaveLength(2); // original + one retry
+  });
+});
+
 describe('upstream errors are not echoed to the client', () => {
   it('does not leak the refresh-token error body', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(
