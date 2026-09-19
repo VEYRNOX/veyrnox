@@ -105,34 +105,55 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
     TRANSAK_API_SECRET --project-name veyrnox-prod` AND redeploy Pages
     (`wrangler pages deploy dist --project-name veyrnox-prod --branch main`)
     — Pages Functions bake env at deploy time.
-    **The prod pair was published and has since been rotated — closed.** The
-    live key and secret were committed to THIS FILE at lines 67–68 in
-    `ffa77b84` (#2020, 2026-08-23) and removed in `7af9f881` (#2144,
-    2026-08-29): six days on public `main`, and the blob stays in history
-    permanently regardless of the removal. **Rotated during the 2026-08-29
-    Strix audit wave** (owner-confirmed) — the same wave as #2145, #2146 and
-    the `TIP_SIGNING_SECRET` rotation.
-    **The omission is specific, which is what makes it worth recording.** That
-    wave DID record its other rotation: `docs/tip-signing-secret-rotation.md`
-    (#2148) plus `6e251282` "mark TIP_SIGNING_SECRET rotated" (#2152). The
-    Transak pair got the removal commit and no rotation record — and #2144's
-    message ends "The published values in git history remain exploitable until
-    rotation completes", which without a closing note reads as OPEN forever. A
-    gitleaks history baseline on 2026-09-16 duly re-raised the published pair
-    as a live exposure, and closing it took a round-trip to the owner rather
-    than a file read. Two rotations, one wave, one recorded: if you rotate a
-    credential that has been published, record it in the same session. A
-    removal commit is not a rotation record. Never set
+    **The prod pair is PUBLICLY READABLE RIGHT NOW and has NEVER been
+    rotated — OPEN.** This paragraph read *"published and has since been
+    rotated — closed"*, citing `ffa77b84` (#2020) and `7af9f881` (#2144) and
+    six days on public `main`. Every load-bearing part of that was wrong.
+    Established 2026-09-19 by reading the git objects instead of the record:
+    - **`main` never held the values.** Both PRs were squash-merged, and the
+      squashed blobs carry `REDACTED-TRANSAK-KEY` /
+      `REDACTED-TRANSAK-SECRET` placeholders. `git show ffa77b84:CLAUDE.md`
+      shows a clean file — which is why every "was it rotated?" check since
+      has returned a false all-clear off a one-line grep.
+    - **The real values are in the pre-squash BRANCH commit, and the public
+      repo still serves it.** GitHub keeps a PR's commit objects fetchable by
+      SHA after the branch is deleted. **The SHA is deliberately NOT recorded
+      here:** until rotation completes it is a direct pointer to a live
+      credential, and this file is public. Recover it when needed with
+      `git log --all -S'<value>'` using the value from the Pages secret store.
+    - **#2144 fixed the wrong artifact.** It scrubbed a file that only ever
+      held placeholders, so the exposure it was raised to close was never
+      touched, and is still open four weeks later.
+    - **No rotation has ever happened.** The only writes to
+      `TRANSAK_API_KEY` / `TRANSAK_API_SECRET` on `veyrnox-prod` are
+      2026-08-23 (original) and 2026-09-19 (a re-add of those same values,
+      which changed nothing). Owner confirms they did not rotate. #2592's
+      "owner-confirmed" rests on recollection, not on an execution record.
+    **Reusable lesson: under squash-merge, `main`'s blob is not the branch's
+    blob.** Scrubbing `main` proves nothing about what was pushed, and
+    grepping `main` is not an exposure check. Use `git log --all -S'<value>'`
+    to find the value-bearing commit, then
+    `gh api repos/<org>/<repo>/commits/<sha>` to test whether the public repo
+    still serves it. A removal commit is not a rotation record, and a
+    rotation record written from memory is not one either. Never set
     `TRANSAK_ENVIRONMENT=PRODUCTION` on `veyrnox-staging` unless you
     genuinely intend every staging test to charge real cards.
-    **Current partner state (2026-08-23):** refresh-token accepts on prod,
-    but create-session returns `401 errorCode 1002 "Invalid or missing
-    access-token"` at `POST api-gateway.transak.com/api/v2/auth/session`.
-    That's a Transak partner-side widget enablement pending, NOT a wiring
-    bug — do not "diagnose" it into the code, do not roll prod back to
-    STAGING as a "fix", contact Transak support with errorCode 1002 + the
-    API key above. Buy will start working the moment they enable widget
-    access for that partner, no config change on our side needed.
+    **Current partner state (2026-09-19): prod Buy is DOWN.** `refresh-token`
+    still mints an access token, but create-session returns
+    `401 x-deny-reason: invalid_api_key` (body `{"error":"invalid_api_key"}`)
+    at `POST api-gateway.transak.com/api/v2/auth/session`. Measured, not
+    inferred: the gateway returns that same response for a garbage key and
+    for the staging key, and `missing_api_key` when no key is sent — so our
+    production key is being treated as one it does not recognise. It fires
+    before the access token is examined, which is why minting a fresh one
+    never helped. Reproduced from a plain shell with no Veyrnox code in the
+    path, so it is not a wiring bug: do not diagnose it into the code, and do
+    not roll prod back to STAGING as a "fix". A publicly-readable partner key
+    disabled by the provider fits every measurement, but Transak has not
+    confirmed the cause. This supersedes the 2026-08-23 note here, which
+    described `401 errorCode 1002 "Invalid or missing access-token"` and
+    pending widget enablement — a different response, and no longer what the
+    gateway returns.
   - **RevenueCat** offer identifiers (`APPLE_OFFER_IDS`, Play offer tags),
     entitlement `safety_plus`, and the `rc-webhook` Edge Function's shared
     secret with the RC dashboard.
