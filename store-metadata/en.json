@@ -31,7 +31,7 @@
       "limit": 4000
     },
     "whatsNew": {
-      "value": "Initial release.",
+      "value": "Theft Protection (optional)\nAn extra biometric check on unlock, and again on a send that goes over your spend limit. On iPhone this is Face ID specifically. On Android it is any strong biometric — Android has no API to require face only, so we say so rather than imply otherwise.\n\nPrivacy fixes\nDecoy and hidden sessions no longer read or change the data behind analytics, budgets, recurring payments, savings goals and invoices. Panic wipe now clears two markers it was missing.\n\nReferral links that survive an install\nTap an invite link before installing and the code is still applied afterwards.\n\nEasier to use\nBigger tap targets, a readable minimum text size, clearer empty screens, and a line on the send screen saying plainly that a transfer cannot be undone.\n\nAlso: subscription screen fixes, and a security pass over our server-side code.",
       "limit": 4000
     },
     "supportUrl": {
