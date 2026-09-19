@@ -118,9 +118,21 @@ function upstreamDetail(text) {
   } catch {
     return `unparsed=${logField(raw)}`;
   }
-  const e = (parsed && typeof parsed === 'object' && parsed.error) || parsed || {};
+  // `error` is not always an object. Transak's gateway answers a rejected key
+  // with `{"error":"invalid_api_key"}` — a STRING — and the previous shape here
+  // (`e.name` / `e.message` / `e.errorCode` read straight off `e`) returns
+  // undefined for every field on a string, so the line logged
+  // `code= name= message=` and threw away the only word that said what was
+  // wrong. That cost hours of a live outage on 2026-09-19: the reason had to be
+  // recovered with a manual curl because our own log had dropped it.
+  // Unwrap to an object, and keep a non-object `error` as the message.
+  const envelope = (parsed && typeof parsed === 'object' && parsed.error) || parsed || {};
+  const e = envelope && typeof envelope === 'object' ? envelope : {};
+  // A bare string body (`"some failure"`) and a string `error` field are the
+  // same case once unwrapped — both are the message and nothing else.
+  const scalarMessage = typeof envelope === 'object' ? null : envelope;
   const name = logField(e.name);
-  const message = logField(e.message ?? (typeof parsed === 'string' ? parsed : null));
+  const message = logField(e.message ?? scalarMessage);
   const code = logField(e.errorCode ?? e.statusCode ?? e.code);
   return `code=${code} name=${name} message=${message}`;
 }

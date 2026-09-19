@@ -300,6 +300,41 @@ describe('upstream error detail is field-selected before it reaches the log', ()
     expect(line).toContain('Just a moment');
   });
 
+  it('logs a STRING error field as the message', async () => {
+    // Transak's real gateway response for a key it does not recognise. The
+    // previous field-selection read .name/.message/.errorCode off the string
+    // and logged `code= name= message=`, discarding the only useful word.
+    mockCreateSessionFailure(JSON.stringify({ error: 'invalid_api_key' }));
+
+    await thrown(() => onRequestPost(ctx(VALID)));
+
+    const line = console.error.mock.calls[0].join(' ');
+    expect(line).toContain('message=invalid_api_key');
+  });
+
+  it('logs a bare string body as the message', async () => {
+    mockCreateSessionFailure(JSON.stringify('service unavailable'));
+
+    await thrown(() => onRequestPost(ctx(VALID)));
+
+    const line = console.error.mock.calls[0].join(' ');
+    expect(line).toContain('message=service unavailable');
+  });
+
+  it('still field-selects an OBJECT error envelope', async () => {
+    // The string case must not regress the shape this function was written for.
+    mockCreateSessionFailure(JSON.stringify({
+      error: { name: 'Unauthorized', message: 'nope', errorCode: 1002 },
+    }));
+
+    await thrown(() => onRequestPost(ctx(VALID)));
+
+    const line = console.error.mock.calls[0].join(' ');
+    expect(line).toContain('code=1002');
+    expect(line).toContain('name=Unauthorized');
+    expect(line).toContain('message=nope');
+  });
+
   it('strips newlines so a field cannot forge a second log line', async () => {
     mockCreateSessionFailure(JSON.stringify({
       error: { name: 'X', message: 'ok\n[buy/session] forged line status=200' },
