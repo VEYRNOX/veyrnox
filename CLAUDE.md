@@ -1894,6 +1894,40 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
     log-echo entry above — the artifact you search contains your search — and it
     silently disables the guard while looking like one. Anchor to a pid you were handed
     (`simctl launch` prints one) rather than to a pattern you also typed.
+  - **"The newest build" on App Store Connect is three different answers depending on
+    how you ask, and the two wrong ones look right.** 2026-09-19, prepping the #2541 iOS
+    fresh-install run: a peer session's pre-flight comment on the issue said "install
+    build 61", derived from a `sort=-version` read, and its own later correction said
+    `-version` is a STRING sort. The pre-flight was wrong AND the correction's mechanism
+    was wrong. Measured directly against app `6790188660` (61 builds, trains `1.0` and
+    `1.0.1` only):
+    - `GET /v1/apps/<id>/builds` **rejects `sort` outright** —
+      `400 PARAMETER_ERROR.ILLEGAL`, "The parameter 'sort' can not be used with this
+      request" — and its default order is neither newest nor oldest: the first page came
+      back `26, 27, 37, 41, 55` while builds from July exist. A `limit=1` here returns an
+      arbitrary build with no indication that it is arbitrary.
+    - `GET /v1/builds?filter[app]=<id>&sort=-version` **is numeric, not a string sort.**
+      Ascending returns `1, 1, 2, 2, 3, 3, 4, …`; a string sort would have returned
+      `1, 1, 10, 11, …`. So the correction's stated cause is false — do not repeat it.
+    - It is still the wrong query, for a sharper reason: **`version` is the BUILD NUMBER,
+      which restarts per train and is not unique.** `1` already appears twice — `1.0 (1)`
+      uploaded 2026-07-21 and `1.0.1 (1)` uploaded 2026-08-08. So a brand-new `1.0.2 (1)`
+      sorts **last of 61, not first**, and "newest by `-version`" actually means "highest
+      build number anyone has ever used on any train".
+    - The query that answers the question asked:
+      `GET /v1/builds?filter[app]=<id>&sort=-uploadedDate&include=preReleaseVersion` —
+      newest by upload, carrying the train it belongs to.
+    **Corollary, from the same read:** build numbers are unique per TRAIN, so restarting
+    at `1` on a new marketing version is accepted — which is why `1.0.2 (1)` was free
+    today, and why the two existing `(1)` builds are not a contradiction.
+    **Why it sits with the `grep -F` and log-echo entries rather than in the App Store
+    section:** it is another check that returns a CONFIDENT WRONG answer instead of an
+    obviously empty one, and its wrongness scales with novelty — `-version` is most
+    misleading precisely when you are asking about a build you just uploaded on a new
+    train, which is the only time anyone asks. Note also that the error here travelled
+    as a CORRECTION, which reads as more trustworthy than the claim it replaced; a
+    correction is a claim and needs the same verification. One API read settled all of
+    it.
 - **Mutation-check every new test pin, or you ship coverage that cannot fail.** Three
   pins written on 2026-09-03 were broken on the first attempt and ALL THREE looked green:
   - **A prefix ate the assertion.** A status-tag pin used `startsWith()` against
