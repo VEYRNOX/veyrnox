@@ -70,7 +70,7 @@ function TxRow({ tx, onOpen }) {
           <p className="text-sm font-medium capitalize">{tx.type}</p>
           <StatusIcon className={`h-3.5 w-3.5 ${sMeta.cls}`} />
           {tx.demo && (
-            <span className="text-[9px] px-1 py-0.5 rounded bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">{t("tx.history.sample_badge")}</span>
+            <span className="text-xs px-1 py-0.5 rounded bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">{t("tx.history.sample_badge")}</span>
           )}
         </div>
         <p className="text-xs text-muted-foreground truncate font-mono">
@@ -81,7 +81,7 @@ function TxRow({ tx, onOpen }) {
         <p className={`text-sm font-semibold ${isSelf ? "text-foreground" : isSend ? "text-destructive" : "text-primary"}`}>
           {isSelf ? "" : isSend ? "-" : "+"}{tx.amount} {tx.assetSymbol}
         </p>
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {tx.timestamp ? formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true }) : t("tx.history.awaiting_confirmation")}
         </p>
       </div>
@@ -186,7 +186,7 @@ function TxDetailDialog({ tx, open, onClose }) {
             </div>
           )}
           <div className="border-t border-dashed border-border my-2" />
-          <p className="text-center text-muted-foreground text-[10px]">
+          <p className="text-center text-muted-foreground text-xs">
             Digital transaction record — verify on the block explorer.
           </p>
         </div>
@@ -301,7 +301,7 @@ export default function TransactionHistory() {
             {t("tx.history.subhead")}
           </p>
         </div>
-        <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
+        <span className="shrink-0 text-xs px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
           {DEMO ? t("tx.history.badge_demo") : ALLOW_MAINNET ? t("tx.history.badge_mainnet") : t("tx.history.badge_testnet")}
         </span>
       </div>
@@ -408,7 +408,7 @@ export default function TransactionHistory() {
         {!isLoading && txs.length > 0 && (
           <>
             {evmNoIndexer && (
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground pt-1">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground pt-1">
                 Your sends (stored on-device)
               </p>
             )}

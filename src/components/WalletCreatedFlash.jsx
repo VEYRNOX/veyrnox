@@ -88,7 +88,7 @@ export default function WalletCreatedFlash({ onDismiss }) {
           <CheckSeal reduce={reduce} compact={false} />
         </motion.div>
 
-        <motion.div variants={item} className="font-mono text-[11px] tracking-[0.28em] uppercase text-primary">
+        <motion.div variants={item} className="font-mono text-xs tracking-[0.28em] uppercase text-primary">
           WALLET
         </motion.div>
 
@@ -110,7 +110,7 @@ export default function WalletCreatedFlash({ onDismiss }) {
           </Button>
         </motion.div>
 
-        <motion.p variants={item} className="mt-3.5 font-mono text-[11px] tracking-[0.08em] text-muted-foreground/60">
+        <motion.p variants={item} className="mt-3.5 font-mono text-xs tracking-[0.08em] text-muted-foreground/60">
           Advanced: view raw seed later under More → Show recovery phrase
         </motion.p>
       </motion.div>

@@ -116,7 +116,7 @@ export function KeyMaterialReport({ report, title }) {
           ? <CheckCircle2 className="h-4 w-4 text-success" />
           : <Database className="h-4 w-4 text-caution" />}
         <span>{title}</span>
-        <span className={`ms-auto px-2 py-0.5 rounded text-[10px] font-bold ${clean ? "bg-success/20 text-success" : "bg-caution/20 text-caution"}`}>
+        <span className={`ms-auto px-2 py-0.5 rounded text-xs font-bold ${clean ? "bg-success/20 text-success" : "bg-caution/20 text-caution"}`}>
           {badge}
         </span>
       </div>
@@ -343,12 +343,12 @@ export default function PanicWipe() {
           <p className="text-sm font-semibold">What goes — and what stays</p>
         </div>
         <p className="text-xs font-medium text-foreground">Deleted:</p>
-        <ul className="text-[11px] text-muted-foreground list-disc ps-4 space-y-0.5">
+        <ul className="text-xs text-muted-foreground list-disc ps-4 space-y-0.5">
           <li>Your <b>main wallet</b>, any <b>Emergency wallet</b>, and all <b>hidden wallets</b> on this device.</li>
           <li>All local wallet data and the on-device database.</li>
         </ul>
         <p className="text-xs font-medium text-foreground mt-2">Not deleted:</p>
-        <ul className="text-[11px] text-muted-foreground list-disc ps-4 space-y-0.5">
+        <ul className="text-xs text-muted-foreground list-disc ps-4 space-y-0.5">
           <li><b>Any recovery phrase you wrote down</b> or saved elsewhere. You can restore from that anytime.</li>
           <li><b>Your transaction history on the blockchain.</b> Public records stay public.</li>
           <li><b>Honest limit:</b> we clear the wallet records, but someone examining the storage chip itself may still find traces.</li>
@@ -363,7 +363,7 @@ export default function PanicWipe() {
         </div>
 
         <div className="space-y-4">
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             ⚠️ This PIN must be <b>different</b> from your real PIN, Emergency
             PIN, and any hidden wallet secret. If it matches one, that wallet
             opens instead and nothing gets wiped. We cannot check this for you.

@@ -76,16 +76,16 @@ function FeeRow({ tx, symbol }) {
           <p className="text-sm font-medium capitalize">{tx.type}</p>
           <StatusIcon className={`h-3.5 w-3.5 ${sMeta.cls}`} title={sMeta.label} />
           {tx.demo && (
-            <span className="text-[9px] px-1 py-0.5 rounded bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">Sample</span>
+            <span className="text-xs px-1 py-0.5 rounded bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">Sample</span>
           )}
         </div>
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {tx.timestamp ? formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true }) : "awaiting confirmation"}
         </p>
       </div>
       <div className="text-end shrink-0">
         <p className="text-sm font-semibold font-mono text-foreground">{tx.feeNative} {symbol}</p>
-        <p className="text-[10px] text-muted-foreground">network fee</p>
+        <p className="text-xs text-muted-foreground">network fee</p>
       </div>
       {tx.explorerUrl && (
         <a
@@ -180,7 +180,7 @@ export default function FeeAnalytics() {
             Network fees you’ve paid, in native units, computed on-device from chain history — no fiat, nothing stored.
           </p>
         </div>
-        <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
+        <span className="shrink-0 text-xs px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
           {liveDemo ? "Demo · sample data" : ALLOW_MAINNET ? "Mainnet" : "Testnet"}
         </span>
       </div>

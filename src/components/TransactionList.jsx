@@ -50,7 +50,7 @@ export default function TransactionList({ transactions = [] }) {
             <p className={`text-sm font-semibold ${tx.type === "send" ? "text-destructive" : "text-primary"}`}>
               {tx.type === "send" ? "-" : "+"}{tx.amount} {tx.currency}
             </p>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(tx.created_date), { addSuffix: true })}
             </p>
           </div>

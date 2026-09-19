@@ -120,7 +120,7 @@ export default function BillingPeriodToggle({
         {savingPercent != null && (
           <Badge
             variant="outline"
-            className={`absolute -top-2 end-1 text-[9px] leading-none px-1.5 py-0.5 h-auto whitespace-nowrap ${a.badge}`}
+            className={`absolute -top-2 end-1 text-xs leading-none px-1.5 py-0.5 h-auto whitespace-nowrap ${a.badge}`}
           >
             Save {savingPercent}%
           </Badge>

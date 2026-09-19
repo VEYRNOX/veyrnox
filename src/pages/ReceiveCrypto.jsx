@@ -284,7 +284,7 @@ export default function ReceiveCrypto() {
               <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-2.5 py-1">
                 <span className="text-xs font-medium">{r.network?.name || r.asset.chain}</span>
                 {r.network?.isTestnet && (
-                  <span className="text-[10px] uppercase tracking-wide font-semibold text-caution">{t("receive.testnet_badge")}</span>
+                  <span className="text-xs uppercase tracking-wide font-semibold text-caution">{t("receive.testnet_badge")}</span>
                 )}
               </div>
             </div>
@@ -314,7 +314,7 @@ export default function ReceiveCrypto() {
               animate={{ opacity: 1, y: 0 }}
               transition={reduceMotion ? { duration: 0 } : { duration: 0.28, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
             >
-              <p className="text-[11px] text-muted-foreground text-center mb-1">{t("receive.receive_address_label", { symbol: r.asset.symbol })}</p>
+              <p className="text-xs text-muted-foreground text-center mb-1">{t("receive.receive_address_label", { symbol: r.asset.symbol })}</p>
               <div className="bg-secondary rounded-lg px-3 py-2.5">
                 <code className="mono-value text-xs block break-all text-center">{r.address}</code>
               </div>
@@ -374,7 +374,7 @@ export default function ReceiveCrypto() {
       </div>
 
       {!isUnlocked && !demo && (
-        <p className="text-center text-[11px] text-muted-foreground">
+        <p className="text-center text-xs text-muted-foreground">
           {t("receive.unlock_footer_note")}
         </p>
       )}

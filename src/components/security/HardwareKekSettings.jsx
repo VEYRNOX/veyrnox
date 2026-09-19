@@ -720,7 +720,7 @@ export default function HardwareKekSettings() {
               >
                 {retesting ? 'Retesting device security...' : 'Retest device security'}
               </button>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Re-run the Android security checks after an OS update, a new biometric enrollment, or a device security setting change.
               </p>
             </div>
@@ -757,7 +757,7 @@ export default function HardwareKekSettings() {
             )
           }
 
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {androidCompatibility?.className === ANDROID_COMPAT_CLASS.TEE
               ? 'TEE-backed Android devices are supported, but vendor-specific biometric prompts and reenrollment behavior may differ from Pixel.'
               : t('settings.hardware_kek.enroll.footnote_native')}
@@ -794,7 +794,7 @@ export default function HardwareKekSettings() {
             )
           }
 
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {t('settings.hardware_kek.enroll.footnote_web')}
           </p>
         </div>

@@ -45,7 +45,7 @@ function TierBadge({ tier, commission }) {
   return (
     <span className={`inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest ${TIER_COLOR[tier]}`}>
       {info?.label || tier}
-      <span className={`px-1.5 py-0.5 rounded text-[10px] ${TIER_BG[tier]}`}>{commission}%</span>
+      <span className={`px-1.5 py-0.5 rounded text-xs ${TIER_BG[tier]}`}>{commission}%</span>
     </span>
   );
 }
@@ -77,7 +77,7 @@ function ProgressBar({ paidCount }) {
         >
           <div className="h-full rounded-full bg-primary" style={{ width: '100%' }} />
         </div>
-        <p className="text-[10px] text-primary font-medium">Maximum tier reached</p>
+        <p className="text-xs text-primary font-medium">Maximum tier reached</p>
       </div>
     );
   }
@@ -113,7 +113,7 @@ function ProgressBar({ paidCount }) {
       >
         <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
       </div>
-      <div className="flex justify-between text-[10px] text-muted-foreground">
+      <div className="flex justify-between text-xs text-muted-foreground">
         <span>{paidCount.toLocaleString()} paid subscribers</span>
         {info.next ? (
           <span className="font-medium text-primary">
@@ -140,7 +140,7 @@ function TierCard({ tier, isActive, isFuture }) {
         <span className={`h-2 w-2 rounded-full ${isActive ? 'bg-primary' : isFuture ? 'bg-secondary' : 'bg-secondary/50'}`} />
         <div>
           <span className={`text-sm font-medium ${isActive ? TIER_COLOR[tier.key] : ''}`}>{tier.label}</span>
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {tier.min.toLocaleString()}–{tier.max.toLocaleString()} paid subscribers
           </p>
         </div>
@@ -149,7 +149,7 @@ function TierCard({ tier, isActive, isFuture }) {
         <span className={`text-lg font-bold ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
           {tier.commission}%
         </span>
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           ${(calculateDiscountCents(PLAN_FULL_PRICE_CENTS.annual, tier.commission) / 100).toFixed(2)}/yr per sub
         </p>
       </div>
@@ -428,17 +428,17 @@ export default function ReferralTracker() {
             figures are being withheld ("showing your last known figures" told a
             coercer real data existed behind the empty screen). */}
         {syncFailed && (
-          <p className="text-[10px] text-caution" role="status">
+          <p className="text-xs text-caution" role="status">
             Couldn&rsquo;t reach the referral service. Figures may be out of date.
           </p>
         )}
         {!syncFailed && dSyncedAt && (
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Last synced {dSyncedAt.toLocaleTimeString()}
           </p>
         )}
         {!syncFailed && !dSyncedAt && (
-          <p className="text-[10px] text-muted-foreground">Syncing…</p>
+          <p className="text-xs text-muted-foreground">Syncing…</p>
         )}
       </div>
 
@@ -453,7 +453,7 @@ export default function ReferralTracker() {
             </div>
             <div className="text-end">
               <p className="text-sm text-muted-foreground">{dEarnings.count} paid {dEarnings.count === 1 ? 'subscriber' : 'subscribers'}</p>
-              <p className="text-[10px] text-muted-foreground">${(dEarnings.totalRevenueCents / 100).toFixed(2)} total revenue generated</p>
+              <p className="text-xs text-muted-foreground">${(dEarnings.totalRevenueCents / 100).toFixed(2)} total revenue generated</p>
             </div>
           </div>
         </div>
@@ -570,7 +570,7 @@ export default function ReferralTracker() {
           <Mail className="h-4 w-4" />
           Claim compensation
         </a>
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Opens your email client with your dashboard stats pre-filled for verification.
         </p>
       </div>

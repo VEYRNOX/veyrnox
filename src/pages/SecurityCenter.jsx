@@ -212,7 +212,7 @@ export default function SecurityCenter() {
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium truncate">{s.device_name}</p>
                       {isCurrent && (
-                        <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">This device</span>
+                        <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">This device</span>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">Last active {formatDistanceToNow(new Date(s.last_active), { addSuffix: true })}</p>
@@ -287,7 +287,7 @@ export default function SecurityCenter() {
                     const pct = Math.min(100, Math.round((spent / l.daily_limit) * 100));
                     return (
                       <div className="mt-1.5">
-                        <div className="flex justify-between text-[11px] text-muted-foreground">
+                        <div className="flex justify-between text-xs text-muted-foreground">
                           <span>Sent today</span>
                           <span className={spent >= l.daily_limit ? "text-destructive font-medium" : "text-foreground"}>
                             {approxUsd(spent)} / ${l.daily_limit.toLocaleString()}

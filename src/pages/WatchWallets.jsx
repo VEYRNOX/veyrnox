@@ -78,7 +78,7 @@ export default function WatchWallets() {
                       <CoinLogo symbol={w.currency} size={32} />
                       <div>
                         <p className="font-medium text-sm">{w.name}</p>
-                        <span className="text-[10px] bg-secondary text-muted-foreground px-1.5 py-0.5 rounded font-semibold">Watch-only · {w.network}</span>
+                        <span className="text-xs bg-secondary text-muted-foreground px-1.5 py-0.5 rounded font-semibold">Watch-only · {w.network}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 mt-2">

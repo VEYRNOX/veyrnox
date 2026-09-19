@@ -101,8 +101,8 @@ export default function MultiChainNFT() {
           ) : (
             <Image className="h-10 w-10 text-muted-foreground opacity-40" aria-hidden="true" />
           )}
-          <div className="absolute top-2 start-2"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${chain(n.chain)?.color || "bg-secondary text-muted-foreground"}`}>{chain(n.chain)?.icon} {chain(n.chain)?.label}</span></div>
-          <div className="absolute top-2 end-2"><span className={`text-[10px] px-2 py-0.5 rounded-full capitalize ${STATUS_STYLES[n.status]}`}>{n.status}</span></div>
+          <div className="absolute top-2 start-2"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${chain(n.chain)?.color || "bg-secondary text-muted-foreground"}`}>{chain(n.chain)?.icon} {chain(n.chain)?.label}</span></div>
+          <div className="absolute top-2 end-2"><span className={`text-xs px-2 py-0.5 rounded-full capitalize ${STATUS_STYLES[n.status]}`}>{n.status}</span></div>
         </div>
         <div className="p-3 space-y-1">
           <p className="text-xs text-muted-foreground truncate">{n.collection}</p>
@@ -140,7 +140,7 @@ export default function MultiChainNFT() {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate">{n.name}</p>
           <div className="flex items-center gap-2">
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${chain(n.chain)?.color}`}>{chain(n.chain)?.label}</span>
+            <span className={`text-xs px-1.5 py-0.5 rounded-full ${chain(n.chain)?.color}`}>{chain(n.chain)?.label}</span>
             <span className="text-xs text-muted-foreground">{n.collection}</span>
           </div>
         </div>
@@ -148,7 +148,7 @@ export default function MultiChainNFT() {
           <p className="text-sm font-semibold">{n.current_floor || 0} ETH</p>
           <p className={`text-xs ${pnl >= 0 ? "text-success" : "text-destructive"}`}>{pnl >= 0 ? "+" : ""}{pnl.toFixed(4)} ETH</p>
         </div>
-        <span className={`text-[10px] px-2 py-0.5 rounded-full capitalize shrink-0 ${STATUS_STYLES[n.status]}`}>{n.status}</span>
+        <span className={`text-xs px-2 py-0.5 rounded-full capitalize shrink-0 ${STATUS_STYLES[n.status]}`}>{n.status}</span>
       </div>
     );
   };
@@ -171,7 +171,7 @@ export default function MultiChainNFT() {
           <div key={s.label} className="p-3 rounded-xl border border-border bg-card text-center">
             <s.icon className={`h-4 w-4 mx-auto mb-1 ${s.color}`} />
             <p className={`text-sm font-bold ${s.color}`}>{s.value}</p>
-            <p className="text-[10px] text-muted-foreground">{s.label}</p>
+            <p className="text-xs text-muted-foreground">{s.label}</p>
           </div>
         ))}
       </div>

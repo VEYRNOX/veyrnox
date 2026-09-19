@@ -194,7 +194,7 @@ export default function SuspiciousAddressChecker() {
                 <c.Icon className={`h-5 w-5 shrink-0 ${c.color}`} />
                 <div className="flex-1 min-w-0">
                   <p className="font-mono text-xs truncate">{h.address}</p>
-                  <p className="text-[10px] text-muted-foreground">{h.time.toLocaleTimeString()}</p>
+                  <p className="text-xs text-muted-foreground">{h.time.toLocaleTimeString()}</p>
                 </div>
                 <span className={`text-xs font-semibold ${c.color}`}>{h.title}</span>
               </div>

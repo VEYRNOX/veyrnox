@@ -76,7 +76,7 @@ export default function SpendingPatternsCard() {
           <TrendingUp className="h-4 w-4 text-primary shrink-0" />
           <span className="min-w-0">
             <span className="block text-sm font-semibold">Spending patterns</span>
-            <span className="block text-[11px] text-muted-foreground">
+            <span className="block text-xs text-muted-foreground">
               Reads this wallet&rsquo;s send history on demand — nothing is queried until you open it.
             </span>
           </span>
@@ -95,7 +95,7 @@ export default function SpendingPatternsCard() {
             <button
               key={s}
               onClick={() => setSymbol(s)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
                 s === symbol ? "bg-primary text-primary-foreground border-transparent" : "bg-card border-border text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -109,7 +109,7 @@ export default function SpendingPatternsCard() {
               <button
                 key={g}
                 onClick={() => setGranularity(g)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors capitalize ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors capitalize ${
                   g === granularity ? "bg-secondary text-foreground border-border" : "bg-card border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -141,7 +141,7 @@ export default function SpendingPatternsCard() {
       ) : null}
 
       {/* Honest one-line disclosure of the phone-home this read performed. */}
-      <p className="flex items-start gap-1.5 text-[10px] text-muted-foreground px-1">
+      <p className="flex items-start gap-1.5 text-xs text-muted-foreground px-1">
         <Info className="h-3 w-3 shrink-0 mt-0.5" />
         {DEMO
           ? "Demo mode — computed from local sample history; nothing was queried."

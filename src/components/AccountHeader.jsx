@@ -159,7 +159,7 @@ export default function AccountHeader({ wallet, wallets, onWalletChange, onRenam
           <span className="mono-value">{shortAddress(wallet.address)}</span>
         </button>
         {wallet.passkey_registered && (
-          <div className="flex items-center justify-center gap-1 text-[10px] text-primary">
+          <div className="flex items-center justify-center gap-1 text-xs text-primary">
             <ShieldCheck className="h-3 w-3" />
             <span>FIDO2 Secured</span>
           </div>

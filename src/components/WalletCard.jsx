@@ -31,7 +31,7 @@ export default function WalletCard({ wallet, onClick }) {
           {wallet.balance?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
           <span className="text-sm font-normal text-muted-foreground ms-1.5">{wallet.currency}</span>
         </p>
-        <p className="text-[10px] text-muted-foreground mt-2 font-mono truncate">
+        <p className="text-xs text-muted-foreground mt-2 font-mono truncate">
           {wallet.address}
         </p>
       </div>

@@ -230,7 +230,7 @@ export default function WalletSeedQR() {
             {showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             {showSeed ? "Hide Words" : "Reveal Words"}
           </Button>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             <span className="font-medium text-foreground">Seed Key QR unavailable.</span>{" "}
             In-app QR restore is not built yet. Use Personal Backup for an encrypted export with a restore path.
           </p>
@@ -241,7 +241,7 @@ export default function WalletSeedQR() {
               <div className="grid grid-cols-3 gap-2">
                 {words.map((word, i) => (
                   <div key={i} className="flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1.5">
-                    <span className="text-[10px] text-muted-foreground w-4 text-end shrink-0">{i + 1}</span>
+                    <span className="text-xs text-muted-foreground w-4 text-end shrink-0">{i + 1}</span>
                     <span className="font-mono text-xs font-medium">{word}</span>
                   </div>
                 ))}

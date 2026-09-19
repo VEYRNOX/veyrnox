@@ -8,7 +8,7 @@ import { USD_REFERENCE_NOTE } from "@/lib/cryptos";
  */
 export default function ReferenceRateNote({ className = "" }) {
   return (
-    <p className={`text-[10px] text-muted-foreground mt-0.5 ${className}`}>
+    <p className={`text-xs text-muted-foreground mt-0.5 ${className}`}>
       {USD_REFERENCE_NOTE}
     </p>
   );

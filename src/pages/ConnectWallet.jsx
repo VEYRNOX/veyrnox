@@ -188,7 +188,7 @@ export default function ConnectWallet() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">{asset.currency}</p>
                 {asset.networkName ? (
-                  <p className="text-[11px] text-muted-foreground">{asset.networkName}</p>
+                  <p className="text-xs text-muted-foreground">{asset.networkName}</p>
                 ) : null}
                 <p className="text-xs text-muted-foreground font-mono truncate">{asset.address}</p>
               </div>
@@ -252,13 +252,13 @@ export default function ConnectWallet() {
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-sm">{provider.name}</p>
                   {detected && (
-                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">Detected</span>
+                    <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">Detected</span>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">{provider.description}</p>
                 <div className="flex gap-1 mt-1">
                   {provider.currencies.map(c => (
-                    <span key={c} className="text-[10px] bg-secondary text-muted-foreground px-1.5 py-0.5 rounded font-mono">{c}</span>
+                    <span key={c} className="text-xs bg-secondary text-muted-foreground px-1.5 py-0.5 rounded font-mono">{c}</span>
                   ))}
                 </div>
               </div>
@@ -284,7 +284,7 @@ export default function ConnectWallet() {
           "Your private keys never leave your device",
         ].map((s, i) => (
           <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-            <span className="h-4 w-4 rounded-full bg-primary/10 text-primary text-[10px] flex items-center justify-center shrink-0 mt-0.5 font-bold">{i + 1}</span>
+            <span className="h-4 w-4 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center shrink-0 mt-0.5 font-bold">{i + 1}</span>
             {s}
           </div>
         ))}

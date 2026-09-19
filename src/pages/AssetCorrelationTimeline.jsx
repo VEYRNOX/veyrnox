@@ -307,7 +307,7 @@ export default function AssetCorrelationTimeline() {
               className="flex items-start gap-2 text-xs py-1 border-b border-border/50 last:border-0"
             >
               <span
-                className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${
                   n.sentiment?.includes("bullish")
                     ? "bg-success/10 text-success"
                     : n.sentiment?.includes("bearish")
@@ -319,7 +319,7 @@ export default function AssetCorrelationTimeline() {
               </span>
               <div className="flex-1">
                 <p className="text-muted-foreground">{n.headline}</p>
-                <p className="text-[10px] text-muted-foreground/60">
+                <p className="text-xs text-muted-foreground/60">
                   {formatDistanceToNow(new Date(n.published_at), { addSuffix: true })}
                 </p>
               </div>

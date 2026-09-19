@@ -58,7 +58,7 @@ export default function GasFeeControl() {
             className={`p-3 rounded-xl border text-center transition-colors ${active === c.id ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
           >
             <p className="text-sm font-semibold">{c.label}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{c.badge}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{c.badge}</p>
           </button>
         ))}
       </div>
@@ -66,7 +66,7 @@ export default function GasFeeControl() {
       {/* Per-chain model note */}
       <div className="flex items-start gap-2 p-3 rounded-lg bg-secondary/40 border border-border">
         <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-        <p className="text-[11px] text-muted-foreground">{MODEL_NOTE[cfg.chain]}</p>
+        <p className="text-xs text-muted-foreground">{MODEL_NOTE[cfg.chain]}</p>
       </div>
 
       {/* Live per-chain fee picker (keyed so state resets cleanly per chain). */}
@@ -90,7 +90,7 @@ export default function GasFeeControl() {
             <div><p className="text-muted-foreground text-xs">Estimated fee</p><p className="font-semibold font-mono">{sel.nativeText}</p></div>
             {sel.fiatText && <div><p className="text-muted-foreground text-xs">≈ Fiat</p><p className="font-bold text-lg">{sel.fiatText}</p></div>}
           </div>
-          <p className="text-[10px] text-muted-foreground pt-1 border-t border-border/60">
+          <p className="text-xs text-muted-foreground pt-1 border-t border-border/60">
             On the Send screen this same selection is passed straight into the signing path, so the fee you choose is the fee that gets signed.
           </p>
         </div>

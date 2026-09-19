@@ -423,7 +423,7 @@ export default function HDWalletManager() {
                 <div className="pt-2 border-t border-border space-y-2">
                   {/* C-3 — same shared map as WalletEntry.jsx; the duplicated
                       blurb here is why C-3 was two defects, not one. */}
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  <p className="text-xs leading-relaxed text-muted-foreground">
                     {PASSKEY_ESCAPE_HATCH_BLURBS[passkeyFailed.reason] ?? PASSKEY_ESCAPE_HATCH_BLURBS.error}
                   </p>
                   <Button
@@ -442,7 +442,7 @@ export default function HDWalletManager() {
                   no weaker than the baseline custody. */}
               {biometricFailed && (
                 <div className="pt-2 border-t border-border space-y-2">
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  <p className="text-xs leading-relaxed text-muted-foreground">
                     Biometric / Face ID didn't work? Unlock with your vault password
                     alone — your password is the real key and always works.
                   </p>
@@ -499,15 +499,15 @@ export default function HDWalletManager() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">Ethereum-compatible Account</p>
-                    <p className="text-[11px] text-muted-foreground font-mono">
+                    <p className="text-xs text-muted-foreground font-mono">
                       <span className="not-italic" style={{fontFamily:"inherit"}}>Technical path: </span>{shortPath(accounts[0]?.index)}
                     </p>
                   </div>
                 </div>
-                <span className="text-[10px] px-1.5 py-0.5 rounded border bg-success/15 text-success border-success/30 shrink-0">Active</span>
+                <span className="text-xs px-1.5 py-0.5 rounded border bg-success/15 text-success border-success/30 shrink-0">Active</span>
               </div>
               <div>
-                <p className="text-[11px] text-muted-foreground mb-1">Account address (public)</p>
+                <p className="text-xs text-muted-foreground mb-1">Account address (public)</p>
                 <div className="flex items-center gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
                   <p className="flex-1 font-mono text-xs break-all">{evmAddress}</p>
                   <button
@@ -559,7 +559,7 @@ export default function HDWalletManager() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-sm">{asset.name}</p>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${badge.className}`}>{badge.label}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded border ${badge.className}`}>{badge.label}</span>
                     </div>
                     <p className="text-xs text-muted-foreground font-mono truncate">{address || (dim ? "Address available once live" : "—")}</p>
                   </div>
@@ -611,7 +611,7 @@ export default function HDWalletManager() {
                       </Button>
                     </div>
                     {!sendable && (
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {dim ? "This asset is on the roadmap — no address is derived and funds cannot move until its crypto path is verified." : `Sending not yet enabled for ${asset.symbol}.`}
                       </p>
                     )}

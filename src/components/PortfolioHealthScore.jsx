@@ -24,7 +24,7 @@ function ScoreRing({ score }) {
       </svg>
       <div className="absolute text-center">
         <p className="text-xl font-bold leading-none" style={{ color }}>{score}</p>
-        <p className="text-[9px] text-muted-foreground">/100</p>
+        <p className="text-xs text-muted-foreground">/100</p>
       </div>
     </div>
   );
@@ -116,8 +116,8 @@ export default function PortfolioHealthScore({
               <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between mb-0.5">
-                  <span className="text-[11px] text-muted-foreground">{f.label}</span>
-                  <span className="text-[11px] text-muted-foreground">{f.score}/{f.max}</span>
+                  <span className="text-xs text-muted-foreground">{f.label}</span>
+                  <span className="text-xs text-muted-foreground">{f.score}/{f.max}</span>
                 </div>
                 <div className="h-1 bg-secondary rounded-full overflow-hidden">
                   <div

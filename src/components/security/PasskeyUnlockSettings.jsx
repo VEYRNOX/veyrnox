@@ -164,7 +164,7 @@ export default function PasskeyUnlockSettings({ embedded = false } = {}) {
             {nativeBio ? t('settings.passkey_unlock.enroll_button') : t('settings.passkey_unlock.register_button')}
           </Button>
           {!simulated && !supported && (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {nativeBio
                 ? t('settings.passkey_unlock.not_setup_native')
                 : t('settings.passkey_unlock.not_supported_web')}
@@ -202,7 +202,7 @@ export default function PasskeyUnlockSettings({ embedded = false } = {}) {
                   ? t('settings.passkey_unlock.require_toggle_desc_native')
                   : t('settings.passkey_unlock.require_toggle_desc_web')}
               </p>
-              <p className="text-[11px] text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {t('settings.passkey_unlock.applies_all_sessions')}
               </p>
             </div>

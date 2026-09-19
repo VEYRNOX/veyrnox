@@ -131,7 +131,7 @@ export default function LiveBalances() {
       {/* Status indicators — honest about what this actually queries. */}
       <div className="flex gap-2 flex-wrap">
         {["Public RPC (read-only)", "Testnet only", "Verified tokens only"].map(s => (
-          <span key={s} className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full border border-success/30 bg-success/5 text-success font-semibold">
+          <span key={s} className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border border-success/30 bg-success/5 text-success font-semibold">
             <div className="h-1.5 w-1.5 rounded-full bg-success motion-safe:animate-pulse" /> {s}
           </span>
         ))}
@@ -149,7 +149,7 @@ export default function LiveBalances() {
         </Button>
       </div>
 
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         Paste any address on the selected testnet to read its live native balance, the current gas price, and balances for the wallet's verified token list. Each lookup makes a read-only JSON-RPC call to {net?.label}'s public RPC — no other network calls.
       </p>
 
@@ -173,7 +173,7 @@ export default function LiveBalances() {
                 <a href={`${net?.explorer}${encodeURIComponent(data.address)}`} target="_blank" rel="noreferrer" className="p-2 rounded-lg border border-border bg-card text-muted-foreground hover:text-primary">
                   <ExternalLink className="h-4 w-4" />
                 </a>
-                <div className="flex items-center gap-1 text-[10px] text-success font-semibold"><CheckCircle className="h-3 w-3" /> Live</div>
+                <div className="flex items-center gap-1 text-xs text-success font-semibold"><CheckCircle className="h-3 w-3" /> Live</div>
               </div>
             </div>
             <div className="flex items-center gap-4 pt-2 border-t border-border text-xs text-muted-foreground">
@@ -189,7 +189,7 @@ export default function LiveBalances() {
               <div className="flex items-center gap-2">
                 <Coins className="h-4 w-4 text-muted-foreground" />
                 <p className="text-sm font-semibold">{tokens.length} verified token{tokens.length > 1 ? "s" : ""} with a balance</p>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">wallet registry</span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">wallet registry</span>
               </div>
               <div className="space-y-2 max-h-64 overflow-y-auto pe-1">
                 {tokens.map((t) => (

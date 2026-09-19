@@ -208,7 +208,7 @@ export default function RecurringPayments() {
               <span className="font-semibold">{formatCryptoAmount(amt, resolveLocale(), { maximumFractionDigits: 4 })}</span>
             </div>
           ))}
-          <p className="text-[10px] text-muted-foreground pt-0.5">Shown per asset — cross-currency totals would be meaningless without live prices</p>
+          <p className="text-xs text-muted-foreground pt-0.5">Shown per asset — cross-currency totals would be meaningless without live prices</p>
         </div>
       )}
 
@@ -252,12 +252,12 @@ export default function RecurringPayments() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold">{p.label}</p>
-                        {isDue && p.status === "active" && <span className="text-[10px] bg-caution/10 text-caution px-1.5 py-0.5 rounded-full">Due</span>}
+                        {isDue && p.status === "active" && <span className="text-xs bg-caution/10 text-caution px-1.5 py-0.5 rounded-full">Due</span>}
                       </div>
                       <p className="text-xs text-muted-foreground">{p.amount} {p.currency} · {FREQ_LABELS[p.frequency]}</p>
                       <p className="text-xs font-mono text-muted-foreground truncate">{p.to_address}</p>
                       {wallet && <p className="text-xs text-muted-foreground">From: {wallet.name}</p>}
-                      <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
+                      <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
                         {p.next_run_at && <span>Next: {formatDistanceToNow(new Date(p.next_run_at), { addSuffix: true })}</span>}
                         {p.run_count > 0 && <span>· {p.run_count} runs · {p.total_sent != null ? formatCryptoAmount(p.total_sent, resolveLocale(), { maximumFractionDigits: 4 }) : "—"} sent</span>}
                       </div>

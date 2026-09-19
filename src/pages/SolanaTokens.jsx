@@ -110,7 +110,7 @@ export default function SolanaTokens() {
                 <Copy className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
             </div>
-            <p className="text-[10px] text-muted-foreground">Derivation path: {solAccount.path}</p>
+            <p className="text-xs text-muted-foreground">Derivation path: {solAccount.path}</p>
             <div className="flex gap-2 pt-1">
               <a href={explorerUrl} target="_blank" rel="noopener noreferrer">
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs h-11">

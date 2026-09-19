@@ -29,7 +29,7 @@ function CongestionBadge({ level }) {
       : "bg-caution/10 text-caution border-caution/20";
   const label = level === "low" ? "Low" : level === "high" ? "High" : "Avg";
   return (
-    <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-px rounded border ${styles}`}>
+    <span className={`inline-flex items-center text-xs font-semibold px-1.5 py-px rounded border ${styles}`}>
       {label}
     </span>
   );
@@ -74,7 +74,7 @@ function FeeRow({ glyph, name, slow, standard, fast, unit, congestion }) {
             <CongestionBadge level={congestion} />
           </div>
           {hasTierDetail && (
-            <p className="text-[10px] text-muted-foreground font-mono mt-0.5 tabular-nums">
+            <p className="text-xs text-muted-foreground font-mono mt-0.5 tabular-nums">
               {slowFmt != null ? `${slowFmt} slow` : null}
               {slowFmt != null && fastFmt != null ? " · " : null}
               {fastFmt != null ? `${fastFmt} fast` : null}
@@ -84,11 +84,11 @@ function FeeRow({ glyph, name, slow, standard, fast, unit, congestion }) {
         </div>
       </div>
       <div className="text-end shrink-0 ps-4">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Recommended</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Recommended</p>
         <p className="text-sm font-mono font-semibold tabular-nums">
           {recommended ?? "—"}
           {recommended != null && (
-            <span className="text-[10px] text-muted-foreground font-normal ms-1">{unit}</span>
+            <span className="text-xs text-muted-foreground font-normal ms-1">{unit}</span>
           )}
         </p>
       </div>
@@ -116,18 +116,18 @@ function SolFeeRow({ baseLamports, priorityMicroLamports }) {
             <CongestionBadge level={congestion} />
           </div>
           {hasPriority && (
-            <p className="text-[10px] text-muted-foreground font-mono mt-0.5 tabular-nums">
+            <p className="text-xs text-muted-foreground font-mono mt-0.5 tabular-nums">
               +{priorityMicroLamports.toLocaleString()} µlam/CU priority
             </p>
           )}
         </div>
       </div>
       <div className="text-end shrink-0 ps-4">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Per tx</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Per tx</p>
         <p className="text-sm font-mono font-semibold tabular-nums">
           {baseSol ?? "—"}
           {baseSol != null && (
-            <span className="text-[10px] text-muted-foreground font-normal ms-1">SOL</span>
+            <span className="text-xs text-muted-foreground font-normal ms-1">SOL</span>
           )}
         </p>
       </div>
@@ -192,7 +192,7 @@ export default function GasTracker() {
         )}
       </div>
       {lastUpdated && (
-        <p className="text-[10px] text-muted-foreground mb-3">Updated {lastUpdated} · refreshes every 30s</p>
+        <p className="text-xs text-muted-foreground mb-3">Updated {lastUpdated} · refreshes every 30s</p>
       )}
 
       {isLoading ? (

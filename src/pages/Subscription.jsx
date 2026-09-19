@@ -823,7 +823,7 @@ export default function Subscription() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Free</h2>
             <span className="text-sm font-bold mono-value">{freeTierPrice}</span>
             {currentTier === TIER.FREE && (
-              <Badge variant="outline" className={`${CURRENT_BADGE} text-[10px] px-1.5 py-0 h-4`}>Current</Badge>
+              <Badge variant="outline" className={`${CURRENT_BADGE} text-xs px-1.5 py-0 h-4`}>Current</Badge>
             )}
           </div>
           <p className="text-xs text-muted-foreground">Everything to hold, send and secure your crypto — no account required.</p>
@@ -839,7 +839,7 @@ export default function Subscription() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5" /> Safety Plus adds
             {isSafetyPlusPlan && (
-              <Badge variant="outline" className={`${CURRENT_BADGE} text-[10px] px-1.5 py-0 h-4`}>Current</Badge>
+              <Badge variant="outline" className={`${CURRENT_BADGE} text-xs px-1.5 py-0 h-4`}>Current</Badge>
             )}
           </h2>
           <p className="text-xs text-muted-foreground">
@@ -862,7 +862,7 @@ export default function Subscription() {
           // "Recommended" on a plan you own reads as a nudge to nowhere.
           <Badge
             variant="outline"
-            className="absolute -top-2.5 start-4 text-[10px] uppercase tracking-wide px-2 py-0.5 border-primary/40 bg-background text-primary"
+            className="absolute -top-2.5 start-4 text-xs uppercase tracking-wide px-2 py-0.5 border-primary/40 bg-background text-primary"
           >
             Recommended
           </Badge>
@@ -1005,7 +1005,7 @@ export default function Subscription() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-sky-600 flex items-center gap-1.5">
           <Sparkles className="h-3.5 w-3.5" /> AI Security Protection adds
           {isAiSecurityProtectionPlan && (
-            <Badge variant="outline" className={`${CURRENT_BADGE} text-[10px] px-1.5 py-0 h-4`}>Current</Badge>
+            <Badge variant="outline" className={`${CURRENT_BADGE} text-xs px-1.5 py-0 h-4`}>Current</Badge>
           )}
         </h2>
         <p className="text-xs text-muted-foreground">

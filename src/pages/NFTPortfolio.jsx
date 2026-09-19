@@ -124,12 +124,12 @@ export default function NFTPortfolio() {
                   ) : (
                     <Image className="h-8 w-8 text-muted-foreground opacity-40" />
                   )}
-                  <span className={`absolute top-2 end-2 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[nft.status]}`}>{nft.status}</span>
+                  <span className={`absolute top-2 end-2 text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[nft.status]}`}>{nft.status}</span>
                 </div>
                 <div className="p-3 space-y-1">
                   <p className="text-sm font-semibold truncate">{nft.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{nft.collection}</p>
-                  <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded-full capitalize ${CHAIN_COLORS[nft.chain]}`}>{nft.chain}</span>
+                  <span className={`inline-block text-xs px-1.5 py-0.5 rounded-full capitalize ${CHAIN_COLORS[nft.chain]}`}>{nft.chain}</span>
                   {nft.current_floor && (
                     <p className="text-xs font-medium pt-1">{nft.current_floor} ETH floor</p>
                   )}

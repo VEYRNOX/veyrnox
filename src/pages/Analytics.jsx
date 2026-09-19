@@ -207,7 +207,7 @@ export default function Analytics() {
         <div className="rounded-xl border border-border bg-card p-3 space-y-1 min-w-0">
           <div className="flex items-center gap-1 text-muted-foreground">
             <Wallet className="h-3.5 w-3.5" />
-            <span className="text-[10px] uppercase tracking-wide">Total Value</span>
+            <span className="text-xs uppercase tracking-wide">Total Value</span>
           </div>
           <p className="text-base font-bold break-words">{pricesEnabled ? fmt(totalUSD) : "—"}</p>
         </div>
@@ -218,7 +218,7 @@ export default function Analytics() {
                 ? <TrendingUp className="h-3.5 w-3.5 text-success" />
                 : <TrendingDown className="h-3.5 w-3.5 text-destructive" />
               : <TrendingUp className="h-3.5 w-3.5" />}
-            <span className="text-[10px] uppercase tracking-wide">Net PnL</span>
+            <span className="text-xs uppercase tracking-wide">Net PnL</span>
           </div>
           {pricesEnabled ? (
             <p className={`text-base font-bold break-words ${netPnL >= 0 ? "text-success" : "text-destructive"}`}>
@@ -231,7 +231,7 @@ export default function Analytics() {
         <div className="rounded-xl border border-border bg-card p-3 space-y-1 min-w-0">
           <div className="flex items-center gap-1 text-muted-foreground">
             <DollarSign className="h-3.5 w-3.5" />
-            <span className="text-[10px] uppercase tracking-wide">Top Asset</span>
+            <span className="text-xs uppercase tracking-wide">Top Asset</span>
           </div>
           <p className="text-base font-bold break-words">{bestAsset?.name ?? "—"}</p>
         </div>
@@ -278,7 +278,7 @@ export default function Analytics() {
                 <Area type="monotone" dataKey="value" name="Portfolio" stroke="hsl(var(--primary))" fill="url(#areaGrad)" strokeWidth={2} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
-            <p className="text-[10px] text-muted-foreground">Values use current prices — not historical rates.</p>
+            <p className="text-xs text-muted-foreground">Values use current prices — not historical rates.</p>
           </>
         )}
       </div>
@@ -314,7 +314,7 @@ export default function Analytics() {
                     </div>
                     <div className="text-end">
                       <p className="text-xs font-mono">{pricesEnabled ? fmt(d.value) : "—"}</p>
-                      <p className="text-[10px] text-muted-foreground">{pct}%</p>
+                      <p className="text-xs text-muted-foreground">{pct}%</p>
                     </div>
                   </div>
                 );

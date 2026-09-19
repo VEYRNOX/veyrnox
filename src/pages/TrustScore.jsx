@@ -135,7 +135,7 @@ export default function TrustScore() {
             </div>
           )}
 
-          <div className="flex items-start gap-2 pt-1 border-t border-border/60 text-[11px] text-muted-foreground">
+          <div className="flex items-start gap-2 pt-1 border-t border-border/60 text-xs text-muted-foreground">
             <ServerCog className="h-3 w-3 shrink-0 mt-0.5" />
             <span>Screened locally on this device — no chain reads, no third-party scoring service. For deeper contract-level checks use a dedicated scanner (e.g. GoPlus, De.Fi, Token Sniffer).</span>
           </div>

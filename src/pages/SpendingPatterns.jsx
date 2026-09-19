@@ -80,7 +80,7 @@ export default function SpendingPatterns() {
         <div className="p-4 rounded-xl border border-border bg-card">
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">By Asset (native amounts)</p>
           <div className="space-y-2">
-            <div className="grid grid-cols-[1fr_auto_auto] gap-3 text-[10px] uppercase tracking-wider text-muted-foreground px-1">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-3 text-xs uppercase tracking-wider text-muted-foreground px-1">
               <span>Asset</span><span className="text-end">Sent</span><span className="text-end">Received</span>
             </div>
             {byAsset.map((a) => (
@@ -91,11 +91,11 @@ export default function SpendingPatterns() {
                 </span>
                 <span className="text-end font-mono">
                   {fmtAmount(a.sentAmount)} {a.currency}
-                  <span className="block text-[10px] text-muted-foreground">{a.sentCount} tx</span>
+                  <span className="block text-xs text-muted-foreground">{a.sentCount} tx</span>
                 </span>
                 <span className="text-end font-mono">
                   {fmtAmount(a.receivedAmount)} {a.currency}
-                  <span className="block text-[10px] text-muted-foreground">{a.receivedCount} tx</span>
+                  <span className="block text-xs text-muted-foreground">{a.receivedCount} tx</span>
                 </span>
               </div>
             ))}

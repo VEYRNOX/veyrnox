@@ -150,10 +150,10 @@ export function useRevealWithReauth(onRevealed) {
         <ShieldCheck className="h-4 w-4 text-primary" />
         <p className="text-sm font-medium">For your security, please unlock your wallet to reveal the recovery phrase</p>
       </div>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         Your session timed out. Re-enter your {authModel === 'pin' ? 'PIN' : 'vault password'} to continue — the phrase will appear right after.
       </p>
-      {reauthError && <p role="alert" aria-live="polite" className="text-[11px] text-destructive">{reauthError}</p>}
+      {reauthError && <p role="alert" aria-live="polite" className="text-xs text-destructive">{reauthError}</p>}
       {authModel === 'pin' ? (
         <PinPad
           aria-label="PIN entry"

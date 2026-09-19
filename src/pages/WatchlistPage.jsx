@@ -138,7 +138,7 @@ export default function WatchlistPage() {
                     </div>
                     {item.note && <p className="text-xs text-muted-foreground truncate">{item.note}</p>}
                     {(item.target_buy || item.target_sell) && (
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {item.target_buy ? `Buy target: $${item.target_buy}` : ""}
                         {item.target_buy && item.target_sell ? " · " : ""}
                         {item.target_sell ? `Sell target: $${item.target_sell}` : ""}
@@ -152,7 +152,7 @@ export default function WatchlistPage() {
                           {formatUsd(price, undefined, { maximumFractionDigits: price < 1 ? 4 : 2, minimumFractionDigits: 2 })}
                         </p>
                         {change != null && (
-                          <p className={`text-[10px] mono-value ${change >= 0 ? "text-primary" : "text-risk"}`}>
+                          <p className={`text-xs mono-value ${change >= 0 ? "text-primary" : "text-risk"}`}>
                             {change >= 0 ? "+" : ""}{change.toFixed(2)}%
                           </p>
                         )}
@@ -181,15 +181,15 @@ export default function WatchlistPage() {
                 {editId === item.id && (
                   <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-2">
                     <div>
-                      <Label htmlFor="watchlist-buy-below" className="text-[10px]">Buy below ($)</Label>
+                      <Label htmlFor="watchlist-buy-below" className="text-xs">Buy below ($)</Label>
                       <Input id="watchlist-buy-below" value={form.target_buy} onChange={e => setForm(f => ({ ...f, target_buy: e.target.value }))} placeholder="65000" type="text" inputMode="decimal" className="h-11 text-xs mt-0.5" />
                     </div>
                     <div>
-                      <Label htmlFor="watchlist-sell-above" className="text-[10px]">Sell above ($)</Label>
+                      <Label htmlFor="watchlist-sell-above" className="text-xs">Sell above ($)</Label>
                       <Input id="watchlist-sell-above" value={form.target_sell} onChange={e => setForm(f => ({ ...f, target_sell: e.target.value }))} placeholder="75000" type="text" inputMode="decimal" className="h-11 text-xs mt-0.5" />
                     </div>
                     <div className="col-span-2">
-                      <Label htmlFor="watchlist-note" className="text-[10px]">Note</Label>
+                      <Label htmlFor="watchlist-note" className="text-xs">Note</Label>
                       <Input id="watchlist-note" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Your note..." className="h-11 text-xs mt-0.5" />
                     </div>
                     <Button size="sm" className="h-11 text-xs" onClick={() => update.mutate({ id: item.id, ...form, target_buy: form.target_buy ? parseLocaleNumber(form.target_buy, resolveLocale()) : undefined, target_sell: form.target_sell ? parseLocaleNumber(form.target_sell, resolveLocale()) : undefined })}>

@@ -180,7 +180,7 @@ export default function TokenApprovals() {
             Review spending permissions you&apos;ve granted. Revoke the risky ones.
           </p>
         </div>
-        <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
+        <span className="shrink-0 text-xs px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
           {DEMO ? "Demo · simulated" : ALLOW_MAINNET ? "Mainnet" : "Testnet"}
         </span>
       </div>
@@ -219,7 +219,7 @@ export default function TokenApprovals() {
             <h2 id="approval-monitor-heading" className="text-sm font-semibold flex items-center gap-2">
               <BellRing className="h-4 w-4 text-caution" aria-hidden="true" />
               Monitor alerts
-              <span className="text-[10px] font-normal text-muted-foreground">
+              <span className="text-xs font-normal text-muted-foreground">
                 ({monitorAlerts.length}
                 {monitorHighCount > 0 ? `, ${monitorHighCount} high` : ""})
               </span>
@@ -243,7 +243,7 @@ export default function TokenApprovals() {
                     <p className={`text-xs font-semibold ${high ? "text-destructive" : "text-caution"}`}>
                       {high ? "High risk" : "Caution"} — {al.title}
                     </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 break-words">{al.detail}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 break-words">{al.detail}</p>
                   </div>
                   <button
                     type="button"
@@ -257,7 +257,7 @@ export default function TokenApprovals() {
               );
             })}
           </ul>
-          <p className="px-4 py-2 text-[10px] text-muted-foreground border-t border-border">
+          <p className="px-4 py-2 text-xs text-muted-foreground border-t border-border">
             Checked while the app is open. Absence of an alert is not a guarantee that nothing changed.
           </p>
         </section>
@@ -305,13 +305,13 @@ export default function TokenApprovals() {
                     <span className="font-semibold">{a.token_symbol}</span>
                     <span className="text-muted-foreground text-xs">→</span>
                     <span className="text-sm font-medium">{a.spender_name || "Unknown spender"}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${risk.cls}`}>{risk.label}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded font-semibold ${risk.cls}`}>{risk.label}</span>
                     {a.status === "revoked" && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-semibold">Revoked</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-semibold">Revoked</span>
                     )}
                   </div>
                   <p className="text-xs font-mono text-muted-foreground truncate">{a.spender_address}</p>
-                  <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground flex-wrap">
+                  <div className="flex gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                     <span>
                       Spending permission:{" "}
                       <span className={a.summary.unlimited ? "text-destructive font-semibold" : "text-foreground"}>
@@ -341,7 +341,7 @@ export default function TokenApprovals() {
                       <div
                         role="status"
                         aria-live="polite"
-                        className={`flex items-start gap-1.5 mt-2 text-[11px] ${cls}`}
+                        className={`flex items-start gap-1.5 mt-2 text-xs ${cls}`}
                       >
                         <Icon className="h-3 w-3 shrink-0 mt-0.5" aria-hidden="true" />
                         <span>
@@ -394,8 +394,8 @@ export default function TokenApprovals() {
                 </p>
               )}
               <div className="rounded-lg border border-border bg-secondary/40 p-3">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Revoke transaction data</p>
-                <p className="font-mono text-[11px] break-all">{result.data}</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Revoke transaction data</p>
+                <p className="font-mono text-xs break-all">{result.data}</p>
               </div>
               {!result.simulated && result.explorerUrl && (
                 <a

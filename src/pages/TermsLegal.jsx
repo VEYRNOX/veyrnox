@@ -770,7 +770,7 @@ export default function TermsLegal() {
         </Section>
       </div>
 
-      <p className="text-[11px] text-muted-foreground leading-relaxed">
+      <p className="text-xs text-muted-foreground leading-relaxed">
         This is a reference screen. Nothing on it is saved to your device, and it reads the same
         on every device — there is no record of whether you have viewed it.
       </p>

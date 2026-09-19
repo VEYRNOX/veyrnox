@@ -179,7 +179,7 @@ export default function OnChainAnalytics() {
           <div className="rounded-lg border border-border p-3 space-y-2">
             <div className="flex items-center gap-2">
               <p className="text-xs font-mono truncate flex-1">{addressData.address}</p>
-              {addressData.isOwn && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Your wallet</span>}
+              {addressData.isOwn && <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Your wallet</span>}
             </div>
             {addressData.wallet && <p className="text-xs text-muted-foreground">{addressData.wallet.name} · {addressData.wallet.currency}</p>}
             <p className="text-xs">Found in <span className="font-medium">{addressData.txCount}</span> transactions</p>
@@ -206,11 +206,11 @@ export default function OnChainAnalytics() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-mono truncate text-muted-foreground">{tx.tx_hash || "—"}</p>
-              <p className="text-[10px] text-muted-foreground">{safeFormat(tx.created_date, "dd MMM yyyy HH:mm")}</p>
+              <p className="text-xs text-muted-foreground">{safeFormat(tx.created_date, "dd MMM yyyy HH:mm")}</p>
             </div>
             <div className="text-end shrink-0">
               <p className={`text-sm font-semibold ${tx.type === "send" ? "text-destructive" : "text-success"}`}>{tx.type === "send" ? "-" : "+"}{tx.amount} {tx.currency}</p>
-              <span className={`text-[10px] ${tx.status === "confirmed" ? "text-success" : tx.status === "failed" ? "text-destructive" : "text-caution"}`}>{tx.status}</span>
+              <span className={`text-xs ${tx.status === "confirmed" ? "text-success" : tx.status === "failed" ? "text-destructive" : "text-caution"}`}>{tx.status}</span>
             </div>
           </div>
         ))}

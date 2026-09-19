@@ -35,7 +35,7 @@ function SeverityChip({ severity, children }) {
     : severity === 'medium'
       ? 'bg-caution/10 text-caution'
       : 'bg-secondary text-muted-foreground';
-  return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${cls}`}>{children}</span>;
+  return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cls}`}>{children}</span>;
 }
 
 function ContractConfidenceChip({ confidence }) {
@@ -44,7 +44,7 @@ function ContractConfidenceChip({ confidence }) {
     : confidence === 'partial_evidence'
       ? { label: 'Partial evidence', cls: 'bg-caution/10 text-caution' }
       : { label: 'Mostly unknown', cls: 'bg-secondary text-muted-foreground' };
-  return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${copy.cls}`}>{copy.label}</span>;
+  return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${copy.cls}`}>{copy.label}</span>;
 }
 
 function formatIssueKind(kind) {
@@ -289,7 +289,7 @@ export default function SuspiciousAssets() {
                   {visibleTokenCount + visibleCollectibleCount}
                 </SeverityChip>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {visibleTokenCount} visible suspicious token{visibleTokenCount === 1 ? '' : 's'} and {visibleCollectibleCount} suspicious collectible{visibleCollectibleCount === 1 ? '' : 's'} still shown here.
               </p>
             </div>
@@ -300,7 +300,7 @@ export default function SuspiciousAssets() {
                   {hiddenTokenCount}
                 </SeverityChip>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Hidden tokens stay out of normal portfolio views until you show them again. This is cleanup, not a declaration that they are safe.
               </p>
             </div>
@@ -311,7 +311,7 @@ export default function SuspiciousAssets() {
                   {dismissedCollectibleCount}
                 </SeverityChip>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Dismissed collectibles are removed from this queue only. You can restore them later if you want to review them again.
               </p>
             </div>
@@ -331,7 +331,7 @@ export default function SuspiciousAssets() {
             {contractIntelEnabled ? 'Opted in' : 'Local only'}
           </SeverityChip>
         </div>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {contractIntelConfigured
             ? 'This build can support TIP-backed contract-intelligence checks once you opt in.'
             : 'TIP contract-intelligence screening is not configured in this build yet, so this preference is stored for future availability only.'}
@@ -424,7 +424,7 @@ export default function SuspiciousAssets() {
                       ))}
                     </ul>
 
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {token.hidden
                         ? 'Hidden elsewhere: this token is suppressed in normal portfolio views until you show it again.'
                         : 'Active review: this token still appears in your suspicious-assets queue and may need manual verification before any interaction.'}
@@ -436,7 +436,7 @@ export default function SuspiciousAssets() {
                         open={!!expandedContractRows[token.id]}
                         onToggle={(event) => handleContractDetailToggle(token, event.currentTarget.open)}
                       >
-                        <summary className="cursor-pointer list-none text-[11px] text-muted-foreground">
+                        <summary className="cursor-pointer list-none text-xs text-muted-foreground">
                           {token.contract.confidence === 'strong_warning'
                             ? `Contract review confidence: strong warning. ${token.contract.knownChecks} of ${token.contract.totalChecks} local checks resolved with concrete risk signals.`
                             : token.contract.confidence === 'partial_evidence'
@@ -446,10 +446,10 @@ export default function SuspiciousAssets() {
                         <div className="mt-3 space-y-3">
                           {token.contract.issues.length > 0 && (
                             <div>
-                              <p className="text-[11px] font-medium text-foreground">Concrete warning signals</p>
+                              <p className="text-xs font-medium text-foreground">Concrete warning signals</p>
                               <ul className="mt-1 space-y-1">
                                 {token.contract.issues.map((issue) => (
-                                  <li key={`${token.id}-contract-${issue.kind}`} className="text-[11px] text-muted-foreground">
+                                  <li key={`${token.id}-contract-${issue.kind}`} className="text-xs text-muted-foreground">
                                     <span className="text-foreground">{formatIssueKind(issue.kind)}:</span> {issue.text}
                                   </li>
                                 ))}
@@ -458,10 +458,10 @@ export default function SuspiciousAssets() {
                           )}
                           {token.contract.unknowns.length > 0 && (
                             <div>
-                              <p className="text-[11px] font-medium text-foreground">Still unknown here</p>
+                              <p className="text-xs font-medium text-foreground">Still unknown here</p>
                               <ul className="mt-1 space-y-1">
                                 {token.contract.unknowns.map((unknown) => (
-                                  <li key={`${token.id}-unknown-${unknown}`} className="text-[11px] text-muted-foreground">
+                                  <li key={`${token.id}-unknown-${unknown}`} className="text-xs text-muted-foreground">
                                     {unknown}
                                   </li>
                                 ))}
@@ -469,14 +469,14 @@ export default function SuspiciousAssets() {
                             </div>
                           )}
                           <div>
-                            <p className="text-[11px] font-medium text-foreground">TIP deeper review</p>
+                            <p className="text-xs font-medium text-foreground">TIP deeper review</p>
                             {contractIntelEnabled && contractIntelConfigured ? (
                               remoteContractIntelLoading[token.id] ? (
-                                <p className="mt-1 text-[11px] text-muted-foreground">Checking this contract through TIP now…</p>
+                                <p className="mt-1 text-xs text-muted-foreground">Checking this contract through TIP now…</p>
                               ) : remoteContractIntel[token.id] ? (
                                 <div className="mt-1 space-y-1">
                                   <div className="flex items-center justify-between gap-3">
-                                    <p className="text-[11px] text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground">
                                       {remoteContractIntelMeta[token.id]?.source === 'cache'
                                         ? `Cached TIP review${formatCacheTime(remoteContractIntelMeta[token.id]?.expiresAt) ? ` until ${formatCacheTime(remoteContractIntelMeta[token.id]?.expiresAt)}` : ''}.`
                                         : `Fresh TIP review${formatCacheTime(remoteContractIntelMeta[token.id]?.cachedAt) ? ` at ${formatCacheTime(remoteContractIntelMeta[token.id]?.cachedAt)}` : ''}.`}
@@ -490,19 +490,19 @@ export default function SuspiciousAssets() {
                                       Refresh
                                     </Button>
                                   </div>
-                                  <p className="text-[11px] text-muted-foreground">
+                                  <p className="text-xs text-muted-foreground">
                                     TIP verdict: <span className="text-foreground">{String(remoteContractIntel[token.id].verdict || 'unknown').toUpperCase()}</span>
                                     {remoteContractIntel[token.id].sourcesConsulted?.length ? ` · ${remoteContractIntel[token.id].sourcesConsulted.length} source${remoteContractIntel[token.id].sourcesConsulted.length === 1 ? '' : 's'} answered` : ''}
                                   </p>
                                   {remoteContractIntel[token.id].reviewSummary && (
-                                    <p className="text-[11px] text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground">
                                       {remoteContractIntel[token.id].reviewSummary}
                                     </p>
                                   )}
                                   {remoteContractIntel[token.id].findings?.length > 0 ? (
                                     <ul className="space-y-1">
                                       {remoteContractIntel[token.id].findings.slice(0, 3).map((finding, index) => (
-                                        <li key={`${token.id}-tip-finding-${index}`} className="text-[11px] text-muted-foreground">
+                                        <li key={`${token.id}-tip-finding-${index}`} className="text-xs text-muted-foreground">
                                           <span className="text-foreground">{finding.title}:</span> {finding.detail}
                                         </li>
                                       ))}
@@ -511,18 +511,18 @@ export default function SuspiciousAssets() {
                                   {remoteContractIntel[token.id].risks?.length > 0 ? (
                                     <ul className="space-y-1">
                                       {remoteContractIntel[token.id].risks.slice(0, 3).map((risk, index) => (
-                                        <li key={`${token.id}-tip-risk-${index}`} className="text-[11px] text-muted-foreground">
+                                        <li key={`${token.id}-tip-risk-${index}`} className="text-xs text-muted-foreground">
                                           <span className="text-foreground">{risk.title}:</span> {risk.detail}
                                         </li>
                                       ))}
                                     </ul>
                                   ) : (
-                                    <p className="text-[11px] text-muted-foreground">TIP did not add any extra risk rows for this contract.</p>
+                                    <p className="text-xs text-muted-foreground">TIP did not add any extra risk rows for this contract.</p>
                                   )}
                                 </div>
                               ) : (
                                 <div className="mt-1 flex items-center justify-between gap-3">
-                                  <p className="text-[11px] text-muted-foreground">
+                                  <p className="text-xs text-muted-foreground">
                                     No TIP review has been cached for this contract yet. Open this section to request one through the existing opt-in gate.
                                   </p>
                                   <Button
@@ -536,7 +536,7 @@ export default function SuspiciousAssets() {
                                 </div>
                               )
                             ) : (
-                              <p className="mt-1 text-[11px] text-muted-foreground">
+                              <p className="mt-1 text-xs text-muted-foreground">
                                 {contractIntelConfigured
                                   ? 'Enable deeper contract intel above if you want this row to ask TIP for extra contract review.'
                                   : 'TIP contract-intelligence review is not configured in this build yet.'}
@@ -586,7 +586,7 @@ export default function SuspiciousAssets() {
                           <li key={`${nft.id}-${reason.kind}`} className="text-xs text-caution">{reason.text}</li>
                         ))}
                       </ul>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         Active review: dismissing this collectible removes it from this queue only. It does not mark the NFT safe or trusted.
                       </p>
                       <div className="flex gap-2">

@@ -161,12 +161,12 @@ export default function NotificationCentre() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <p className="text-sm font-medium truncate">{n.title}</p>
-                  <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${severityStyle[n.severity] || "text-muted-foreground bg-secondary"}`}>
+                  <span className={`text-xs font-bold uppercase px-1.5 py-0.5 rounded ${severityStyle[n.severity] || "text-muted-foreground bg-secondary"}`}>
                     {n.severity}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{n.body}</p>
-                <p className="text-[10px] text-muted-foreground/60 mt-1">{n.time && !isNaN(new Date(n.time).getTime()) ? formatDistanceToNow(new Date(n.time), { addSuffix: true }) : '—'}</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">{n.time && !isNaN(new Date(n.time).getTime()) ? formatDistanceToNow(new Date(n.time), { addSuffix: true }) : '—'}</p>
               </div>
               {n.onDismiss && (
                 <button onClick={n.onDismiss} aria-label="Dismiss notification" className="p-1 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors shrink-0">

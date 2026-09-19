@@ -425,7 +425,7 @@ export default function Layout() {
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <VeyrnoxWordmark className="text-sm" />
-                <p className="text-[9px] text-muted-foreground tracking-widest uppercase">{t('nav.wallet_tagline')}</p>
+                <p className="text-xs text-muted-foreground tracking-widest uppercase">{t('nav.wallet_tagline')}</p>
               </div>
             )}
             {!collapsed && <NotificationBell unseenCount={unseenCount} onOpen={openNotifications} className="h-8 w-8" />}
@@ -449,7 +449,7 @@ export default function Layout() {
             >
               <Search className="h-3.5 w-3.5" />
               <span className="flex-1 text-start">{t('nav.search_placeholder')}</span>
-              <kbd className="text-[9px] bg-background px-1 py-0.5 rounded">⌘K</kbd>
+              <kbd className="text-xs bg-background px-1 py-0.5 rounded">⌘K</kbd>
             </button>
           )}
           {collapsed && (
@@ -471,7 +471,7 @@ export default function Layout() {
                 <button
                   onClick={() => toggleGroup(group.label)}
                   aria-expanded={isGroupOpen(group)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-colors"
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-widest text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-colors"
                 >
                   <span>{group.label}</span>
                   <ChevronDown className={`h-3 w-3 text-muted-foreground/50 transition-transform ${isGroupOpen(group) ? 'rotate-180' : ''}`} />

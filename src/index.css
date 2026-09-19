@@ -307,14 +307,22 @@
     }
 
     /*
-     * Clamp hardcoded tiny pixel sizes up to readable minimums.
-     * 294 instances of text-[9-11px] across the codebase are fixed
-     * here rather than file-by-file — iOS WebView renders 9-11px as
-     * visually straining; 12-13px is the floor for secondary labels.
+     * The 9/10/11px clamps that used to live here are GONE, because the
+     * 326 `text-[9-11px]` strings they existed to rescue are gone too —
+     * all migrated to `text-xs` (#2609). Keeping a dead `!important`
+     * override would be worse than useless: it would silently rescue the
+     * next hardcoded 10px on phones, which is exactly the feedback loop
+     * that let the count reach 326 in the first place. Sub-12px sizes are
+     * now blocked at source by typography.minimumSize.test.js.
+     *
+     * NOTE this clamp only ever applied below 640px. On a tablet or
+     * desktop those strings rendered at their literal 9-11px the whole
+     * time, so the migration is a real legibility gain there, not a
+     * no-op.
+     *
+     * 13px survives: four call sites remain, and 14px on a phone is a
+     * readability bump rather than a rescue.
      */
-    [class*="text-[9px]"]  { font-size: 12px !important; }
-    [class*="text-[10px]"] { font-size: 12px !important; }
-    [class*="text-[11px]"] { font-size: 13px !important; }
     [class*="text-[13px]"] { font-size: 14px !important; }
   }
 

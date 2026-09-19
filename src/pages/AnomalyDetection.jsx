@@ -137,9 +137,9 @@ export default function AnomalyDetection() {
           {CHECKS.map(c => (
             <div key={c.key} className="rounded-lg border border-border bg-background/60 px-3 py-2 min-w-0">
               <p className="text-xs font-medium break-words">{c.label}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5 break-words">{c.desc}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 break-words">{c.desc}</p>
               {scanResult && (
-                <p className="text-[10px] font-semibold mt-1 text-primary break-words">
+                <p className="text-xs font-semibold mt-1 text-primary break-words">
                   {scanResult.anomalies.filter(a => a.type === c.key).length} found
                 </p>
               )}
@@ -197,14 +197,14 @@ export default function AnomalyDetection() {
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold">{TYPE_LABELS[a.type] || a.type?.replace(/_/g, " ")}</p>
-                        <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border">{cfg.label}</span>
+                        <span className="text-xs font-bold uppercase px-1.5 py-0.5 rounded border">{cfg.label}</span>
                       </div>
                       <p className="text-xs mt-0.5 opacity-80">{a.detail}</p>
-                      {a.tx && <p className="text-[10px] mt-1 opacity-60">{new Date(a.tx.created_date).toLocaleString(undefined)} · {a.tx.currency}</p>}
+                      {a.tx && <p className="text-xs mt-1 opacity-60">{new Date(a.tx.created_date).toLocaleString(undefined)} · {a.tx.currency}</p>}
                     </div>
                   </div>
                   {!a.fromDB && (
-                    <button onClick={() => setDismissed(d => [...d, a.id])} className="text-[10px] opacity-60 hover:opacity-100 transition-opacity shrink-0">Dismiss</button>
+                    <button onClick={() => setDismissed(d => [...d, a.id])} className="text-xs opacity-60 hover:opacity-100 transition-opacity shrink-0">Dismiss</button>
                   )}
                 </div>
               </div>

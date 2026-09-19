@@ -87,7 +87,7 @@ export default function RestoreProgress({ method = 'password' }) {
         </div>
       </div>
 
-      <p className="text-[11px] leading-relaxed text-muted-foreground/70 max-w-[15rem]">
+      <p className="text-xs leading-relaxed text-muted-foreground/70 max-w-[15rem]">
         Keep the app open. Your keys are rebuilt here and never leave this device.
       </p>
     </div>
