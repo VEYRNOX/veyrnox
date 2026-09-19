@@ -213,6 +213,15 @@ one.
    substitute.** Play Pre-launch report was waived 2026-09-04 (#1960) and the
    Firebase Test Lab Robo substitute was waived 2026-09-10 as accepted residual.
    FTL runs are advisory only.
+
+   **Android Vitals read 2026-09-19: EMPTY.** Every Reporting API metric set —
+   crash rate, ANR rate, error counts, error issues — returns zero rows for
+   2026-07-01 → 2026-09-18. That is not a clean bill of health; Vitals fills only
+   from installs that opted into Usage & diagnostics, and Play suppresses
+   below-threshold metrics. So Vitals contributes **no signal** to the 1.0.2
+   decision, and row 5 remains the only real evidence. Re-run
+   `PLAY_VITALS_ACCOUNT=<sa> scripts/play-vitals.sh` before submitting; if it is
+   still empty, say so rather than recording a pass.
 3. **iOS: rebuild the webview payload before archiving.** `npm run build && npx
    cap sync ios`. `ios/App/App/public` is gitignored, so whatever a previous
    local run left there is what Xcode packages.

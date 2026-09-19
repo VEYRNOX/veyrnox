@@ -756,11 +756,38 @@ learns the result — the same rule the 1.0.1 hold above already states for hold
   pre-publish.** Vitals only fills from Production/Open/Closed-testing installs
   whose testers share usage and diagnostics; on a `Draft` app the check is
   vacuous, not merely unmet. It becomes meaningful only after Publish.
-  **The waiver's precondition has now expired (2026-09-19).** The app is published,
-  so Vitals can fill and the gate is obtainable — it is simply UNREAD, which is a
-  different and weaker position than "structurally unobtainable". Do not carry the
-  waiver forward to the 1.0.2 submission on the old reasoning; read Vitals, or waive
-  it again for a stated new reason.
+  **READ 2026-09-19, and it is EMPTY — a third state, neither "structurally
+  unobtainable" nor "clean".** The app is published so the gate is obtainable,
+  and it was queried directly against the Play Developer Reporting API:
+  `crashRateMetricSet`, `anrRateMetricSet`, `errorCountMetricSet` and
+  `errorIssues:search` all return `{}` for `com.veyrnox.app` across
+  2026-07-01 → 2026-09-18. Zero rows, not zero crashes. **An empty Vitals is NOT
+  a pass** — it fills only from installs whose users enabled Usage & diagnostics,
+  and Play suppresses metrics under a privacy threshold, so with a days-old
+  production listing and a small closed-testing cohort there may simply be no
+  qualifying installs. Re-run before each submission; it costs a minute.
+
+  **The tool built for this gate could never have told you that, and said the
+  opposite.** `scripts/play-vitals.sh` requested an end date of `now-24h` while
+  DAILY freshness runs ~2 days behind, so every run returned
+  `400 INVALID_ARGUMENT`; and its `jq -e '.rows // empty'` test then fell through
+  to printing *"no crash-rate data yet"* — the benign, expected-empty message its
+  own header describes. **An API error rendered as a clean-ish result, every
+  time, and it had never produced a reading.** Rewritten 2026-09-19: freshness is
+  queried from the API and the window clamped to it, `.error` is checked before
+  `.rows`, ERROR / EMPTY / DATA are three distinct outcomes, and an error exits 2.
+
+  **Credential note, because "no credential" was the wrong conclusion.** No
+  `PLAY_SA_JSON` exists on this machine, but the Firebase Test Lab service
+  account `github-actions-testlab@veyrnox-wallet.iam.gserviceaccount.com` already
+  has Play Developer Reporting access, and `gcloud auth print-access-token
+  --account=<sa> --scopes=<playdeveloperreporting>` mints a scoped token with no
+  key file on disk. The script now accepts `PLAY_VITALS_ACCOUNT` for exactly
+  this. The interactive user credential does NOT work — it returns
+  `PERMISSION_DENIED: Request had insufficient authentication scopes`.
+
+  Do not carry the old waiver forward to the 1.0.2 submission on the
+  "unobtainable" reasoning; it is obtainable, it was read, and it is empty.
 - **Play gate 3 (the Robo substitute) was WAIVED 2026-09-10 as accepted
   residual (owner decision).** Four sequential fix attempts landed on `main`
   between 2026-09-09 and 2026-09-10 — #2484 (DEVICE_NOT_SECURE actionable copy),
