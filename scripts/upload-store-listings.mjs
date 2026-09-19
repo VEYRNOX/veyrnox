@@ -6,6 +6,12 @@
 //     appStoreVersionLocalizations)
 //   - Google Play Publishing via v3 API (edits.listings)
 //
+// NOT uploaded here: play.releaseNotes. Play attaches release notes to a track
+// RELEASE (edits.tracks -> releases[].releaseNotes), not to a listing, so it
+// needs a target track and versionCode this script has no business choosing.
+// It is validated below (500-char cap) and emitted for CI by
+// scripts/play-release-notes.mjs.
+//
 // Env needed:
 //   ASC_KEY_ID       — App Store Connect API key ID
 //   ASC_ISSUER_ID    — App Store Connect issuer UUID (2d4c5bd7-1de3-…)
@@ -74,6 +80,14 @@ const PLAY_LOCALE_MAP = {
   'en': 'en-US',
   'pt-BR': 'pt-BR',
   'no': 'no-NO',
+  // Play has no 'tl' — Filipino is 'fil' in Google's published language table.
+  // Transcribed from
+  // https://support.google.com/googleplay/android-developer/table/4419860 and
+  // UNVERIFIED against the live API: no upload has ever been attempted for this
+  // locale, so 'tl' may simply have been rejected and never noticed. If a Play
+  // upload rejects 'fil', read the error rather than reverting to 'tl' — 'tl'
+  // is not in the table either.
+  'tl': 'fil',
   // Play uses full BCP-47 with region for many entries. Add as we discover.
 };
 function appleLocale(loc) { return APPLE_LOCALE_MAP[loc] || loc; }
@@ -103,7 +117,7 @@ function validateLimits(entry) {
   for (const k of ['subtitle', 'promotionalText', 'keywords', 'description', 'whatsNew']) {
     check(`apple.${k}`, entry.apple?.[k]);
   }
-  for (const k of ['shortDescription', 'fullDescription']) {
+  for (const k of ['shortDescription', 'fullDescription', 'releaseNotes']) {
     check(`play.${k}`, entry.play?.[k]);
   }
   return errors;
