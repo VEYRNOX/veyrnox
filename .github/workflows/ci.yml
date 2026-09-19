@@ -32,7 +32,7 @@ on:
         required: false
         default: false
       force_play_upload:
-        description: 'Upload to Play closed testing even if versionCode did not change in this push'
+        description: 'Upload to Play internal testing even if versionCode did not change in this push'
         type: boolean
         required: false
         default: false
@@ -902,31 +902,34 @@ jobs:
   #      com.veyrnox.app on Play Console → Users & permissions → API access)
   # With either missing, this job skips — no red X, no accidental partial
   # publish. Once both are set, every main-branch merge that produces a
-  # new AAB auto-publishes to Closed testing.
+  # new AAB auto-publishes to Internal testing.
   #
-  # Track is 'alpha' — the API name for the "Closed testing – Alpha" track.
-  # This was 'internal' until 2026-09-06. It moved because Play generates a
-  # Pre-launch report from uploads to the CLOSED track, and no PLR has ever
-  # been generated for this app across 40+ Internal-testing uploads (#1960) —
-  # a clean PLR is a mandatory 1.0.1 submission gate, so the old target could
-  # never satisfy it. Internal testing is still reachable by promoting a
-  # bundle in the console; closed testing is the one CI cannot substitute.
+  # TRACK HISTORY, because this has moved twice and each move had a reason:
+  #   internal -> alpha  (2026-09-06) because Play generates a Pre-launch
+  #     report from uploads to the CLOSED track, and no PLR had ever been
+  #     generated across 40+ Internal-testing uploads (#1960); a clean PLR was
+  #     then a mandatory submission gate.
+  #   alpha -> internal  (2026-09-19) at the owner's request for v1.0.2. The
+  #     PLR premise did not survive: no report has been generated on ANY track
+  #     for any bundle, and #1960 was closed as accepted residual on
+  #     2026-09-04. Internal testing has no review step, so it reaches testers
+  #     immediately — which is the point.
+  # Before moving it back to alpha, read that: the closed-track move was made
+  # to obtain something that never arrived.
   #
-  # This does NOT loosen the 1.0.1 SUBMISSION HOLD. Closed testing is a
+  # This does NOT loosen any submission hold. Internal testing is a
   # tester-facing track, not a review submission; open/production promotion
-  # remains a manual owner action. Closed-track uploads are sent through the
-  # normal Play review state when Google requires it; managed publishing keeps
-  # them from becoming a production rollout.
+  # remains a manual owner action, and managed publishing keeps an upload from
+  # becoming a production rollout.
   #
-  # status: 'completed' means "fully released to the closed track" — Alpha
+  # status: 'completed' means "fully released to the internal track" — Internal
   # testers get the update. It is NOT a production rollout.
-  # NAME IS NOW A MISNOMER: this job pushes to the INTERNAL track as of
-  # 2026-09-19 (see the track: key below), not Closed testing. The name is
-  # kept because src/__tests__/ci-target-sha-pinning.test.js and
-  # play-closed-versioncode-gate.test.js both locate this job by this exact
-  # string, and renaming it mid-release is churn for no behavioural gain.
-  # If you rename it, rename it in those two tests in the SAME commit.
-  publish-to-play-closed:
+  # Renamed publish-to-play-closed -> publish-to-play-internal on 2026-09-19,
+  # same commit as the two tests that locate this job by name. It is NOT a
+  # required status check on either protection layer (checked before renaming:
+  # the required contexts are verify, unit-tests, Release-cert guard,
+  # mainnet-flag-gate, staging-gate), so the rename cannot block a PR.
+  publish-to-play-internal:
     runs-on: ubuntu-latest
     needs: [android-release, target-sha-guard]
     # Same trigger scope as android-release: main pushes only, never PRs.
@@ -1003,7 +1006,7 @@ jobs:
 
           if [ "$now" != "$prev" ]; then
             echo "upload=true" >> "$GITHUB_OUTPUT"
-            echo "versionCode ${prev} -> ${now} — uploading to Play closed testing."
+            echo "versionCode ${prev} -> ${now} — uploading to Play internal testing."
           else
             echo "upload=false" >> "$GITHUB_OUTPUT"
             echo "versionCode unchanged at ${now} — already consumed by an earlier upload, skipping."
@@ -1020,7 +1023,7 @@ jobs:
         run: |
           ls -l aab-artifact/
           test -s aab-artifact/app-google-release.aab
-      - name: Upload to Play closed testing track
+      - name: Upload to Play internal testing track
         if: steps.gate.outputs.upload == 'true'
         # r0adkll/upload-google-play — pinned by SHA per repo convention.
         # v1.1.3 (2024-08 vintage) — the most recent stable tag on the
@@ -1034,14 +1037,7 @@ jobs:
           # 'internal' is the Play API name for the Internal testing track.
           # The API takes internal/alpha/beta/production only; 'alpha' is the
           # Closed testing track the console labels "Closed testing – Alpha".
-          #
-          # Moved alpha -> internal on 2026-09-19 at the owner's explicit
-          # request, for the v1.0.2 (1) Android build. This REVERSES the
-          # earlier move to Closed testing, so read that history before moving
-          # it back: Closed testing was chosen partly because the Play
-          # Pre-launch report was thought to need it (#1960), and that report
-          # has never generated on any track. Internal testing has no review
-          # step, which is why it delivers to testers faster.
+          # Track history and why it moved twice: the job header above.
           track: internal
           status: completed
           # Play rejected `true` for this app's current automatic-review
