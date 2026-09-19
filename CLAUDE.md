@@ -255,9 +255,14 @@ verified 2026-07-21; Guideline 3.1.5(b) satisfied**, which unblocked the iOS rea
 build and the first App Store / IAP submission. **Both HAPPENED — this line read "both
 still to be done" until 2026-09-06, six weeks after the app went live.** `1.0` is
 `READY_FOR_SALE` (released 2026-07-28) and Apple has `APPROVED` the Safety Plus
-subscriptions. Evidence and what is genuinely still pending: the App Store section below.
-Play launch still gated
-on the upload-key reset (pending). Referral system BUILT (4-tier discount model, Supabase server-side codes,
+subscriptions. **`1.0.1` is ALSO live — build 59, approved from the 2026-09-11
+resubmission**, and **the Play app is PUBLISHED too** (2026-09-19 checks below).
+Evidence and what is genuinely still pending: the App Store section below.
+The "Play launch still gated on the upload-key reset (pending)" clause that stood
+here is deleted: the reset was approved 2026-07-22 09:29 UTC, as the Play Store
+section of this same file said all along. **A file can contradict itself and the
+stale half still reads as current** — when two lines here disagree, the one with a
+date and an evidence source wins. Referral system BUILT (4-tier discount model, Supabase server-side codes,
 API-hardened PR #1334 — dedup + rate-limited RPCs, see tracking section below;
 further API-hardened 2026-07-28 by the internal-audit wave: H-1..H-3 identity/access,
 M-6..M-8 rate-limit + idempotency, L-8..L-10 dedup + IP dimension, see the 07-28
@@ -580,17 +585,34 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
   Store submission still to do" for six weeks after it shipped.** Two independent
   sources, one of which needs none of our credentials:
   - ASC API (app `6790188660`): `1.0` → `appStoreState: READY_FOR_SALE`;
-    `1.0.1` → `READY_FOR_REVIEW`, created 2026-07-30, staged and never submitted
-    (consistent with the 1.0.1 hold, which remains in force).
+    `1.0.1` → **`READY_FOR_SALE`, live, build 59** (re-read 2026-09-19). This line
+    read "`READY_FOR_REVIEW`, created 2026-07-30, staged and never submitted
+    (consistent with the 1.0.1 hold, which remains in force)" until then. The hold
+    was lifted, 1.0.1 was submitted 2026-09-08, rejected twice, resubmitted
+    2026-09-11 (submission `3ca728bd`) and APPROVED. Builds 60 and 61 exist in the
+    repo only and were never attached to a store version.
   - Public iTunes lookup: `Veyrnox`, seller `Veyrnox LTD`, version `1.0`, released
     2026-07-28, free, min iOS 15.0 —
     https://apps.apple.com/us/app/veyrnox/id6790188660
-  **Apple and Play are OPPOSITES, and conflating them is the trap.** Play has never had
-  a declaration reviewed (app is `Draft`, all 10 App content declarations sit at
-  `Ready to send for review`, temporary name `com.veyrnox.app (unreviewed)` — see
-  `docs/Feature-Status.md` 2026-09-06 console-state note). Apple has a live public
-  product page. A finding about one store says nothing about the other; this correction
-  exists because a session inferred the Apple state from the Play state and was wrong.
+  **BOTH STORES ARE NOW LIVE — and the lesson under this heading survives its own
+  facts being inverted, which is why it is kept rather than deleted.** It read: *"Apple
+  and Play are OPPOSITES, and conflating them is the trap. Play has never had a
+  declaration reviewed (app is `Draft`, all 10 App content declarations sit at `Ready to
+  send for review`, temporary name `com.veyrnox.app (unreviewed)`). Apple has a live
+  public product page."* That was written because a session inferred the Apple state
+  from the Play state and was wrong. The two stores have since converged, so the same
+  inference would now happen to land — **do not read that as the rule being repealed.**
+  It was never "the stores disagree"; it is "a finding about one store is not evidence
+  about the other", and an inference that is accidentally right today is not a method.
+  Play evidence, 2026-09-19: `play.google.com/store/apps/details?id=com.veyrnox.app`
+  returns 200 in US and GB and renders "Updated on Sep 11, 2026", while a bogus package
+  id on the same host returns 404 — a `Draft` or closed-testing-only app has no public
+  listing at all. **That is a read of the PUBLIC PAGE, not of the Play Developer API**,
+  so it establishes that the app is published and nothing about which `versionCode` is
+  live in production. `versionCode 49` reached Closed testing (`alpha`) 2026-09-13,
+  which is a different track and is not evidence about production. Anyone with Play
+  Developer API access should re-derive the production code rather than trust this
+  paragraph.
 - **IAP: Safety Plus is APPROVED by Apple, not pending.** `safety_plus_annual` and
   `safety_plus_monthly_v2` are both `state: APPROVED`. The newer **AI Security
   Protection** group is NOT: `ai_security_protection_annual_2` and
@@ -696,11 +718,23 @@ history, not as a live block.**
 > after the build-5/6 Play rejection; do not attempt "just one more submit" reasoning.
 > Pre-submission verification below is the gate.
 
-**Release record (added 2026-09-09).** Both submissions were made on 2026-09-08:
-App Store 1.0.1 build 57, and Play versionCode 48 promoted from Internal to
-Closed testing — Alpha and sent for review with managed publishing ON. Full
-per-item state in `docs/RELEASE-v1.0.1-APPLE-SUBMISSION.md` and
+**Release record (added 2026-09-09; outcome appended 2026-09-19).** Both submissions
+were made on 2026-09-08: App Store 1.0.1 build 57, and Play versionCode 48 promoted
+from Internal to Closed testing — Alpha and sent for review with managed publishing ON.
+Full per-item state in `docs/RELEASE-v1.0.1-APPLE-SUBMISSION.md` and
 `docs/RELEASE-v1.0.1-PLAY-SUBMISSION.md`.
+
+**BOTH SHIPPED. The record stopped at "submitted" for eleven days.** Apple: build 57
+was rejected twice on 2026-09-08, then build 59 was submitted 2026-09-11 and approved —
+1.0.1 is `READY_FOR_SALE`. Play: the public listing exists and reads "Updated on
+Sep 11, 2026". Neither of those outcomes was written down here until 2026-09-19, and in
+the meantime this file, `docs/RELEASE-v1.0.1-APPLE-SUBMISSION.md` (header still reads
+"REJECTED TWICE, REPLIED … awaiting Apple's response") and `src/lib/featureCatalogue.js`
+all described a pre-release app to every session that read them. The catalogue was
+corrected in PR #2622; the Apple submission doc has NOT been and is still stale.
+**"Submitted" is a state with an outcome, and nothing in this repo goes back to
+collect it.** A submission record needs its result written into it, in the session that
+learns the result — the same rule the 1.0.1 hold above already states for holds.
 
 - **Apple — all three checks met.** The mandatory `.ipa` byte-check ran against
   the exported `Payload/App.app/public/assets/index-*.js` and returned no matches
@@ -721,6 +755,11 @@ per-item state in `docs/RELEASE-v1.0.1-APPLE-SUBMISSION.md` and
   pre-publish.** Vitals only fills from Production/Open/Closed-testing installs
   whose testers share usage and diagnostics; on a `Draft` app the check is
   vacuous, not merely unmet. It becomes meaningful only after Publish.
+  **The waiver's precondition has now expired (2026-09-19).** The app is published,
+  so Vitals can fill and the gate is obtainable — it is simply UNREAD, which is a
+  different and weaker position than "structurally unobtainable". Do not carry the
+  waiver forward to the 1.0.2 submission on the old reasoning; read Vitals, or waive
+  it again for a stated new reason.
 - **Play gate 3 (the Robo substitute) was WAIVED 2026-09-10 as accepted
   residual (owner decision).** Four sequential fix attempts landed on `main`
   between 2026-09-09 and 2026-09-10 — #2484 (DEVICE_NOT_SECURE actionable copy),
@@ -822,7 +861,10 @@ neither had been run against build 5 (Play Pre-launch report showed
     carries the temporary name `com.veyrnox.app (unreviewed)`, and the Overview
     copy suggests uploading to the **closed** testing track. Do not act on either
     as fact — the owner has stated Internal testing is the intended track. See
-    #1960.
+    #1960. **Both candidates are probably dead as of 2026-09-19: the app has
+    published, so it has been through review and the `(unreviewed)` name cannot
+    still apply.** Not re-checked in the console — flagged as likely stale rather
+    than corrected, because nobody has looked.
 - **iOS (mandatory — no equivalent auto-tool):** upload to TestFlight, install on at
   least one **physical iPhone that is NOT the dev machine's paired device** (a stock
   iPhone with no dev certs / no Xcode-installed KEK state), and walk the full
