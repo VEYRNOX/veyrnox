@@ -31,7 +31,7 @@
       "limit": 4000
     },
     "whatsNew": {
-      "value": "Prvo izdanje.",
+      "value": "Zaštita od krađe (opcionalno)\nDodatna biometrijska provjera pri otključavanju i ponovno pri slanju koje prelazi vaše ograničenje potrošnje. Na iPhoneu je to izričito Face ID. Na Androidu bilo koja jaka biometrija: Android ne nudi način da se zahtijeva samo lice, pa ne tvrdimo da ga ima.\n\nPopravci privatnosti\nLažne i skrivene sesije više ne čitaju niti mijenjaju podatke iza analitike, proračuna, ponavljajućih plaćanja, ciljeva štednje i računa. Panično brisanje sada uklanja dvije oznake koje je prije propuštalo.\n\nPreporuke koje preživljavaju instalaciju\nDodirnite pozivnicu prije instalacije i kod će se ipak primijeniti poslije.\n\nJednostavnije za upotrebu\nVeće dodirne površine, čitljiva najmanja veličina teksta, jasniji prazni zasloni i redak na zaslonu slanja koji izravno kaže da se prijenos ne može poništiti.\n\nTakođer: popravci zaslona pretplate i sigurnosna provjera našeg poslužiteljskog koda.",
       "limit": 4000
     },
     "supportUrl": {

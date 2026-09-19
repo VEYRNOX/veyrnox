@@ -31,7 +31,7 @@
       "limit": 4000
     },
     "whatsNew": {
-      "value": "İlk sürüm.",
+      "value": "Hırsızlık Koruması (isteğe bağlı)\nKilidi açarken ek bir biyometrik doğrulama ve harcama sınırınızı aşan gönderimlerde bir kez daha. iPhone'da bu özellikle Face ID'dir. Android'de güçlü biyometrilerin herhangi biri: Android yalnızca yüzü zorunlu kılmanın bir yolunu sunmadığı için böyle bir iddiada bulunmuyoruz.\n\nGizlilik düzeltmeleri\nYem ve gizli oturumlar artık analizler, bütçeler, yinelenen ödemeler, birikim hedefleri ve faturaların arkasındaki verileri okumuyor ve değiştirmiyor. Acil silme artık daha önce atladığı iki işareti de temizliyor.\n\nKurulumdan sonra da geçerli kalan davet bağlantıları\nKurulumdan önce bir davet bağlantısına dokunun; kod sonrasında yine de uygulanır.\n\nDaha kolay kullanım\nDaha büyük dokunma alanları, okunabilir en küçük metin boyutu, daha anlaşılır boş ekranlar ve gönderim ekranında transferin geri alınamayacağını açıkça belirten bir satır.\n\nAyrıca: abonelik ekranı düzeltmeleri ve sunucu tarafı kodumuz üzerinde bir güvenlik incelemesi.",
       "limit": 4000
     },
     "supportUrl": {

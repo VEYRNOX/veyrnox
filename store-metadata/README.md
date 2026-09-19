@@ -16,12 +16,26 @@ in `src/i18n/SUPPORTED_LANGUAGES`.
 
 ## Reviewed vs unreviewed
 
-| Reviewed (`reviewed: true`) | 5 |
-| Unreviewed (`reviewed: false`) | 38 |
+| Reviewed (`reviewed: true`) | 1 |
+| Unreviewed (`reviewed: false`) | 43 |
 
-The 5 reviewed languages are `en`, `pt-BR`, `es-419`, `es`, `fr`, `it` — the
-same set whose in-app `security.json` was native-reviewer-approved in PR #1507.
-The reviewed flag doesn't change what gets uploaded, but the upload script
+**This was 6 reviewed / 38 unreviewed until 2026-09-19** (the table said 5 while
+listing 6 languages — that count was wrong before this edit, not changed by it).
+The reviewed set was `en`, `pt-BR`, `es-419`, `es`, `fr`, `it` — the same set
+whose in-app `security.json` was native-reviewer-approved in PR #1507.
+
+`apple.whatsNew` was rewritten for the 1.0.2 release and machine-translated into
+all 43 siblings, so the five non-English reviewed locales now contain one string
+no native reviewer has seen. `reviewed` is **file-level** and `--require-reviewed`
+gates on it, so leaving those five at `true` would have uploaded unvetted copy
+under a reviewed banner. They were flipped to `false`. Each one's `notes` records
+that its other four Apple fields are unchanged and still vouched for, so a
+re-review only has to look at `whatsNew`.
+
+`en` stays `true`: it is the source every sibling is translated from, so there is
+no translation fidelity to vouch for.
+
+The flag doesn't change what gets uploaded by default, but the upload script
 supports `--require-reviewed` if you want to gate strictly.
 
 ## Uploading

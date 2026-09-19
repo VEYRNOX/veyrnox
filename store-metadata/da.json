@@ -31,7 +31,7 @@
       "limit": 4000
     },
     "whatsNew": {
-      "value": "Første udgivelse.",
+      "value": "Tyverisikring (valgfri)\nEt ekstra biometrisk tjek, når du låser op, og igen ved en overførsel, der overskrider din forbrugsgrænse. På iPhone er det specifikt Face ID. På Android er det enhver stærk biometri: Android giver ingen mulighed for at kræve ansigt alene, så det påstår vi ikke.\n\nRettelser af privatliv\nLokke- og skjulte sessioner læser eller ændrer ikke længere data bag analyser, budgetter, faste betalinger, opsparingsmål og fakturaer. Panikrydning fjerner nu to markører, den tidligere overså.\n\nHenvisningslinks, der overlever en installation\nTryk på et invitationslink før installation, og koden anvendes stadig bagefter.\n\nNemmere at bruge\nStørre trykflader, en læsbar minimumstekststørrelse, tydeligere tomme skærme og en linje på sendeskærmen, der klart siger, at en overførsel ikke kan fortrydes.\n\nDesuden: rettelser på abonnementsskærmen og et sikkerhedsgennemsyn af vores serverkode.",
       "limit": 4000
     },
     "supportUrl": {
