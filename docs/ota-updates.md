@@ -15,9 +15,69 @@ Both were proven end to end against a real 1066-file bundle: each token's
 signature verified under its own pinned key and under no other. That is tooling
 evidence, not device evidence.
 
-OTA stays **inert on every install already out there**. It only becomes live for
-installs from a store release built with these keys, and nothing has been
-published to `updates.veyrnox.com`.
+## DISARMED for 1.0.2 (2026-09-19, owner decision)
+
+**Both pinned key lists are empty**, which disables OTA completely (I4). The keys
+are preserved as `OTA_PINNED_KEY` comments beside the empty lists on both
+platforms, so re-arming is an uncomment, not a dig through git history.
+
+**Why, and this corrects a mistaken assumption that nearly shipped.** With the
+keys pinned by #2612, OTA was *armed* for 1.0.2 rather than inert:
+`enabled = !publicKeys.isEmpty && embedded() != nil`, and `otaManifestPlugin()`
+in `vite.config.js` means **every** `vite build` writes `dist/ota-manifest.json`,
+which `cap sync` copies into both platforms. So the first 1.0.2 launch on every
+device would have fetched `updates.veyrnox.com/<channel>/latest.json`.
+
+**An empty bucket is not a mitigation.** The fetch happens whether or not
+anything is published, so "nothing published" addresses code execution and says
+nothing about the new egress.
+
+The two prerequisites this document states below — owner sign-off against I3's
+"zero backend calls" wording, and a privacy-policy disclosure of the cold-start
+update check — were stated as conditions **before a key is provisioned**. Keys
+were provisioned 2026-09-18 with neither met. Disarming restores the gate rather
+than backfilling a justification for having passed it.
+
+### Before re-arming
+
+1. **Rule on I3**, in writing, in `CLAUDE.md` next to the invariant. The open
+   question is below.
+2. **Disclose the update check** in the in-app privacy text and on
+   veyrnox.com/privacy. Neither currently mentions it: `updates.veyrnox.com`,
+   "update check" and "over-the-air" have zero hits across `src/pages`,
+   `src/components` and `src/i18n`.
+3. Delete the disarm pins in `src/lib/__tests__/ota-manifest.test.js` and restore
+   parity on the live lists. They are a tripwire; do not weaken them to go green.
+
+### The open I3 question
+
+I3 reads "deniability mode makes zero backend calls". The OTA check runs once
+per cold start, **before unlock**, and is byte-identical in real, decoy and demo
+sessions.
+
+- **Against a violation:** the call precedes session selection and cannot differ
+  by session, so it leaks nothing about which session is open. The coercion
+  property I3 exists to protect is intact.
+- **For a violation:** the wording is absolute, and an absolute is load-bearing
+  precisely because it is cheap to check. Once it reads "zero backend calls
+  except the ones we decided were fine", it stops being greppable and starts
+  rotting.
+- **Separately, and not covered by either reading: I2.** The check shows the
+  updates host every install's IP and launch cadence. I2 ("no silent data
+  egress") has no session-type carve-out, so this needs disclosure regardless of
+  how I3 is ruled — which is why prerequisite 2 above is not contingent on
+  prerequisite 1.
+
+A ruling should probably restate I3 as what it actually protects (no egress that
+differs by session type, and none after a session is chosen) with this
+pre-unlock check named as the single explicit exception — rather than either
+declaring no conflict or leaving an absolute that the code contradicts.
+
+---
+
+OTA stays **inert on every install already out there**, and now on 1.0.2 as
+well. It only becomes live for installs from a store release built with a
+non-empty key list, and nothing has been published to `updates.veyrnox.com`.
 
 Ships fixes to the web bundle (`dist/`) without a store submission. Native code
 (Swift, Kotlin, Capacitor plugins) still ships only through the stores.

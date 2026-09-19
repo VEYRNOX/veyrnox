@@ -126,13 +126,29 @@ Those files have not been amended; treat this section as the current reading.
   A `39744850` and B `39744871`, both proved end to end against a real
   1066-file bundle.
 
-**This is the material change for 1.0.2 and it deserves stating plainly:** the
-pinned key list is non-empty on both platforms (`OtaConfig.PUBLIC_KEYS_SPKI_B64`,
-`VeyrnoxOta.publicKeysSpkiB64`), so **1.0.2 is the first store build in which
-OTA is capable of applying an update**. On 1.0.1 and every install already in the
-field the list was empty and OTA was inert. Every prior release could only change
-by store review; this one can change without it. Runbook and residual risks:
-`docs/ota-updates.md`. **Not device-verified.**
+**OTA is DISARMED for 1.0.2 (owner decision, 2026-09-19).** Both pinned key
+lists are empty, which disables OTA completely (I4); the keys are preserved as
+`OTA_PINNED_KEY` comments so re-arming is an uncomment.
+
+This paragraph previously read that 1.0.2 was "the first store build in which OTA
+is capable of applying an update" — which was **true and is why it was disarmed**.
+With the keys pinned by #2612, `enabled = !publicKeys.isEmpty && embedded() != nil`
+was satisfied, because `otaManifestPlugin()` in `vite.config.js` makes every
+`vite build` write `dist/ota-manifest.json` into both platforms' payloads. So the
+first 1.0.2 launch on every device would have fetched
+`updates.veyrnox.com/<channel>/latest.json`, and **an empty bucket is not a
+mitigation for that** — the fetch happens regardless of what is published.
+
+`docs/ota-updates.md` gates arming on two prerequisites, both stated as
+conditions *before a key is provisioned*: owner sign-off against I3's "zero
+backend calls" wording, and a privacy-policy disclosure of the cold-start update
+check. Keys were provisioned 2026-09-18 with neither met, and neither the in-app
+privacy text nor veyrnox.com mentions the check. Disarming restores the gate
+rather than backfilling a justification for having passed it.
+
+Everything else about OTA stands and stays in the tree — signing, hashing,
+rollback, the `serverBasePath` fix. It is simply off. Runbook, residual risks and
+the open I3 question: `docs/ota-updates.md`. **Not device-verified.**
 
 ### Referrals
 
@@ -224,10 +240,13 @@ one.
 5. **Create the ASC 1.0.2 version record.** None exists. The current draft
    submission `2af87adc` errors `STATE_NOT_SUITABLE_TO_SUBMIT` because it is
    attached to the live 1.0.1.
-6. **OTA decision.** 1.0.2 is the first build where OTA can apply an update.
-   Decide deliberately whether it ships armed, and whether Apple and Google need
-   telling — both stores have rules about downloading executable code. This is
-   an owner decision, not a build detail.
+6. **OTA decision — MADE 2026-09-19: ships disarmed.** See the OTA section
+   above. Store notification was also ruled unnecessary by the owner, which
+   matches the policy position the runbook already records: Apple permits
+   downloaded interpreted code for bug and security fixes (Guideline 2.5.2 /
+   DPLA 3.3.1(B)) and Play permits JS that runs in a WebView, so neither store
+   requires a declaration. Re-arming is gated on the two prerequisites in
+   `docs/ota-updates.md`.
 7. **Translate `apple.whatsNew`** into the 44 sibling locales, or accept an
    English-only "What's New" with the rest reading "Initial release."
 8. **Amend the remaining stale records.** `src/lib/featureCatalogue.js` was
