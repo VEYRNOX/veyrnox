@@ -11,24 +11,47 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 import EmptyState from "@/components/EmptyState";
+import { useWallet } from "@/lib/WalletProvider";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
 
+
+// K-2 / I3 (#2537): same two-chokepoint shape as SavingsGoals / Dashboard —
+// gate every read of the SHARED veyrnox-appdata store and refuse every mutation
+// before it lands.
+const denyInDeniable = () => {
+  throw Object.assign(new Error("Not available in this session"), { code: "DENIABILITY_BLOCKED" });
+};
 
 export default function WatchWallets() {
+  // K-2 / I3 (#2537): this entity lives in the SHARED veyrnox-appdata IndexedDB
+  // with no per-session partition, so ungated a decoy/hidden/demo session reads
+  // and writes the REAL user's rows. isDecoy/isHidden are React state and lag
+  // the module-level flag, so fold in the canonical predicate too. Fail closed.
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(null);
   const [form, setForm] = useState({ name: "", address: "", network: "Ethereum", currency: "ETH", note: "", is_watch_only: true });
 
-  const { data: wallets = [], isError } = useQuery({ queryKey: ["watch-wallets"], queryFn: () => base44.entities.Wallet.filter({ is_watch_only: true }) });
+  const { data: walletsRaw = [], isError } = useQuery({ queryKey: ["watch-wallets"], queryFn: () => base44.entities.Wallet.filter({ is_watch_only: true }), enabled: !deniable });
+  const wallets = deniable ? [] : walletsRaw;
   const displayed = wallets;
 
   const create = useMutation({
-    mutationFn: (/** @type {any} */ d) => base44.entities.Wallet.create({ ...d, balance: 0, is_watch_only: true }),
+    mutationFn: (/** @type {any} */ d) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.Wallet.create({ ...d, balance: 0, is_watch_only: true });
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["watch-wallets"] }); setOpen(false); setForm({ name: "", address: "", network: "Ethereum", currency: "ETH", note: "", is_watch_only: true }); },
   });
 
   const remove = useMutation({
-    mutationFn: (/** @type {any} */ id) => base44.entities.Wallet.delete(id),
+    mutationFn: (/** @type {any} */ id) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.Wallet.delete(id);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["watch-wallets"] }),
   });
 

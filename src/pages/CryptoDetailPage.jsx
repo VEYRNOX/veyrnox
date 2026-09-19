@@ -27,6 +27,8 @@ import { evaluateSuspiciousToken } from "@/lib/suspiciousAssets";
 import { getAsset, getAssetById, canSend } from "@/wallet-core/assets.js";
 import { formatAssetId } from "@/wallet-core/assetId.js";
 import { assetDisplaySymbol, assetChainLabel } from "@/lib/assetLabel";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
 
 export default function CryptoDetailPage() {
   const { t } = useTranslation("wallet");
@@ -44,14 +46,20 @@ export default function CryptoDetailPage() {
   const buyEnabled = useBuyEnabled();
   const [period, setPeriod] = useState("1D");
   const [spamOverrides, setSpamOverrides] = useState(() => readSpamTokenOverrides());
-  const { isUnlocked, wallets, walletAddresses, activeWalletId } = useWallet();
+  const { isUnlocked, wallets, walletAddresses, activeWalletId, isDecoy, isHidden } = useWallet();
+  // K-2 / I3 (#2537): WalletToken rows live in the SHARED veyrnox-appdata store
+  // with no per-session partition — ungated, a decoy session lists the REAL
+  // user's token holdings. `enabled: isUnlocked` did not cover this: a decoy
+  // session IS unlocked.
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
   const { changeFor } = useBasketPrices();
   const { data: portfolio } = usePortfolio(wallets, walletAddresses);
-  const { data: tokenRows = [] } = useQuery({
+  const { data: tokenRowsRaw = [] } = useQuery({
     queryKey: ["wallet-tokens"],
     queryFn: () => base44.entities.WalletToken.list(),
-    enabled: isUnlocked,
+    enabled: isUnlocked && !deniable,
   });
+  const tokenRows = deniable ? [] : tokenRowsRaw;
 
   const asset = TOP_CRYPTOS.find((c) => c.symbol === symbol);
   const assetSpamIntel = useMemo(
