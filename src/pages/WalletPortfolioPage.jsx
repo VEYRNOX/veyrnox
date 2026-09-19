@@ -290,7 +290,7 @@ export function AddWalletDialog({ onClose }) {
               </div>
               <div>
                 <Label>{t("portfolio.addWallet.assetsToShowLabel")}</Label>
-                <p className="text-[11px] text-muted-foreground mb-1.5">{t("portfolio.addWallet.assetsToShowHint")}</p>
+                <p className="text-xs text-muted-foreground mb-1.5">{t("portfolio.addWallet.assetsToShowHint")}</p>
                 <AssetPicker selected={assets} onToggle={toggleAsset} />
               </div>
               <div>
@@ -453,7 +453,7 @@ function ManagePortfoliosDialog({ portfolios, onClose }) {
                 <Input aria-label="Portfolio name" className="h-8" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus
                   onKeyDown={(e) => { if (e.key === "Enter" && editName.trim()) { renamePortfolio(p.id, editName.trim()); setEditId(null); } }} />
               ) : (
-                <span className="text-sm flex-1">{p.name}{p.id === MAIN_PORTFOLIO_ID && <span className="text-[10px] text-muted-foreground ms-1">{t("portfolio.managePortfolios.defaultTag")}</span>}</span>
+                <span className="text-sm flex-1">{p.name}{p.id === MAIN_PORTFOLIO_ID && <span className="text-xs text-muted-foreground ms-1">{t("portfolio.managePortfolios.defaultTag")}</span>}</span>
               )}
               {editId === p.id ? (
                 <button className="p-1 text-primary" aria-label={t("portfolio.managePortfolios.saveAriaLabel")} onClick={() => { if (editName.trim()) renamePortfolio(p.id, editName.trim()); setEditId(null); }}><Check className="h-4 w-4" /></button>
@@ -557,7 +557,7 @@ function ActivityTabContent({ wallet }) {
                 <p className="text-sm font-medium capitalize">{tx.type}</p>
                 <StatusIcon className={`h-3 w-3 ${statusCls}`} />
               </div>
-              <p className="text-[11px] text-muted-foreground truncate font-mono">
+              <p className="text-xs text-muted-foreground truncate font-mono">
                 {tx.type === "send" ? tx.to : tx.from}
               </p>
             </div>
@@ -566,7 +566,7 @@ function ActivityTabContent({ wallet }) {
                 <p className={`text-sm font-semibold ${isSend ? "text-destructive" : "text-primary"}`}>
                   {isSend ? "-" : "+"}{tx.amount} {tx.currency}
                 </p>
-                <p className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(tx.time * 1000), { addSuffix: true })}</p>
+                <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(tx.time * 1000), { addSuffix: true })}</p>
               </div>
               {tx.hash && (
                 <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground">
@@ -805,10 +805,10 @@ export default function WalletPortfolioPage() {
             <div className="flex items-center gap-1.5">
               {isActive && <Star className="h-3 w-3 text-primary fill-primary shrink-0" />}
               <p className="text-sm font-semibold truncate">{w.name}</p>
-              {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary">{t("portfolio.walletCard.active")}</span>}
+              {isActive && <span className="text-xs px-1.5 py-0.5 rounded bg-primary/15 text-primary">{t("portfolio.walletCard.active")}</span>}
               {w.backedUp
-                ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-success/15 text-success">{t("portfolio.walletCard.backedUp")}</span>
-                : <span className="text-[10px] px-1.5 py-0.5 rounded bg-caution/15 text-caution">{t("portfolio.walletCard.backUp")}</span>}
+                ? <span className="text-xs px-1.5 py-0.5 rounded bg-success/15 text-success">{t("portfolio.walletCard.backedUp")}</span>
+                : <span className="text-xs px-1.5 py-0.5 rounded bg-caution/15 text-caution">{t("portfolio.walletCard.backUp")}</span>}
             </div>
             <p className="text-xs text-muted-foreground">
               {fmtFiat(data.total)}
@@ -870,12 +870,12 @@ export default function WalletPortfolioPage() {
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold">{displaySymbol}{chainLabel ? ` (${chainLabel})` : ""}</p>
                     {a?.status === "receive_only" && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-caution/15 text-caution" title="No on-chain send has been verified for this asset yet">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-caution/15 text-caution" title="No on-chain send has been verified for this asset yet">
                         Receive only
                       </span>
                     )}
                     {suspiciousCount > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-caution/15 text-caution">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-caution/15 text-caution">
                         {suspiciousCount} suspicious token{suspiciousCount > 1 ? 's' : ''}
                       </span>
                     )}
@@ -919,7 +919,7 @@ export default function WalletPortfolioPage() {
                     )}
                   </p>
                   {/* indeterminate read → "—", not a misleading $0.00 */}
-                  <p className="text-[10px] text-muted-foreground">{row.indeterminate ? "—" : fmtFiat(row.usd)}</p>
+                  <p className="text-xs text-muted-foreground">{row.indeterminate ? "—" : fmtFiat(row.usd)}</p>
                 </div>
               </button>
             );
@@ -971,14 +971,14 @@ export default function WalletPortfolioPage() {
             <button
               type="button"
               onClick={() => refetchPrices?.()}
-              className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
               title={t("portfolio.refreshPricesTooltip")}
             >
               <RefreshCw className="h-3 w-3" />
               {t("portfolio.live")}{pricesUpdatedAt ? " · " + fmtPriceTime(pricesUpdatedAt) : ""}
             </button>
           ) : (
-            <span className="text-[10px] text-muted-foreground">{t("portfolio.approximate")}</span>
+            <span className="text-xs text-muted-foreground">{t("portfolio.approximate")}</span>
           )}
         </div>
         <ReferenceRateNote />
@@ -1033,7 +1033,7 @@ export default function WalletPortfolioPage() {
           <div className="flex flex-wrap gap-1.5">
             {unbacked.map((w) => (
               <button key={w.id} onClick={() => revealWithReauth(w.id)}
-                className="text-[11px] px-2 py-1 rounded-md bg-caution/20 text-caution hover:bg-caution/30">
+                className="text-xs px-2 py-1 rounded-md bg-caution/20 text-caution hover:bg-caution/30">
                 {t("portfolio.unbacked.backUpButton", { name: w.name })}
               </button>
             ))}
@@ -1052,7 +1052,7 @@ export default function WalletPortfolioPage() {
         <Button variant="secondary" className="flex-col h-16 gap-1" disabled={!canManage} onClick={() => setAddOpen(true)}><Plus className="h-5 w-5" /><span className="text-xs">{t("portfolio.actions.addWallet")}</span></Button>
       </div>
       {activeWallet && (
-        <p className="text-[11px] text-center text-muted-foreground">
+        <p className="text-xs text-center text-muted-foreground">
           {t("portfolio.activeWalletHint.prefix")} <b>{activeWallet.name}</b>{!activeInThisPortfolio ? t("portfolio.activeWalletHint.otherPortfolio") : ""}{t("portfolio.activeWalletHint.suffix")}
         </p>
       )}

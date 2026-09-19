@@ -106,7 +106,7 @@ function DecoyBalance({ address, refreshKey }) {
   return (
     <span className="text-sm font-semibold">
       {eth.toLocaleString(undefined, { maximumFractionDigits: 6 })} {NET?.symbol || "ETH"}
-      <span className="ms-1 text-[10px] font-normal text-muted-foreground">
+      <span className="ms-1 text-xs font-normal text-muted-foreground">
         {state.source === "chain" ? t("duress.balance_source_live") : t("duress.balance_source_demo")}
       </span>
     </span>
@@ -403,7 +403,7 @@ export default function DuressPin() {
         <p className="text-xs text-muted-foreground">
           {t("duress.fund_body")}
         </p>
-        <ul className="text-[11px] text-muted-foreground list-disc ps-4 space-y-0.5">
+        <ul className="text-xs text-muted-foreground list-disc ps-4 space-y-0.5">
           {t("duress.fund_notes", { returnObjects: true }).map((n, i) => (
             <li key={i}>{n}</li>
           ))}
@@ -567,7 +567,7 @@ export default function DuressPin() {
                     </button>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {t("duress.faucet_hint", { symbol: NET?.symbol || "ETH" })}
                 </p>
               </div>
@@ -663,7 +663,7 @@ export default function DuressPin() {
                 {/* DEMO ORACLE — proves the decoy never shows the real address.
                     Real apps never reveal this; shown here only to teach. */}
                 {realAddr && (
-                  <p className="text-[11px] text-muted-foreground/70 border-t border-border pt-2 mt-2">
+                  <p className="text-xs text-muted-foreground/70 border-t border-border pt-2 mt-2">
                     {t("duress.demo_oracle_prefix", { addr: short(realAddr, t("duress.address_dash")) })}{" "}
                     {isDecoy && currentAddr !== realAddr ? t("duress.demo_oracle_hidden") : ""}
                   </p>

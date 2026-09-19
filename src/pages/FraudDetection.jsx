@@ -333,12 +333,12 @@ export default function FraudDetection() {
                 <Icon className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                 <div>
                   <p className="text-xs font-medium">{c.label}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {c.desc}
                   </p>
                   {count !== null && (
                     <p
-                      className={`text-[10px] font-semibold mt-1 ${
+                      className={`text-xs font-semibold mt-1 ${
                         count > 0 ? "text-destructive" : "text-success"
                       }`}
                     >
@@ -438,13 +438,13 @@ export default function FraudDetection() {
                         <p className="text-sm font-semibold">
                           {TYPE_LABELS[f.type] || f.type?.replace(/_/g, " ")}
                         </p>
-                        <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border">
+                        <span className="text-xs font-bold uppercase px-1.5 py-0.5 rounded border">
                           {cfg.label}
                         </span>
                       </div>
                       <p className="text-xs mt-0.5 opacity-80">{f.detail}</p>
                       {f.tx && (
-                        <p className="text-[10px] mt-1 opacity-60">
+                        <p className="text-xs mt-1 opacity-60">
                           {new Date(f.tx.created_date).toLocaleString(undefined)}{" "}
                           · {f.tx.currency}
                         </p>
@@ -453,7 +453,7 @@ export default function FraudDetection() {
                   </div>
                   <button
                     onClick={() => setDismissed((d) => [...d, f.id])}
-                    className="text-[10px] opacity-60 hover:opacity-100 transition-opacity shrink-0"
+                    className="text-xs opacity-60 hover:opacity-100 transition-opacity shrink-0"
                   >
                     Dismiss
                   </button>
@@ -483,14 +483,14 @@ export default function FraudDetection() {
                       <p className="text-sm font-semibold">
                         {TYPE_LABELS[a.type] || a.type?.replace(/_/g, " ")}
                       </p>
-                      <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border">
+                      <span className="text-xs font-bold uppercase px-1.5 py-0.5 rounded border">
                         {cfg.label}
                       </span>
-                      <span className="text-[10px] opacity-50">saved</span>
+                      <span className="text-xs opacity-50">saved</span>
                     </div>
                     <p className="text-xs mt-0.5 opacity-80">{a.detail}</p>
                     {a.storedAt && (
-                      <p className="text-[10px] mt-1 opacity-60">
+                      <p className="text-xs mt-1 opacity-60">
                         {new Date(a.storedAt).toLocaleString(undefined)}
                       </p>
                     )}

@@ -137,7 +137,7 @@ export default function SessionSettings() {
                 </p>
               </div>
               {s.current && (
-                <span className="text-[10px] font-semibold text-success shrink-0">{t('settings.session.this_device')}</span>
+                <span className="text-xs font-semibold text-success shrink-0">{t('settings.session.this_device')}</span>
               )}
             </div>
           ))}

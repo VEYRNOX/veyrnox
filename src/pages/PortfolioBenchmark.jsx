@@ -84,7 +84,7 @@ export default function PortfolioBenchmark() {
               {returnUp ? "+" : ""}{portfolioReturn.toFixed(1)}%
             </p>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1 break-words">All-time return</p>
+          <p className="text-xs text-muted-foreground mt-1 break-words">All-time return</p>
         </div>
 
         <div className="p-4 rounded-xl border border-border bg-card min-w-0">
@@ -92,7 +92,7 @@ export default function PortfolioBenchmark() {
           <p className="text-xl font-bold break-words">
             ${Math.abs(netInvested).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>
-          <p className="text-[10px] text-muted-foreground mt-1 break-words">Received minus sent</p>
+          <p className="text-xs text-muted-foreground mt-1 break-words">Received minus sent</p>
         </div>
 
         <div className="p-4 rounded-xl border border-border bg-card min-w-0">
@@ -100,7 +100,7 @@ export default function PortfolioBenchmark() {
           <p className="text-xl font-bold break-words">
             ${currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>
-          <p className="text-[10px] text-muted-foreground mt-1 break-words">Portfolio total</p>
+          <p className="text-xs text-muted-foreground mt-1 break-words">Portfolio total</p>
         </div>
       </div>
       <ReferenceRateNote />

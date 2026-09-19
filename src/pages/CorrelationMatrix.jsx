@@ -75,7 +75,7 @@ export default function CorrelationMatrix() {
           <p className="text-xs text-muted-foreground">Correlation ranges from -1 (opposite) to +1 (identical). Aim for assets with correlation below 0.5.</p>
         </div>
         <div className="flex items-start gap-2 mb-3 p-2 rounded-lg bg-caution/10 border border-caution/20">
-          <p className="text-[10px] text-caution">These coefficients are reference/illustrative values — not live market data. Real correlations shift over time with market regimes. Do not use these figures for financial decisions.</p>
+          <p className="text-xs text-caution">These coefficients are reference/illustrative values — not live market data. Real correlations shift over time with market regimes. Do not use these figures for financial decisions.</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
@@ -129,7 +129,7 @@ export default function CorrelationMatrix() {
             { label: "Neutral (≈0)", cls: "bg-secondary text-muted-foreground" },
             { label: "Negative (< 0)", cls: "bg-success/50 text-white" },
           ].map(l => (
-            <div key={l.label} className={`text-[10px] px-2 py-1 rounded-md font-medium ${l.cls}`}>{l.label}</div>
+            <div key={l.label} className={`text-xs px-2 py-1 rounded-md font-medium ${l.cls}`}>{l.label}</div>
           ))}
         </div>
       </div>

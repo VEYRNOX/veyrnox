@@ -142,7 +142,7 @@ export default function SessionManager() {
                   <p className="text-xs text-muted-foreground">{s.geo_country || "Unknown Location"}</p>
                   {s.ip_address && <span className="text-xs font-mono text-muted-foreground">{s.ip_address}</span>}
                 </div>
-                <p className="text-[10px] text-muted-foreground">{new Date(s.created_date).toLocaleString(undefined)}</p>
+                <p className="text-xs text-muted-foreground">{new Date(s.created_date).toLocaleString(undefined)}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <CheckCircle2 className="h-4 w-4 text-success" />

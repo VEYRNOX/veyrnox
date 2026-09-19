@@ -79,7 +79,7 @@ export default function DAppSecurityAlerts() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <XCircle className="h-5 w-5 text-destructive shrink-0" />
                   <p className="font-bold text-sm font-mono break-all min-w-0">{result.domain}</p>
-                  <Badge variant="outline" className="text-destructive border-current text-[10px] shrink-0">On known-bad list</Badge>
+                  <Badge variant="outline" className="text-destructive border-current text-xs shrink-0">On known-bad list</Badge>
                 </div>
                 <p className="text-xs text-destructive">{result.reason}</p>
                 <Button variant="destructive" size="sm" className="w-full">Do Not Connect to This Site</Button>
@@ -89,7 +89,7 @@ export default function DAppSecurityAlerts() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <Info className="h-5 w-5 text-muted-foreground shrink-0" />
                   <p className="font-bold text-sm font-mono break-all min-w-0">{result.domain}</p>
-                  <Badge variant="outline" className="text-muted-foreground border-current text-[10px] shrink-0">Not on local list</Badge>
+                  <Badge variant="outline" className="text-muted-foreground border-current text-xs shrink-0">Not on local list</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Not flagged. This is <span className="font-medium">not</span> a safety verdict. Verify the URL, review permission requests.

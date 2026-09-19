@@ -159,13 +159,13 @@ export default function AdvancedAnalytics() {
           <div key={m.label} className={`p-3 rounded-xl border border-border ${m.bg} text-center`}>
             <m.icon className={`h-5 w-5 mx-auto mb-1 ${m.color}`} />
             <p className={`text-lg font-bold ${m.color}`}>{m.value}</p>
-            <p className="text-[10px] text-muted-foreground">{m.label}</p>
+            <p className="text-xs text-muted-foreground">{m.label}</p>
           </div>
         ))}
       </div>
       <div className="flex items-start gap-2 px-1">
         <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
-        <p className="text-[11px] text-muted-foreground">Portfolio Risk and Sharpe Ratio are illustrative reference figures, not live risk data. Diversification and Stable Ratio are calculated from your wallet.</p>
+        <p className="text-xs text-muted-foreground">Portfolio Risk and Sharpe Ratio are illustrative reference figures, not live risk data. Diversification and Stable Ratio are calculated from your wallet.</p>
       </div>
       <ReferenceRateNote />
 
@@ -219,7 +219,7 @@ export default function AdvancedAnalytics() {
         <TabsContent value="risk" className="mt-3 space-y-4">
           <div className="flex items-start gap-2 px-1">
             <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
-            <p className="text-[11px] text-muted-foreground">Volatility and Sharpe values are illustrative reference figures, not live risk data.</p>
+            <p className="text-xs text-muted-foreground">Volatility and Sharpe values are illustrative reference figures, not live risk data.</p>
           </div>
           <div className="p-4 rounded-xl border border-border bg-card">
             <p className="text-sm font-semibold mb-3">Risk / Return Profile</p>
@@ -240,14 +240,14 @@ export default function AdvancedAnalytics() {
                 <div className="w-16 text-sm font-semibold">{symbol}</div>
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground w-14">Volatility</span>
+                    <span className="text-xs text-muted-foreground w-14">Volatility</span>
                     <div className="flex-1 h-1.5 rounded-full bg-secondary"><div className="h-full rounded-full bg-destructive" style={{ width: `${Math.min((VOLATILITY[symbol] || DEFAULT_VOLATILITY) * 100, 100)}%` }} /></div>
-                    <span className="text-[10px] text-muted-foreground w-8">{((VOLATILITY[symbol] || DEFAULT_VOLATILITY) * 100).toFixed(0)}%</span>
+                    <span className="text-xs text-muted-foreground w-8">{((VOLATILITY[symbol] || DEFAULT_VOLATILITY) * 100).toFixed(0)}%</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground w-14">Sharpe</span>
+                    <span className="text-xs text-muted-foreground w-14">Sharpe</span>
                     <div className="flex-1 h-1.5 rounded-full bg-secondary"><div className="h-full rounded-full bg-success" style={{ width: `${Math.min((SHARPE[symbol] || DEFAULT_SHARPE) * 70, 100)}%` }} /></div>
-                    <span className="text-[10px] text-muted-foreground w-8">{SHARPE[symbol] || DEFAULT_SHARPE}</span>
+                    <span className="text-xs text-muted-foreground w-8">{SHARPE[symbol] || DEFAULT_SHARPE}</span>
                   </div>
                 </div>
               </div>
@@ -264,7 +264,7 @@ export default function AdvancedAnalytics() {
         <TabsContent value="correlation" className="mt-3 space-y-4">
           <div className="flex items-start gap-2 px-1">
             <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
-            <p className="text-[11px] text-muted-foreground">Correlation values are illustrative reference figures, not live risk data.</p>
+            <p className="text-xs text-muted-foreground">Correlation values are illustrative reference figures, not live risk data.</p>
           </div>
           <div className="p-4 rounded-xl border border-border bg-card">
             <p className="text-sm font-semibold mb-1">Asset Correlation Matrix</p>

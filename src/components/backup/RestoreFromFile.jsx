@@ -591,7 +591,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
           {backLabel}
         </button>
 
-        <p className="text-center text-[11px] font-semibold tracking-[0.2em] text-primary mono-value">
+        <p className="text-center text-xs font-semibold tracking-[0.2em] text-primary mono-value">
           RECOVERY BAY
         </p>
 

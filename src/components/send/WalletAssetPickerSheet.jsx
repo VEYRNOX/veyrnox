@@ -26,7 +26,7 @@ export default function WalletAssetPickerSheet({
         </SheetHeader>
         <div className="mt-4 space-y-4">
           <div>
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium mb-2">Wallet</p>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-2">Wallet</p>
             <div className="space-y-1.5">
               {wallets.map((w) => {
                 const active = w.id === selectedWalletId;
@@ -42,14 +42,14 @@ export default function WalletAssetPickerSheet({
                       <Wallet className="h-3.5 w-3.5 text-primary" />
                     </span>
                     <span className="flex-1 text-sm font-medium">{w.name}</span>
-                    {active && <span className="text-[10px] uppercase tracking-widest text-primary">Selected</span>}
+                    {active && <span className="text-xs uppercase tracking-widest text-primary">Selected</span>}
                   </button>
                 );
               })}
             </div>
           </div>
           <div>
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium mb-2">Asset</p>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-2">Asset</p>
             <div className="space-y-1.5">
               {enabledAssets.map((id) => {
                 const a = getAssetById(id);
@@ -74,7 +74,7 @@ export default function WalletAssetPickerSheet({
                   >
                     <CoinLogo symbol={sym} size={24} />
                     <span className="flex-1 text-sm font-medium">{disp}{chainLabel ? <span className="text-muted-foreground"> ({chainLabel})</span> : null}</span>
-                    {active && <span className="text-[10px] uppercase tracking-widest text-primary">Selected</span>}
+                    {active && <span className="text-xs uppercase tracking-widest text-primary">Selected</span>}
                   </button>
                 );
               })}

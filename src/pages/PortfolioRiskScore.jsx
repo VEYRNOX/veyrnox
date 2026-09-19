@@ -138,7 +138,7 @@ export default function PortfolioRiskScore() {
             <div key={d.subject} className="p-3 rounded-xl border border-border bg-card">
               <p className="text-xs text-muted-foreground">{d.subject}</p>
               <p className={`text-xl font-bold mt-0.5 ${r.color}`}>{d.score.toFixed(1)}</p>
-              <p className={`text-[10px] font-medium mt-0.5 ${r.color}`}>{r.label}</p>
+              <p className={`text-xs font-medium mt-0.5 ${r.color}`}>{r.label}</p>
             </div>
           );
         })}

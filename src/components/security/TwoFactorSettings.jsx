@@ -175,7 +175,7 @@ export default function TwoFactorSettings() {
           {t('settings.two_factor.intro')}
         </p>
         <div className="space-y-2">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t('settings.two_factor.actions_protects_label')}</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('settings.two_factor.actions_protects_label')}</p>
           {gatedActions.map(({ icon: Icon, label, desc }) => (
             <div key={label} className="flex items-start gap-2.5">
               <Icon className="h-4 w-4 text-primary shrink-0 mt-0.5" />
@@ -185,8 +185,8 @@ export default function TwoFactorSettings() {
           ))}
         </div>
         <div className="flex items-center gap-2 pt-1">
-          <span className="text-[11px] text-muted-foreground">{t('settings.two_factor.currently_enforcing')}</span>
-          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${activeMethod === 'none' ? 'bg-secondary text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
+          <span className="text-xs text-muted-foreground">{t('settings.two_factor.currently_enforcing')}</span>
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${activeMethod === 'none' ? 'bg-secondary text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
             {activeMethod === 'biometric' ? t('settings.two_factor.badge_biometric', { label: biometricLabel })
               : activeMethod === 'passkey' ? t('settings.two_factor.badge_passkey')
               : activeMethod === 'password' ? t('settings.two_factor.badge_password')
@@ -196,7 +196,7 @@ export default function TwoFactorSettings() {
       </div>
 
       {setupBlocked && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {t('settings.two_factor.setup_blocked')}
         </p>
       )}
@@ -209,7 +209,7 @@ export default function TwoFactorSettings() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">{t('settings.two_factor.method_a_title')} {actionPasswordConfigured && <span className="text-primary">· {t('settings.two_factor.on_suffix')}</span>}</p>
-            <p className="text-[11px] text-muted-foreground">{t('settings.two_factor.method_a_desc')}</p>
+            <p className="text-xs text-muted-foreground">{t('settings.two_factor.method_a_desc')}</p>
           </div>
         </div>
 
@@ -237,14 +237,14 @@ export default function TwoFactorSettings() {
               <PasswordInput id="ap-new" autoComplete="new-password" value={apNew}
                 onChange={e => setApNew(e.target.value)} placeholder={t('settings.two_factor.action_password_placeholder')} className="mt-1.5 mono-value" />
               <p className="text-xs text-muted-foreground mt-1">{t('settings.two_factor.action_password_hint')}</p>
-              {apTooShort && <p className="text-[11px] text-destructive mt-1">{t('settings.two_factor.too_short', { min: MIN_ACTION_PASSWORD_LENGTH })}</p>}
+              {apTooShort && <p className="text-xs text-destructive mt-1">{t('settings.two_factor.too_short', { min: MIN_ACTION_PASSWORD_LENGTH })}</p>}
             </div>
             <div>
               <Label htmlFor="ap-confirm">{t('settings.two_factor.confirm_label')}</Label>
               <PasswordInput id="ap-confirm" autoComplete="new-password" value={apConfirm}
                 onChange={e => setApConfirm(e.target.value)} placeholder={t('settings.two_factor.confirm_placeholder')} className="mt-1.5 mono-value" />
               <p className="text-xs text-muted-foreground mt-1">{t('settings.two_factor.confirm_hint')}</p>
-              {apMismatch && <p className="text-[11px] text-destructive mt-1">{t('settings.two_factor.mismatch')}</p>}
+              {apMismatch && <p className="text-xs text-destructive mt-1">{t('settings.two_factor.mismatch')}</p>}
             </div>
             <Button className="w-full gap-2" onClick={handleSetActionPassword} disabled={!apCanSave}>
               <KeyRound className="h-4 w-4" /> {actionPasswordConfigured ? t('settings.two_factor.save_change') : t('settings.two_factor.save_set')}
@@ -269,7 +269,7 @@ export default function TwoFactorSettings() {
             <p className="text-sm font-medium">
               {isNative ? t('settings.two_factor.method_b_title_native', { label: biometricLabel }) : t('settings.two_factor.method_b_title_web')} {(passkey2fa && factorReady) && <span className="text-primary">· {t('settings.two_factor.on_suffix')}</span>}
             </p>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {isNative
                 ? t('settings.two_factor.method_b_desc_native', { label: biometricLabel })
                 : t('settings.two_factor.method_b_desc_web')}
@@ -283,14 +283,14 @@ export default function TwoFactorSettings() {
           />
         </div>
         {isNative && bioAvailable && (
-          <p className="text-[11px] text-muted-foreground">{t('settings.two_factor.confirm_native', { label: biometricLabel })}</p>
+          <p className="text-xs text-muted-foreground">{t('settings.two_factor.confirm_native', { label: biometricLabel })}</p>
         )}
         {isNative && !bioAvailable && (
-          <p className="text-[11px] text-muted-foreground">{t('settings.two_factor.unavailable_native', { label: biometricLabel })}</p>
+          <p className="text-xs text-muted-foreground">{t('settings.two_factor.unavailable_native', { label: biometricLabel })}</p>
         )}
-        {!isNative && !webauthn && <p className="text-[11px] text-muted-foreground">{t('settings.two_factor.unsupported_web')}</p>}
+        {!isNative && !webauthn && <p className="text-xs text-muted-foreground">{t('settings.two_factor.unsupported_web')}</p>}
         {!isNative && webauthn && !passkeyRegistered && (
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {t('settings.two_factor.register_hint_web_pre')} <strong>{t('settings.two_factor.register_hint_web_strong')}</strong> {t('settings.two_factor.register_hint_web_post')}
           </p>
         )}

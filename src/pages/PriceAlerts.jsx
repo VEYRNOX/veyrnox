@@ -267,7 +267,7 @@ export default function PriceAlerts() {
       )}
 
       {/* Honest scope: this is an on-device check, not a server push. */}
-      <p className="text-[11px] text-muted-foreground leading-relaxed">
+      <p className="text-xs text-muted-foreground leading-relaxed">
         Alerts are checked on this device — automatically every minute while the app is open, and instantly with <span className="font-medium text-foreground">Check Now</span>. Firing while the app is fully closed would need a push server, which this local build doesn't include.
       </p>
 
@@ -284,7 +284,7 @@ export default function PriceAlerts() {
                 </p>
                 {alert.note && <p className="text-xs text-muted-foreground">{alert.note}</p>}
                 {alert.triggered_at && !Number.isNaN(new Date(alert.triggered_at).getTime()) && (
-                  <p className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(alert.triggered_at), { addSuffix: true })}</p>
+                  <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(alert.triggered_at), { addSuffix: true })}</p>
                 )}
               </div>
               <Button variant="ghost" size="sm" className="text-xs shrink-0" onClick={() => dismissAlert.mutate(alert.id)}>
@@ -418,7 +418,7 @@ export default function PriceAlerts() {
                 placeholder="e.g. 5 (alert when price swings ≥5%)"
                 className="mt-1.5"
               />
-              <p className="text-[10px] text-muted-foreground mt-1">Triggers when {currency} moves this % within a single check interval.</p>
+              <p className="text-xs text-muted-foreground mt-1">Triggers when {currency} moves this % within a single check interval.</p>
             </div>
             )}
             <div>

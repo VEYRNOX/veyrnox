@@ -177,7 +177,7 @@ export default function ExportTransactions({ transactions: propTransactions }) {
                 {/* Preview table */}
                 {rows.length > 0 && (
                   <div className="rounded-lg border border-border overflow-hidden">
-                    <table className="w-full text-[11px]">
+                    <table className="w-full text-xs">
                       <thead className="bg-secondary">
                         <tr>
                           {["Date", "Asset", "Amount", "USD Value", "Status"].map(h => (
@@ -193,7 +193,7 @@ export default function ExportTransactions({ transactions: propTransactions }) {
                             <td className="px-2 py-1.5 font-mono">{r.amount}</td>
                             <td className="px-2 py-1.5 font-mono">${r.usd_value}</td>
                             <td className="px-2 py-1.5">
-                              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                              <span className={`rounded-full px-1.5 py-0.5 text-xs font-medium ${
                                 r.status === "confirmed" ? "bg-success/15 text-success"
                                 : r.status === "pending" ? "bg-caution/15 text-caution"
                                 : "bg-destructive/15 text-destructive"
@@ -204,7 +204,7 @@ export default function ExportTransactions({ transactions: propTransactions }) {
                       </tbody>
                     </table>
                     {rows.length > 5 && (
-                      <p className="text-[10px] text-muted-foreground text-center py-1.5 border-t border-border">
+                      <p className="text-xs text-muted-foreground text-center py-1.5 border-t border-border">
                         +{rows.length - 5} more rows
                       </p>
                     )}

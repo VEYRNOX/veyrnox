@@ -96,7 +96,7 @@ export default function PrfSpike() {
             <RotateCcw className="h-4 w-4" /> Reset (forget credential)
           </button>
         </div>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {hasPrior
             ? 'A credential from a prior run is stored — “Run probe” re-evaluates it to test cross-restart stability.'
             : 'No stored credential yet — the first run creates one (you’ll get a passkey/biometric prompt).'}
@@ -117,11 +117,11 @@ export default function PrfSpike() {
       {result && (
         <div className="p-5 rounded-xl border border-border bg-card space-y-3">
           <p className="text-sm font-semibold">Probe log</p>
-          <pre className="text-[11px] leading-relaxed whitespace-pre-wrap font-mono text-muted-foreground">
+          <pre className="text-xs leading-relaxed whitespace-pre-wrap font-mono text-muted-foreground">
             {(result.log || []).join('\n')}
           </pre>
           {(result.hexA || result.priorHex) && (
-            <div className="text-[11px] font-mono space-y-1 border-t border-border pt-2">
+            <div className="text-xs font-mono space-y-1 border-t border-border pt-2">
               {result.hexA   && <div><span className="text-muted-foreground">get #1 :</span> {result.hexA}</div>}
               {result.hexB   && <div><span className="text-muted-foreground">get #2 :</span> {result.hexB}</div>}
               {result.priorHex && <div><span className="text-muted-foreground">prior  :</span> {result.priorHex}</div>}

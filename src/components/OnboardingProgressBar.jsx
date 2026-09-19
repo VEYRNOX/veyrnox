@@ -21,7 +21,7 @@ export default function OnboardingProgressBar({
   const innerClass = inline ? undefined : "mx-auto w-full max-w-sm space-y-2";
 
   const bar = (
-    <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+    <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
       <span className="font-medium text-foreground">{label}</span>
       {!indeterminate && <span aria-hidden>{progress}%</span>}
     </div>

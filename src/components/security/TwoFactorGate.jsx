@@ -132,7 +132,7 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
         <ShieldCheck className="h-4 w-4 text-primary" />
         <p className="text-sm font-medium">{resolvedTitle}</p>
       </div>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         {isBio ? 'Your PIN and a fingerprint / Face check are required for this action.'
           : isPasskey ? (isNative ? 'Your PIN and a Face ID / Touch ID check are required for this action.' : 'Your PIN and a passkey tap are required for this action.')
             : 'Both factors are required for this action.'}
@@ -179,27 +179,27 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
         </div>
       )}
       {isBio && (
-        <p id="tfg-external-help" className="text-[11px] text-muted-foreground">After your PIN, your device will ask for your fingerprint or face.</p>
+        <p id="tfg-external-help" className="text-xs text-muted-foreground">After your PIN, your device will ask for your fingerprint or face.</p>
       )}
       {isPasskey && (
-        <p id="tfg-external-help" className="text-[11px] text-muted-foreground">{isNative ? 'After your PIN, Face ID / Touch ID will confirm this action.' : 'After your PIN, your browser will ask you to tap your passkey or security key.'}</p>
+        <p id="tfg-external-help" className="text-xs text-muted-foreground">{isNative ? 'After your PIN, Face ID / Touch ID will confirm this action.' : 'After your PIN, your browser will ask you to tap your passkey or security key.'}</p>
       )}
       {/* M-4: persistent banner when the downstream broadcast failed after 2FA succeeded.
           Shown above the attempt-error so the user sees the send outcome first. */}
       {sendError && (
-        <p role="alert" aria-live="polite" className="text-[11px] text-destructive">
+        <p role="alert" aria-live="polite" className="text-xs text-destructive">
           Send failed — please verify again to retry.
         </p>
       )}
       {/* #4 a11y: announce the attempt-error (the "(N left)" copy) to assistive tech. */}
       {error && (
         <div className="space-y-2">
-          <p role="alert" aria-live="polite" className="text-[11px] text-destructive">{error}</p>
+          <p role="alert" aria-live="polite" className="text-xs text-destructive">{error}</p>
           {isNetworkError && (
             <Button
               variant="outline"
               size="sm"
-              className="h-11 text-[11px] px-3"
+              className="h-11 text-xs px-3"
               onClick={() => { setError(''); setIsNetworkError(false); submit(); }}
               disabled={busy}
             >

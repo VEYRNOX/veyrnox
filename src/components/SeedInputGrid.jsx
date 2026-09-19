@@ -147,7 +147,7 @@ export default function SeedInputGrid({
             key={i}
             className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-secondary/40 ps-1.5 pe-1"
           >
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/15 text-[10px] font-semibold text-primary mono-value">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/15 text-xs font-semibold text-primary mono-value">
               {i + 1}
             </span>
             <Input

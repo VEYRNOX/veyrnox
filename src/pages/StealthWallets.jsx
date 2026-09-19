@@ -125,11 +125,11 @@ function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
         return (
           <div key={c.key} className="rounded-lg bg-background p-2.5 space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold">{c.label}</span>
-              <span className="text-[10px] text-muted-foreground">{c.networkName()}</span>
+              <span className="text-xs font-semibold">{c.label}</span>
+              <span className="text-xs text-muted-foreground">{c.networkName()}</span>
             </div>
             <div className="flex items-center gap-2">
-              <code className="flex-1 break-all text-[11px] text-foreground">{address}</code>
+              <code className="flex-1 break-all text-xs text-foreground">{address}</code>
               <button onClick={() => copy(address, `${idPrefix}-${c.key}`)} title={t("stealth.identity.copy_address_title", { label: c.label })} aria-label={t("stealth.identity.copy_address_title", { label: c.label })} className="shrink-0">
                 {copied === `${idPrefix}-${c.key}` ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
               </button>
@@ -139,7 +139,7 @@ function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
                 </a>
               )}
             </div>
-            <div className="flex items-center justify-between text-[11px]">
+            <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">{t("stealth.identity.balance_label")}</span>
               <span className="font-semibold">
                 {!balances ? (
@@ -149,7 +149,7 @@ function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
                 ) : (
                   <>
                     {Number(b.amount).toLocaleString(undefined, { maximumFractionDigits: 6 })} {b.unit}
-                    <span className="ms-1 text-[10px] font-normal text-muted-foreground">
+                    <span className="ms-1 text-xs font-normal text-muted-foreground">
                       {b.source === "chain" ? t("stealth.identity.source_live") : t("stealth.identity.source_demo")}
                     </span>
                   </>
@@ -161,16 +161,16 @@ function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
       })}
 
       <div className="flex flex-wrap items-center gap-3 pt-0.5">
-        <button onClick={check} disabled={checking} className="inline-flex items-center gap-1 text-primary text-[11px]">
+        <button onClick={check} disabled={checking} className="inline-flex items-center gap-1 text-primary text-xs">
           <Wifi className="h-3 w-3" /> {checking ? t("stealth.identity.checking_cta") : balances ? t("stealth.identity.recheck_cta") : t("stealth.identity.check_cta")}
         </button>
         {DEMO && (
-          <button onClick={demoFundAll} className="inline-flex items-center gap-1 text-primary text-[11px]">
+          <button onClick={demoFundAll} className="inline-flex items-center gap-1 text-primary text-xs">
             <Coins className="h-3 w-3" /> {t("stealth.identity.simulate_funding")}
           </button>
         )}
       </div>
-      <p className="text-[10px] text-muted-foreground flex items-start gap-1.5">
+      <p className="text-xs text-muted-foreground flex items-start gap-1.5">
         <Globe className="h-3 w-3 mt-0.5 shrink-0" />
         {t("stealth.identity.opt_in_note")}
       </p>
@@ -292,7 +292,7 @@ function MoveExistingWallet() {
       </div>
 
       {/* TRANSITION-TELL WARNING — must be shown before hiding a visible wallet. */}
-      <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-[11px] text-destructive space-y-1.5">
+      <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive space-y-1.5">
         <div className="flex items-center gap-1.5 font-semibold">
           <ShieldAlert className="h-4 w-4" /> {t("stealth.move.transition_warning_leading")}
         </div>
@@ -304,7 +304,7 @@ function MoveExistingWallet() {
           NOT interpolate the visible-wallet count — that publishes the active-
           context cardinality. The selectable list below is functionally required
           (the user picks which wallet to hide), but the count is not. */}
-      <div className="text-[11px] text-muted-foreground">
+      <div className="text-xs text-muted-foreground">
         {t("stealth.move.pick_prompt")}
       </div>
       <div className="space-y-1.5">
@@ -317,7 +317,7 @@ function MoveExistingWallet() {
             <WalletIcon className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="flex-1 min-w-0">
               <span className="text-xs font-semibold">{w.name || "Wallet"}</span>
-              <span className="block font-mono text-[10px] text-muted-foreground truncate">{w.address}</span>
+              <span className="block font-mono text-xs text-muted-foreground truncate">{w.address}</span>
             </span>
           </label>
         ))}
@@ -334,7 +334,7 @@ function MoveExistingWallet() {
               placeholder={t("stealth.move.phrase_placeholder")}
               className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring"
             />
-            <p className="text-[10px] text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {t("stealth.move.phrase_note")}
             </p>
           </div>
@@ -362,7 +362,7 @@ function MoveExistingWallet() {
           <Button size="sm" variant="secondary" className="mt-3 gap-1.5" disabled={busy} onClick={demoSetup}>
             <FlaskConical className="h-3.5 w-3.5" /> {t("stealth.move.demo_cta")}
           </Button>
-          <p className="text-[10px] text-muted-foreground mt-1.5">
+          <p className="text-xs text-muted-foreground mt-1.5">
             {t("stealth.move.demo_note", { secret: DEMO_MOVE_SECRET })}
           </p>
         </div>
@@ -380,15 +380,15 @@ function MoveExistingWallet() {
 
           {/* Reveal verification — prove it's recoverable ONLY by the right secret. */}
           <div className="pt-1">
-            <Label htmlFor="stealth-verify-input" className="text-[11px]">{t("stealth.move.verify_label")}</Label>
+            <Label htmlFor="stealth-verify-input" className="text-xs">{t("stealth.move.verify_label")}</Label>
             <div className="flex gap-2 mt-1">
               <Input id="stealth-verify-input" className="h-8 text-xs" value={verifySecret} onChange={(e) => setVerifySecret(e.target.value)} placeholder={t("stealth.move.verify_placeholder")} />
               <Button size="sm" variant="outline" disabled={!verifySecret} onClick={() => verifyReveal(verifySecret)}>{t("stealth.move.verify_cta")}</Button>
             </div>
             {peek && !peek.loading && (
               peek.address
-                ? <p className="text-[11px] text-success mt-1">{t("stealth.move.verify_ok_prefix")} <span className="font-mono">{short(peek.address, t("stealth.address_dash"))}</span>{peek.address.toLowerCase() === (done.address || "").toLowerCase() ? ` ${t("stealth.move.verify_ok_match")}` : ""}</p>
-                : <p className="text-[11px] text-muted-foreground mt-1">{t("stealth.move.verify_none")}</p>
+                ? <p className="text-xs text-success mt-1">{t("stealth.move.verify_ok_prefix")} <span className="font-mono">{short(peek.address, t("stealth.address_dash"))}</span>{peek.address.toLowerCase() === (done.address || "").toLowerCase() ? ` ${t("stealth.move.verify_ok_match")}` : ""}</p>
+                : <p className="text-xs text-muted-foreground mt-1">{t("stealth.move.verify_none")}</p>
             )}
           </div>
         </div>
@@ -581,7 +581,7 @@ export default function StealthWallets() {
           <EyeOff className="h-4 w-4 text-primary" />
           <p className="text-sm font-semibold">{t("stealth.protects_title")}</p>
         </div>
-        <ul className="text-[11px] text-muted-foreground list-disc ps-4 space-y-0.5">
+        <ul className="text-xs text-muted-foreground list-disc ps-4 space-y-0.5">
           {/** @type {string[]} */ (t("stealth.protects_items", { returnObjects: true })).map((item, i) => (
             <li key={i}>{item}</li>
           ))}
@@ -629,7 +629,7 @@ export default function StealthWallets() {
               className="mt-1.5 tracking-widest text-lg"
             />
           </div>
-          <div className="p-2.5 rounded-lg bg-caution/10 border border-caution/20 text-[11px] text-caution flex items-start gap-2">
+          <div className="p-2.5 rounded-lg bg-caution/10 border border-caution/20 text-xs text-caution flex items-start gap-2">
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
               {t("stealth.create.warn_note")}
@@ -663,7 +663,7 @@ export default function StealthWallets() {
               <code className="block break-words rounded bg-background p-2 text-foreground mt-1">{savedPhrase}</code>
             </div>
 
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {t("stealth.create.reminder_note")}
             </p>
           </div>
@@ -735,7 +735,7 @@ export default function StealthWallets() {
                   {isHidden
                     ? <span className="px-2 py-0.5 rounded bg-caution/10 text-caution text-xs font-semibold">{t("stealth.demo.hidden_badge")}</span>
                     : <span className="px-2 py-0.5 rounded bg-success/10 text-success text-xs font-semibold">{t("stealth.demo.visible_badge")}</span>}
-                  <span className="text-[11px] text-muted-foreground">{t("stealth.demo.full_identity_note")}</span>
+                  <span className="text-xs text-muted-foreground">{t("stealth.demo.full_identity_note")}</span>
                 </div>
 
                 <MultiChainIdentity addresses={currentIdentity} copy={copy} copied={copied} idPrefix="session" />
@@ -753,7 +753,7 @@ export default function StealthWallets() {
                 {/* DEMO ORACLE — proves the visible session never shows the hidden
                     EVM address (and vice versa). Real apps never reveal this. */}
                 {(realAddr || hiddenOracle) && (
-                  <div className="text-[11px] text-muted-foreground/70 border-t border-border pt-2 mt-1 space-y-0.5">
+                  <div className="text-xs text-muted-foreground/70 border-t border-border pt-2 mt-1 space-y-0.5">
                     {realAddr && <p>{t("stealth.demo.oracle_visible", { addr: short(realAddr, t("stealth.address_dash")) })}</p>}
                     {hiddenOracle && (
                       <p>

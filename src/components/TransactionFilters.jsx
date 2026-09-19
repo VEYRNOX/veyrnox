@@ -85,7 +85,7 @@ export default function TransactionFilters({ filters, onChange }) {
             <SlidersHorizontal className="h-3.5 w-3.5" />
             Filters
             {activeCount > 0 && (
-              <span className="absolute -top-1.5 -end-1.5 h-4 w-4 rounded-full bg-primary text-[9px] text-primary-foreground flex items-center justify-center font-bold">
+              <span className="absolute -top-1.5 -end-1.5 h-4 w-4 rounded-full bg-primary text-xs text-primary-foreground flex items-center justify-center font-bold">
                 {activeCount}
               </span>
             )}
@@ -111,7 +111,7 @@ export default function TransactionFilters({ filters, onChange }) {
           <SlidersHorizontal className="h-3.5 w-3.5" />
           Filters
           {activeCount > 0 && (
-            <span className="absolute -top-1.5 -end-1.5 h-4 w-4 rounded-full bg-primary text-[9px] text-primary-foreground flex items-center justify-center font-bold">
+            <span className="absolute -top-1.5 -end-1.5 h-4 w-4 rounded-full bg-primary text-xs text-primary-foreground flex items-center justify-center font-bold">
               {activeCount}
             </span>
           )}

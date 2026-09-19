@@ -67,7 +67,7 @@ export default function NetWorthTracker() {
       <div className="p-5 rounded-2xl border border-border bg-card text-center">
         <p className="text-xs text-muted-foreground uppercase tracking-widest">{t("networth.totalHoldings")}</p>
         <p className="text-4xl font-bold mt-1">{isLoading ? "…" : fmtUsd(total)}</p>
-        <div className="mt-2 flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+        <div className="mt-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
           {incomplete && <span className="text-caution">{t("networth.partialNote")}</span>}
           {live ? (
             <button

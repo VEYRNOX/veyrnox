@@ -73,7 +73,7 @@ export default function RiskVerdictBanner({ verdict, acknowledged = false, onAck
           <div className="space-y-0.5">
             {monoEntries.map(([k, v]) => (
               <div key={k} className="flex gap-2 min-w-0">
-                <span className="uppercase tracking-wide opacity-70 text-[10px] shrink-0">{k}</span>
+                <span className="uppercase tracking-wide opacity-70 text-xs shrink-0">{k}</span>
                 {/* Full value, wrapping — never truncated (see header note). */}
                 <span className="mono-value break-all">{v}</span>
               </div>

@@ -99,7 +99,7 @@ export default function BiometricAuth() {
             <p className="text-sm leading-tight">{s.label}<span className="text-muted-foreground"> — {s.desc}</span></p>
           </div>
         ))}
-        <p className="text-[11px] text-muted-foreground pt-1">
+        <p className="text-xs text-muted-foreground pt-1">
           Prefer a knowledge factor? Set up <span className="font-medium text-foreground">PIN + Action Password</span> in Security Settings instead — either method satisfies the same gate.
         </p>
       </div>
@@ -178,7 +178,7 @@ function NativeBiometricSection() {
 
         {/* Make the state self-explanatory so the page never reads as "broken". */}
         {status != null && (
-          <p className="text-[11px] text-muted-foreground mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             {available
               ? (active ? `${label} is required at the actions below.` : `Flip the switch to require ${label} at the actions below.`)
               : `${status.detail} Enrol a fingerprint / face in your device settings, or use PIN + Action Password in Security Settings.`}
@@ -344,7 +344,7 @@ function WebPasskeySection() {
         </div>
 
         {!active && supported && (
-          <p className="text-[11px] text-muted-foreground mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             {!registered
               ? "Register a passkey first, then flip the switch."
               : (!simulated && !available)
@@ -360,7 +360,7 @@ function WebPasskeySection() {
               {busy ? "Registering…" : "Register Biometric / Passkey"}
             </Button>
             {!simulated && !available && (
-              <p className="text-[11px] text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 Set up device biometrics first, or use <span className="font-medium text-foreground">PIN + Action Password</span> in Security Settings.
               </p>
             )}

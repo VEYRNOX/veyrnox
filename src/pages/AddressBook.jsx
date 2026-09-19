@@ -163,7 +163,7 @@ export default function AddressBook() {
                 <div className="flex items-center gap-2">
                   <p className="font-medium">{c.name}</p>
                   {c.is_trusted && <Shield className="h-3.5 w-3.5 text-success" />}
-                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-semibold">{c.currency}</span>
+                  <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded font-semibold">{c.currency}</span>
                 </div>
                 <p className="text-xs text-muted-foreground font-mono truncate">{c.address}</p>
                 {c.note && <p className="text-xs text-muted-foreground mt-0.5">{c.note}</p>}

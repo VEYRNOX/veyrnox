@@ -994,10 +994,10 @@ function ScreeningVerdict({ result }) {
           "OpenSanctions: clean", and both differ from silence. */}
       {sources.length > 0 && (
         <details className="mt-2">
-          <summary className="cursor-pointer text-[11px] text-muted-foreground/80 hover:text-muted-foreground">
+          <summary className="cursor-pointer text-xs text-muted-foreground/80 hover:text-muted-foreground">
             Sources consulted ({sources.length})
           </summary>
-          <ul className="mt-1.5 space-y-0.5 text-[11px] font-mono">
+          <ul className="mt-1.5 space-y-0.5 text-xs font-mono">
             {sources.map((s, i) => {
               const statusColor = s.status === 'hit' ? 'text-red-400'
                                 : s.status === 'clean' ? 'text-emerald-400'
@@ -1017,7 +1017,7 @@ function ScreeningVerdict({ result }) {
         </details>
       )}
 
-      <p className="mt-2 text-[10px] text-muted-foreground/60 italic">
+      <p className="mt-2 text-xs text-muted-foreground/60 italic">
         from threat intelligence screening
       </p>
     </div>
@@ -1541,10 +1541,10 @@ Additional public knowledge you should apply:
               <ShieldCheck className="h-4 w-4 text-primary" />
               <div>
                 <DrawerTitle className="text-sm">Vigil</DrawerTitle>
-                <p className="text-[10px] text-muted-foreground leading-tight">{t('advisor.title', { defaultValue: 'Security Advisor' })}</p>
+                <p className="text-xs text-muted-foreground leading-tight">{t('advisor.title', { defaultValue: 'Security Advisor' })}</p>
               </div>
               {offline && (
-                <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-500">
+                <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-500">
                   <WifiOff className="h-2.5 w-2.5" />
                   {t('advisor.offline_badge', { defaultValue: 'offline' })}
                 </span>
@@ -1640,7 +1640,7 @@ Additional public knowledge you should apply:
                       key={q}
                       type="button"
                       onClick={() => sendMessage(q)}
-                      className="w-full text-left rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-[11px] text-foreground/80 hover:bg-secondary hover:text-foreground transition-colors"
+                      className="w-full text-left rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-xs text-foreground/80 hover:bg-secondary hover:text-foreground transition-colors"
                     >
                       {q}
                     </button>
@@ -1672,7 +1672,7 @@ Additional public knowledge you should apply:
                       </span>
                     )}
                     {msg.local && msg.role === "assistant" && msg.content && !msg.screening && (
-                      <p className="mt-1.5 text-[10px] text-muted-foreground/60 italic">
+                      <p className="mt-1.5 text-xs text-muted-foreground/60 italic">
                         {t('advisor.local_suffix', { defaultValue: 'from local knowledge base' })}
                       </p>
                     )}
@@ -1690,7 +1690,7 @@ Additional public knowledge you should apply:
                           key={q}
                           type="button"
                           onClick={() => sendMessage(q)}
-                          className="rounded-full border border-border bg-secondary/40 px-2.5 py-1 text-[10px] text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                          className="rounded-full border border-border bg-secondary/40 px-2.5 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
                         >
                           {q}
                         </button>

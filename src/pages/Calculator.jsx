@@ -334,7 +334,7 @@ export default function Calculator() {
                     <span className="text-xs font-bold" style={{ color: CURRENCY_COLORS[c] }}>{CURRENCY_SYMBOLS[c]}</span>
                   </div>
                   <span className="text-sm font-semibold text-foreground">{c}</span>
-                  {isSelected && <span className="text-[10px] text-primary font-medium uppercase tracking-wide">selected</span>}
+                  {isSelected && <span className="text-xs text-primary font-medium uppercase tracking-wide">selected</span>}
                 </div>
                 <span className="text-sm font-mono">
                   {r != null ? `${formatNumber(r, toFiat)} ${toFiat}` : "—"}

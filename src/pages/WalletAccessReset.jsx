@@ -412,7 +412,7 @@ export default function WalletAccessReset() {
                   next time you unlock.
                 </p>
               )}
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Re-encrypts with the same strong on-device encryption as the original
                 vault. Note: this changes only your <b>primary</b> wallet's PIN; any
                 duress PIN or hidden-wallet secrets are independent and unchanged.
@@ -529,7 +529,7 @@ export default function WalletAccessReset() {
               {cpBusy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" /> : <KeyRound className="h-4 w-4" />}
               Change password
             </Button>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Re-encrypts with the same strong on-device encryption as the
               original vault. Note: this changes only your <b>primary</b> wallet's
               password; any duress PIN or hidden-wallet secrets are independent and
@@ -626,7 +626,7 @@ export default function WalletAccessReset() {
         </>
         )}
         {vaultExists && (
-          <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+          <p className="text-xs text-muted-foreground flex items-start gap-1.5">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             A wallet already exists here. Recovering will <b>overwrite</b> it. If you remember your password, use "Change vault password" instead.
           </p>
@@ -639,7 +639,7 @@ export default function WalletAccessReset() {
           <ShieldOff className="h-4 w-4 text-muted-foreground" />
           <p className="text-sm font-semibold">What VEYRNOX cannot do</p>
         </div>
-        <ul className="text-[11px] text-muted-foreground list-disc ps-4 space-y-0.5">
+        <ul className="text-xs text-muted-foreground list-disc ps-4 space-y-0.5">
           <li>No password reset — we never see it.</li>
           <li>No email/SMS recovery link. We have nothing on our servers to recover.</li>
           <li>No key escrow. Support cannot restore access.</li>
@@ -683,8 +683,8 @@ export default function WalletAccessReset() {
             <div className="rounded-lg border border-border bg-card p-4 text-xs space-y-1.5">
               <div className="flex items-center gap-2 mb-1">
                 {isUnlocked
-                  ? <span className="px-2 py-0.5 rounded bg-success/20 text-success text-[11px] font-semibold inline-flex items-center gap-1"><Unlock className="h-3 w-3" /> UNLOCKED</span>
-                  : <span className="px-2 py-0.5 rounded bg-secondary text-muted-foreground text-[11px] font-semibold inline-flex items-center gap-1"><Lock className="h-3 w-3" /> LOCKED</span>}
+                  ? <span className="px-2 py-0.5 rounded bg-success/20 text-success text-xs font-semibold inline-flex items-center gap-1"><Unlock className="h-3 w-3" /> UNLOCKED</span>
+                  : <span className="px-2 py-0.5 rounded bg-secondary text-muted-foreground text-xs font-semibold inline-flex items-center gap-1"><Lock className="h-3 w-3" /> LOCKED</span>}
                 {isUnlocked && newAddr && <span className="font-mono text-muted-foreground">{short(newAddr)}</span>}
               </div>
               {demoLog.map((line, i) => (

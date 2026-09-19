@@ -12,7 +12,7 @@ function ChangeChip({ change }) {
   const up = change >= 0;
   return (
     <span
-      className={`mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-mono ${
+      className={`mt-0.5 inline-flex items-center gap-0.5 text-xs font-mono ${
         up ? "text-success" : "text-destructive"
       }`}
     >

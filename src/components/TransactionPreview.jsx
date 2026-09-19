@@ -88,7 +88,7 @@ export default function TransactionPreview({ result, loading = undefined, error 
 
   return (
     <div className="p-3 rounded-lg bg-secondary/30 border border-border space-y-3">
-      <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5">
+      <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5">
         <Activity className="h-3 w-3" />
         {result.simulated ? "Transaction simulation" : "Decoded transaction"}
       </p>
@@ -111,7 +111,7 @@ export default function TransactionPreview({ result, loading = undefined, error 
       {/* Predicted balance changes — "you send X, recipient receives Y". */}
       {result.balanceChanges?.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[11px] text-muted-foreground">Estimated changes</p>
+          <p className="text-xs text-muted-foreground">Estimated changes</p>
           {result.balanceChanges.map((c, i) => (
             <div key={i} className="flex items-center justify-between gap-2 text-xs">
               <span className="flex items-center gap-1.5 text-muted-foreground min-w-0">
@@ -150,7 +150,7 @@ export default function TransactionPreview({ result, loading = undefined, error 
           five stacked panels by default. */}
       {hasAdvanced && (
         <details className="group">
-          <summary className="text-[11px] text-muted-foreground cursor-pointer select-none list-none flex items-center justify-between py-1 border-t border-border/60">
+          <summary className="text-xs text-muted-foreground cursor-pointer select-none list-none flex items-center justify-between py-1 border-t border-border/60">
             <span className="font-medium">Advanced details</span>
             <span className="group-open:rotate-180 transition-transform">▾</span>
           </summary>
@@ -184,7 +184,7 @@ export default function TransactionPreview({ result, loading = undefined, error 
                     <span className="text-muted-foreground flex items-center gap-1.5"><Fuel className="h-3 w-3" /> Network fee</span>
                     <span className="text-end">
                       <span className="mono-value">{result.fee.amount} {result.fee.symbol}</span>
-                      {result.fee.sub && <span className="block text-[10px] text-muted-foreground">{result.fee.sub}</span>}
+                      {result.fee.sub && <span className="block text-xs text-muted-foreground">{result.fee.sub}</span>}
                     </span>
                   </div>
                 )}
@@ -196,7 +196,7 @@ export default function TransactionPreview({ result, loading = undefined, error 
             )}
 
             {result.source && (
-              <div className="flex items-start gap-2 text-[11px] text-muted-foreground">
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
                 <ServerCog className="h-3 w-3 shrink-0 mt-0.5" />
                 <span>
                   {result.source.mode === "local-rpc" ? "Checked locally via your RPC" : "Decoded locally via your RPC/indexer"}

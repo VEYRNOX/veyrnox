@@ -40,7 +40,7 @@ export default function UrQrPlayer({ parts, size = 220, autoPlay = true, interva
       <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-secondary/20 px-3 py-2">
         <div className="min-w-0">
           <p className="text-xs font-medium text-foreground">{title}</p>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {multiple ? `Part ${index + 1} of ${urParts.length}` : 'Single-part QR'}
           </p>
         </div>

@@ -138,7 +138,7 @@ export default function PortfolioSnapshots() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium truncate">{s.label}</p>
-                    {i === 0 && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Latest</span>}
+                    {i === 0 && <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Latest</span>}
                   </div>
                   <p className="text-xs text-muted-foreground">{new Date(s.created_date).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                   {s.note && <p className="text-xs text-muted-foreground italic">{s.note}</p>}

@@ -713,7 +713,7 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
           {recoveryPassphrase.length > 0 && !passphraseCheck.ok && (
             <p className="text-xs text-destructive">{passphraseCheck.reason}</p>
           )}
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             The passphrase you set when exporting the encrypted share.
           </p>
         </div>
@@ -993,7 +993,7 @@ function RecoveryShareTab({
           {recoveryPassphrase.length > 0 && !passphraseCheck.ok && (
             <p className="text-xs text-destructive">{passphraseCheck.reason}</p>
           )}
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Long, memorable, written down separately. Losing this passphrase makes the shares unusable.
           </p>
         </div>
@@ -1145,7 +1145,7 @@ export default function PersonalBackup() {
       )}
 
       {/* Footer note */}
-      <p className="text-[10px] text-muted-foreground text-center pb-4">
+      <p className="text-xs text-muted-foreground text-center pb-4">
         Strongly encrypted on your device · never transmitted · only <strong>VEYRNOX</strong> can open it
       </p>
     </div>

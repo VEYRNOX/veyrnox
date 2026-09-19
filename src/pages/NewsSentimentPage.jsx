@@ -121,13 +121,13 @@ export default function NewsSentimentPage() {
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-xs font-mono font-bold bg-secondary px-1.5 py-0.5 rounded">{n.asset}</span>
                   <cfg.icon className={`h-3.5 w-3.5 ${cfg.color}`} />
-                  <span className={`text-[10px] font-semibold ${cfg.color}`}>{cfg.label}</span>
+                  <span className={`text-xs font-semibold ${cfg.color}`}>{cfg.label}</span>
                 </div>
                 <span className={`text-xs font-bold ${cfg.color}`}>{score >= 0 ? "+" : ""}{score.toFixed(2)}</span>
               </div>
               <p className="text-sm font-semibold leading-snug">{n.headline}</p>
               {n.summary && <p className="text-xs text-muted-foreground">{n.summary}</p>}
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{n.source}</span>
                 <span>{safeFormat(n.published_at, d => formatDistanceToNow(d, { addSuffix: true }))}</span>
               </div>

@@ -63,7 +63,7 @@ function FeatureRow({ icon: Icon, label, on, detail, path, gapWhenOff = true }) 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">{label}</span>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+          <span className={`text-xs px-1.5 py-0.5 rounded font-semibold ${
             enabled ? "bg-success/10 text-success" : isGap ? "bg-caution/10 text-caution" : "bg-secondary text-muted-foreground"
           }`}>
             {enabled ? "ON" : isGap ? "OFF" : "Not set"}
@@ -246,7 +246,7 @@ export default function SecurityDashboard() {
             <p className="text-sm text-muted-foreground">Your security status, all in one place.</p>
           </div>
         </div>
-        <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
+        <span className="shrink-0 text-xs px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
           {DEMO ? "Demo · simulated" : ALLOW_MAINNET ? "Mainnet" : "Testnet"}
         </span>
       </div>

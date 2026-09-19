@@ -60,7 +60,7 @@ export default function CommandPalette({ open, onClose }) {
             placeholder="Search features, pages..."
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
-          <kbd className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">ESC</kbd>
+          <kbd className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">ESC</kbd>
         </div>
 
         {/* Results */}
@@ -80,14 +80,14 @@ export default function CommandPalette({ open, onClose }) {
                 >
                   <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="text-sm flex-1">{r.label}</span>
-                  <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">{r.group}</span>
+                  <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">{r.group}</span>
                 </button>
               );
             })
           )}
         </div>
 
-        <div className="px-4 py-2 border-t border-border flex items-center gap-3 text-[10px] text-muted-foreground">
+        <div className="px-4 py-2 border-t border-border flex items-center gap-3 text-xs text-muted-foreground">
           <span>↑↓ navigate</span>
           <span>↵ select</span>
           <span>ESC close</span>

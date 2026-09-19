@@ -81,7 +81,7 @@ export default function PriceCharts() {
             className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold shrink-0 transition-colors ${selected === a.symbol ? "border-transparent text-white" : "border-border bg-card text-muted-foreground hover:text-foreground"} ${!livePricesOn ? "opacity-40 cursor-not-allowed" : ""}`}
             style={selected === a.symbol ? { backgroundColor: a.color } : {}}>
             {a.symbol}
-            <span className={`text-[10px] ${a.change24h >= 0 ? "text-success" : "text-destructive"}`}>
+            <span className={`text-xs ${a.change24h >= 0 ? "text-success" : "text-destructive"}`}>
               {a.change24h >= 0 ? "+" : ""}{a.change24h}%
             </span>
           </button>

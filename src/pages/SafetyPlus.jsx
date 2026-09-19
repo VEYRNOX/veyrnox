@@ -59,13 +59,13 @@ function FeatureTile({ feature, isUnlocked }) {
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium">{feature.name}</p>
           {!isUnlocked && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">
+            <span className="inline-flex items-center gap-1 text-xs font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">
               <Lock className="h-2.5 w-2.5" />
               Safety Plus
             </span>
           )}
           {isUnlocked && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-success/10 text-success shrink-0">
+            <span className="inline-flex items-center gap-1 text-xs font-semibold px-1.5 py-0.5 rounded-full bg-success/10 text-success shrink-0">
               <Check className="h-2.5 w-2.5" />
               Active
             </span>

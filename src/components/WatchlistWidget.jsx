@@ -94,11 +94,11 @@ export default function WatchlistWidget() {
                 <CoinLogo symbol={item.symbol} size={28} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold">{item.symbol}</p>
-                  {item.note && <p className="text-[10px] text-muted-foreground truncate">{item.note}</p>}
+                  {item.note && <p className="text-xs text-muted-foreground truncate">{item.note}</p>}
                 </div>
                 <div className="text-end me-1">
                   <p className="text-sm font-semibold">${data.price.toLocaleString()}</p>
-                  <p className={`text-[10px] flex items-center gap-0.5 justify-end ${up ? "text-success" : "text-destructive"}`}>
+                  <p className={`text-xs flex items-center gap-0.5 justify-end ${up ? "text-success" : "text-destructive"}`}>
                     {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
                     {up ? "+" : ""}{data.change}%
                   </p>

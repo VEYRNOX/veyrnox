@@ -161,7 +161,7 @@ export default function TransactionSimulationDemo() {
         <Activity className="h-3.5 w-3.5 text-primary" />
         Transaction Simulation — demo preview
       </p>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         This is the pre-sign preview you'd see at the verify step before approving a transaction. These are
         illustrative samples (no live RPC in demo); each runs the real risk logic over real decoded data.
       </p>
@@ -171,7 +171,7 @@ export default function TransactionSimulationDemo() {
             key={s.id}
             type="button"
             onClick={() => setActive(s.id)}
-            className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${active === s.id ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
+            className={`text-xs px-2 py-1 rounded-md border transition-colors ${active === s.id ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
           >
             {s.label}
           </button>

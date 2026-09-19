@@ -27,7 +27,7 @@ function AddressRow({ label, address, path }) {
     <div className="rounded-lg bg-muted px-4 py-3 space-y-1">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{label}</p>
-        {path ? <span className="text-[10px] text-muted-foreground font-mono">{path}</span> : null}
+        {path ? <span className="text-xs text-muted-foreground font-mono">{path}</span> : null}
       </div>
       <div className="flex items-center gap-2">
         <span className="font-mono text-sm break-all text-foreground">{address}</span>
