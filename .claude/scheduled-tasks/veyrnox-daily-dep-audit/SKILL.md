@@ -290,8 +290,9 @@ Two consequences worth carrying:
 - **Advisory:** GHSA-528h-pc64-c93x — `pick`/`ignore`/`filter`/`replace` filters are
   O(depth²) on nested input, so small crafted JSON blocks the event loop for seconds to
   minutes (DoS). Vulnerable `<= 3.4.0`; the tree carries `1.9.1`.
-- **Chain:** `@solana/web3.js@1.98.4` → `jayson@4.3.0` → `stream-json@1.9.1`. A production
-  dependency, not dev.
+- **Chain:** `@solana/web3.js@1.99.0` → `jayson@4.3.0` → `stream-json@1.9.1`. A production
+  dependency, not dev. The head of the chain read `1.98.4` from acceptance until
+  2026-09-19; `jayson` and `stream-json` have not moved.
 - **`jayson` is not separately vulnerable.** It has no advisory of its own and appears in
   `npm audit` only as `stream-json`'s `effects` entry. Fixing `stream-json` clears both;
   there is nothing to do to `jayson` itself.
@@ -318,8 +319,22 @@ Two consequences worth carrying:
      empirically as well as by reading: a production build was grepped across all 544
      `dist/assets/*.js` chunks for `stream-json`, `streamValues`, `makeFilter` and
      `jsonFilter` — **zero matches for all four**.
-- **Accounts for** 2 moderate findings as of 2026-09-03 (`stream-json` as the advisory
-  root, `jayson` as its dependent).
+     **Re-verified against `1.99.0` on 2026-09-19, because this whole acceptance rests on
+     it and the chain head moved a minor.** The published `1.99.0` tarball was unpacked and
+     all five entry points still import `jayson/lib/client/browser` and nothing else;
+     `lib/*.js` carries no `require('jayson')` or `from 'jayson'` at any path, so the main
+     entry — the only route to `lib/utils.js` and thus to `stream-json` — is still never
+     loaded. The bundle grep above was NOT re-run; the import-graph check is what was
+     redone. A future minor bump earns the same check rather than inheriting this one.
+- **Accounts for** 3 moderate findings as of 2026-09-19 at `origin/main` `62b46df2`
+  (`stream-json` as the advisory root, plus `jayson` and `@solana/web3.js` as dependents).
+  **It was 2 on 2026-09-03, and the reason the count moved is the only interesting part.**
+  No new advisory and no severity change: `@solana/web3.js` resolved up from `1.98.4` to
+  `1.99.0`, which lands inside npm's flagged-dependent range
+  (`1.99.0-beta.0 - 1.99.0`), so the chain head is now reported as a finding in its own
+  right rather than only as an `effects` entry. Per the `elliptic` entry's rule, a count
+  that moves for an unexplained reason is a revisit trigger — this one is explained, and
+  re-derived from `npm audit --json` rather than assumed.
 - **Revisit trigger:** `jayson` widens its `stream-json` range to admit `>= 3.5.0` (then
   the fix is a plain lockfile update, no override); OR `stream-json` backports the fix to
   a 1.x release; OR `@solana/web3.js` drops `jayson`; OR any code in `src/` or any new
