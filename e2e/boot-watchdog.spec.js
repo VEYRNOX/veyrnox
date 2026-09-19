@@ -25,6 +25,13 @@ const CLEARS = 20_000;
 
 const fallback = (page) => page.locator('#veyrnox-boot-fallback');
 
+// index.html ships a static #boot-shell inside #root (#2628) that paints before
+// any JavaScript. It means #root is NEVER empty at boot, so assertions about
+// what the APP rendered must exclude it — "#root has children" would otherwise
+// be true from the first frame and prove nothing. appContent() is that scoping;
+// reach for it instead of #root's own children in any new case.
+const appContent = (page) => page.locator('#root > *:not(#boot-shell)');
+
 /** Replace the app entry with a plain classic script body. */
 async function serveEntry(page, body) {
   await page.route(ENTRY, (route) =>
@@ -55,7 +62,9 @@ test.describe('boot watchdog', () => {
     // The mounted tree must survive. The fallback is an overlay on <body>
     // precisely so it cannot clobber a live React root — writing
     // root.innerHTML here would brick an app that was merely slow.
-    await expect(page.locator('#root > div')).toHaveCount(1);
+    // Scoped past #boot-shell: this counts what the entry mounted, not the
+    // static shell that was already there.
+    await expect(appContent(page)).toHaveCount(1);
   });
 
   test('case 3 — the real first screen paints: no card is left on screen', async ({ page }) => {
@@ -72,7 +81,13 @@ test.describe('boot watchdog', () => {
     // "a healthy app does not end up looking broken".
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
 
-    await expect(page.locator('#root')).not.toBeEmpty({ timeout: 60_000 });
+    // Was `expect('#root').not.toBeEmpty()`. The static shell satisfies that
+    // from the first frame, so it would now pass without the app ever booting.
+    // The shell's REMOVAL is the stronger signal and the one worth asserting:
+    // react-dom clears #root on its first commit, so #boot-shell disappearing
+    // means React actually committed.
+    await expect(page.locator('#boot-shell')).toHaveCount(0, { timeout: 60_000 });
+    await expect(appContent(page)).not.toHaveCount(0);
     await expect(fallback(page)).toHaveCount(0, { timeout: CLEARS });
   });
 
@@ -112,7 +127,27 @@ test.describe('boot watchdog', () => {
 
     const height = await page.locator('#root').evaluate((el) => el.getBoundingClientRect().height);
     expect(height, 'precondition: #root must measure non-zero with no content').toBeGreaterThan(0);
-    await expect(page.locator('#root')).toBeEmpty();
+    // "No content" now means no APP content — the static shell is always there.
+    await expect(appContent(page)).toHaveCount(0);
+
+    await expect(fallback(page)).toBeVisible({ timeout: APPEARS });
+  });
+
+  test('case 6 — the boot shell alone is not paint', async ({ page }) => {
+    // The shell is a position:fixed, inset:0 box INSIDE #root, so it satisfies
+    // hasVisibleContent()'s width/height test on the very first tick. If it is
+    // not skipped, the watchdog reports healthy before React has done anything
+    // and never fires again — silently, with every other case here still green,
+    // which is exactly the shape of #2595. This pin is the only thing standing
+    // between the shell and that regression.
+    await page.route(ENTRY, (route) => route.abort());
+    await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+
+    const shellH = await page
+      .locator('#boot-shell')
+      .evaluate((el) => el.getBoundingClientRect().height);
+    expect(shellH, 'precondition: the shell must occupy real pixels').toBeGreaterThan(0);
+    await expect(appContent(page)).toHaveCount(0);
 
     await expect(fallback(page)).toBeVisible({ timeout: APPEARS });
   });
