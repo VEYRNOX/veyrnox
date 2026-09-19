@@ -920,6 +920,12 @@ jobs:
   #
   # status: 'completed' means "fully released to the closed track" — Alpha
   # testers get the update. It is NOT a production rollout.
+  # NAME IS NOW A MISNOMER: this job pushes to the INTERNAL track as of
+  # 2026-09-19 (see the track: key below), not Closed testing. The name is
+  # kept because src/__tests__/ci-target-sha-pinning.test.js and
+  # play-closed-versioncode-gate.test.js both locate this job by this exact
+  # string, and renaming it mid-release is churn for no behavioural gain.
+  # If you rename it, rename it in those two tests in the SAME commit.
   publish-to-play-closed:
     runs-on: ubuntu-latest
     needs: [android-release, target-sha-guard]
@@ -1025,10 +1031,18 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.veyrnox.app
           releaseFiles: aab-artifact/app-google-release.aab
-          # 'alpha' is the Play API name for the Closed testing track that the
-          # console labels "Closed testing – Alpha". Not a Play Console string
-          # — the API takes internal/alpha/beta/production only.
-          track: alpha
+          # 'internal' is the Play API name for the Internal testing track.
+          # The API takes internal/alpha/beta/production only; 'alpha' is the
+          # Closed testing track the console labels "Closed testing – Alpha".
+          #
+          # Moved alpha -> internal on 2026-09-19 at the owner's explicit
+          # request, for the v1.0.2 (1) Android build. This REVERSES the
+          # earlier move to Closed testing, so read that history before moving
+          # it back: Closed testing was chosen partly because the Play
+          # Pre-launch report was thought to need it (#1960), and that report
+          # has never generated on any track. Internal testing has no review
+          # step, which is why it delivers to testers faster.
+          track: internal
           status: completed
           # Play rejected `true` for this app's current automatic-review
           # setting (run 34765498894). Explicit false lets the edit commit and

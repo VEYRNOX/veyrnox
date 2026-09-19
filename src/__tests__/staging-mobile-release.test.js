@@ -43,8 +43,8 @@ describe('staging mobile release contract', () => {
 
   it('uses the next unused store numbers confirmed in the consoles', () => {
     // Matched with the trailing newline so a later bump to 440+ cannot satisfy
-    // this pin by prefix — 'versionCode 50' is a substring of 'versionCode 500'.
-    expect(androidBuild).toContain('versionCode 50\n');
+    // this pin by prefix — 'versionCode 51' is a substring of 'versionCode 510'.
+    expect(androidBuild).toContain('versionCode 51\n');
     expect(androidBuild).toContain('versionName "1.0.2"');
     expect(iosProject.match(/CURRENT_PROJECT_VERSION = 2;/g)).toHaveLength(2);
     expect(iosProject.match(/MARKETING_VERSION = 1\.0\.2;/g)).toHaveLength(2);
