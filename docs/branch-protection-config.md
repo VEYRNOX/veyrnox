@@ -24,6 +24,64 @@ regression signal rather than a workflow).
 
 ---
 
+## 2026-09-19 — decision: `xcuitest` advisory residual ACCEPTED, #2543 closed
+
+**Change.** None, again. `xcuitest` is not a required context on either layer and is not
+being added. What changed is the *status of the question*: the 2026-09-14 entry below
+left it open pending stability data. The data now exists, and the owner has accepted the
+residual rather than pay for the fix.
+
+**The data.** 43 runs created after the warm-up removal (`1578c5608a`, #2573, merged
+2026-09-14T14:27Z): 29 success, 8 failure, 4 cancelled, 2 in progress — **37
+non-cancelled**.
+
+| window | completed | failures | rate |
+|---|---|---|---|
+| since #2481, measured 2026-09-13 | 40 | 15 | 37.5% |
+| since warm-up removal, measured 2026-09-19 | 37 | 8 | 21.6% |
+
+**The improvement is real-looking and not demonstrated.** Two-proportion test on those
+two windows gives z = 1.52, two-sided p = 0.128; the Wilson 95% interval on the current
+rate is 11.4%–37.2%, whose upper bound still contains the old rate. Do not write this up
+as "materially improved" — write it as "observed to roughly halve, with n too small to
+exclude no change".
+
+**All 8 failures classified from `xcodebuild-log` artifacts.** Three signatures, all
+harness or runner:
+
+1. PinSetup never advances past 'Choose an 8-digit PIN' — 5 of 8. The assertion at
+   `AppUITests.swift:388` states in its own message that this is a harness failure
+   against a slow WKWebView and not evidence about secure-store handling.
+2. `Failed to terminate com.veyrnox.app:<pid>` at `AppUITests.swift:40` — 2 of 8.
+3. `Timed out while evaluating UI query` — 2 occurrences (one run hit both 2 and 3).
+
+Two absences matter as much as the signatures. **The #2477 entry-tile wait has not
+recurred once in 37 runs**, and **the security assertion has not failed once** — the
+`XCTAssertTrue ... must fail closed with a visible error banner` signature from run
+34622660295, the only non-harness item in #2543, does not appear in this window. Nothing
+in these failures is evidence about the fail-closed path.
+
+**Why accepted rather than fixed.** Every remaining failure is a slow or wedged
+CoreSimulator on the standard macOS runner — the same two tests swing from 76 s to 558 s.
+The alternative on the table was a larger paid macOS runner; the owner declined the spend
+on 2026-09-19 and accepted the residual. This extends the same reasoning as the #1960
+Play Pre-launch waiver (2026-09-04) and the FTL Robo waiver (2026-09-10): an automated
+gate that fails for infrastructure reasons is kept as a signal, not a gate, and the
+release evidence is the owner's stock-device walkthrough.
+
+**Promotion criterion — UNCHANGED and still unmet.** The 2026-09-14 rule below stands: 20
+*consecutive* clean completed runs, any failure resetting the count. 8 failures in the
+last 37 runs means the count has never got near it. Accepting the residual is not a
+weakening of that bar; it is a decision to stop waiting at it.
+
+**What would reopen this.** A failure signature that is not one of the three above,
+particularly any failure of a fail-closed assertion — that is an app finding, not runner
+noise, and `xcuitest` being advisory is exactly the condition under which such a
+regression would be ignored. Read the test-level `error:` line in `xcodebuild-log` before
+dismissing any new red run.
+
+---
+
 ## 2026-09-14 — decision: `xcuitest` stays advisory (no change)
 
 **Change.** None. `xcuitest` (`.github/workflows/ios-xcuitest-smoke.yml`) is NOT a
