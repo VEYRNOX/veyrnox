@@ -18,13 +18,48 @@
 // NOT an inline onclick= attribute: script-src without 'unsafe-inline'
 // blocks inline event handlers too, so an onclick would load fine and then
 // do nothing when tapped — a Reload button that does not reload.
+//
+// #2628 — WHAT IT CHECKS. The health signal used to be `root.firstChild`, i.e.
+// "React mounted something". That is the wrong question, for two reasons found
+// by reading main.jsx rather than by watching a screen:
+//
+//   1. `createRoot(...).render(...)` is the LAST statement of main.jsx, so
+//      #root stays empty for the whole of module evaluation and fills the
+//      instant it finishes. The check therefore flips healthy at the moment
+//      the bundle finishes evaluating, whatever it then renders.
+//   2. setTimeout cannot preempt synchronous work. A long evaluation of the
+//      entry chunk holds the main thread, so this callback is queued until
+//      evaluation completes — by which time firstChild is set. A slow boot
+//      was structurally invisible to the old check: it could only ever catch
+//      a bundle that never arrived at all.
+//
+// The signal is now the static #boot-shell element in index.html. React clears
+// #root on its first commit (react-dom sets containerInfo.textContent = "" for
+// an element container), so the shell's disappearance means real UI committed,
+// not merely that something mounted. It also makes case 2 benign rather than
+// blind: a callback deferred past a slow boot now runs after the shell is gone
+// and correctly reports healthy, instead of silently passing on a set
+// firstChild.
+//
+// If the shell is absent at boot — index.html regressed, or a stale OTA bundle
+// predates it — this falls back to the old firstChild check rather than
+// treating "no shell" as healthy. A missing marker must not disable the
+// watchdog; that is the same silent-disable failure #2595 was.
 (function () {
   var start = Date.now();
+  // 10s, not the original 5s: with the shell painting immediately the user is
+  // looking at the brand rather than a white screen while they wait, so buying
+  // margin against a false "couldn't start" over an app that was coming up is
+  // cheap. A judgement, not a measurement — no boot-duration distribution has
+  // been collected on real hardware.
+  var DEADLINE_MS = 10000;
+  var shellAtBoot = document.getElementById('boot-shell');
   function check() {
     try {
       var root = document.getElementById('root');
-      if (root && root.firstChild) return; // React mounted
-      if (Date.now() - start < 5000) { setTimeout(check, 500); return; }
+      var healthy = shellAtBoot ? !shellAtBoot.isConnected : !!(root && root.firstChild);
+      if (healthy) return;
+      if (Date.now() - start < DEADLINE_MS) { setTimeout(check, 500); return; }
       if (!root) return;
       root.innerHTML =
         '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#050608;color:#F5F7FA;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">' +
@@ -43,5 +78,5 @@
       }
     } catch (e) { /* ignore */ }
   }
-  setTimeout(check, 5000);
+  setTimeout(check, DEADLINE_MS);
 })();
