@@ -1894,6 +1894,39 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
     log-echo entry above — the artifact you search contains your search — and it
     silently disables the guard while looking like one. Anchor to a pid you were handed
     (`simctl launch` prints one) rather than to a pattern you also typed.
+  - **A dev server on a shared port can belong to another worktree, and Playwright will
+    reuse it without saying so.** 2026-09-19, verifying the #2628 boot shell: six
+    Playwright cases ran green-ish against `localhost:5173` and meant nothing, because
+    `playwright.config.ts` sets `reuseExistingServer: !process.env.CI` and the port was
+    already held by `npm run dev` from the `app-security-compliance-5e0439` worktree. The
+    tests drove a DIFFERENT CHECKOUT of this repo — same file paths, same URLs, different
+    content. Five passed and the single failure was correct for entirely the wrong reason
+    (the element under test genuinely does not exist on that branch), which is what makes
+    this worse than an outright error: the failure looked like a real finding and would
+    have been "fixed".
+    This is the sharpest form of the family above, because the artifact is not merely
+    stale or self-matching — it is a plausible, live, actively-served *other* version of
+    the thing you are testing, and nothing in the run mentions it. `10+ worktrees are
+    typically checked out at once` (see the shared-checkout section), so the default
+    assumption for any fixed port on this machine is that someone else already owns it.
+    Start your own server on a port you pick and point the suite at it —
+    `BASE_URL=http://localhost:<yours> npx playwright test …`, which also sets
+    `webServer: undefined` and removes the reuse path entirely. To confirm who owns a
+    port before trusting a single result:
+
+    ```bash
+    lsof -ti tcp:5173 | while read -r p; do lsof -a -p "$p" -d cwd -Fn | grep '^n' | cut -c2-; done
+    ```
+
+    Cheaper still, and the check that actually caught it here: fetch the page and grep for
+    something only your branch has. `curl -s http://localhost:<port>/ | grep -c <marker>`
+    returning 0 while the file on disk has it is the whole diagnosis.
+  - **`ps aux | grep -c <tool>` counts every session's processes, not yours.** Same
+    session, same hour: repeated readings of "the suite is still running" were partly
+    another session's unrelated mutation loop, so a run that may have ended looked alive
+    and the machine looked busier than the work I had started could explain. A count is
+    not evidence that YOUR process lives — check the pid you were given
+    (`ps -p <pid>`), not a name that every concurrent session also matches.
   - **"The newest build" on App Store Connect is three different answers depending on
     how you ask, and the two wrong ones look right.** 2026-09-19, prepping the #2541 iOS
     fresh-install run: a peer session's pre-flight comment on the issue said "install
