@@ -212,6 +212,44 @@ describe('native constants', () => {
     expect(keysIn(swiftList)).toEqual(keysIn(kotlinList))
   })
 
+  // OTA was DISARMED for 1.0.2 (2026-09-19, owner decision): both pinned lists
+  // are empty, which disables OTA entirely (I4).
+  //
+  // That alone would make the parity test above pass VACUOUSLY -- [] equals []
+  // no matter how far the two platforms drift. Same shape as the flag-disabled
+  // block in #1418: coverage that reads as present and is not. So while
+  // disarmed, parity is enforced on the COMMENTED keys instead, and the empty
+  // state is pinned so re-arming has to come through here.
+  const commentedKeys = (src) =>
+    [...src.matchAll(/^\s*\/\/ OTA_PINNED_KEY "([^"]+)"$/gm)].map((m) => m[1])
+
+  it('is disarmed on both platforms', () => {
+    expect(swift).toMatch(/static let publicKeysSpkiB64: \[String\] = \[\]/)
+    expect(kotlin).toMatch(/PUBLIC_KEYS_SPKI_B64:\s*List<String>\s*=\s*emptyList\(\)/)
+  })
+
+  it('keeps the real keys recorded, and identical across platforms, while disarmed', () => {
+    const ios = commentedKeys(swift)
+    const android = commentedKeys(kotlin)
+    // Two tokens were provisioned 2026-09-18; losing one from a comment during a
+    // refactor would make re-arming a git-history dig.
+    expect(ios).toHaveLength(2)
+    expect(ios).toEqual(android)
+  })
+
+  // THE TRIPWIRE. Re-arming turns the two tests above red, which is the point:
+  // docs/ota-updates.md gates arming on (1) owner sign-off against I3's "zero
+  // backend calls" wording and (2) a privacy-policy disclosure of the
+  // cold-start update check. Both were unmet when the keys were provisioned.
+  // When you re-arm, delete the two tests above and restore parity on the live
+  // lists -- do not weaken them to make a build pass.
+  it('names what must happen before OTA is re-armed', () => {
+    const runbook = readFileSync('docs/ota-updates.md', 'utf8')
+    expect(runbook).toMatch(/DISARMED for 1\.0\.2/)
+    expect(runbook).toMatch(/sign-off against\s+I3/)
+    expect(runbook).toMatch(/privacy-policy disclosure/)
+  })
+
   // JS downloads via Filesystem({ directory: 'LIBRARY' }) into the relative path
   // native returns; native then reads <LIBRARY>/<root>/<version>. Both halves
   // must name the same folder, and the plugin must keep mapping LIBRARY there.
