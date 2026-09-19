@@ -65,12 +65,26 @@
 
   // Painted == at least one descendant of #root occupies real pixels.
   // Deliberately ignores #root itself (see note 1 above).
+  //
+  // 1b. It also ignores #boot-shell and everything inside it. That element is
+  //     index.html's static pre-JS shell: a position:fixed, inset:0 box living
+  //     INSIDE #root, so it satisfies the width/height test on the very first
+  //     tick. Counting it would report "painted" before React has done
+  //     anything and keep reporting it forever — the watchdog would never fire
+  //     again, silently, which is precisely the failure mode of #2595. The
+  //     shell is not app content; it is what the user looks at INSTEAD of app
+  //     content, so excluding it is the honest reading of "has the app
+  //     painted". Pinned by "boot shell alone is not paint" in
+  //     e2e/boot-watchdog.spec.js — do not drop either the skip or the pin.
   function hasVisibleContent(root) {
     if (!root) return false;
+    var shell = document.getElementById('boot-shell');
     var els = root.querySelectorAll('*');
     var limit = els.length < MAX_NODES ? els.length : MAX_NODES;
     for (var i = 0; i < limit; i++) {
-      var r = els[i].getBoundingClientRect();
+      var el = els[i];
+      if (shell && (el === shell || shell.contains(el))) continue;
+      var r = el.getBoundingClientRect();
       if (r.width > 0 && r.height > 0) return true;
     }
     return false;
