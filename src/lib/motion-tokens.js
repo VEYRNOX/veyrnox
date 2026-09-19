@@ -5,7 +5,12 @@
 export const duration = {
   fast: 0.18,
   normal: 0.35,
-  slow: 0.5,
+  // No `slow` token. It existed at 0.5 with zero consumers until #2609 removed
+  // it: 500ms is over the 400ms budget for a direct response to a tap, so the
+  // one thing a future caller would reach for it to do is the thing it should
+  // not do. Ambient loops (VeyrnoxAmbient, Skeleton shimmer) and deliberate
+  // ceremony (WalletCreatedFlash, SuccessBeacon, LockSealingOverlay) set their
+  // own longer durations locally and are correct — they are not interactions.
 };
 
 // Bezier arrays are Apple-standard curves. `smooth` is the default enter/exit;

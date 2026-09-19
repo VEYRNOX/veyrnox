@@ -58,7 +58,7 @@ export default function TransactionIntelligencePanel({
           <div className="min-w-0 space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
               <p className={`text-sm font-semibold ${style.text}`}>Transaction intelligence</p>
-              <span className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full border ${CONTRIBUTOR_STYLES[verdict.level] || CONTRIBUTOR_STYLES.PENDING}`}>
+              <span className={`text-xs uppercase tracking-wide px-2 py-0.5 rounded-full border ${CONTRIBUTOR_STYLES[verdict.level] || CONTRIBUTOR_STYLES.PENDING}`}>
                 {style.label}
               </span>
             </div>
@@ -68,7 +68,7 @@ export default function TransactionIntelligencePanel({
           </div>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Policy</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Policy</p>
           <p className="text-xs font-medium">{policy.actionLabel}</p>
         </div>
       </div>
@@ -98,7 +98,7 @@ export default function TransactionIntelligencePanel({
 
       {hasAdvanced && (
         <details className="group">
-          <summary className="cursor-pointer select-none list-none flex items-center justify-between py-1 text-[11px] uppercase tracking-wide text-muted-foreground border-t border-border/40">
+          <summary className="cursor-pointer select-none list-none flex items-center justify-between py-1 text-xs uppercase tracking-wide text-muted-foreground border-t border-border/40">
             <span className="font-medium">Advanced details</span>
             <span className="group-open:rotate-180 transition-transform">▾</span>
           </summary>
@@ -112,7 +112,7 @@ export default function TransactionIntelligencePanel({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium">{contributor.label}</span>
-                      <span className="uppercase tracking-wide text-[10px] opacity-80">
+                      <span className="uppercase tracking-wide text-xs opacity-80">
                         {contributor.applicable ? (contributor.settled ? contributor.level || 'OK' : 'PENDING') : 'N/A'}
                       </span>
                     </div>
@@ -132,12 +132,12 @@ export default function TransactionIntelligencePanel({
               <div className="space-y-2">
                 {verdict.localSignals.length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Active signals</p>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Active signals</p>
                     <div className="flex flex-wrap gap-1.5">
                       {verdict.localSignals.map((signal) => (
                         <span
                           key={signal.id}
-                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${CONTRIBUTOR_STYLES[signal.level] || CONTRIBUTOR_STYLES.PENDING}`}
+                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${CONTRIBUTOR_STYLES[signal.level] || CONTRIBUTOR_STYLES.PENDING}`}
                         >
                           <Radar className="h-3 w-3" aria-hidden="true" />
                           {signal.id}
@@ -148,10 +148,10 @@ export default function TransactionIntelligencePanel({
                 )}
                 {monoEntries.length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Evidence</p>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Evidence</p>
                     {monoEntries.map(([key, value]) => (
                       <div key={key} className="flex gap-2 text-xs min-w-0">
-                        <span className="uppercase tracking-wide text-[10px] text-muted-foreground shrink-0">{key}</span>
+                        <span className="uppercase tracking-wide text-xs text-muted-foreground shrink-0">{key}</span>
                         <span className="mono-value break-all">{value}</span>
                       </div>
                     ))}
@@ -162,7 +162,7 @@ export default function TransactionIntelligencePanel({
 
             {verdict.sourcesConsulted.length > 0 && (
               <div className="space-y-1">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Threat-intel sources</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Threat-intel sources</p>
                 <div className="space-y-1">
                   {verdict.sourcesConsulted.map((source) => (
                     <div key={`${source.source}-${source.status}`} className="flex items-center justify-between gap-2 text-xs rounded-md border border-border/60 bg-background/40 px-2 py-1">

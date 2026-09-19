@@ -180,7 +180,7 @@ function PoisonWarning({ screen }) {
         </p>
         {screen.lookAlikes.map((m, i) => (
           <div key={i} className="rounded bg-destructive/10 border border-destructive/20 p-1.5">
-            <p className="text-[10px] uppercase tracking-wide text-destructive/70">
+            <p className="text-xs uppercase tracking-wide text-destructive/70">
               {t("send_gates.poison.resembles", {
                 label: m.label,
                 dateSuffix: m.date
@@ -298,7 +298,7 @@ function SendDoneView({ amount, currency, txResult, onSendAnother }) {
               {tw("send.done.view_explorer")} <ExternalLink className="h-3 w-3" />
             </a>
           )}
-          <p className="text-[11px] text-muted-foreground">{tw("send.done.pending_note")}</p>
+          <p className="text-xs text-muted-foreground">{tw("send.done.pending_note")}</p>
         </motion.div>
       )}
       <motion.div variants={item}>
@@ -2058,7 +2058,7 @@ export default function SendCrypto() {
                 />
               </div>
             ))}
-            <span className="ms-2 text-[11px] text-muted-foreground font-medium uppercase tracking-widest">
+            <span className="ms-2 text-xs text-muted-foreground font-medium uppercase tracking-widest">
               {stepLabels[stepIndex]}
             </span>
           </div>
@@ -2117,7 +2117,7 @@ export default function SendCrypto() {
                 {selectedWalletName || tw("send.wallet_picker.placeholder")}
               </p>
             </div>
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Change</span>
+            <span className="text-xs uppercase tracking-widest text-muted-foreground">Change</span>
           </button>
         )}
         <div>
@@ -2160,7 +2160,7 @@ export default function SendCrypto() {
             ) : (
               // M-3: resolved via an untrusted third-party service — require an
               // explicit confirmation before it becomes the signing target.
-              <div className="mt-1.5 p-2.5 rounded-lg bg-caution/10 border border-caution/20 text-[11px] text-caution space-y-2">
+              <div className="mt-1.5 p-2.5 rounded-lg bg-caution/10 border border-caution/20 text-xs text-caution space-y-2">
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                   <span>
@@ -2230,7 +2230,7 @@ export default function SendCrypto() {
             opt-in inside Security Center is deferred — noted in the PR body.
             The DEMO poison-address helper stays as a dev affordance. */}
         {selectedWallet && (isEvmFamily(selectedAsset) || isErc20) && (
-          <div className="flex items-center gap-2 -mt-2 text-[11px] text-muted-foreground" title={tw("send.screening.local_disclosure")}>
+          <div className="flex items-center gap-2 -mt-2 text-xs text-muted-foreground" title={tw("send.screening.local_disclosure")}>
             <ShieldCheck className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
             <span>Checked on your device</span>
             {demoActive && (
@@ -2370,9 +2370,9 @@ export default function SendCrypto() {
                 {selectedWallet && (
                   <p className="text-xs text-muted-foreground mt-1">
                     {demoActive
-                      ? <>{tw("send.amount.balance_prefix")} <span className="mono-value">{demoBalance} {selectedWallet.currency}</span> <span className="text-[10px]">{tw("send.amount.demo_suffix")}</span></>
+                      ? <>{tw("send.amount.balance_prefix")} <span className="mono-value">{demoBalance} {selectedWallet.currency}</span> <span className="text-xs">{tw("send.amount.demo_suffix")}</span></>
                       : flowSendEnabled
-                        ? <>{tw("send.amount.balance_prefix")} {nativeLiveBalance != null ? <span className="mono-value">{nativeLiveBalance} {selectedWallet.currency}</span> : tw("send.amount.reading_from_network")} <span className="text-[10px]">{tw("send.amount.live_suffix")}</span></>
+                        ? <>{tw("send.amount.balance_prefix")} {nativeLiveBalance != null ? <span className="mono-value">{nativeLiveBalance} {selectedWallet.currency}</span> : tw("send.amount.reading_from_network")} <span className="text-xs">{tw("send.amount.live_suffix")}</span></>
                         : <>{tw("send.amount.balance_prefix")} <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
                     {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span></>}
                     {/* Max — deliberately OPT-IN (a tap), never applied for the
@@ -2420,7 +2420,7 @@ export default function SendCrypto() {
             );
           })()}
           {(amountUsd != null || balanceUsd != null) && (
-            <p className="text-[10px] text-muted-foreground/70 mt-0.5">{USD_REFERENCE_NOTE}</p>
+            <p className="text-xs text-muted-foreground/70 mt-0.5">{USD_REFERENCE_NOTE}</p>
           )}
         </div>
 
@@ -2631,11 +2631,11 @@ export default function SendCrypto() {
             {/* Hint: one-tap escape while the risk check is still running. */}
             {riskPending && simEnabled && (
               <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-dashed border-border bg-card">
-                <p className="text-[11px] text-muted-foreground">{tw("send.simulation.taking_too_long")}</p>
+                <p className="text-xs text-muted-foreground">{tw("send.simulation.taking_too_long")}</p>
                 <button
                   type="button"
                   onClick={() => toggleSim(false)}
-                  className="text-[11px] font-medium text-primary underline underline-offset-2 whitespace-nowrap"
+                  className="text-xs font-medium text-primary underline underline-offset-2 whitespace-nowrap"
                 >
                   {tw("send.simulation.turn_off")}
                 </button>
@@ -2685,7 +2685,7 @@ export default function SendCrypto() {
             )}
             {isErc20 && tokenCalldata && tokenCalldata.kind !== "unknown" && (
               <details className="group p-3 rounded-lg bg-secondary/30 border border-border">
-                <summary className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest cursor-pointer select-none list-none flex items-center justify-between gap-2">
+                <summary className="text-xs text-muted-foreground font-medium uppercase tracking-widest cursor-pointer select-none list-none flex items-center justify-between gap-2">
                   <span className="flex items-center gap-1.5">
                     <FileText className="h-3 w-3" /> {tw("send.decode.heading")}
                   </span>
@@ -2710,7 +2710,7 @@ export default function SendCrypto() {
                   )}
                   {/* Gas is always paid in the chain's native coin, even for tokens —
                       and that coin is NOT always ETH (Phase C). Read it per-chain. */}
-                  <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-1 border-t border-border/60">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1 border-t border-border/60">
                     <Fuel className="h-3 w-3 shrink-0" /> {tw("send.fee.native_fee_note", { symbol: nativeSymbol, network: networkName, token: tokenCalldata.tokenSymbol || selectedWallet?.currency })}
                   </p>
                 </div>
@@ -2799,15 +2799,15 @@ export default function SendCrypto() {
                 >
                   <Fuel className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   <span className="text-xs font-medium flex-1">Network fee</span>
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {selectedFee?.label || selectedFee?.tier || "Standard"}
                   </span>
-                  <span className="text-[10px] uppercase tracking-widest text-primary">Change</span>
+                  <span className="text-xs uppercase tracking-widest text-primary">Change</span>
                 </button>
                 <ReferenceRateNote className="text-center" />
               </>
             ) : (
-              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Fuel className="h-3 w-3 shrink-0" /> {tw("send.fee.automatic", { currency: selectedWallet?.currency, network: networkName })}
               </p>
             )}
@@ -2833,13 +2833,13 @@ export default function SendCrypto() {
                 <p className="text-sm font-semibold">Digital Shield</p>
                 <p className="text-xs text-muted-foreground">Sign offline via QR — your seed never touches the internet</p>
                 {digitalShieldBtcUnsupported && (
-                  <p className="text-[11px] text-caution mt-1">Bitcoin testnet and signet are not supported for Digital Shield yet.</p>
+                  <p className="text-xs text-caution mt-1">Bitcoin testnet and signet are not supported for Digital Shield yet.</p>
                 )}
                 {useDigitalShieldMode && digitalShieldConnected && (
-                  <p className="text-[11px] text-primary mt-1">✓ Imported</p>
+                  <p className="text-xs text-primary mt-1">✓ Imported</p>
                 )}
                 {useDigitalShieldMode && !digitalShieldConnected && (
-                  <p className="text-[11px] text-caution mt-1">Import it first on Hardware Wallet</p>
+                  <p className="text-xs text-caution mt-1">Import it first on Hardware Wallet</p>
                 )}
               </div>
             </label>
@@ -3055,7 +3055,7 @@ export default function SendCrypto() {
               <textarea
                 readOnly
                 value={digitalShieldFlow.urParts.join('\n')}
-                className="min-h-24 w-full rounded-lg border border-input bg-background px-3 py-2 text-[11px] font-mono"
+                className="min-h-24 w-full rounded-lg border border-input bg-background px-3 py-2 text-xs font-mono"
               />
             </div>
           ) : null}
@@ -3080,7 +3080,7 @@ export default function SendCrypto() {
             value={digitalShieldResponseDraft || digitalShieldResponseParts.join('\n')}
             onChange={(e) => setDigitalShieldResponseDraft(e.target.value)}
             placeholder="Paste one UR or multiple UR response parts here"
-            className="min-h-28 w-full rounded-lg border border-input bg-background px-3 py-2 text-[11px] font-mono"
+            className="min-h-28 w-full rounded-lg border border-input bg-background px-3 py-2 text-xs font-mono"
           />
           {digitalShieldError ? <p className="text-xs text-destructive break-all">{digitalShieldError}</p> : null}
           <Button

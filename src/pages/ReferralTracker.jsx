@@ -111,7 +111,7 @@ function ProgressBar({ paidCount }) {
         }
         className="h-2 w-full rounded-full bg-secondary overflow-hidden"
       >
-        <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }} />
+        <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
       </div>
       <div className="flex justify-between text-[10px] text-muted-foreground">
         <span>{paidCount.toLocaleString()} paid subscribers</span>

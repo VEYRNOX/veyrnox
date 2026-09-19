@@ -210,8 +210,30 @@ export default function Layout() {
   const lockConfirmRef = useModalA11y({ active: lockConfirmOpen, onEscape: () => setLockConfirmOpen(false) });
   const [collapsed, setCollapsed] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState({ Overview: true, Wallet: true });
-  const toggleGroup = (label) => setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
+  // Nav group collapse (#2609). `openGroups` holds ONLY explicit user toggles;
+  // a group with no entry falls back to "open iff it contains the current
+  // route", so the drawer opens showing where you are and nine other groups
+  // closed instead of 67 equal-weight destinations in one scroll. Seeding the
+  // state with a fixed {Overview, Wallet} default — which is what this was
+  // until #2609 — cannot do that, because the default has to change as the
+  // route does. Both the desktop sidebar and the mobile More drawer read
+  // isGroupOpen, so they cannot drift apart.
+  const [openGroups, setOpenGroups] = useState(/** @type {Record<string, boolean>} */ ({}));
+  const isGroupOpen = (group) => (
+    Object.prototype.hasOwnProperty.call(openGroups, group.label)
+      ? openGroups[group.label]
+      : group.items.some(item => item.path === location.pathname)
+  );
+  // Toggle against what the user can SEE, not against prev[label]. An
+  // untouched group has no entry, so `!prev[label]` would read undefined as
+  // closed and "open" a group that is already open on screen — one dead tap on
+  // the group holding the current route.
+  const toggleGroup = (label) => {
+    const group = navGroups.find(g => g.label === label);
+    if (!group) return;
+    const open = isGroupOpen(group);
+    setOpenGroups(prev => ({ ...prev, [label]: !open }));
+  };
   const advisorRouteMeta = useMemo(
     () => searchableRoutes.find((route) => route.path === location.pathname) || null,
     [location.pathname]
@@ -448,14 +470,15 @@ export default function Layout() {
               {!collapsed && (
                 <button
                   onClick={() => toggleGroup(group.label)}
+                  aria-expanded={isGroupOpen(group)}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-colors"
                 >
                   <span>{group.label}</span>
-                  <ChevronDown className={`h-3 w-3 text-muted-foreground/50 transition-transform ${openGroups[group.label] ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-3 w-3 text-muted-foreground/50 transition-transform ${isGroupOpen(group) ? 'rotate-180' : ''}`} />
                 </button>
               )}
               {collapsed && <div className="mt-2" />}
-              {(!collapsed && openGroups[group.label]) && (
+              {(!collapsed && isGroupOpen(group)) && (
                 <div className="space-y-0.5 mt-1">
                   {group.items.map((item) => {
                     const active = location.pathname === item.path;
@@ -729,7 +752,7 @@ export default function Layout() {
                 />
               )}
               <item.icon className="relative h-5 w-5" aria-hidden="true" />
-              <span className="relative text-[11px] font-medium">{item.label}</span>
+              <span className="relative text-xs font-medium">{item.label}</span>
             </button>
           );
         })}
@@ -740,7 +763,7 @@ export default function Layout() {
           aria-expanded={moreOpen}
         >
           <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-          <span className="text-[11px] font-medium">{t('nav.more')}</span>
+          <span className="text-xs font-medium">{t('nav.more')}</span>
         </button>
       </nav>
 
@@ -780,7 +803,7 @@ export default function Layout() {
               <div className="rounded-2xl p-2.5 border border-primary/20 bg-primary/5">
                 <div className="flex items-center gap-2 px-1 pb-2">
                   <span className="h-2 w-2 rounded-full shrink-0 bg-primary" />
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t('nav.recent_heading')}</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t('nav.recent_heading')}</p>
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
                   {recents.map(path => {
@@ -794,7 +817,7 @@ export default function Layout() {
                         style={/** @type {React.CSSProperties} */ ({ "--mt-bg": "#4ADAC21c", "--mt-bd": "#4ADAC240", "--mt-hbg": "#4ADAC259", "--mt-hbd": "#4ADAC2ee", "--mt-glow": "#4ADAC2b3", "--mt-abg": "#4ADAC23a", "--mt-abd": "#4ADAC299" })}
                       >
                         <item.icon className="h-6 w-6" style={active ? { color: '#4ADAC2' } : undefined} />
-                        <span className="text-[11px] font-medium text-center leading-tight line-clamp-2">{item.label}</span>
+                        <span className="text-xs font-medium text-center leading-tight line-clamp-2">{item.label}</span>
                       </Link>
                     );
                   })}
@@ -805,10 +828,17 @@ export default function Layout() {
               const color = groupColor(group.label);
               return (
               <div key={group.label} className="rounded-2xl p-2.5 border" style={{ backgroundColor: color + "0d", borderColor: color + "33" }}>
-                <div className="flex items-center gap-2 px-1 pb-2">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.label)}
+                  aria-expanded={isGroupOpen(group)}
+                  className="w-full flex items-center gap-2 px-1 pb-2 min-h-[44px] text-start"
+                >
                   <span className="h-2 w-2 rounded-full shrink-0" style={{ background: color }} />
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{group.label}</p>
-                </div>
+                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{group.label}</span>
+                  <ChevronDown className={`h-3.5 w-3.5 ms-auto text-muted-foreground/50 transition-transform ${isGroupOpen(group) ? 'rotate-180' : ''}`} />
+                </button>
+                {isGroupOpen(group) && (
                 <div className="grid grid-cols-3 gap-1.5">
                   {group.items.map(item => {
                     const active = location.pathname === item.path;
@@ -824,11 +854,12 @@ export default function Layout() {
                         })}
                       >
                         <item.icon className="h-6 w-6" style={active ? { color } : undefined} />
-                        <span className="text-[11px] font-medium text-center leading-tight line-clamp-2">{item.label}</span>
+                        <span className="text-xs font-medium text-center leading-tight line-clamp-2">{item.label}</span>
                       </Link>
                     );
                   })}
                 </div>
+                )}
               </div>
             );})}
           </div>

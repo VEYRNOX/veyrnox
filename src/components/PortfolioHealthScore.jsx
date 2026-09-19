@@ -121,7 +121,7 @@ export default function PortfolioHealthScore({
                 </div>
                 <div className="h-1 bg-secondary rounded-full overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all duration-700"
+                    className="h-full rounded-full transition-all duration-300"
                     style={{
                       width: `${pct}%`,
                       background:

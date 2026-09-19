@@ -28,7 +28,7 @@ export default function QuickAccessGrid() {
   return (
     <div>
       <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Quick Access</p>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {TILES.map((item) => (
           <button
             key={item.path}
@@ -38,7 +38,7 @@ export default function QuickAccessGrid() {
             <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center">
               <item.icon className="h-4 w-4 text-primary" />
             </div>
-            <span className="text-[10px] font-medium text-muted-foreground leading-tight">{item.label}</span>
+            <span className="text-xs font-medium text-muted-foreground leading-tight">{item.label}</span>
           </button>
         ))}
       </div>
