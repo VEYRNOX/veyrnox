@@ -27,6 +27,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { screenRecipient, isLocallyFlagged } from "@/wallet-core/evm/poison";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import { useWallet } from "@/lib/WalletProvider";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
 
 // Verdict shapes — NONE asserts safety. The "clear" case is explicitly framed as
 // "not a guarantee", matching the simulation/preview language used app-wide.
@@ -102,12 +105,26 @@ export default function SuspiciousAddressChecker() {
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState([]);
 
+  // K-2 / I3 (#2537): AddressBook rows live in the SHARED veyrnox-appdata
+  // IndexedDB with no per-session partition, so without this gate a
+  // decoy/hidden/demo session reads the REAL user's contacts — names included —
+  // as the look-alike baseline. isDecoy/isHidden are React state and lag the
+  // module-level flag, so fold in the canonical predicate too. Fail closed.
+  //
+  // Losing the baseline degrades this page honestly: with no contacts there is
+  // nothing to compare against, which is the same state a new user has, and the
+  // screening verdict for the typed address still renders.
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
+
   // The user's saved addresses — the real baseline for the poisoning look-alike
   // screen. Best-effort; an empty book just means no look-alike comparison.
-  const { data: contacts = [] } = useQuery({
+  const { data: contactsRaw = [] } = useQuery({
     queryKey: ["address-book"],
     queryFn: () => base44.entities.AddressBook.list("-created_date"),
+    enabled: !deniable,
   });
+  const contacts = deniable ? [] : contactsRaw;
   const knownAddresses = contacts
     .map((c) => ({ address: c.address, label: c.name }))
     .filter((c) => c.address);
