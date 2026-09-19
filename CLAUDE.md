@@ -405,10 +405,18 @@ Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-0
   pre-consent in-app §9): opt-in wording, Settings → Privacy, the fuller event
   list, and the panic-wipe line. Paste-ready copy:
   `docs/veyrnox-com-privacy-corrections-2026-07-26.md`.
-  The site source is NOT in this repo, not in `aljobson/veyrnox-marketing`
-  (content only) and not in `aljobson/Veyrnox.ai` — it is served by uvicorn on
-  Render behind Cloudflare and the body is client-rendered, so `curl` shows only
-  nav/SEO shell. Find the CMS before promising an edit.
+  **The site source is `aljobson/veyrnox-site` — Astro on Cloudflare Pages.**
+  This paragraph said it was "served by uvicorn on Render behind Cloudflare"
+  and that the source was in none of our repos, which sent readers looking for
+  a CMS that does not exist. Corrected 2026-09-19 from the repo's own
+  description and commit history (311 PRs, actively developed).
+  **The cost of the wrong note was real:** during the 2026-09-16 Transak
+  outage, `veyrnox.com` is the domain in `referrerDomain` and therefore a prime
+  suspect, and this line is why its repository was excluded from a
+  PR-by-PR sweep of every other repo. A "we don't have the source" note is an
+  instruction to stop looking — it has to be right, or it hides a whole
+  surface. `aljobson/veyrnox-marketing` really is content/press only, and
+  `aljobson/Veyrnox.ai` is the separate veyrnox.ai product.
 - **API security hardening (PR #1334, merged 2026-07-23).** All Supabase writes
   now go through rate-limited SECURITY DEFINER functions — no direct table INSERT
   via the anon key. Controls: `track_event()` 60/device/hour + event allowlist
@@ -737,8 +745,19 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
   no longer asks the encryption questions at submission. The France declaration
   requirement is resolved. See `docs/play-launch/export-compliance-counsel-note.md`
   for the counsel rationale.
-- `veyrnox.com` is a client-rendered SPA — `curl` gives **false negatives** when checking
-  page content; verify by rendering the page.
+- `veyrnox.com` is **Astro on Cloudflare Pages** (`aljobson/veyrnox-site`), and it
+  server-renders: `curl https://veyrnox.com/` returns the real content, headers and
+  all. This line said it was "a client-rendered SPA" where `curl` gives false
+  negatives — that was true of an earlier deployment and is not true now, and it
+  discouraged the cheapest possible check. Verified 2026-09-19: plain `curl` returns
+  200 with the full document, `content-security-policy` and
+  `referrer-policy: strict-origin-when-cross-origin` visible in the headers, and no
+  bot challenge for `curl`/`python-requests`/bot user agents.
+  Two things worth knowing about those headers, because Transak reads them:
+  `referrer-policy` is the value Transak's docs recommend (a `no-referrer` here
+  would break their runtime domain validation), and the CSP's `frame-src` lists
+  only YouTube — **no Transak origin** — so an iframe Buy served from this domain
+  would be blocked outright.
 
 **1.0.1 SUBMISSION HOLD — BOTH stores (owner-locked 2026-08-12). RELEASED
 2026-09-08; both stores submitted that day. The paragraph below is the original
