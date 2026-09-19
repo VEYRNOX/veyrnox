@@ -1678,6 +1678,32 @@ m/44'/60' address; BTC (m/84'/UTXO/PSBT) and SOL (ed25519/SLIP-0010) have their 
   BOTH sessions are deniable: lists render empty, writes throw `denyInDeniable()`,
   and primary is indistinguishable from decoy. Deniability walkthroughs need a
   physical device.
+  - **The same gate makes some pages unviewable in ANY automated session, which
+    is a separate trap — it blocks ordinary visual QA, not just deniability
+    work.** `NFTPortfolio.jsx:27` and `MultiChainNFT.jsx:34` compute
+    `!isDeniabilityOrDemoActive()` and render the bare sentence "This page
+    isn't available right now." So `/nft` and `/nft-multichain` are blank under
+    `?demo=1`, under `VITE_DEMO_MODE=1`, in a decoy session, AND on a simulator
+    pointed at the dev server — that last one because the bullet above forces
+    demo mode. Found 2026-09-19 trying to do #2607's "check the NFT action row
+    on a phone"; the routes render the message and nothing else, which reads
+    exactly like a routing or build failure rather than a deliberate gate.
+    **Three pages render that exact sentence** — those two plus
+    `SuspiciousAssets.jsx:210`, all three via the same
+    `!isDeniabilityOrDemoActive()` computation — while **39 files under
+    `src/pages` call the helper** for narrower suppression (empty lists,
+    blocked writes) without blanking the page. So grep
+    `isDeniabilityOrDemoActive` before concluding a page is broken, and expect
+    most hits to be the quieter kind.
+  - **What to do instead, when the question is layout rather than behaviour.**
+    Transcribe the component's markup into a static page, load the REAL
+    compiled `dist/assets/index-*.css`, and measure with the browser at 390 /
+    375 / 320px. That answered #2607 (zero page overflow at every width; the
+    `basis-full` wrap puts List/Delist on its own line; all three controls
+    ≥44px — 50px in practice, because `h-11` is 2.75rem and `index.css` sets
+    `:root { font-size: 18px }` below 640px). Be honest about what it is: a
+    transcription cannot cover conditional classes, so it answers "does it fit
+    and stay reachable", never "does it look right".
 
 - **Use a heredoc for multi-line commit messages** — `git commit -F - <<'EOF' ... EOF`,
   quoting the delimiter so `$` and backticks stay literal.
