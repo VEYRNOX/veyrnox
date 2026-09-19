@@ -39,26 +39,12 @@ object OtaConfig {
      * EMPTY = OTA DISABLED: no downloaded bundle is ever loaded.
      * Must equal publicKeysSpkiB64 on iOS, in the same order (pinned by a test).
      */
-    // DISARMED for the 1.0.2 release (2026-09-19, owner decision). An empty list
-    // disables OTA completely (I4) -- see docs/ota-updates.md.
-    //
-    // The keys below are the real pinned values, kept here and not only in git
-    // history so re-arming is an uncomment rather than an archaeology exercise.
-    // A test pins the commented pair on both platforms so iOS and Android cannot
-    // drift apart while disarmed -- emptying both lists would otherwise make the
-    // parity check pass vacuously.
-    //
-    // DO NOT UNCOMMENT WITHOUT the two prerequisites docs/ota-updates.md states:
-    //   1. owner sign-off against I3's "zero backend calls" wording
-    //   2. a privacy-policy disclosure of the cold-start update check
-    // Both were unmet when the keys were provisioned on 2026-09-18. The check
-    // fetches updates.veyrnox.com on every cold start whether or not anything is
-    // published, so an empty bucket is not a mitigation for either.
-    val PUBLIC_KEYS_SPKI_B64: List<String> = emptyList()
-    // OTA_PINNED_KEY Token A — YubiKey 5C NFC serial 39744850, PIV slot 9c, on-token 2026-09-18
-    // OTA_PINNED_KEY "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbJRsfXCSdRweSxBeZ7J4SvKY4zlbMgvZHlvOnt6hbo1ml67IZ19HrMyD2DCrN8iNeqhDJtktwty/CX7acvTT1Q=="
-    // OTA_PINNED_KEY Token B — YubiKey 5C NFC serial 39744871, PIV slot 9c, on-token 2026-09-18
-    // OTA_PINNED_KEY "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPXtup2m80bcCIC9ocQ198AFnZKhyxr2zu/a7IDKKn14FRq0BtBshJRGfOPpcCSy1FMmLcqIKw44Zi6MGfkczxA=="
+    val PUBLIC_KEYS_SPKI_B64: List<String> = listOf(
+        // Token A — YubiKey 5C NFC serial 39744850, PIV slot 9c, generated on-token 2026-09-18
+        "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbJRsfXCSdRweSxBeZ7J4SvKY4zlbMgvZHlvOnt6hbo1ml67IZ19HrMyD2DCrN8iNeqhDJtktwty/CX7acvTT1Q==",
+        // Token B — YubiKey 5C NFC serial 39744871, PIV slot 9c, generated on-token 2026-09-18
+        "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPXtup2m80bcCIC9ocQ198AFnZKhyxr2zu/a7IDKKn14FRq0BtBshJRGfOPpcCSy1FMmLcqIKw44Zi6MGfkczxA==",
+    )
 }
 
 data class OtaManifest(
