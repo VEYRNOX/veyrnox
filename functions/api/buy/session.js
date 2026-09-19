@@ -50,6 +50,36 @@ const SUPPORTED_ASSETS = new Map([
   ['USDT:ethereum',    { code: 'USDT', network: 'ethereum'   }],
 ]);
 
+/**
+ * Route the two Transak calls through a static-egress relay when one is
+ * configured.
+ *
+ * Transak requires partner API calls to come from whitelisted IPs ("Call this
+ * API only from the partner backend, with partner IPs whitelisted"). Pages
+ * Functions egress from Cloudflare's shared edge with no static address, so an
+ * allowlist built from observed traffic decays on its own — that is what took
+ * prod Buy down on 2026-09-16 (issue #2655). `services/transak-proxy` runs on
+ * a host with a stable outbound IP and relays these two paths unchanged.
+ *
+ * NO-OP until TRANSAK_PROXY_BASE is set: with it unset this returns the direct
+ * Transak URLs, so merging this changes nothing until the relay is deployed and
+ * its IP registered.
+ *
+ * @param {string} directUrl  The Transak endpoint we would call directly.
+ * @param {{TRANSAK_PROXY_BASE?: string, TRANSAK_ENVIRONMENT?: string}} env
+ * @returns {string}
+ */
+export function upstreamUrlFor(directUrl, env) {
+  const base = (env.TRANSAK_PROXY_BASE || '').replace(/\/+$/, '');
+  if (!base) return directUrl;
+  const environment = env.TRANSAK_ENVIRONMENT === 'PRODUCTION' ? 'production' : 'staging';
+  // Match on the endpoint we own, never on caller input. An unrecognised URL
+  // falls back to calling Transak directly rather than silently dropping it.
+  if (directUrl.includes('/refresh-token')) return `${base}/transak/refresh-token/${environment}`;
+  if (directUrl.includes('/auth/session')) return `${base}/transak/session/${environment}`;
+  return directUrl;
+}
+
 function err(status, message) {
   const e = new Error(message);
   e.status = status;
@@ -164,7 +194,7 @@ async function getPartnerToken(env, clientIp) {
   const apiKey = env.TRANSAK_API_KEY;
   if (!apiSecret || !apiKey) err(503, 'Transak not configured');
 
-  const res = await fetchUpstream(urls.refreshToken, {
+  const res = await fetchUpstream(upstreamUrlFor(urls.refreshToken, env), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -178,6 +208,7 @@ async function getPartnerToken(env, clientIp) {
       // Set from the backend (not forwarded from the client) so the value
       // is trusted and cannot be spoofed by end users.
       'Referer': PARTNER_REFERER,
+      ...(env.TRANSAK_PROXY_SECRET ? { 'x-proxy-secret': env.TRANSAK_PROXY_SECRET } : {}),
     },
     body: JSON.stringify({ apiKey }),
   });
@@ -270,7 +301,7 @@ export async function onRequestPost(context) {
   const sessionBody = { widgetParams };
 
   async function callCreateSession(token, urls) {
-    return fetchUpstream(urls.createSession, {
+    return fetchUpstream(upstreamUrlFor(urls.createSession, env), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -279,6 +310,7 @@ export async function onRequestPost(context) {
         'x-user-ip': clientIp,
         'access-token': token,
         'Referer': PARTNER_REFERER,
+        ...(env.TRANSAK_PROXY_SECRET ? { 'x-proxy-secret': env.TRANSAK_PROXY_SECRET } : {}),
       },
       body: JSON.stringify(sessionBody),
     });

@@ -13,7 +13,7 @@
 // 65e1cb45, so neither had ever been exercised by a test.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { onRequestPost, onRequestGet } from '../session.js';
+import { onRequestPost, onRequestGet, upstreamUrlFor } from '../session.js';
 
 const ENV = {
   TRANSAK_API_KEY: 'pk_test',
@@ -73,6 +73,49 @@ beforeEach(() => {
 });
 
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+describe('static-egress relay routing (issue #2655)', () => {
+  const STG = 'https://api-stg.transak.com/partners/api/v2/refresh-token';
+  const SESSION = 'https://api-gateway.transak.com/api/v2/auth/session';
+
+  it('is a NO-OP when no relay is configured', () => {
+    // Merging the relay must not change behaviour until it is deployed.
+    expect(upstreamUrlFor(STG, {})).toBe(STG);
+    expect(upstreamUrlFor(SESSION, { TRANSAK_PROXY_BASE: '' })).toBe(SESSION);
+  });
+
+  it('routes both endpoints through the relay, per environment', () => {
+    const env = { TRANSAK_PROXY_BASE: 'https://relay.example', TRANSAK_ENVIRONMENT: 'PRODUCTION' };
+    expect(upstreamUrlFor(STG, env)).toBe('https://relay.example/transak/refresh-token/production');
+    expect(upstreamUrlFor(SESSION, env)).toBe('https://relay.example/transak/session/production');
+
+    const stg = { TRANSAK_PROXY_BASE: 'https://relay.example' };
+    expect(upstreamUrlFor(SESSION, stg)).toBe('https://relay.example/transak/session/staging');
+  });
+
+  it('tolerates a trailing slash on the base', () => {
+    expect(upstreamUrlFor(SESSION, { TRANSAK_PROXY_BASE: 'https://relay.example///' }))
+      .toBe('https://relay.example/transak/session/staging');
+  });
+
+  it('falls back to the direct URL for an endpoint it does not recognise', () => {
+    // Fail OPEN to Transak rather than silently routing an unknown call.
+    const other = 'https://api.transak.com/api/v2/currencies/crypto-currencies';
+    expect(upstreamUrlFor(other, { TRANSAK_PROXY_BASE: 'https://relay.example' })).toBe(other);
+  });
+
+  it('sends the relay secret only when one is set', async () => {
+    await onRequestPost(ctx(VALID));
+    const call = fetch.mock.calls.find(([u]) => String(u).includes('auth/session'));
+    expect(call[1].headers['x-proxy-secret']).toBeUndefined();
+
+    vi.clearAllMocks();
+    mockTransakOk();
+    await onRequestPost(ctx(VALID, { env: { ...ENV, TRANSAK_PROXY_SECRET: 'shh' } }));
+    const withSecret = fetch.mock.calls.find(([u]) => String(u).includes('auth/session'));
+    expect(withSecret[1].headers['x-proxy-secret']).toBe('shh');
+  });
+});
 
 describe('happy path', () => {
   it('returns the Transak widget URL', async () => {
