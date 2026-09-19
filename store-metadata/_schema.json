@@ -61,7 +61,11 @@
       "required": ["shortDescription", "fullDescription"],
       "properties": {
         "shortDescription": { "$ref": "#/$defs/limitedString" },
-        "fullDescription": { "$ref": "#/$defs/limitedString" }
+        "fullDescription": { "$ref": "#/$defs/limitedString" },
+        "releaseNotes": {
+          "$ref": "#/$defs/limitedString",
+          "description": "Play track release notes (What's new). Apple caps whatsNew at 4000 and Play caps this at 500, so it is a SEPARATE, shorter string -- never apple.whatsNew reused. Play also attaches release notes to a track RELEASE rather than to the listing, so this field is NOT uploaded by upload-store-listings.mjs; see scripts/play-release-notes.mjs."
+        }
       }
     }
   },

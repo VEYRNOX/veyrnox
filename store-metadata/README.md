@@ -12,7 +12,42 @@ in `src/i18n/SUPPORTED_LANGUAGES`.
 - `en.json` — **source of truth**. Any edit to store copy starts here.
 - 43 sibling `<locale>.json` files — machine-translated from `en.json`.
 - `../scripts/upload-store-listings.mjs` — uploads all of the above to
-  Apple + Google via their publishing APIs.
+  Apple + Google via their publishing APIs, **except `play.releaseNotes`**.
+- `../scripts/play-release-notes.mjs` — emits `play.releaseNotes` as the
+  `whatsnew-<play-lang>` file format that `r0adkll/upload-google-play` reads.
+
+## Release notes: Apple and Play are separate strings
+
+`apple.whatsNew` and `play.releaseNotes` say the same thing and are **not**
+interchangeable:
+
+| | Apple | Play |
+|---|---|---|
+| cap | 4000 chars | **500 chars** |
+| attaches to | the app store version | a track **release**, not the listing |
+| uploaded by | `upload-store-listings.mjs` | nothing yet — see below |
+
+Play's 500-character cap is the reason `play.releaseNotes` is its own shorter
+copy rather than a reuse of `apple.whatsNew`. Pasting the Apple string across
+would fit Apple's cap and blow Play's, so
+`src/__tests__/play-release-notes.test.js` pins that the two are never equal,
+alongside the cap itself.
+
+Because Play attaches release notes to a track release (`edits.tracks` →
+`releases[].releaseNotes`) rather than to a listing, uploading them needs a
+target track and versionCode. On this repo the Play upload in `ci.yml` already
+owns the release, so `play-release-notes.mjs` only writes files:
+
+```bash
+node scripts/play-release-notes.mjs --check     # validate, write nothing
+node scripts/play-release-notes.mjs             # write dist-whatsnew/
+```
+
+**Nothing consumes the output yet, deliberately.** The CI upload step carries an
+explicit comment that it sends no release notes because closed testers see the
+versionCode; switching that on changes what every tester and user is shown on
+each release, which is an owner decision. To wire it, run the script before the
+upload step and pass `whatsNewDirectory: dist-whatsnew`.
 
 ## Reviewed vs unreviewed
 
