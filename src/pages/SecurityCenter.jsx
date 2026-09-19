@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import { useActionGuard } from "@/components/security/useActionGuard";
-import { Monitor, Trash2, Plus, DollarSign, LogOut } from "lucide-react";
+import { Monitor, Trash2, Plus, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ import { sumSentTodayUSD } from "@/lib/txLimits";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 import { getSessionToken, ensureSessionToken } from "@/lib/sessionRevocation";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import EmptyState from "@/components/EmptyState";
 
 
 function getDeviceInfo() {
@@ -199,7 +200,11 @@ export default function SecurityCenter() {
             <p className="text-xs text-caution">Couldn't load sessions.</p>
           )}
           {sessions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No active sessions</p>
+            <EmptyState
+              kind="generic"
+              title="No active sessions"
+              description="No other device currently holds a session. The device you are reading this on is not listed here until it registers one."
+            />
           ) : (
             sessions.map(s => {
               const isCurrent = s.session_token === currentToken;
@@ -264,10 +269,15 @@ export default function SecurityCenter() {
             <p className="text-xs text-caution">Couldn't load history — today's totals may be off.</p>
           )}
           {limits.length === 0 ? (
-            <div className="text-center py-8 space-y-2">
-              <DollarSign className="h-8 w-8 text-muted-foreground mx-auto" />
-              <p className="text-sm text-muted-foreground">No limits configured</p>
-            </div>
+            <EmptyState
+              kind="generic"
+              title="No limits configured"
+              description="A spend limit makes a transaction above it ask for a second confirmation. It is a check, not a cap — it never blocks a transaction you approve."
+              action={
+                <Button size="sm" onClick={() => setShowAddLimit(true)}>
+                  <Plus className="h-3.5 w-3.5 me-1" /> Add a limit
+                </Button>}
+            />
           ) : (
             limits.map(l => (
               <div key={l.id} className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card">

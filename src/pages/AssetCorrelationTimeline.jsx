@@ -18,6 +18,7 @@ import {
 import { Newspaper, TrendingUp, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import EmptyState from "@/components/EmptyState";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -330,13 +331,11 @@ export default function AssetCorrelationTimeline() {
 
       {/* Empty state — only when no chart is showing AND no news */}
       {!livePricesOn && newsSentiments.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <Newspaper className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No sentiment records yet</p>
-          <p className="text-xs mt-1">
-            Records appear here when saved via the News Sentiment AI Refresh
-          </p>
-        </div>
+        <EmptyState
+          kind="generic"
+          title="No sentiment records yet"
+          description="Records are saved from News Sentiment when you run an AI Refresh there. This page reads them back — it does not fetch or score anything on its own."
+        />
       )}
     </div>
   );

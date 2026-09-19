@@ -29,6 +29,7 @@ import { computeFeeAnalytics } from "@/analytics/feeAnalytics";
 import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import Spinner from "@/components/Spinner";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import EmptyState from "@/components/EmptyState";
 
 // Fee analytics mirrors the wallet's receivable assets (an asset needs a derived
 // address to have history). ETH is first/default — and is also the canonical
@@ -265,15 +266,14 @@ export default function FeeAnalytics() {
       {!isLoading && !isError && analytics?.available && !lockedLive && (
         <>
           {analytics.paidTxCount === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground rounded-xl border border-dashed border-border space-y-1">
-              <Fuel className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="font-medium text-foreground">No fees paid yet</p>
-              <p className="text-xs">
-                {isErc20Empty
+            <EmptyState
+              kind="generic"
+              title="No fees paid yet"
+              description={
+                isErc20Empty
                   ? `${asset.symbol} transfers pay gas in the native coin — those fees appear under ETH, not ${asset.symbol}.`
                   : `Fees you pay sending ${asset.symbol} on ${source?.networkName} will be totalled here.`}
-              </p>
-            </div>
+            />
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3">

@@ -19,6 +19,7 @@ import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import EmptyState from "@/components/EmptyState";
 
 const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 
@@ -333,16 +334,15 @@ export default function PriceAlerts() {
           );
         })}
         {activeAlerts.length === 0 && triggeredAlerts.length === 0 && (
-          <div className="text-center py-12 space-y-3">
-            <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-              <Bell className="h-7 w-7 text-primary" />
-            </div>
-            <p className="font-semibold">No active alerts</p>
-            <p className="text-sm text-muted-foreground">Set a target price and get notified when it's hit.</p>
-            <Button disabled={deniable} onClick={() => setOpen(true)} className="gap-1.5">
-              <Plus className="h-4 w-4" /> Add Your First Alert
-            </Button>
-          </div>
+          <EmptyState
+            kind="alerts"
+            title="No active alerts"
+            description="Set a target price and Veyrnox tells you when it is reached. Alerts are checked while the app is open; they are not a background service and never place an order."
+            action={
+              <Button disabled={deniable} onClick={() => setOpen(true)} className="gap-1.5">
+                <Plus className="h-4 w-4" /> Add your first alert
+              </Button>}
+          />
         )}
       </div>
 

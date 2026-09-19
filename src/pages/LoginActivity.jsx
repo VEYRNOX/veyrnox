@@ -36,6 +36,7 @@ import { base44 } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import Spinner from "@/components/Spinner";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import EmptyState from "@/components/EmptyState";
 
 function getDeviceIcon(ua) {
   if (!ua) return <Globe className="h-4 w-4" />;
@@ -187,13 +188,11 @@ export default function LoginActivity() {
         )}
 
         {!isLoading && !isError && sessions.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            <Monitor className="h-9 w-9 mx-auto mb-3 opacity-30" />
-            <p className="text-sm font-medium">No devices recorded yet</p>
-            <p className="text-xs mt-1">
-              A record is created when you open the wallet from a new browser or device.
-            </p>
-          </div>
+          <EmptyState
+            kind="generic"
+            title="No devices recorded yet"
+            description="A record appears the first time you open the wallet from a new browser or device. An empty list means no second device has been seen — not that records were cleared."
+          />
         )}
 
         {activeSessions.map((s) => (
