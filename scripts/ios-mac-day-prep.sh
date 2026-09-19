@@ -27,7 +27,7 @@ echo "── Environment ──"
 if ! command -v xcodebuild &>/dev/null; then
   fail "Xcode not found — install Xcode from the App Store"
 else
-  XCODE_VER=$(xcodebuild -version | head -1)
+  XCODE_VER=$(xcodebuild -version | head -1 || true)
   pass "Xcode found: $XCODE_VER"
 fi
 
@@ -117,7 +117,7 @@ else
 fi
 
 # F5: HardwareKekPlugin.o compiled
-OBJ=$(find ~/Library/Developer/Xcode/DerivedData -name "HardwareKekPlugin.o" 2>/dev/null | head -1)
+OBJ=$(find ~/Library/Developer/Xcode/DerivedData -name "HardwareKekPlugin.o" 2>/dev/null | head -1 || true)
 if [ -n "$OBJ" ]; then
   pass "iOS-F5: HardwareKekPlugin.o found at $OBJ"
 else
@@ -141,7 +141,7 @@ echo ""
 # ── 6. Device detection ────────────────────────────────────────
 echo "── Device ──"
 if command -v xcrun &>/dev/null && xcrun xctrace list devices 2>/dev/null | grep -qi "iPhone"; then
-  DEVICE=$(xcrun xctrace list devices 2>/dev/null | grep -i "iPhone" | head -1)
+  DEVICE=$(xcrun xctrace list devices 2>/dev/null | grep -i "iPhone" | head -1 || true)
   pass "iPhone detected: $DEVICE"
 else
   warn "No iPhone detected — plug it in and trust this Mac before the session"

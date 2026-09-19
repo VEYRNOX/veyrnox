@@ -45,7 +45,7 @@ pick_default_device() {
     | grep -iE "iPhone" \
     | grep -v unavailable \
     | head -1 \
-    | sed -E 's/^[[:space:]]*//; s/ \([0-9A-F-]+\).*$//'
+    | sed -E 's/^[[:space:]]*//; s/ \([0-9A-F-]+\).*$//' || true
 }
 
 boot() {
