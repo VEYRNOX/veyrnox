@@ -34,7 +34,7 @@ const src = readFileSync(resolve(here, '../WalletProvider.jsx'), 'utf8');
 // Isolate the pending-referral block: from the getPendingReferral() read to the
 // end of the IIFE that wraps it.
 const startIdx = src.indexOf('const pending = getPendingReferral();');
-const block = src.slice(Math.max(0, startIdx - 400), startIdx + 700);
+const block = src.slice(Math.max(0, startIdx - 400), startIdx + 1600);
 
 describe('M-3 — a decoy/hidden unlock must not touch real referral state', () => {
   it('the pending-referral block still exists', () => {
@@ -48,7 +48,7 @@ describe('M-3 — a decoy/hidden unlock must not touch real referral state', () 
     expect(block).toMatch(/if\s*\(\s*!isPrimary\s*\)\s*return\s*;/);
   });
 
-  it('the guard runs BEFORE clearPendingReferral wipes the marker', () => {
+  it('the guard runs BEFORE clearPendingReferral can wipe the marker', () => {
     // Presence is not enough: clearPendingReferral() is the destructive call and
     // it is the FIRST thing the block used to do.
     const guardIdx = block.search(/if\s*\(\s*!isPrimary\s*\)\s*return\s*;/);
@@ -56,6 +56,20 @@ describe('M-3 — a decoy/hidden unlock must not touch real referral state', () 
     expect(guardIdx).toBeGreaterThan(-1);
     expect(clearIdx).toBeGreaterThan(-1);
     expect(guardIdx).toBeLessThan(clearIdx);
+  });
+
+  it('clears a pending referral only after redeemCode has succeeded (#2640)', () => {
+    const redeemIdx = block.indexOf('await redeemCode(pending)');
+    const markIdx = block.indexOf('markRedeemed(pending)');
+    const clearAfterSuccessIdx = block.indexOf('clearPendingReferral();', redeemIdx);
+    expect(redeemIdx).toBeGreaterThan(-1);
+    expect(markIdx).toBeGreaterThan(redeemIdx);
+    expect(clearAfterSuccessIdx).toBeGreaterThan(markIdx);
+  });
+
+  it('retains transient failures but clears authoritative invalid codes (#2640)', () => {
+    expect(block).toMatch(/error\?\.status\s*===\s*400\s*\|\|\s*error\?\.status\s*===\s*404/);
+    expect(block).toContain("Referral code will be retried when you're connected.");
   });
 
   it('the guard also precedes every other referral mutator in the block', () => {

@@ -22,9 +22,12 @@ vi.mock('@/lib/copySecret', () => ({ copyPlain: (...a) => copyPlain(...a) }));
 
 // The real capture path, with storage stubbed through the mocks above.
 const captureReferralFromUrl = vi.fn((url) => {
-  if (deniable) return;
+  if (deniable) return 'denied';
   const code = url.searchParams.get('ref').trim().toUpperCase();
-  if (/^VYX-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/.test(code)) pending = code;
+  if (!/^VYX-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/.test(code)) return 'invalid';
+  if (pending) return pending === code ? 'duplicate' : 'already_pending';
+  pending = code;
+  return 'captured';
 });
 vi.mock('@/lib/referralAttribution', () => ({
   captureReferralFromUrl: (...a) => captureReferralFromUrl(...a),
@@ -76,6 +79,12 @@ describe('ReferralHandoff', () => {
       fireEvent.change(screen.getByLabelText('Referral code'), { target: { value: 'hello' } });
       fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
       expect(screen.getByRole('alert')).toHaveTextContent(/isn't a Veyrnox referral code/);
+    });
+
+    it('explains the first-code-wins policy for a pending referral (#2639)', () => {
+      pending = 'VYX-STRKLB';
+      render(<ReferralHandoff />);
+      expect(screen.getByTestId('referral-handoff-pending')).toHaveTextContent(/Only the first referral code/i);
     });
 
     it('reads the clipboard only on a Paste tap', async () => {
