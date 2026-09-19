@@ -9,6 +9,9 @@ import { useNavigate } from "react-router";
 import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
 import { connectWalletConnectImportPreview } from "@/lib/walletConnectAppSdk";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import { useWallet } from "@/lib/WalletProvider";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
 
 const PROVIDERS = [
   {
@@ -95,7 +98,19 @@ const CONNECTORS = {
   "walletconnect-appkit": connectWalletConnectAppKit,
 };
 
+// K-2 / I3 (#2537): gate reads of the SHARED veyrnox-appdata store and refuse
+// writes before they land. Same shape as SavingsGoals / Dashboard.
+const denyInDeniable = () => {
+  throw Object.assign(new Error("Not available in this session"), { code: "DENIABILITY_BLOCKED" });
+};
+
 export default function ConnectWallet() {
+  // K-2 / I3 (#2537): this page only WRITES to the shared veyrnox-appdata store
+  // (Wallet.create), so there is nothing to blank — but a decoy session adding
+  // rows would leave the real user's wallet list changed after the coercion
+  // ended, which is the write half of the same invariant.
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [connecting, setConnecting] = useState(null);
@@ -104,6 +119,7 @@ export default function ConnectWallet() {
 
   const importMutation = useMutation({
     mutationFn: async (/** @type {any} */ vars) => {
+      if (deniable) denyInDeniable();
       const { provider, assets } = vars;
       await Promise.all(
         assets.map((/** @type {any} */ asset) =>

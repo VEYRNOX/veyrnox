@@ -25,6 +25,8 @@ import { getBalanceSol } from "@/wallet-core/sol/provider";
 import { copySecret } from "@/lib/copySecret";
 import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
 
 // M15: build the clipboard-copy handler. The recovery phrase ("seed") is
 // sensitive and routes through copySecret, which schedules a 30 s best-effort
@@ -219,6 +221,12 @@ export function resolveAssetPath(asset, { evmIndex, btcPath, solPath } = {}) {
   return null;
 }
 
+// K-2 / I3 (#2537): gate reads of the SHARED veyrnox-appdata store and refuse
+// writes before they land. Same shape as SavingsGoals / Dashboard.
+const denyInDeniable = () => {
+  throw Object.assign(new Error("Not available in this session"), { code: "DENIABILITY_BLOCKED" });
+};
+
 export default function HDWalletManager() {
   const qc = useQueryClient();
   const isPin = getAuthModel() === "pin";
@@ -252,14 +260,23 @@ export default function HDWalletManager() {
 
   // The base44 store holds ONLY public labels + addresses (never keys). It acts
   // as a cache so other pages (e.g. Send) can resolve a derived address.
-  const { data: hdWallets = [] } = useQuery({
+  // K-2 / I3 (#2537): the Wallet cache is the SHARED veyrnox-appdata store with
+  // no per-session partition. Public labels and addresses only — never keys —
+  // but a decoy session must still not read or extend the real user's set.
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
+
+  const { data: hdWalletsRaw = [] } = useQuery({
     queryKey: ["hd-wallets"],
     queryFn: () => base44.entities.Wallet.filter({ hd_wallet_id: HD_WALLET_ID }),
+    enabled: !deniable,
   });
+  const hdWallets = deniable ? [] : hdWalletsRaw;
 
   // Persist any derived public addresses that aren't cached yet. Public only.
   const persistAccounts = useMutation({
     mutationFn: async (/** @type {any} */ accts) => {
+      if (deniable) denyInDeniable();
       const existing = new Set((hdWallets || []).map(w => (w.address || "").toLowerCase()));
       for (const a of accts) {
         if (existing.has(a.address.toLowerCase())) continue;

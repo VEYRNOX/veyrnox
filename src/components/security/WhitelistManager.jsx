@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ShieldCheck, Plus, Trash2, AlertCircle } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { useWallet } from "@/lib/WalletProvider";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
@@ -20,7 +23,20 @@ const ADDRESS_PATTERNS = {
   USDT: /^0x[0-9a-fA-F]{40}$/,
 };
 
+// K-2 / I3 (#2537): same two-chokepoint shape as SavingsGoals / Dashboard —
+// gate every read of the SHARED veyrnox-appdata store and refuse every mutation
+// before it lands.
+const denyInDeniable = () => {
+  throw Object.assign(new Error("Not available in this session"), { code: "DENIABILITY_BLOCKED" });
+};
+
 export default function WhitelistManager() {
+  // K-2 / I3 (#2537): this entity lives in the SHARED veyrnox-appdata IndexedDB
+  // with no per-session partition, so ungated a decoy/hidden/demo session reads
+  // and writes the REAL user's rows. isDecoy/isHidden are React state and lag
+  // the module-level flag, so fold in the canonical predicate too. Fail closed.
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [label, setLabel] = useState("");
@@ -29,13 +45,18 @@ export default function WhitelistManager() {
   const [note, setNote] = useState("");
   const [validationError, setValidationError] = useState("");
 
-  const { data: whitelist = [] } = useQuery({
+  const { data: whitelistRaw = [] } = useQuery({
     queryKey: ["whitelisted-addresses"],
     queryFn: () => base44.entities.WhitelistedAddress.list("-created_date"),
+    enabled: !deniable,
   });
+  const whitelist = deniable ? [] : whitelistRaw;
 
   const addAddress = useMutation({
-    mutationFn: (/** @type {any} */ data) => base44.entities.WhitelistedAddress.create(data),
+    mutationFn: (/** @type {any} */ data) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.WhitelistedAddress.create(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["whitelisted-addresses"] });
       setDialogOpen(false);
@@ -45,7 +66,10 @@ export default function WhitelistManager() {
   });
 
   const removeAddress = useMutation({
-    mutationFn: (/** @type {any} */ id) => base44.entities.WhitelistedAddress.delete(id),
+    mutationFn: (/** @type {any} */ id) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.WhitelistedAddress.delete(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["whitelisted-addresses"] });
       toast.success("Address removed from whitelist");
