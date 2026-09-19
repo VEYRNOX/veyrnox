@@ -352,3 +352,77 @@ describe('CSP font-src ↔ build config (#2115)', () => {
     expect(fontSrc.split(/\s+/).slice(1)).toEqual(["'self'"]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// #2595 — the boot watchdog has to be able to EXECUTE under this policy.
+//
+// Every prior guard was shaped to prove the fallback is ABSENT: the XCUITest
+// asserts the "Reload Veyrnox" button does not appear, and the suite above
+// asserts script-src has no 'unsafe-inline'. Both pass permanently for a
+// watchdog that is dead. From PR #2500 until 2026-09-19 it was: the script was
+// inline, script-src blocked it, and nothing related the two facts.
+//
+// These assertions are that relation. They are deliberately about the SHAPE of
+// index.html rather than about the watchdog's contents — a hash-based fix would
+// satisfy "the watchdog runs today" and break silently on the next edit.
+// ---------------------------------------------------------------------------
+describe('Boot watchdog executes under CSP (#2595)', () => {
+  const scriptTags = [...html.matchAll(/<script\b([^>]*)>/gi)].map(m => m[1]);
+
+  it('index.html has NO executable inline <script> (script-src has no \'unsafe-inline\')', () => {
+    // Executable = no src attribute AND a type the browser runs as script.
+    // <script type="application/ld+json"> is data, never executed, and stays.
+    const inlineExecutable = scriptTags.filter((attrs) => {
+      if (/\bsrc\s*=/i.test(attrs)) return false;
+      const type = attrs.match(/\btype\s*=\s*["']?([^"'\s>]+)/i)?.[1]?.toLowerCase();
+      if (!type) return true; // no type = classic script = executed
+      return type === 'module' || type === 'text/javascript' || type === 'application/javascript';
+    });
+    expect(
+      inlineExecutable,
+      'index.html contains an inline <script> that the CSP will block. Every policy '
+      + "in this file pins script-src without 'unsafe-inline', so an inline block is "
+      + 'dead code that no other test can see. Move it to public/ and load it with '
+      + 'src= — \'self\' already allows that. See #2595.',
+    ).toEqual([]);
+  });
+
+  it('index.html loads the boot watchdog from a same-origin file', () => {
+    const loaded = scriptTags.some(attrs => /\bsrc\s*=\s*["']\/boot-watchdog\.js["']/i.test(attrs));
+    expect(
+      loaded,
+      'index.html no longer loads /boot-watchdog.js. The blank-page fallback for '
+      + 'Apple 1.0.1 rejection #3 is gone — a bundle that fails to load now shows a '
+      + 'blank screen again (#2595).',
+    ).toBe(true);
+  });
+
+  it('public/boot-watchdog.js exists and still renders the Reload fallback', () => {
+    const watchdogPath = path.resolve(__dir, '../../../public/boot-watchdog.js');
+    const watchdog = readFileSync(watchdogPath, 'utf8');
+    expect(watchdog).toContain('Reload Veyrnox');
+    expect(watchdog).toContain("getElementById('root')");
+  });
+
+  it('nothing relies on an inline on*= event handler (CSP blocks those too)', () => {
+    // script-src without 'unsafe-inline' blocks inline event handlers as well as
+    // inline <script>. An onclick= would load fine and then do nothing when
+    // tapped — a Reload button that does not reload.
+    //
+    // Scoped two ways on purpose: to attribute position inside a real tag (so
+    // HTML comments, which open with "<!", cannot match), and with // comment
+    // lines stripped from the JS (the watchdog's own header explains why it does
+    // not use onclick=, and an unscoped check fires on that explanation).
+    const htmlHandlers = [...html.matchAll(/<[a-z][^>]*?\son[a-z]+\s*=/gi)].map(m => m[0]);
+    expect(htmlHandlers, 'index.html has an inline event handler — CSP blocks it (#2595)').toEqual([]);
+
+    const watchdogPath = path.resolve(__dir, '../../../public/boot-watchdog.js');
+    const watchdogCode = readFileSync(watchdogPath, 'utf8')
+      .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+    expect(
+      /\son[a-z]+\s*=\s*["']/i.test(watchdogCode),
+      'boot-watchdog.js injects markup with an inline event handler. CSP blocks it; '
+      + 'use addEventListener after setting innerHTML (#2595).',
+    ).toBe(false);
+  });
+});
