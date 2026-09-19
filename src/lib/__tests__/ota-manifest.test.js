@@ -3,12 +3,12 @@
 // loader trusts, so its shape and the release guards are pinned here; the native
 // verifier's own tests live in android/app/src/test/.../OtaBundleVerifierTest.kt.
 import { generateKeyPairSync, sign } from 'node:crypto'
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildManifest, MANIFEST_NAME, NATIVE_API, SIGNATURE_NAME, timestampVersion } from '../../../scripts/ota/manifest.mjs'
-import { pinnedPublicKey, prepareRelease, verifyRelease } from '../../../scripts/ota/release.mjs'
+import { pinnedPublicKeys, prepareRelease, sealRelease, toDerSignature, verifyRelease } from '../../../scripts/ota/release.mjs'
 
 const CLEAN_FLAGS = JSON.stringify({ VITE_BYPASS_RASP: null, VITE_DEV_UNGATE_SEND: '0', VITE_DEMO_MODE: null })
 
@@ -97,7 +97,7 @@ describe('release tooling', () => {
     expect(() => prepareRelease(dist, mkdtempSync(join(tmpdir(), 'ota-out-')))).not.toThrow()
   })
 
-  it('verify accepts the pinned key only, over the exact manifest bytes (DER ECDSA P-256)', () => {
+  it('verify accepts a pinned key only, over the exact manifest bytes (DER ECDSA P-256)', () => {
     const dist = makeDist()
     writeManifest(dist)
     const { releaseDir } = prepareRelease(dist, mkdtempSync(join(tmpdir(), 'ota-out-')))
@@ -113,12 +113,85 @@ describe('release tooling', () => {
     expect(verifyRelease(releaseDir, spki(publicKey))).toBe(false)
   })
 
-  it('verify without a key reads the pinned native key, and refuses when none is pinned', () => {
+  it('verify without a key reads the pinned native keys, and refuses when none is pinned', () => {
     const kt = join(mkdtempSync(join(tmpdir(), 'ota-kt-')), 'V.kt')
-    writeFileSync(kt, '    const val PUBLIC_KEY_SPKI_B64 = "MFkw"\n')
-    expect(pinnedPublicKey(kt)).toBe('MFkw')
-    writeFileSync(kt, '    const val PUBLIC_KEY_SPKI_B64 = ""\n')
-    expect(() => pinnedPublicKey(kt)).toThrow(/disabled/)
+    writeFileSync(kt, '    val PUBLIC_KEYS_SPKI_B64: List<String> = listOf(\n        "MFkwA",\n        "MFkwB",\n    )\n')
+    expect(pinnedPublicKeys(kt)).toEqual(['MFkwA', 'MFkwB'])
+    writeFileSync(kt, '    val PUBLIC_KEYS_SPKI_B64: List<String> = emptyList()\n')
+    expect(() => pinnedPublicKeys(kt)).toThrow(/disabled/)
+  })
+
+  // One key per hardware token: a YubiKey key cannot be backed up, so losing a
+  // token must not stop releases. Either token's signature has to be accepted.
+  it('a signature from EITHER pinned token verifies, and an unpinned key never does', () => {
+    const dist = makeDist()
+    writeManifest(dist)
+    const { releaseDir } = prepareRelease(dist, mkdtempSync(join(tmpdir(), 'ota-out-')))
+    const tokenA = generateKeyPairSync('ec', { namedCurve: 'P-256' })
+    const tokenB = generateKeyPairSync('ec', { namedCurve: 'P-256' })
+    const stranger = generateKeyPairSync('ec', { namedCurve: 'P-256' })
+    const spki = (k) => k.export({ format: 'der', type: 'spki' }).toString('base64')
+    const pinned = [spki(tokenA.publicKey), spki(tokenB.publicKey)]
+    const manifestPath = join(releaseDir, MANIFEST_NAME)
+    const signWith = (key) =>
+      writeFileSync(join(releaseDir, SIGNATURE_NAME), sign('sha256', readFileSync(manifestPath), key).toString('base64'))
+
+    signWith(tokenA.privateKey)
+    expect(verifyRelease(releaseDir, pinned)).toBe(true)
+    signWith(tokenB.privateKey)
+    expect(verifyRelease(releaseDir, pinned)).toBe(true)
+    signWith(stranger.privateKey)
+    expect(verifyRelease(releaseDir, pinned)).toBe(false)
+    // A lost token is dropped from the list; its old signatures stop being accepted.
+    signWith(tokenA.privateKey)
+    expect(verifyRelease(releaseDir, [spki(tokenB.publicKey)])).toBe(false)
+  })
+})
+
+describe('seal (hardware-token signatures)', () => {
+  // PKCS#11 tools emit raw r||s; the app verifies DER. Seal converts and proves it.
+  function sealed(rawOrDer) {
+    const dist = makeDist()
+    writeManifest(dist)
+    const { releaseDir } = prepareRelease(dist, mkdtempSync(join(tmpdir(), 'ota-out-')))
+    const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' })
+    const spki = publicKey.export({ format: 'der', type: 'spki' }).toString('base64')
+    const der = sign('sha256', readFileSync(join(releaseDir, MANIFEST_NAME)), privateKey)
+    const raw = sign('sha256', readFileSync(join(releaseDir, MANIFEST_NAME)), { key: privateKey, dsaEncoding: 'ieee-p1363' })
+    return { releaseDir, spki, sig: rawOrDer === 'raw' ? raw : der }
+  }
+
+  it.each(['raw', 'der'])('accepts a %s signature and stores DER that verifies', (form) => {
+    const { releaseDir, spki, sig } = sealed(form)
+    sealRelease(releaseDir, sig, [spki])
+    expect(verifyRelease(releaseDir, [spki])).toBe(true)
+    const stored = Buffer.from(readFileSync(join(releaseDir, SIGNATURE_NAME), 'utf8').trim(), 'base64')
+    expect(stored[0]).toBe(0x30) // DER SEQUENCE
+  })
+
+  it('refuses a signature that does not verify, leaving no file behind', () => {
+    const { releaseDir, spki } = sealed('der')
+    const stranger = generateKeyPairSync('ec', { namedCurve: 'P-256' })
+    const bad = sign('sha256', Buffer.from('other bytes'), stranger.privateKey)
+    expect(() => sealRelease(releaseDir, bad, [spki])).toThrow(/does NOT verify/)
+    expect(existsSync(join(releaseDir, SIGNATURE_NAME))).toBe(false)
+  })
+
+  it('keeps a raw signature with high bit set valid (DER needs the 0x00 pad)', () => {
+    // Sweep keys until r or s has the high bit set, which is where naive DER encoding breaks.
+    for (let i = 0; i < 40; i++) {
+      const { releaseDir, spki, sig } = sealed('raw')
+      if (!(sig[0] & 0x80) && !(sig[32] & 0x80)) continue
+      sealRelease(releaseDir, sig, [spki])
+      expect(verifyRelease(releaseDir, [spki])).toBe(true)
+      return
+    }
+    throw new Error('no high-bit signature generated in 40 attempts')
+  })
+
+  it('leaves a DER signature byte-identical', () => {
+    const der = Buffer.from('3045022012340220abcd', 'hex')
+    expect(toDerSignature(der).equals(der)).toBe(true)
   })
 })
 
@@ -131,11 +204,12 @@ describe('native constants', () => {
     expect(kotlin).toMatch(new RegExp(`^\\s*const val NATIVE_API = ${NATIVE_API}$`, 'm'))
   })
 
-  it('iOS and Android pin the same signing key', () => {
-    const swiftKey = swift.match(/^\s*static let publicKeySpkiB64 = "([^"]*)"$/m)?.[1]
-    const kotlinKey = kotlin.match(/^\s*const val PUBLIC_KEY_SPKI_B64 = "([^"]*)"$/m)?.[1]
-    expect(swiftKey).toBeTypeOf('string')
-    expect(swiftKey).toBe(kotlinKey)
+  it('iOS and Android pin the same signing keys, in the same order', () => {
+    const swiftList = swift.match(/static let publicKeysSpkiB64: \[String\] = \[([^\]]*)\]/)?.[1]
+    const kotlinList = kotlin.match(/PUBLIC_KEYS_SPKI_B64:\s*List<String>\s*=\s*(?:listOf\(([^)]*)\)|emptyList\(\))/)?.[1] ?? ''
+    expect(swiftList).toBeTypeOf('string')
+    const keysIn = (s) => [...s.matchAll(/"([^"]+)"/g)].map((m) => m[1])
+    expect(keysIn(swiftList)).toEqual(keysIn(kotlinList))
   })
 
   // JS downloads via Filesystem({ directory: 'LIBRARY' }) into the relative path
