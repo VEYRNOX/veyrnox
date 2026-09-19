@@ -272,7 +272,7 @@ function DemoDashboard() {
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-success bg-success/10 px-2 py-0.5 rounded-full mono-value">
               <ArrowUp className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" /> {changePercent}% (24h)
             </span>
-            <span className="text-[10px] text-muted-foreground">{t("dashboard.synced", { time: syncLabel })}</span>
+            <span className="text-xs text-muted-foreground">{t("dashboard.synced", { time: syncLabel })}</span>
           </motion.div>
         )}
         {!isLocked && (
@@ -422,7 +422,7 @@ function DemoDashboard() {
                   <p className={`text-sm font-semibold ${tx.type === "send" ? "text-destructive" : "text-success"}`}>
                     {tx.type === "send" ? "-" : "+"}{tx.amount} {tx.currency}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(tx.created_date), { addSuffix: true })}</p>
+                  <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(tx.created_date), { addSuffix: true })}</p>
                 </div>
               </div>
             ))
@@ -461,7 +461,7 @@ function DemoDashboard() {
                 <div className={`h-8 w-8 rounded-lg ${item.bg} flex items-center justify-center`}>
                   <item.icon className={`h-4 w-4 ${item.color}`} />
                 </div>
-                <span className="text-[10px] font-medium text-muted-foreground leading-tight">{item.label}</span>
+                <span className="text-xs font-medium text-muted-foreground leading-tight">{item.label}</span>
               </button>
             ))}
           </div>

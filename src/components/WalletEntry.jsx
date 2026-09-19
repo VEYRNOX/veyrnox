@@ -494,7 +494,7 @@ function ExploreShell({ onCreate, children }) {
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium flex items-center gap-1.5"><Eye className="h-3.5 w-3.5 text-primary" /> Exploring — view only</p>
-            <p className="text-[11px] text-muted-foreground">No wallet yet. Create or import one to send, receive, and hold funds.</p>
+            <p className="text-xs text-muted-foreground">No wallet yet. Create or import one to send, receive, and hold funds.</p>
           </div>
           <Button size="sm" className="gap-1.5 shrink-0" onClick={onCreate}>
             <Wallet className="h-3.5 w-3.5" /> Create or import
@@ -1941,7 +1941,7 @@ export default function WalletEntry() {
               </Button>
               <div className="flex items-center gap-2 py-1">
                 <div className="h-px flex-1 bg-border" />
-                <span className="text-[11px] text-muted-foreground">or enter your PIN</span>
+                <span className="text-xs text-muted-foreground">or enter your PIN</span>
                 <div className="h-px flex-1 bg-border" />
               </div>
             </>
@@ -1953,13 +1953,13 @@ export default function WalletEntry() {
               </Button>
               <div className="flex items-center gap-2 py-1">
                 <div className="h-px flex-1 bg-border" />
-                <span className="text-[11px] text-muted-foreground">or enter your PIN</span>
+                <span className="text-xs text-muted-foreground">or enter your PIN</span>
                 <div className="h-px flex-1 bg-border" />
               </div>
             </>
           )}
           {biometricEnabled && biometricFailed && (
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
+            <p className="text-xs leading-relaxed text-muted-foreground">
               {bioLabel} didn't work. Enter your PIN below — it's your real key and always works.
             </p>
           )}
@@ -1969,7 +1969,7 @@ export default function WalletEntry() {
           {fastpathWarmingHint && (
             <p
               data-testid="fastpath-warming-hint"
-              className="text-[11px] text-center text-muted-foreground"
+              className="text-xs text-center text-muted-foreground"
               role="status"
             >
               One-time setup &mdash; this will be faster next time
@@ -2020,7 +2020,7 @@ export default function WalletEntry() {
               </Button>
               <div className="flex items-center gap-2 py-1">
                 <div className="h-px flex-1 bg-border" />
-                <span className="text-[11px] text-muted-foreground">or use your vault password</span>
+                <span className="text-xs text-muted-foreground">or use your vault password</span>
                 <div className="h-px flex-1 bg-border" />
               </div>
             </>
@@ -2060,7 +2060,7 @@ export default function WalletEntry() {
                   sentence for every reason, which nudged the user straight past
                   a possible clone. Keyed off the reason, from the shared map so
                   this screen and HDWalletManager cannot drift again. */}
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 {PASSKEY_ESCAPE_HATCH_BLURBS[passkeyFailed.reason] ?? PASSKEY_ESCAPE_HATCH_BLURBS.error}
               </p>
               <Button variant="outline" className="w-full gap-2" disabled={!unlockPassword || busy} onClick={() => runUnlock({ skipPasskey: true })}>
@@ -2071,7 +2071,7 @@ export default function WalletEntry() {
 
           {biometricFailed && (
             <div className="pt-2 border-t border-border space-y-2">
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 Biometric / Face ID didn't work? Unlock with your vault password
                 alone — your password is the real key and always works, even when
                 biometrics are unavailable.

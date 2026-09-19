@@ -202,11 +202,11 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
   return (
     <div className="p-3 rounded-lg bg-secondary/30 border border-border space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5">
+        <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5">
           <Fuel className="h-3 w-3" /> Network fee
         </p>
         {data?.tiers && (
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             {chain === "evm" && `Network base: ${fmtNative((/** @type {any} */ (data)).baseFeePerGasWei, 9, 2)} Gwei`}
             {chain === "sol" && `base ${Number((/** @type {any} */ (data)).baseLamports).toLocaleString()} Solana fee units`}
             {chain === "btc" && "Bitcoin fee rate"}
@@ -245,9 +245,9 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                     <Icon className={`h-3.5 w-3.5 ${active ? "text-primary" : "text-muted-foreground"}`} />
                     <span className="text-xs font-semibold">{t.label}</span>
                   </div>
-                  <p className="text-[11px] mono-value font-semibold truncate">{d.nativeText}</p>
-                  {d.fiatText && <p className="text-[10px] text-muted-foreground mono-value">{d.fiatText}</p>}
-                  <p className="text-[10px] text-muted-foreground">{d.eta}</p>
+                  <p className="text-xs mono-value font-semibold truncate">{d.nativeText}</p>
+                  {d.fiatText && <p className="text-xs text-muted-foreground mono-value">{d.fiatText}</p>}
+                  <p className="text-xs text-muted-foreground">{d.eta}</p>
                 </button>
               );
             })}
@@ -258,7 +258,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
             const tier = tiers.find((t) => t.id === selectedId);
             if (!tier) return null;
             const d = describeTier(chain, tier, ctx);
-            return <p className="text-[11px] text-muted-foreground">{d.sub}</p>;
+            return <p className="text-xs text-muted-foreground">{d.sub}</p>;
           })()}
 
           {/* Custom (EVM EIP-1559 only — BTC/SOL presets cover their models). */}
@@ -271,12 +271,12 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
               >
                 <SlidersHorizontal className={`h-3.5 w-3.5 ${selectedId === "custom" ? "text-primary" : "text-muted-foreground"}`} />
                 <span className="text-xs font-semibold">Custom</span>
-                {customPreview && <span className="text-[10px] text-muted-foreground ms-auto mono-value">{customPreview.nativeText}{customPreview.fiatText ? ` · ${customPreview.fiatText}` : ""}</span>}
+                {customPreview && <span className="text-xs text-muted-foreground ms-auto mono-value">{customPreview.nativeText}{customPreview.fiatText ? ` · ${customPreview.fiatText}` : ""}</span>}
               </button>
               {selectedId === "custom" && (
                 <div className="grid grid-cols-3 gap-2 mt-2">
                   <div>
-                    <Label htmlFor="fee-custom-maxbase" className="text-[10px]">Max base (Gwei)</Label>
+                    <Label htmlFor="fee-custom-maxbase" className="text-xs">Max base (Gwei)</Label>
                     <Input
                       id="fee-custom-maxbase"
                       type="text" inputMode="decimal" className="mt-1 h-11 text-xs mono-value"
@@ -286,7 +286,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                     />
                   </div>
                   <div>
-                    <Label htmlFor="fee-custom-priority" className="text-[10px]">Priority (Gwei)</Label>
+                    <Label htmlFor="fee-custom-priority" className="text-xs">Priority (Gwei)</Label>
                     <Input
                       id="fee-custom-priority"
                       type="text" inputMode="decimal" className="mt-1 h-11 text-xs mono-value"
@@ -296,7 +296,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                     />
                   </div>
                   <div>
-                    <Label htmlFor="fee-custom-gaslimit" className="text-[10px]">Gas limit</Label>
+                    <Label htmlFor="fee-custom-gaslimit" className="text-xs">Gas limit</Label>
                     <Input
                       id="fee-custom-gaslimit"
                       type="number" inputMode="numeric" className="mt-1 h-11 text-xs mono-value"
@@ -312,7 +312,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
 
           {/* SOL priority disclosure — make the native model explicit. */}
           {chain === "sol" && (
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Solana charges a fixed base fee per signature plus an optional priority fee
               (speeds up your transaction) that only matters under congestion — not the Ethereum network fee model.
             </p>

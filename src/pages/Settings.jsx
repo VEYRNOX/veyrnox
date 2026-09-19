@@ -433,9 +433,9 @@ export default function Settings() {
           <div className="p-5 rounded-xl border border-border bg-card space-y-5">
             <div className="flex items-center gap-2">
               <Fingerprint className="h-5 w-5 text-primary" />
-              <h2 className="font-semibold">
+              <h3 className="font-semibold">
                 {isNative ? "Biometric" : "Unlock Methods"}
-              </h2>
+              </h3>
             </div>
 
             <div className="space-y-5">
@@ -467,10 +467,10 @@ export default function Settings() {
       {/* Wallet Passkeys (per-wallet — used for transaction verification in the Send flow) */}
       {!isNative && (
         <div className="space-y-3">
-          <h2 className="font-semibold flex items-center gap-2">
+          <h3 className="font-semibold flex items-center gap-2">
             <Fingerprint className="h-4 w-4 text-primary" />
             Wallet Passkeys
-          </h2>
+          </h3>
           {isLoading ? (
             <Spinner className="h-16" label="Loading wallet passkeys…" />
           ) : wallets.length === 0 ? (
@@ -654,7 +654,7 @@ export default function Settings() {
       <div className="p-5 rounded-xl border border-destructive/30 bg-destructive/5 space-y-3">
         <div className="flex items-center gap-2 text-destructive">
           <AlertTriangle className="h-5 w-5" />
-          <h2 className="font-semibold">{t("settings.delete_account.title")}</h2>
+          <h3 className="font-semibold">{t("settings.delete_account.title")}</h3>
         </div>
         {!showDelete ? (
           <div className="flex items-center justify-between gap-4">
