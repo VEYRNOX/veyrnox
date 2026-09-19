@@ -1819,7 +1819,28 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
     fix *and* manufactures evidence for whatever hypothesis the inflated number happens
     to support. All three come from a check that cannot tell the thing from a mention of
     the thing, and only the second announces itself — so finding one is a prompt to go
-    looking for the others, not evidence that verification is working.
+    looking for the others, not evidence that verification is working. The two entries
+    below extend the family in a different direction — there the check reads the wrong
+    ARTIFACT rather than misreading the right one — and both fail DANGEROUS.
+  - **A file's mtime can answer for the wrong file, and SQLite makes that routine.**
+    On 2026-09-19 a simulator investigation timed a Keychain write with
+    `find .../Keychains -name 'keychain*.db' -exec stat ...`, got one mtime two and a
+    half hours stale, and reported a wallet that existed with no Keychain write behind
+    it — an apparent integrity failure in the app. There was none. **SQLite in WAL mode
+    writes to `<db>-wal` and leaves the main `.db` untouched**, so a glob ending `.db`
+    cannot see the write at all. The same sweep with `-name 'keychain*'` showed `-wal`
+    written at the exact minute the wallet was created. Glob the whole family
+    (`db`, `db-wal`, `db-shm`) whenever you time a SQLite-backed store — Keychain,
+    localStorage, IndexedDB, app containers — and when you copy one out for offline
+    reading, copy the `-wal` with it or the last writes are simply absent from your
+    copy and nothing warns you.
+  - **`pgrep -f` matches your own command line.** Same session: a poller guarded with
+    `pgrep -f "App.app/App" || break` could never break, because the shell running the
+    poller carries that string in its own `ps` entry. The liveness check was
+    structurally incapable of reporting death. This is the process-table twin of the
+    log-echo entry above — the artifact you search contains your search — and it
+    silently disables the guard while looking like one. Anchor to a pid you were handed
+    (`simctl launch` prints one) rather than to a pattern you also typed.
 - **Mutation-check every new test pin, or you ship coverage that cannot fail.** Three
   pins written on 2026-09-03 were broken on the first attempt and ALL THREE looked green:
   - **A prefix ate the assertion.** A status-tag pin used `startsWith()` against
