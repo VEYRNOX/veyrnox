@@ -3160,3 +3160,85 @@ produce a passing run at any versionCode.
   PIN-pad text-matching drift), #2512 (Slice L `!error` guard state race).
 - Recorded in `CLAUDE.md` at the same time under the 1.0.1 SUBMISSION HOLD /
   Play gate 3 bullet (PR #2513).
+
+## 2026-09-19 — Deferred referral capture is device-verified on BOTH platforms (#2541 closed)
+
+The clipboard handoff on iOS was the last open half of #2541. It now has a real
+fresh-install run behind it, so both platforms are covered:
+
+| platform | mechanism | evidence | date |
+|---|---|---|---|
+| Android | Play Install Referrer (automatic) | versionCode 49, physical phone, prod increment | 2026-09-14 |
+| iOS | Safari **Copy code** → first-run **Paste** (manual) | 1.0.2 (1), iPhone 17 Pro / iOS 26.5, prod increment | 2026-09-19 |
+
+Status: **BUILT, device-verified (INTERNAL).** Not independently audited, and see
+the robustness caveat at the bottom — this verifies the happy path only.
+
+### iOS run
+
+iPhone 17 Pro, iOS 26.5, app fully deleted first. Safari →
+`https://veyrnox.com/r/VYX-HFEBWH` → **Copy code & get it on the App Store** →
+installed 1.0.2 (1) from TestFlight → first launch → **Have a referral code?** →
+**Paste** → **Apply** → create wallet → onboarding → lock → unlock. Nothing typed
+by hand (tester confirmation, not a captured artifact — see limits).
+
+Production `jwstkrtslotnjyerzzsi`, baseline 15:56:59Z, result 16:02:17Z:
+
+| check | baseline | after |
+|---|---|---|
+| `referrals.count` for `VYX-HFEBWH` | 2 | **3** |
+| `referral_increments` rows for that code | 2 | **3** |
+| total `referral_increments` (whole table) | 4 | **5** |
+| new row device_id | — | `acfbddbe-b06f-4af9-9b4c-f0dba9f9685b` (new) |
+
+Device trail — own code `VYX-NKG8R3` generated 16:01:24.493, `consent_granted`
+16:01:27.257, `wallet_ready` 16:01:28.626, `session_start` **16:01:50.92776**,
+increment **16:01:50.92800**.
+
+**The 244-microsecond gap is the point.** `session_start` is emitted at
+`WalletProvider.jsx:2061` and the redemption block sits 31 lines below at `:2092`,
+inside the same `unlock()` call — so the ordering is the mechanism executing, not a
+correlation that happens to fit. It also confirms the Android observation that the
+increment fires at **unlock**, 22 seconds after `wallet_ready` here, not at wallet
+creation.
+
+No `referral_code_applied` event, by design: on a fresh install both capture paths
+run before the telemetry consent screen, so `trackEvent` drops it. The server-side
+increment row is the evidence. Same correction already recorded for Android.
+
+### Honest limits
+
+- Production cannot distinguish a Paste from a manual type. That half of the
+  protocol rests on tester confirmation.
+- `VYX-HFEBWH` already carried 2 increments from the Android pass, so the pass is
+  "count 2 → 3 with a new device_id" rather than a clean 0 → 1. The four prior
+  increment device_ids (`03f78535`, `77ad4bb1`, `64facb92`, `e4c778a6`) are what
+  make the new row unambiguous. An unused code was attempted first and lost — see
+  below.
+- **This verifies the happy path, not robustness.** The first attempt the same day
+  failed and produced two open defects, both the same "referral silently lost"
+  shape that #2541 was about:
+  - **#2639** — `captureReferralFromUrl()` writes the pending referral
+    unconditionally, so a second `/r/<code>` link opened before unlock silently
+    replaces the first. This is what destroyed the first run: a link carrying
+    `VYX-ABC234` (the placeholder from `ReferralHandoff.jsx:77`, which exists in no
+    `referrals` row) overwrote the real test code 12 seconds before unlock.
+  - **#2640** — the redemption block calls `clearPendingReferral()` *before*
+    `redeemCode()` and swallows the error, so one transient network failure, 4xx, or
+    bad code consumes the referral permanently, with no retry and nothing shown to
+    the user.
+
+  So a passing run says the mechanism works when nothing goes wrong. #2640 means
+  anything going wrong costs the referral without a trace.
+
+### Store copy is now inaccurate for iOS
+
+`store-metadata/en.json` `apple.whatsNew` says *"Tap an invite link before
+installing and the code is still applied afterwards."* That describes the Android
+mechanism. On iOS the user must tap **Copy code & get it on the App Store**, then
+**Have a referral code? → Paste → Apply** after installing — three manual steps, and
+nothing is applied if they skip them. `play.releaseNotes` ("Referral links now
+survive an install") is accurate, because Install Referrer really is automatic.
+Apple's `whatsNew` is shown only to iOS users, so the one string that overclaims is
+the one only the affected platform reads. Not corrected here — the fix lands in
+`en.json` plus 43 machine-translated siblings, which is its own change.
