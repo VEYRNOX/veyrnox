@@ -53,6 +53,15 @@ final class FirstPaintNotBlankTests: XCTestCase {
         //    New-wallet tile above, React mounted and the watchdog stayed
         //    dormant — the below is belt-and-braces in case a late throw
         //    somehow unmounts everything before the assertion window closes.
+        //
+        //    This assertion CANNOT tell a dormant watchdog from a dead one, and
+        //    from PR #2500 (2026-09-10) until 2026-09-19 it was passing on a dead
+        //    one: the watchdog was an inline <script> that script-src blocked on
+        //    every load, in dev and in production (#2595). Whether it can run
+        //    at all is pinned separately and statically, in
+        //    src/wallet-core/__tests__/csp-policy.test.js
+        //    ("Boot watchdog executes under CSP"). Do not treat a green run here
+        //    as evidence the fallback exists.
         XCTAssertFalse(
             app.buttons["Reload Veyrnox"].exists,
             "Boot watchdog fallback is showing after WalletEntry rendered — " +
