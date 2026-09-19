@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { safeFormat } from "@/lib/safeDate";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import { useWallet } from "@/lib/WalletProvider";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
 
 // Raw CSV — date, type, asset, amount, fee, tx_hash only.
 // No fabricated cost basis, no invented USD rates.
@@ -46,13 +49,28 @@ const TAX_TOOLS = [
 
 export default function TaxReport() {
   const [exported, setExported] = useState(false);
+  // K-2 / I3 (#2537): Transaction/AddressBook/Wallet rows live in the SHARED
+  // veyrnox-appdata IndexedDB with no per-session partition, so without this a
+  // decoy/hidden/demo session reads the REAL user's rows. isDecoy/isHidden are
+  // React state and lag the module-level flag, so fold in the canonical
+  // predicate too. Fail closed.
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
 
-  const { data: transactions = [], isLoading, isError } = useQuery({
+  const { data: transactionsRaw = [], isLoading, isError } = useQuery({
     queryKey: ["transactions-tax"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 1000),
+    enabled: !deniable,
   });
+  const transactions = deniable ? [] : transactionsRaw;
 
+  // Second chokepoint, and the reason this page needed more than the seven in
+  // #2542: blanking the table is not enough when the page also WRITES the rows
+  // out to a file. A decoy session must not be able to export primary history,
+  // so the export refuses rather than writing an empty CSV — an empty file is
+  // a tell that there was something to withhold.
   const handleExport = () => {
+    if (deniable) return;
     downloadRawCSV(transactions);
     setExported(true);
   };
@@ -87,7 +105,7 @@ export default function TaxReport() {
         <p className="text-xs text-muted-foreground">
           Downloads a CSV with {isLoading ? "…" : transactions.length} transactions: date, type, asset, amount, fee, tx hash. No invented prices or cost basis — exactly what your on-device records contain.
         </p>
-        <Button onClick={handleExport} disabled={isLoading || isError} className="w-full gap-2">
+        <Button onClick={handleExport} disabled={deniable || isLoading || isError} className="w-full gap-2">
           <Table2 className="h-4 w-4" />
           {isLoading ? "Loading…" : `Export ${transactions.length} transactions (CSV)`}
         </Button>

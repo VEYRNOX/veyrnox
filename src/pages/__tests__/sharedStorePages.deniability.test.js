@@ -76,6 +76,20 @@ const PAGES = [
   { file: 'AddressBook.jsx', rows: ['contacts'], mutations: 3 },
   { file: 'NotificationCentre.jsx', rows: ['priceAlerts'], mutations: 1 },
   { file: 'WatchlistPage.jsx', rows: ['items'], mutations: 3 },
+  // Added 2026-09-19 (#2537 static gate audit). Found by enumerating EVERY
+  // `base44.entities.*` call site under src/ rather than the pages the issue
+  // named — 44 files touch the shared store and 14 had no deniability
+  // reference at all. These four are the ones where the entity, the route and
+  // the absence of a gate were all confirmed in merged source:
+  //   Dashboard              — the decoy session's FIRST screen: wallet list,
+  //                            summed balance, last 100 transactions.
+  //   TaxReport              — 1000 transactions AND a CSV export of them.
+  //   SpendingPatterns       — 500 transactions, charted by asset and month.
+  //   SuspiciousAddressChecker — the real address book, names included.
+  { file: 'Dashboard.jsx', rows: ['triggeredAlerts', 'wallets', 'transactions'], mutations: 2 },
+  { file: 'TaxReport.jsx', rows: ['transactions'], mutations: 0 },
+  { file: 'SpendingPatterns.jsx', rows: ['transactions'], mutations: 0 },
+  { file: 'SuspiciousAddressChecker.jsx', rows: ['contacts'], mutations: 0 },
 ];
 
 describe.each(PAGES)('$file — shared-store deniability gate (#2537)', ({ file, rows, mutations }) => {
@@ -185,5 +199,30 @@ describe('SendCrypto.jsx — shared-store deniability gate (#2537)', () => {
       const inside = queries.some((b) => m.index > b.start && m.index < b.end);
       expect(inside, `ungated store read: ${code.slice(m.index, m.index + 60)}`).toBe(true);
     }
+  });
+});
+
+// TaxReport has a second egress the shared harness above cannot see: it writes
+// the rows OUT to a file. Blanking the table is not enough — the seven pages in
+// #2542 only ever rendered, this one downloads. A decoy session must not be able
+// to export the primary session's history, and it must not be handed an empty
+// CSV either: a zero-row file is a tell that there was something to withhold.
+describe('TaxReport.jsx — CSV export is suppressed in a deniable session (#2537)', () => {
+  const code = stripComments(
+    readFileSync(resolve(here, '..', 'TaxReport.jsx'), 'utf8'),
+  );
+
+  it('handleExport refuses before reaching the download', () => {
+    const fn = code.match(/const\s+handleExport\s*=\s*\(\)\s*=>\s*\{([\s\S]*?)\n\s*\};/);
+    expect(fn, 'handleExport must be a block-bodied arrow').toBeTruthy();
+    const body = fn[1];
+    const guard = body.indexOf('if (deniable) return;');
+    const download = body.indexOf('downloadRawCSV');
+    expect(guard, 'no `if (deniable) return;` guard in handleExport').toBeGreaterThanOrEqual(0);
+    expect(download, 'handleExport no longer calls downloadRawCSV').toBeGreaterThan(guard);
+  });
+
+  it('the export button is disabled in a deniable session', () => {
+    expect(code).toMatch(/onClick=\{handleExport\}\s+disabled=\{deniable\s*\|\|/);
   });
 });

@@ -33,6 +33,8 @@ import WalletPortfolioPage from "./WalletPortfolioPage";
 import { USD_RATES } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import { useWallet } from "@/lib/WalletProvider";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 const STATUS_ICONS = {
   pending: <Clock className="h-3.5 w-3.5 text-caution" />,
   confirmed: <CheckCircle2 className="h-3.5 w-3.5 text-success" />,
@@ -49,6 +51,12 @@ function generateAddress(currency) {
 // In the LOCAL/native build the dashboard is the REAL multi-wallet portfolio
 // driven by the on-device vault (see WalletPortfolioPage). The seeded mock
 // dashboard below is the DEMO tour only, so `npm run *:demo` is unchanged.
+// K-2 / I3 (#2537): same shape as SavingsGoals / PriceAlerts — gate every read
+// of the shared store and refuse every mutation before it lands.
+const denyInDeniable = () => {
+  throw Object.assign(new Error("Not available in this session"), { code: "DENIABILITY_BLOCKED" });
+};
+
 export default function Dashboard() {
   if (!DEMO) return <WalletPortfolioPage />;
   return <DemoDashboard />;
@@ -84,24 +92,44 @@ function DemoDashboard() {
     localStorage.setItem("dashboard-widgets", JSON.stringify(next));
   };
 
-  const { data: triggeredAlerts = [] } = useQuery({
+  // K-2 / I3 (#2537): PriceAlert, Wallet and Transaction rows live in the SHARED
+  // veyrnox-appdata IndexedDB with no per-session partition. Ungated, the decoy
+  // dashboard renders the REAL user's wallet list, their summed balance and
+  // their last 100 transactions — the single worst surface for this leak,
+  // because it is the first screen a coerced unlock lands on. isDecoy/isHidden
+  // are React state and lag the module-level flag, so fold in the canonical
+  // predicate too. Fail closed.
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
+
+  const { data: triggeredAlertsRaw = [] } = useQuery({
     queryKey: ["price-alerts-triggered"],
     queryFn: () => base44.entities.PriceAlert.filter({ status: "triggered" }),
     refetchInterval: 60_000,
+    enabled: !deniable,
   });
+  const triggeredAlerts = deniable ? [] : triggeredAlertsRaw;
 
-  const { data: wallets = [], isLoading, dataUpdatedAt: walletsUpdatedAt } = useQuery({
+  const { data: walletsRaw = [], isLoading, dataUpdatedAt: walletsUpdatedAt } = useQuery({
     queryKey: ["wallets"],
     queryFn: () => base44.entities.Wallet.list(),
+    enabled: !deniable,
   });
+  const wallets = deniable ? [] : walletsRaw;
 
-  const { data: transactions = [] } = useQuery({
+  const { data: transactionsRaw = [] } = useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 100),
+    enabled: !deniable,
   });
+  const transactions = deniable ? [] : transactionsRaw;
 
   const createWallet = useMutation({
-    mutationFn: (/** @type {any} */ data) => base44.entities.Wallet.create(data),
+    // Second chokepoint: refuse the write before it reaches the shared store.
+    mutationFn: (/** @type {any} */ data) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.Wallet.create(data);
+    },
     onSuccess: (newWallet) => {
       queryClient.invalidateQueries({ queryKey: ["wallets"] });
       setSelectedWalletId(newWallet.id);
@@ -114,7 +142,10 @@ function DemoDashboard() {
   // (base44.entities.Wallet.update → IndexedDB), then refresh the wallets query
   // so every place the name shows (picker, cards, token list) updates.
   const renameWallet = useMutation({
-    mutationFn: (/** @type {any} */ vars) => base44.entities.Wallet.update(vars.id, { name: vars.name }),
+    mutationFn: (/** @type {any} */ vars) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.Wallet.update(vars.id, { name: vars.name });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wallets"] });
       setRenameTarget(null);

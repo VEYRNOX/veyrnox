@@ -5,16 +5,29 @@ import CoinLogo from "@/components/CoinLogo";
 import { summarizeSpending } from "@/lib/spendingPatterns";
 import Spinner from "@/components/Spinner";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import { useWallet } from "@/lib/WalletProvider";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
 
 // Native-unit amount formatter (no fiat — see lib/spendingPatterns for why).
 const fmtAmount = (n) =>
   Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 8 });
 
 export default function SpendingPatterns() {
-  const { data: transactions = [], isLoading, isError } = useQuery({
+  // K-2 / I3 (#2537): Transaction/AddressBook/Wallet rows live in the SHARED
+  // veyrnox-appdata IndexedDB with no per-session partition, so without this a
+  // decoy/hidden/demo session reads the REAL user's rows. isDecoy/isHidden are
+  // React state and lag the module-level flag, so fold in the canonical
+  // predicate too. Fail closed.
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
+
+  const { data: transactionsRaw = [], isLoading, isError } = useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 500),
+    enabled: !deniable,
   });
+  const transactions = deniable ? [] : transactionsRaw;
 
   const { counts, byAsset, monthly, byDow } = summarizeSpending(transactions);
   const dowData = byDow.map((d) => ({ day: d.day, count: d.sent + d.received }));
