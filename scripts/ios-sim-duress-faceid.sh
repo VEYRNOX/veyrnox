@@ -90,7 +90,7 @@ step_build_install_launch() {
   xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
     -sdk iphonesimulator -destination "id=$UDID" -derivedDataPath build/ios-sim build
   local app_path
-  app_path="$(find build/ios-sim -maxdepth 6 -name 'App.app' -path '*Debug-iphonesimulator*' | head -1)"
+  app_path="$(find build/ios-sim -maxdepth 6 -name 'App.app' -path '*Debug-iphonesimulator*' | head -1 || true)"
   [ -n "$app_path" ] || { echo "✗ App.app not found under build/ios-sim" >&2; exit 1; }
 
   log "Erasing simulator for a clean vault state (Keychain persists across uninstall, not erase)"
