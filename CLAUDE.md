@@ -1928,6 +1928,38 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
     as a CORRECTION, which reads as more trustworthy than the claim it replaced; a
     correction is a claim and needs the same verification. One API read settled all of
     it.
+  - **An absence-assertion cannot tell "correctly absent" from "absent because
+    broken", and it fails DANGEROUS.** 2026-09-19, closing #2595: the boot watchdog
+    added by PR #2500 had never executed once — it was an inline `<script>` and
+    `script-src` is `'self' 'wasm-unsafe-eval'` with no `'unsafe-inline'`, so the
+    browser blocked it on every load for nine days, in dev and in production. Every
+    guard around it passed the whole time. `FirstPaintNotBlankTests` asserts
+    `app.buttons["Reload Veyrnox"].exists` is FALSE, and its own comment says "the
+    watchdog stayed dormant" — an assertion that reads identically whether the fallback
+    is dormant or dead. `csp-policy.test.js` separately asserted `script-src` has no
+    `'unsafe-inline'`, so the suite was green *because* the policy was strict and the
+    watchdog was dead *for the same reason*, and nothing related the two facts.
+    **The remedy is specific and is not "assert harder": assert the fallback FIRES
+    under an induced failure.** The fix was verified by renaming the main chunk to
+    force a 404 and watching the Reload screen render, then restoring it and watching
+    React mount with no fallback — two observations, not one. A test that only ever
+    sees the healthy path cannot distinguish a working safety net from a missing one.
+    Applies to every fail-closed control: a RASP gate that has never blocked, a
+    rate limit that has never tripped, an error boundary that has never caught.
+  - **The API mirror of the same thing: a SAFE failure, where success is reported as
+    failure.** Same day, distributing `1.0.2 (1)` to TestFlight: `POST
+    /v1/betaGroups/<internal>/relationships/builds` returned `422
+    ENTITY_UNPROCESSABLE`, "Builds cannot be assigned to this internal group." Nothing
+    was wrong — that group carries `hasAccessToAllBuilds: true`, so every processed
+    build reaches it automatically and manual assignment is refused as redundant. The
+    build already read `internalBuildState: IN_BETA_TESTING` before the call. Reading
+    that 422 as a failure would have produced a retry loop against an action that must
+    never succeed. This direction is the cheaper one — it costs a double-check rather
+    than a wrong belief — but it belongs with the rest, because both come from a
+    check that cannot distinguish the thing from the absence of the thing. The
+    `scripts/play-vitals.sh` bug found the same day is this one inverted: a benign
+    "no data yet" line printed over a hard `400`.
+
 - **Mutation-check every new test pin, or you ship coverage that cannot fail.** Three
   pins written on 2026-09-03 were broken on the first attempt and ALL THREE looked green:
   - **A prefix ate the assertion.** A status-tag pin used `startsWith()` against
