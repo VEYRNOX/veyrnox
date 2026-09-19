@@ -600,10 +600,10 @@ export default function HDWalletManager() {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" disabled={!receivable}><ArrowDownLeft className="h-3.5 w-3.5" /> Receive</Button>
+                      <Button size="sm" variant="outline" className="h-11 text-xs gap-1.5" disabled={!receivable}><ArrowDownLeft className="h-3.5 w-3.5" /> Receive</Button>
                       <Button
                         size="sm"
-                        className="h-7 text-xs gap-1.5"
+                        className="h-11 text-xs gap-1.5"
                         disabled={!sendable}
                         title={sendable ? undefined : `Sending not yet enabled for ${asset.symbol}.`}
                       >

@@ -199,7 +199,7 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
             <Button
               variant="outline"
               size="sm"
-              className="h-7 text-[11px] px-3"
+              className="h-11 text-[11px] px-3"
               onClick={() => { setError(''); setIsNetworkError(false); submit(); }}
               disabled={busy}
             >

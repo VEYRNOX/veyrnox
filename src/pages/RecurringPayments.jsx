@@ -262,11 +262,11 @@ export default function RecurringPayments() {
                     <div className="flex flex-col gap-1.5 shrink-0">
                       <Switch checked={p.status === "active"} onCheckedChange={() => toggleStatus.mutate({ id: p.id, status: p.status })} />
                       {p.status === "active" && (
-                        <Button variant="outline" size="sm" className="text-xs h-7 px-2 gap-1" onClick={promptSignInSend} title="Recurring payments must be signed by you — opens Send">
+                        <Button variant="outline" size="sm" className="text-xs h-11 px-3 gap-1" onClick={promptSignInSend} title="Recurring payments must be signed by you — opens Send">
                           <PenLine className="h-3 w-3" /> Sign
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon" aria-label="Delete recurring payment" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => deletePayment.mutate(p.id)}>
+                      <Button variant="ghost" size="icon" aria-label="Delete recurring payment" className="h-11 w-11 text-destructive hover:bg-destructive/10" onClick={() => deletePayment.mutate(p.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>

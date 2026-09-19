@@ -62,7 +62,7 @@ export default function WatchlistWidget() {
           <Star className="h-4 w-4 text-caution fill-caution" />
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Watchlist</p>
         </div>
-        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" disabled={deniable} onClick={() => setAdding(v => !v)}>
+        <Button size="sm" variant="ghost" className="h-11 px-3 text-xs" disabled={deniable} onClick={() => setAdding(v => !v)}>
           <Plus className="h-3.5 w-3.5 me-1" /> Add
         </Button>
       </div>
@@ -74,9 +74,9 @@ export default function WatchlistWidget() {
             value={symbol}
             onChange={e => setSymbol(e.target.value.toUpperCase())}
             placeholder="BTC, ETH, SOL..."
-            className="h-8 text-xs flex-1"
+            className="h-11 text-xs flex-1"
           />
-          <Button size="sm" className="h-8 text-xs" onClick={() => symbol && add.mutate({ symbol, name: symbol })}>
+          <Button size="sm" className="h-11 text-xs" onClick={() => symbol && add.mutate({ symbol, name: symbol })}>
             Add
           </Button>
         </div>

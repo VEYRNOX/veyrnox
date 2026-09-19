@@ -98,7 +98,7 @@ export default function QuickLock({ onUnlock }) {
         {recoverable && (
           <Button
             variant="outline"
-            className="gap-2 px-6 h-10 text-sm"
+            className="gap-2 px-6 h-11 text-sm"
             onClick={onUnlock}
             disabled={loading}
           >

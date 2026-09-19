@@ -31,7 +31,7 @@ export default function TierLockedPage({ tier = 'safety_plus' }) {
         <p className="text-muted-foreground mt-1">{body}</p>
         <Link
           to="/plans"
-          className="inline-block mt-3 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+          className="inline-flex items-center justify-center min-h-11 mt-3 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
         >
           View plans
         </Link>

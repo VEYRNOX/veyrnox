@@ -146,22 +146,22 @@ export default function InvoiceGenerator() {
 
               <div className="flex flex-wrap gap-2">
                 {inv.status === "draft" && (
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateStatus.mutate({ id: inv.id, status: "sent" })}>
+                  <Button size="sm" variant="outline" className="h-11 text-xs" onClick={() => updateStatus.mutate({ id: inv.id, status: "sent" })}>
                     <Send className="h-3 w-3 me-1" /> Mark Sent
                   </Button>
                 )}
                 {inv.status === "sent" && (
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateStatus.mutate({ id: inv.id, status: "paid" })}>
+                  <Button size="sm" variant="outline" className="h-11 text-xs" onClick={() => updateStatus.mutate({ id: inv.id, status: "paid" })}>
                     <CheckCircle2 className="h-3 w-3 me-1" /> Mark Paid
                   </Button>
                 )}
-                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => copyPaymentLink(inv)}>
+                <Button size="sm" variant="ghost" className="h-11 text-xs" onClick={() => copyPaymentLink(inv)}>
                   {copied === inv.id ? <><CheckCircle2 className="h-3 w-3 me-1 text-success" /> Copied</> : <><Copy className="h-3 w-3 me-1" /> Copy Payment Link</>}
                 </Button>
-                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setPreview(inv)}>
+                <Button size="sm" variant="ghost" className="h-11 text-xs" onClick={() => setPreview(inv)}>
                   <FileText className="h-3 w-3 me-1" /> Preview
                 </Button>
-                <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => remove.mutate(inv.id)} aria-label="Delete invoice">
+                <Button size="sm" variant="ghost" className="h-11 text-xs text-destructive hover:text-destructive" onClick={() => remove.mutate(inv.id)} aria-label="Delete invoice">
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
