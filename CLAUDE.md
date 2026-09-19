@@ -1705,6 +1705,32 @@ m/44'/60' address; BTC (m/84'/UTXO/PSBT) and SOL (ed25519/SLIP-0010) have their 
   BOTH sessions are deniable: lists render empty, writes throw `denyInDeniable()`,
   and primary is indistinguishable from decoy. Deniability walkthroughs need a
   physical device.
+  - **The same gate makes some pages unviewable in ANY automated session, which
+    is a separate trap — it blocks ordinary visual QA, not just deniability
+    work.** `NFTPortfolio.jsx:27` and `MultiChainNFT.jsx:34` compute
+    `!isDeniabilityOrDemoActive()` and render the bare sentence "This page
+    isn't available right now." So `/nft` and `/nft-multichain` are blank under
+    `?demo=1`, under `VITE_DEMO_MODE=1`, in a decoy session, AND on a simulator
+    pointed at the dev server — that last one because the bullet above forces
+    demo mode. Found 2026-09-19 trying to do #2607's "check the NFT action row
+    on a phone"; the routes render the message and nothing else, which reads
+    exactly like a routing or build failure rather than a deliberate gate.
+    **Three pages render that exact sentence** — those two plus
+    `SuspiciousAssets.jsx:210`, all three via the same
+    `!isDeniabilityOrDemoActive()` computation — while **39 files under
+    `src/pages` call the helper** for narrower suppression (empty lists,
+    blocked writes) without blanking the page. So grep
+    `isDeniabilityOrDemoActive` before concluding a page is broken, and expect
+    most hits to be the quieter kind.
+  - **What to do instead, when the question is layout rather than behaviour.**
+    Transcribe the component's markup into a static page, load the REAL
+    compiled `dist/assets/index-*.css`, and measure with the browser at 390 /
+    375 / 320px. That answered #2607 (zero page overflow at every width; the
+    `basis-full` wrap puts List/Delist on its own line; all three controls
+    ≥44px — 50px in practice, because `h-11` is 2.75rem and `index.css` sets
+    `:root { font-size: 18px }` below 640px). Be honest about what it is: a
+    transcription cannot cover conditional classes, so it answers "does it fit
+    and stay reachable", never "does it look right".
 
 - **Use a heredoc for multi-line commit messages** — `git commit -F - <<'EOF' ... EOF`,
   quoting the delimiter so `$` and backticks stay literal.
@@ -1868,6 +1894,72 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
     log-echo entry above — the artifact you search contains your search — and it
     silently disables the guard while looking like one. Anchor to a pid you were handed
     (`simctl launch` prints one) rather than to a pattern you also typed.
+  - **"The newest build" on App Store Connect is three different answers depending on
+    how you ask, and the two wrong ones look right.** 2026-09-19, prepping the #2541 iOS
+    fresh-install run: a peer session's pre-flight comment on the issue said "install
+    build 61", derived from a `sort=-version` read, and its own later correction said
+    `-version` is a STRING sort. The pre-flight was wrong AND the correction's mechanism
+    was wrong. Measured directly against app `6790188660` (61 builds, trains `1.0` and
+    `1.0.1` only):
+    - `GET /v1/apps/<id>/builds` **rejects `sort` outright** —
+      `400 PARAMETER_ERROR.ILLEGAL`, "The parameter 'sort' can not be used with this
+      request" — and its default order is neither newest nor oldest: the first page came
+      back `26, 27, 37, 41, 55` while builds from July exist. A `limit=1` here returns an
+      arbitrary build with no indication that it is arbitrary.
+    - `GET /v1/builds?filter[app]=<id>&sort=-version` **is numeric, not a string sort.**
+      Ascending returns `1, 1, 2, 2, 3, 3, 4, …`; a string sort would have returned
+      `1, 1, 10, 11, …`. So the correction's stated cause is false — do not repeat it.
+    - It is still the wrong query, for a sharper reason: **`version` is the BUILD NUMBER,
+      which restarts per train and is not unique.** `1` already appears twice — `1.0 (1)`
+      uploaded 2026-07-21 and `1.0.1 (1)` uploaded 2026-08-08. So a brand-new `1.0.2 (1)`
+      sorts **last of 61, not first**, and "newest by `-version`" actually means "highest
+      build number anyone has ever used on any train".
+    - The query that answers the question asked:
+      `GET /v1/builds?filter[app]=<id>&sort=-uploadedDate&include=preReleaseVersion` —
+      newest by upload, carrying the train it belongs to.
+    **Corollary, from the same read:** build numbers are unique per TRAIN, so restarting
+    at `1` on a new marketing version is accepted — which is why `1.0.2 (1)` was free
+    today, and why the two existing `(1)` builds are not a contradiction.
+    **Why it sits with the `grep -F` and log-echo entries rather than in the App Store
+    section:** it is another check that returns a CONFIDENT WRONG answer instead of an
+    obviously empty one, and its wrongness scales with novelty — `-version` is most
+    misleading precisely when you are asking about a build you just uploaded on a new
+    train, which is the only time anyone asks. Note also that the error here travelled
+    as a CORRECTION, which reads as more trustworthy than the claim it replaced; a
+    correction is a claim and needs the same verification. One API read settled all of
+    it.
+  - **An absence-assertion cannot tell "correctly absent" from "absent because
+    broken", and it fails DANGEROUS.** 2026-09-19, closing #2595: the boot watchdog
+    added by PR #2500 had never executed once — it was an inline `<script>` and
+    `script-src` is `'self' 'wasm-unsafe-eval'` with no `'unsafe-inline'`, so the
+    browser blocked it on every load for nine days, in dev and in production. Every
+    guard around it passed the whole time. `FirstPaintNotBlankTests` asserts
+    `app.buttons["Reload Veyrnox"].exists` is FALSE, and its own comment says "the
+    watchdog stayed dormant" — an assertion that reads identically whether the fallback
+    is dormant or dead. `csp-policy.test.js` separately asserted `script-src` has no
+    `'unsafe-inline'`, so the suite was green *because* the policy was strict and the
+    watchdog was dead *for the same reason*, and nothing related the two facts.
+    **The remedy is specific and is not "assert harder": assert the fallback FIRES
+    under an induced failure.** The fix was verified by renaming the main chunk to
+    force a 404 and watching the Reload screen render, then restoring it and watching
+    React mount with no fallback — two observations, not one. A test that only ever
+    sees the healthy path cannot distinguish a working safety net from a missing one.
+    Applies to every fail-closed control: a RASP gate that has never blocked, a
+    rate limit that has never tripped, an error boundary that has never caught.
+  - **The API mirror of the same thing: a SAFE failure, where success is reported as
+    failure.** Same day, distributing `1.0.2 (1)` to TestFlight: `POST
+    /v1/betaGroups/<internal>/relationships/builds` returned `422
+    ENTITY_UNPROCESSABLE`, "Builds cannot be assigned to this internal group." Nothing
+    was wrong — that group carries `hasAccessToAllBuilds: true`, so every processed
+    build reaches it automatically and manual assignment is refused as redundant. The
+    build already read `internalBuildState: IN_BETA_TESTING` before the call. Reading
+    that 422 as a failure would have produced a retry loop against an action that must
+    never succeed. This direction is the cheaper one — it costs a double-check rather
+    than a wrong belief — but it belongs with the rest, because both come from a
+    check that cannot distinguish the thing from the absence of the thing. The
+    `scripts/play-vitals.sh` bug found the same day is this one inverted: a benign
+    "no data yet" line printed over a hard `400`.
+
 - **Mutation-check every new test pin, or you ship coverage that cannot fail.** Three
   pins written on 2026-09-03 were broken on the first attempt and ALL THREE looked green:
   - **A prefix ate the assertion.** A status-tag pin used `startsWith()` against

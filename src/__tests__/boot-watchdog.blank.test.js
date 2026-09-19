@@ -1,14 +1,6 @@
-// #2628 — the boot watchdog's HEALTH SIGNAL, not whether it can execute (#2595).
-//
-// The old signal was `root.firstChild`. Because main.jsx calls
-// createRoot(...).render(...) as its LAST statement, that flag flips the instant
-// the entry chunk finishes evaluating — so it reports healthy for any bundle
-// that evaluated, whatever it went on to render, and it cannot report at all
-// during a slow evaluation because setTimeout does not preempt synchronous work.
-//
-// The signal is now the static #boot-shell element that index.html paints before
-// any script runs. React clears #root on its first commit, so the shell going
-// away means real UI committed.
+// #2628 — visible React output, rather than a mounted node, is the watchdog's
+// health signal. The static boot shell prevents a white screen before scripts
+// load, but cannot count as a healthy application paint.
 //
 // Each case below was mutation-checked: the fix was reverted in place and the
 // case confirmed red, then restored. Note what that costs if skipped — a pin
@@ -26,8 +18,9 @@ const WATCHDOG = fs.readFileSync(
 );
 
 // The deadline the file actually declares, read rather than duplicated — a
-// hardcoded 10000 here would silently stop matching if the constant moved.
+// hardcoded value here would silently stop matching if the constant moved.
 const DEADLINE_MS = Number(/var DEADLINE_MS = (\d+);/.exec(WATCHDOG)[1]);
+const POLL_MS = Number(/var POLL_MS = (\d+);/.exec(WATCHDOG)[1]);
 
 function bootWithShell() {
   document.body.innerHTML =
@@ -37,6 +30,10 @@ function bootWithShell() {
 function runWatchdog() {
   // eslint-disable-next-line no-new-func
   new Function(WATCHDOG)();
+}
+
+function paint(element) {
+  element.getBoundingClientRect = () => ({ width: 100, height: 100 });
 }
 
 const fallbackShown = () =>
@@ -52,8 +49,10 @@ describe('boot watchdog health signal (#2628)', () => {
     document.body.innerHTML = '';
   });
 
-  it('shows the fallback when the shell is never cleared (React never committed)', () => {
+  it('shows the fallback when only the static shell is visible', () => {
     bootWithShell();
+    paint(document.getElementById('boot-shell'));
+    paint(document.querySelector('#boot-shell div'));
     runWatchdog();
 
     vi.advanceTimersByTime(DEADLINE_MS - 1);
@@ -64,24 +63,17 @@ describe('boot watchdog health signal (#2628)', () => {
     expect(document.getElementById('veyrnox-boot-reload')).not.toBeNull();
   });
 
-  it('stays silent when the deadline passes while the main thread is blocked', () => {
+  it('removes the fallback when visible React content paints after the deadline', () => {
     bootWithShell();
     runWatchdog();
 
-    // The slow-boot case, and the reason this is not just advanceTimersByTime:
-    // a long synchronous evaluation of the entry chunk holds the thread, so
-    // wall-clock passes the deadline while the queued callback cannot run at
-    // all. setSystemTime moves the clock WITHOUT running timers, which is the
-    // only faithful model of that; advancing timers instead would fire the
-    // check early and test a different sequence entirely.
-    vi.setSystemTime(Date.now() + DEADLINE_MS + 5000);
+    vi.advanceTimersByTime(DEADLINE_MS);
+    expect(fallbackShown()).toBe(true);
 
-    // React's first commit lands (react-dom sets containerInfo.textContent =
-    // '', removing the shell) and only then does the thread free up and let
-    // the backlog of timers run. The watchdog must read this as healthy even
-    // though it is answering long after its own deadline.
-    document.getElementById('root').textContent = '';
-    vi.advanceTimersByTime(DEADLINE_MS + 10000);
+    const app = document.createElement('main');
+    paint(app);
+    document.getElementById('root').appendChild(app);
+    vi.advanceTimersByTime(POLL_MS);
 
     expect(fallbackShown()).toBe(false);
   });
@@ -98,8 +90,8 @@ describe('boot watchdog health signal (#2628)', () => {
   });
 
   it('index.html ships the shell inside #root, with no script dependency', () => {
-    // The shell is the signal, so its absence from index.html breaks the check
-    // above in production while every test here still passes on its own fixture.
+    // The shell prevents the initial white screen, so its absence from index.html
+    // breaks production behavior while every test here still passes on fixtures.
     const html = fs.readFileSync(
       path.resolve(__dirname, '../../index.html'),
       'utf8',

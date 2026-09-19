@@ -117,10 +117,11 @@
          runs, so a slow cold start shows the brand on the app's own background
          instead of a white screen. React clears #root on its first commit
          (react-dom sets containerInfo.textContent = "" for an element
-         container), so this element disappears exactly when real UI appears —
-         which is also what boot-watchdog.js uses as its health signal. Inline
-         style attributes only: style-src allows 'unsafe-inline', script-src
-         does not, and nothing here may depend on script.
+         container), so this element disappears when real UI appears. The boot
+         watchdog intentionally ignores this shell when checking that React
+         painted visible UI. Inline style attributes only: style-src allows
+         'unsafe-inline', script-src does not, and nothing here may depend on
+         script.
 
          position:fixed + inset:0, NOT min-height:100vh. index.css says why, in
          its own words: "100vh/100dvh on a normal-flow element resolve

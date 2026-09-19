@@ -126,29 +126,32 @@ Those files have not been amended; treat this section as the current reading.
   A `39744850` and B `39744871`, both proved end to end against a real
   1066-file bundle.
 
-**OTA is DISARMED for 1.0.2 (owner decision, 2026-09-19).** Both pinned key
-lists are empty, which disables OTA completely (I4); the keys are preserved as
-`OTA_PINNED_KEY` comments so re-arming is an uncomment.
+**OTA is ARMED for 1.0.2 (owner decision, 2026-09-19).** Both keys are pinned,
+so 1.0.2 is the first store build that can apply an over-the-air update. This
+reverses the #2627 disarm, which merged earlier the same day.
 
-This paragraph previously read that 1.0.2 was "the first store build in which OTA
-is capable of applying an update" — which was **true and is why it was disarmed**.
-With the keys pinned by #2612, `enabled = !publicKeys.isEmpty && embedded() != nil`
-was satisfied, because `otaManifestPlugin()` in `vite.config.js` makes every
-`vite build` write `dist/ota-manifest.json` into both platforms' payloads. So the
-first 1.0.2 launch on every device would have fetched
-`updates.veyrnox.com/<channel>/latest.json`, and **an empty bucket is not a
-mitigation for that** — the fetch happens regardless of what is published.
+**1.0.2 is the carrier release, and it still needs a store submission.** OTA is
+how JS-level fixes reach users *after* this build — it cannot deliver this one.
+Every install in the field has an empty key list (1.0.1 build 59 and Play
+versionCode 49 predate #2612), so none of them will ever accept an OTA bundle;
+1.0.2 changes native Swift and Kotlin, which never ships over the air; and Apple
+2.5.2 / DPLA 3.3.1(B) limit downloaded code to bug and security fixes, while
+1.0.2 carries features. So: submit once, then JS-only fixes go over the air.
 
-`docs/ota-updates.md` gates arming on two prerequisites, both stated as
-conditions *before a key is provisioned*: owner sign-off against I3's "zero
-backend calls" wording, and a privacy-policy disclosure of the cold-start update
-check. Keys were provisioned 2026-09-18 with neither met, and neither the in-app
-privacy text nor veyrnox.com mentions the check. Disarming restores the gate
-rather than backfilling a justification for having passed it.
+**The privacy disclosure that arming required is in this release.** Privacy
+section 12, "Security Update Checks", in `src/pages/TermsLegal.jsx`: what the
+check sends (nothing from the wallet), what the server sees anyway (IP and
+time), that it is not optional, and that it runs identically in decoy and demo
+sessions — with the reason stated rather than glossed. Sections 0 and 11 amended
+so neither contradicts it.
 
-Everything else about OTA stands and stays in the tree — signing, hashing,
-rollback, the `serverBasePath` fix. It is simply off. Runbook, residual risks and
-the open I3 question: `docs/ota-updates.md`. **Not device-verified.**
+**The I3 ruling is still open**, and arming went ahead without it. `docs/ota-updates.md`
+carries the argument both ways plus a suggested restatement. I2 was the binding
+constraint and is addressed by the disclosure; I3 is a wording question about an
+invariant and is the owner's to settle.
+
+Runbook, residual risks and the open question: `docs/ota-updates.md`. **Not
+device-verified.**
 
 ### Referrals
 
@@ -249,12 +252,12 @@ one.
 5. **Create the ASC 1.0.2 version record.** None exists. The current draft
    submission `2af87adc` errors `STATE_NOT_SUITABLE_TO_SUBMIT` because it is
    attached to the live 1.0.1.
-6. **OTA decision — MADE 2026-09-19: ships disarmed.** See the OTA section
-   above. Store notification was also ruled unnecessary by the owner, which
-   matches the policy position the runbook already records: Apple permits
-   downloaded interpreted code for bug and security fixes (Guideline 2.5.2 /
-   DPLA 3.3.1(B)) and Play permits JS that runs in a WebView, so neither store
-   requires a declaration. Re-arming is gated on the two prerequisites in
+6. **OTA decision — MADE 2026-09-19: ships ARMED.** Reverses the disarm that
+   merged earlier the same day. Store notification remains unnecessary: Apple
+   permits downloaded interpreted code for bug and security fixes (Guideline
+   2.5.2 / DPLA 3.3.1(B)) and Play permits JS that runs in a WebView, so neither
+   store requires a declaration. The privacy disclosure prerequisite is met in
+   this release; the I3 ruling remains open and is tracked in
    `docs/ota-updates.md`.
 7. **Translate `apple.whatsNew`** into the 44 sibling locales, or accept an
    English-only "What's New" with the rest reading "Initial release."

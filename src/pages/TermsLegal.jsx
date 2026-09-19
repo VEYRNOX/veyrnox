@@ -132,7 +132,9 @@ export default function TermsLegal() {
             each only in a specific case: a short list of anonymous usage events — and only if you
             opt in (section 11); the questions you type into the AI Security Advisor, and only if
             you enable it (section 9); and the recipient address, and only when the paid pre-send
-            safety check runs (section 10).
+            safety check runs (section 10). Separately, and sending nothing from your wallet at
+            all, the app asks our update server whether a security update is available each time
+            it starts — section 12 sets out exactly what that does and does not reveal.
           </p>
 
           <div className="mt-2 rounded-lg border border-border bg-secondary/30 px-4 py-1">
@@ -388,18 +390,61 @@ export default function TermsLegal() {
               <p className="font-semibold text-foreground">
                 Never sent at all: nothing is recorded in decoy (duress) sessions or in demo mode.
                 Those sessions make no calls of this kind whatsoever, by design — a decoy session
-                must leave no trace that a real one ever existed.
+                must leave no trace that a real one ever existed. The one request that does happen
+                in every session is the security update check in section 12, which is identical in
+                all of them and therefore distinguishes none of them.
               </p>
             </TermsSection>
 
-            <TermsSection number={12} title="Changes to This Policy" group="privacy">
+            <TermsSection number={12} title="Security Update Checks" group="privacy">
+              <p>
+                Each time the app starts cold, before you unlock, it asks our update server
+                (<b>updates.veyrnox.com</b>) whether a newer version of the app&rsquo;s internal
+                code is available. This lets us ship security fixes in days rather than waiting
+                for an app store review.
+              </p>
+              <p>
+                <b>What this sends: nothing about you.</b> The request carries no install
+                identifier, no wallet data, no addresses and no session information &mdash; it asks
+                one question and reads one answer. As with any request to any server, our update
+                server does see the internet address it came from and the time it arrived. That
+                tells us an installation of Veyrnox started; it tells us nothing about who you are
+                or what is in your wallet.
+              </p>
+              <p className="font-semibold text-foreground">
+                This check is not optional and it happens in every session type, including decoy
+                and demo sessions. That is deliberate. The request is byte-for-byte identical
+                whichever session you open, and it happens before the app knows which one you are
+                opening &mdash; so it cannot reveal that a real wallet exists, which is the
+                property that matters under coercion. A check that ran only in real sessions would
+                be exactly the tell we are avoiding.
+              </p>
+              <p>
+                This is the one network request the app makes regardless of your privacy settings.
+                It is separate from the anonymous usage events in section 11, which stay opt-in and
+                off by default, and from the Advisor and address screening in sections 9 and 10,
+                which only run when you use those features.
+              </p>
+              <p>
+                <b>What can be downloaded.</b> Only an update signed with a key we hold offline on
+                dedicated hardware, which never touches a server, a laptop or our build system.
+                Your device checks that signature itself and checks every file against a recorded
+                fingerprint, every time it starts &mdash; not just when it downloads. Anything that
+                fails any check is refused and discarded. An update can never change the keys your
+                device trusts, and cannot move your wallet to an older version. Updates replace the
+                app&rsquo;s internal code only; anything deeper still arrives through the App Store
+                or Google Play.
+              </p>
+            </TermsSection>
+
+            <TermsSection number={13} title="Changes to This Policy" group="privacy">
               <p>
                 We may update this Privacy Policy from time to time. Any changes will be posted on the
                 published policy with a new &ldquo;last updated&rdquo; date.
               </p>
             </TermsSection>
 
-            <TermsSection number={13} title="Contact Us" group="privacy">
+            <TermsSection number={14} title="Contact Us" group="privacy">
               <p>
                 Questions about this Privacy Policy or our data practices:{" "}
                 <MailLink address={PRIVACY_EMAIL} />
