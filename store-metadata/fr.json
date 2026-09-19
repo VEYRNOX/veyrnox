@@ -2,8 +2,8 @@
   "$schema": "./_schema.json",
   "locale": "fr",
   "native": "Français",
-  "reviewed": true,
-  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "reviewed": false,
+  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent. Native-reviewed 2026-07 for subtitle, promotionalText, keywords and description; those four are unchanged and still vouched for. `reviewed` was flipped true -> false on 2026-09-19 solely because apple.whatsNew was replaced with a machine translation for the 1.0.2 release and no native reviewer has seen it. The flag is file-level and --require-reviewed gates on it, so leaving it true would have uploaded unvetted copy under a reviewed banner. Flip it back once whatsNew is reviewed; nothing else needs re-checking.",
   "shared": {
     "appName": {
       "value": "Veyrnox",
@@ -31,8 +31,9 @@
       "limit": 4000
     },
     "whatsNew": {
-      "value": "Version initiale.",
-      "limit": 4000
+      "value": "Protection antivol (facultative)\nUne vérification biométrique supplémentaire au déverrouillage, puis à nouveau pour un envoi qui dépasse votre plafond de dépenses. Sur iPhone, il s'agit précisément de Face ID. Sur Android, de n'importe quelle biométrie forte : Android n'offre aucun moyen d'exiger le visage seul, nous ne prétendons donc pas le contraire.\n\nCorrections de confidentialité\nLes sessions leurres et masquées ne lisent ni ne modifient plus les données derrière les analyses, les budgets, les paiements récurrents, les objectifs d'épargne et les factures. L'effacement d'urgence supprime désormais deux marqueurs qui lui échappaient.\n\nDes liens de parrainage qui survivent à une installation\nTouchez un lien d'invitation avant l'installation : le code s'applique quand même ensuite.\n\nPlus facile à utiliser\nZones tactiles plus grandes, taille de texte minimale lisible, écrans vides plus clairs, et une ligne sur l'écran d'envoi indiquant clairement qu'un transfert est irréversible.\n\nÉgalement : corrections de l'écran d'abonnement et revue de sécurité de notre code côté serveur.",
+      "limit": 4000,
+      "note": "Machine-translated for 1.0.2 and NOT native-reviewed, unlike this file's other Apple fields. This is why `reviewed` was flipped to false — see `notes`."
     },
     "supportUrl": {
       "value": "https://veyrnox.com/support",

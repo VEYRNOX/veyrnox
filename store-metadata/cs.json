@@ -31,7 +31,7 @@
       "limit": 4000
     },
     "whatsNew": {
-      "value": "První vydání.",
+      "value": "Ochrana proti krádeži (volitelné)\nDalší biometrické ověření při odemykání a znovu u odeslání, které překročí váš limit útraty. Na iPhonu jde konkrétně o Face ID. Na Androidu o jakoukoli silnou biometrii: Android neposkytuje způsob, jak vyžadovat pouze obličej, takže netvrdíme, že to umí.\n\nOpravy soukromí\nNávnadové a skryté relace už nečtou ani nemění data za analytikou, rozpočty, opakovanými platbami, spořicími cíli a fakturami. Nouzové smazání nyní odstraní dva ukazatele, které dříve přehlíželo.\n\nOdkazy na doporučení, které přežijí instalaci\nKlepněte na pozvánku před instalací a kód se přesto použije i potom.\n\nSnazší používání\nVětší plochy pro dotyk, čitelná minimální velikost písma, přehlednější prázdné obrazovky a řádek na obrazovce odesílání, který jasně říká, že převod nelze vzít zpět.\n\nDále: opravy obrazovky předplatného a bezpečnostní kontrola našeho serverového kódu.",
       "limit": 4000
     },
     "supportUrl": {

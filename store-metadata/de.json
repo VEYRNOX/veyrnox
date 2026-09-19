@@ -31,7 +31,7 @@
       "limit": 4000
     },
     "whatsNew": {
-      "value": "Erstveröffentlichung.",
+      "value": "Diebstahlschutz (optional)\nEine zusätzliche biometrische Prüfung beim Entsperren und erneut bei einer Überweisung, die Ihr Ausgabenlimit überschreitet. Auf dem iPhone ist das gezielt Face ID. Auf Android jede starke Biometrie: Android bietet keine Möglichkeit, ausschließlich das Gesicht zu verlangen, also behaupten wir das auch nicht.\n\nKorrekturen beim Datenschutz\nTäuschungs- und versteckte Sitzungen lesen und ändern die Daten hinter Analysen, Budgets, Daueraufträgen, Sparzielen und Rechnungen nicht mehr. Die Notlöschung entfernt nun zwei Markierungen, die sie zuvor übersehen hat.\n\nEmpfehlungslinks, die eine Installation überstehen\nTippen Sie vor der Installation auf einen Einladungslink, und der Code wird danach trotzdem angewendet.\n\nEinfacher zu bedienen\nGrößere Tippflächen, eine lesbare Mindestschriftgröße, klarere leere Bildschirme und eine Zeile auf dem Sendebildschirm, die unmissverständlich sagt, dass eine Überweisung nicht rückgängig gemacht werden kann.\n\nAußerdem: Korrekturen am Abo-Bildschirm und eine Sicherheitsprüfung unseres serverseitigen Codes.",
       "limit": 4000
     },
     "supportUrl": {

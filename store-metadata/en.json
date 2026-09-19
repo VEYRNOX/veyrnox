@@ -31,8 +31,9 @@
       "limit": 4000
     },
     "whatsNew": {
-      "value": "Theft Protection (optional)\nAn extra biometric check on unlock, and again on a send that goes over your spend limit. On iPhone this is Face ID specifically. On Android it is any strong biometric — Android has no API to require face only, so we say so rather than imply otherwise.\n\nPrivacy fixes\nDecoy and hidden sessions no longer read or change the data behind analytics, budgets, recurring payments, savings goals and invoices. Panic wipe now clears two markers it was missing.\n\nReferral links that survive an install\nTap an invite link before installing and the code is still applied afterwards.\n\nEasier to use\nBigger tap targets, a readable minimum text size, clearer empty screens, and a line on the send screen saying plainly that a transfer cannot be undone.\n\nAlso: subscription screen fixes, and a security pass over our server-side code.",
-      "limit": 4000
+      "value": "Theft Protection (optional)\nAn extra biometric check when you unlock, and again on a send that goes over your spend limit. On iPhone this is Face ID specifically. On Android it is any strong biometric: Android provides no way to require face alone, so we do not claim it does.\n\nPrivacy fixes\nDecoy and hidden sessions no longer read or change the data behind analytics, budgets, recurring payments, savings goals and invoices. Panic wipe now clears two markers it was missing.\n\nReferral links that survive an install\nTap an invite link before installing and the code is still applied afterwards.\n\nEasier to use\nBigger tap targets, a readable minimum text size, clearer empty screens, and a line on the send screen saying plainly that a transfer cannot be undone.\n\nAlso: subscription screen fixes, and a security pass over our server-side code.",
+      "limit": 4000,
+      "note": "Source of truth for the 1.0.2 release notes; every sibling locale is machine-translated from this string. `reviewed` stays true here because this file is the source — there is no translation fidelity to vouch for."
     },
     "supportUrl": {
       "value": "https://veyrnox.com/support",

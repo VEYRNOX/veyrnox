@@ -31,7 +31,7 @@
       "limit": 4000
     },
     "whatsNew": {
-      "value": "Eerste release.",
+      "value": "Diefstalbeveiliging (optioneel)\nEen extra biometrische controle bij het ontgrendelen, en opnieuw bij een overboeking die je bestedingslimiet overschrijdt. Op iPhone is dit specifiek Face ID. Op Android elke sterke biometrie: Android biedt geen manier om alleen het gezicht te vereisen, dus beweren we dat ook niet.\n\nPrivacyherstel\nLok- en verborgen sessies lezen of wijzigen niet langer de gegevens achter analyses, budgetten, terugkerende betalingen, spaardoelen en facturen. Noodwissen verwijdert nu twee markeringen die het eerder oversloeg.\n\nUitnodigingslinks die een installatie overleven\nTik vóór het installeren op een uitnodigingslink en de code wordt daarna alsnog toegepast.\n\nMakkelijker in gebruik\nGrotere tikdoelen, een leesbare minimale tekstgrootte, duidelijkere lege schermen en een regel op het verzendscherm die onomwonden zegt dat een overboeking niet ongedaan kan worden gemaakt.\n\nOok: herstel van het abonnementsscherm en een beveiligingscontrole van onze servercode.",
       "limit": 4000
     },
     "supportUrl": {

@@ -2,8 +2,8 @@
   "$schema": "./_schema.json",
   "locale": "pt-BR",
   "native": "Português (Brasil)",
-  "reviewed": true,
-  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "reviewed": false,
+  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent. Native-reviewed 2026-07 for subtitle, promotionalText, keywords and description; those four are unchanged and still vouched for. `reviewed` was flipped true -> false on 2026-09-19 solely because apple.whatsNew was replaced with a machine translation for the 1.0.2 release and no native reviewer has seen it. The flag is file-level and --require-reviewed gates on it, so leaving it true would have uploaded unvetted copy under a reviewed banner. Flip it back once whatsNew is reviewed; nothing else needs re-checking.",
   "shared": {
     "appName": {
       "value": "Veyrnox",
@@ -31,8 +31,9 @@
       "limit": 4000
     },
     "whatsNew": {
-      "value": "Lançamento inicial.",
-      "limit": 4000
+      "value": "Proteção contra roubo (opcional)\nUma verificação biométrica extra ao desbloquear e outra em um envio que ultrapasse seu limite de gastos. No iPhone, é especificamente o Face ID. No Android, é qualquer biometria forte: o Android não oferece nenhuma forma de exigir apenas o rosto, então não afirmamos que ele ofereça.\n\nCorreções de privacidade\nSessões-isca e ocultas não leem nem alteram mais os dados por trás de análises, orçamentos, pagamentos recorrentes, metas de economia e faturas. O apagamento de emergência agora limpa dois marcadores que antes deixava passar.\n\nLinks de indicação que sobrevivem a uma instalação\nToque em um link de convite antes de instalar e o código ainda será aplicado depois.\n\nMais fácil de usar\nÁreas de toque maiores, tamanho mínimo de texto legível, telas vazias mais claras e uma linha na tela de envio dizendo com todas as letras que uma transferência não pode ser desfeita.\n\nAlém disso: correções na tela de assinatura e uma revisão de segurança do nosso código de servidor.",
+      "limit": 4000,
+      "note": "Machine-translated for 1.0.2 and NOT native-reviewed, unlike this file's other Apple fields. This is why `reviewed` was flipped to false — see `notes`."
     },
     "supportUrl": {
       "value": "https://veyrnox.com/support",
