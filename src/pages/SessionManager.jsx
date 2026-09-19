@@ -7,6 +7,7 @@ import { useWallet } from "@/lib/WalletProvider";
 import Spinner from "@/components/Spinner";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import EmptyState from "@/components/EmptyState";
 
 function getDeviceIcon(ua) {
   if (!ua) return <Globe className="h-4 w-4" />;
@@ -122,11 +123,11 @@ export default function SessionManager() {
       </div>
 
       {sessions.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Monitor className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No sessions recorded</p>
-          <p className="text-sm mt-1">Session history will appear here as you log in from different devices</p>
-        </div>
+        <EmptyState
+          kind="generic"
+          title="No sessions recorded"
+          description="Sessions appear here as you unlock the wallet on different devices. Nothing is recorded until a second device is used, so an empty list is the normal state on a single-device wallet."
+        />
       ) : (
         <div className="space-y-2">
           <p className="text-sm font-semibold">Active Sessions</p>

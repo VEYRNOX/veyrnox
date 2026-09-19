@@ -56,11 +56,25 @@ const ILLUSTRATIONS = {
   ),
 };
 
+// Every prop is optional and the render already guards each with `{x && ...}`.
+// Say so in JSDoc rather than relying on inference: with bare destructuring TS
+// makes all of them REQUIRED, and with `= null` defaults it infers their type
+// AS null, so a caller passing a string fails. Both variants broke the pages
+// migrated in the #2608 second pass before this annotation landed.
+/**
+ * @param {{
+ *   kind?: 'transactions' | 'alerts' | 'wallets' | 'search' | 'generic',
+ *   title?: import('react').ReactNode,
+ *   description?: import('react').ReactNode,
+ *   action?: import('react').ReactNode,
+ *   className?: string,
+ * }} props
+ */
 export default function EmptyState({
   kind = 'generic',
-  title,
-  description,
-  action,
+  title = null,
+  description = null,
+  action = null,
   className = '',
 }) {
   const reduce = useReducedMotion();

@@ -1,4 +1,4 @@
-// Grep-guard: hand-built empty states in src/pages may not multiply (#2608).
+// Grep-guard: no page under src/pages hand-builds an empty state (#2608).
 //
 // Four shared primitives exist — EmptyState, PageState, Spinner,
 // EmptyWalletState — and were adopted by one or two pages each while 78 pages
@@ -9,14 +9,12 @@
 // nothing to a screen reader, while EmptyState and PageState carry the
 // accessibility contract (and PageState's error branch carries role="alert").
 //
-// This guard deliberately does NOT try to force a sweep. #2608 argues against a
-// codemod, and it is right: an empty state's whole value is its specific
-// sentence, and a generated "No data." on 70 pages is worse than what is there.
-// So the rule is a ratchet — the number may fall, never rise — plus a hard zero
-// on the pages migrated in #2608.
+// This started as a ratchet against an exact count while #2608 ran in two
+// passes — five pages, then seven. It is a hard zero now, with exactly two
+// named exemptions, each for a reason that is about MEANING rather than effort.
 //
-// Scoping matters more than the pattern here. An earlier cut of this matched
-// "No ..." anywhere in a page and flagged TermsLegal's "No private keys or seed
+// Scoping matters more than the pattern here. An earlier cut matched "No ..."
+// anywhere in a page and flagged TermsLegal's "No private keys or seed
 // phrases", PanicWipe's "no confirmation" and WalletAccessReset's "No password
 // reset here" — legal and safety PROSE, which would have made every edit to
 // those pages fail a test about empty states. Requiring `text-center` in the
@@ -27,60 +25,68 @@ import { join } from 'node:path';
 
 const PAGES = join(process.cwd(), 'src/pages');
 
-// Migrated in #2608. These must keep using the primitive.
-const MIGRATED = [
-  'WatchWallets.jsx',
-  'NFTPortfolio.jsx',
-  'BudgetLimits.jsx',
-  'RecurringPayments.jsx',
-  'SavingsGoals.jsx',
-];
+// Deliberately NOT migrated, owner-agreed 2026-09-19. Keyed by file with an
+// EXACT expected count, not by filename alone: an exemption that says "this
+// file is fine" would blanket-excuse the next hand-built state added to it.
+// A second one in either file still fails.
+const EXEMPT = {
+  // A post-scan ALL-CLEAR, not an empty state: green CheckCircle, "Nothing
+  // found", shown after a scan that ran and found nothing. EmptyState's muted
+  // inbox styling would restyle a positive security result into "nothing here
+  // yet", which is a different claim.
+  'FraudDetection.jsx': 1,
+  // A one-line placeholder inside the small "Asset Allocation" card.
+  // EmptyState is an 80px illustration plus stacked copy — the wrong weight
+  // inside a chart card.
+  'Analytics.jsx': 1,
+};
 
 // An empty-state sentence: "No <something>" / "Nothing <something>" as the
 // entire text of an element.
 const EMPTY_COPY = /> *(No [a-z][a-z ]{2,40}|Nothing [a-z ]{2,30})[.…!]? *</gi;
 
-// Hand-built count at the end of #2608's first pass. Lower it when you migrate
-// a page; never raise it. Exact, not "at most": slack lets the number drift
-// down and back up unnoticed, which is how a ratchet stops ratcheting.
-const HAND_BUILT_BUDGET = 9;
-
+// Note there is no "skip files that already import EmptyState" shortcut. The
+// first version of this guard had one, and it meant a page became invisible to
+// the check the moment it adopted the primitive anywhere — so a page could
+// migrate one empty state and hand-build the next three unnoticed.
 function handBuilt() {
-  const out = [];
+  const out = {};
   for (const name of readdirSync(PAGES).filter((f) => f.endsWith('.jsx'))) {
     const src = readFileSync(join(PAGES, name), 'utf8');
-    if (src.includes('EmptyState') || src.includes('PageState')) continue;
     const hits = [...src.matchAll(EMPTY_COPY)]
       // Only inside a centred block — see the scoping note above.
       .filter((m) => src.slice(Math.max(0, m.index - 400), m.index).includes('text-center'));
-    if (hits.length) out.push([name, hits.length]);
+    if (hits.length) out[name] = hits.length;
   }
   return out;
 }
 
 describe('Empty states — shared primitives (#2608)', () => {
-  it('the pages migrated in #2608 still use EmptyState', () => {
-    const regressed = MIGRATED.filter(
-      (name) => !readFileSync(join(PAGES, name), 'utf8').includes('EmptyState'),
-    );
+  const found = handBuilt();
+
+  it('no page hand-builds an empty state, except the two named exemptions', () => {
+    const unexpected = Object.entries(found)
+      .filter(([name, n]) => (EXEMPT[name] ?? 0) !== n)
+      .map(([name, n]) => `${name}: ${n} (expected ${EXEMPT[name] ?? 0})`);
     expect(
-      regressed,
-      'a page migrated to EmptyState in #2608 has gone back to a hand-built '
-      + 'empty block. The primitive carries the accessibility contract and the '
-      + 'visual language; a bare <p> announces nothing to a screen reader.',
+      unexpected,
+      'a hand-built empty state appeared, or an exempt file gained a second one. '
+      + 'Use EmptyState or PageState with copy specific to that page — the '
+      + 'primitive carries the accessibility contract, and a bare <p> announces '
+      + 'nothing to a screen reader. If the block is genuinely not an empty '
+      + 'state (a post-scan all-clear, a one-line placeholder inside a small '
+      + 'card), add it to EXEMPT with the reason.',
     ).toEqual([]);
   });
 
-  it(`hand-built empty states stay at exactly ${HAND_BUILT_BUDGET} and do not grow`, () => {
-    const found = handBuilt();
-    const total = found.reduce((n, [, hits]) => n + hits, 0);
+  it('the exempt blocks still exist — a stale exemption is a hole', () => {
+    // If one of these is migrated or deleted later, this fails and the entry
+    // has to go. An exemption nobody revisits is how a guard rots.
+    const missing = Object.keys(EXEMPT).filter((name) => !found[name]);
     expect(
-      total,
-      total > HAND_BUILT_BUDGET
-        ? `a new hand-built empty state appeared (${found.map(([f, n]) => `${f}:${n}`).join(', ')}). `
-          + 'New pages use EmptyState or PageState, with copy specific to that page.'
-        : `hand-built empty states fell to ${total} — good. Lower HAND_BUILT_BUDGET `
-          + 'in this file to match, in the same commit that migrated them.',
-    ).toBe(HAND_BUILT_BUDGET);
+      missing,
+      'an exempt file no longer contains the hand-built block its exemption '
+      + 'covers. Remove the EXEMPT entry.',
+    ).toEqual([]);
   });
 });
