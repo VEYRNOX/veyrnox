@@ -115,10 +115,28 @@ describe('release-track wording stays current', () => {
     expect(feature.explanation).not.toMatch(/no production review submission made/i);
   });
 
-  it('does not let "submitted" read as approved, published, or listed (I4)', () => {
+  // FLIPPED 2026-09-19. This used to assert the opposite — /submitted is not
+  // approved/ and /not yet publicly listed/ — and it was right when written.
+  // The app published on or before 2026-09-11 and both phrases went false, so
+  // the pin was enforcing a falsehood. That is the tripwire working: a pin that
+  // names the honesty property rather than the fact is what sent a reader back
+  // here. Evidence for the flip, so the next reader can re-derive it rather
+  // than trust this comment: the public listing at
+  // play.google.com/store/apps/details?id=com.veyrnox.app returns 200 in US and
+  // GB and renders "Updated on Sep 11, 2026", while a bogus package id on the
+  // same host returns 404 — a draft or closed-testing-only app has no public
+  // listing. The property now pinned is the NEW limit of what was checked:
+  // a public page read is not a Play Developer API read, so the copy must not
+  // claim a production versionCode it never looked up.
+  it('claims publication only as far as the evidence goes, and names the gap (I4)', () => {
     const feature = byName('Android App');
-    expect(feature.explanation).toMatch(/submitted is not approved/i);
-    expect(feature.explanation).toMatch(/not yet publicly listed/i);
+    expect(feature.explanation).toMatch(/now published/i);
+    // Must not silently upgrade a public-listing read into an API read.
+    expect(feature.explanation).toMatch(/not of the play developer api/i);
+    expect(feature.explanation).toMatch(/versionCode is live in production is unconfirmed/i);
+    // The retired claims must not creep back in.
+    expect(feature.explanation).not.toMatch(/not yet publicly listed/i);
+    expect(feature.explanation).not.toMatch(/cannot report until the app publishes/i);
   });
 
   it('still discloses the Pre-launch report gap and that the Robo run is on an earlier build', () => {
@@ -129,5 +147,42 @@ describe('release-track wording stays current', () => {
     // is the thing that sends you back here to update the copy.
     expect(feature.explanation).toMatch(/earlier build/i);
     expect(feature.explanation).toMatch(/rasp on a play install is not device-verified/i);
+  });
+});
+
+// The iOS entry had NO pins at all, and that is exactly why it rotted: it still
+// said "published to TestFlight (1.0.1 Build 11, READY_FOR_BETA_TESTING)" and
+// "no App Store review submission made" on 2026-09-19, six weeks after 1.0
+// shipped and eight days after 1.0.1 was approved. The Android entry beside it
+// carried pins and stayed broadly honest. Absence of a pin is not neutrality.
+describe('iOS App catalogue copy', () => {
+  it('carries no build number — the same decay the Android entry already avoids', () => {
+    const feature = byName('iOS App');
+    expect(feature.explanation).not.toMatch(/build\s*\d+/i);
+    expect(feature.summary).not.toMatch(/build\s*\d+/i);
+  });
+
+  it('does not describe a shipped app as pre-release', () => {
+    const feature = byName('iOS App');
+    expect(feature.explanation).not.toMatch(/READY_FOR_BETA_TESTING/i);
+    expect(feature.explanation).not.toMatch(/no App Store review submission made/i);
+    expect(feature.explanation).not.toMatch(/submission on hold/i);
+  });
+
+  it('states the live status and keeps the caveats that are still open (I4)', () => {
+    const feature = byName('iOS App');
+    expect(feature.explanation).toMatch(/live on the App Store/i);
+    expect(feature.explanation).toMatch(/READY_FOR_SALE/);
+    // Shipping is not auditing. These must survive any future copy edit.
+    expect(feature.explanation).toMatch(/rasp on an App Store install is not device-verified/i);
+    expect(feature.explanation).toMatch(/no independent\s+security audit/i);
+  });
+
+  // Status stays BUILT deliberately. A live store listing is not the project's
+  // 'verified' bar (CLAUDE.md: verified needs an on-chain txid the owner
+  // supplies), and promoting it here would quietly redefine that vocabulary.
+  it('stays at built, not verified', () => {
+    expect(byName('iOS App').status).toBe('built');
+    expect(byName('Android App').status).toBe('built');
   });
 });

@@ -479,7 +479,8 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
   11→32 (#1975, PLR Robo onboard), 32→33 (#1986), 33→34 (#2031), 34→35 (#2033),
   35→36 (#2036), 36→37 (#2107), 37→38 (#2137), 38→39 (#2161), 39→40 (#2197),
   40→41 (#2302), 41→42 (#2346), 42→43 (#2355), 43→44 (`ae825dbf`, first Closed
-  testing upload), 44→45 (#2397), 45→46 (#2407), 46→47 (#2410), 47→48 (#2433).
+  testing upload), 44→45 (#2397), 45→46 (#2407), 46→47 (#2410), 47→48 (#2433),
+  48→49 (#2540), 49→50 (v1.0.2 train).
   - **Codes 1–11 consumed on Play.** 1–5 from early uploads; 10–11 consumed by
     `firebase-test-lab.yml`'s duplicate `publish-android-staging` job (removed in
     #1980) before `ci.yml`'s `publish-to-play-internal` could use them.

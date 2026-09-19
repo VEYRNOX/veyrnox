@@ -558,20 +558,20 @@ export const FEATURE_CATEGORIES = [
         name: 'iOS App',
         displayName: 'iOS App Store',
         status: 'built',
-        summary: 'Native iOS shell — TestFlight internal testing',
-        explanation: 'Built. Native iOS shell via Capacitor, published to TestFlight (1.0.1 Build 11, READY_FOR_BETA_TESTING). Apple Organisation account (Veyrnox LTD, Team R54268MWFV) verified. CLI archive + upload pipeline working (xcodebuild + altool). App Store review submission on hold pending pre-submission verification checklist (fresh-device golden-path walk, Organizer crash/hang check). NOT verified: no App Store review submission made, RASP on a TestFlight install not device-verified.',
+        summary: 'Native iOS shell — live on the App Store',
+        explanation: 'Built. Native iOS shell via Capacitor. Version 1.0.1 is live on the App Store — App Store Connect reports appStoreState READY_FOR_SALE, approved from the 11 September 2026 review submission after two rejections on 8 September, neither of which was a KEK or RASP failure. Apple Organisation account (Veyrnox LTD, Team R54268MWFV) verified. CLI archive and upload pipeline working (xcodebuild + altool). NOT verified: RASP on an App Store install is not device-verified; the shipped binary has had no independent security audit; TestFlight crash and Xcode Organizer hang data have not been read since release.',
       },
       {
         name: 'Android App',
         displayName: 'Android Play Store',
         status: 'built',
-        summary: 'Native Android shell — submitted for Play review',
+        summary: 'Native Android shell — published on Google Play',
         // No versionCode in this copy, deliberately. It moved eight times between
         // two corrections of the same number elsewhere in the repo, and a build
         // number a user cannot act on is not worth the decay. The release train
         // (1.0.1) is what identifies this entry; the current code lives in
         // android/app/build.gradle. See PR #2471.
-        explanation: 'Built. Native Android shell via Capacitor on the 1.0.1 release train, with the Play upload path wired in CI. Upload key reset completed. Play Billing (IAP) device-verified on the internal track. Release build end-to-end verified (signed AAB, jarsigner, release cert fingerprint guard). Submitted for Google Play review on 8 September 2026 from the closed testing track, with managed publishing on — approval stages the release rather than publishing it. NOT verified: submitted is not approved and the app is not yet publicly listed on Play; no Play Pre-launch report has ever been generated for any build of this app, so the automated crash sweep standing in for it is a Firebase Test Lab run against an earlier build, not the submitted one; Android Vitals cannot report until the app publishes; RASP on a Play install is not device-verified. The pre-submission golden-path walk was completed on a stock device by the owner.',
+        explanation: 'Built. Native Android shell via Capacitor on the 1.0.1 release train, with the Play upload path wired in CI. Upload key reset completed. Play Billing (IAP) device-verified on the internal track. Release build end-to-end verified (signed AAB, jarsigner, release cert fingerprint guard). Submitted for Google Play review on 8 September 2026 from the closed testing track. The app is now published: the public Play listing resolves in multiple regions and reads "Updated on Sep 11, 2026". NOT verified: that is a read of the public listing, not of the Play Developer API, so which versionCode is live in production is unconfirmed here; no Play Pre-launch report has ever been generated for any build of this app, so the automated crash sweep standing in for it is a Firebase Test Lab run against an earlier build, not the submitted one; Android Vitals can report now that the app has published but has not been read; RASP on a Play install is not device-verified. The pre-submission golden-path walk was completed on a stock device by the owner.',
       },
       {
         name: 'Samsung Galaxy Store',

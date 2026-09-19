@@ -29,12 +29,14 @@ android {
         // track change only takes effect on the NEXT bundle. 44 is therefore the
         // first code that can reach Closed testing (Alpha) and generate the
         // Pre-launch report (#1960).
-        versionCode 49
+        versionCode 50
         // Customer-facing version for the public Play launch. versionCode is internal
         // bookkeeping (monotonic, permanently consumed per upload, never shown to users);
         // versionName is what appears on the store listing.
-        // 1.0.1 opens a new release train aligned with the iOS 1.0.1 train.
-        versionName "1.0.1"
+        // 1.0.2 opens a new release train aligned with the iOS 1.0.2 train. 1.0.1 is
+        // live on the App Store (build 59, READY_FOR_SALE) and sits on Play Closed
+        // testing at versionCode 49.
+        versionName "1.0.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         // RASP APK tamper detection — inject via -PRELEASE_CERT_SHA256=<hash>.
         // Blank = fail-closed (I4). Release builds validate format at task start.
