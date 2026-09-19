@@ -1008,7 +1008,7 @@ export default function Subscription() {
                   string overflows the base Button's whitespace-nowrap on
                   narrow iPhones. Let it wrap. */}
               <Button
-                className="w-full whitespace-normal h-auto min-h-10 py-3 text-center leading-snug"
+                className="w-full whitespace-normal h-auto min-h-11 py-3 text-center leading-snug"
                 {...pricingCtaProps({
                   retry: ctaRetry,
                   settled: offeringsSettled,
@@ -1191,7 +1191,7 @@ export default function Subscription() {
                         overflowing the sky-600 pill. Verified in TestFlight
                         2026-09-05 — text was spilling past the right edge. */}
                     <Button
-                      className="w-full bg-sky-600 hover:bg-sky-700 text-white whitespace-normal h-auto min-h-10 py-3 text-center leading-snug"
+                      className="w-full bg-sky-600 hover:bg-sky-700 text-white whitespace-normal h-auto min-h-11 py-3 text-center leading-snug"
                       {...pricingCtaProps({
                         retry: aiCtaRetry,
                         settled: aiOfferingsSettled,

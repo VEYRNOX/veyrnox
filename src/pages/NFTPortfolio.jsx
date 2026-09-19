@@ -139,7 +139,7 @@ export default function NFTPortfolio() {
                       {pnl >= 0 ? "+" : ""}{pnl.toFixed(3)} ETH
                     </div>
                   )}
-                  <Button variant="ghost" size="icon" aria-label="Delete NFT" className="text-destructive hover:bg-destructive/10 h-6 w-6 mt-1" onClick={() => deleteNFT.mutate(nft.id)}>
+                  <Button variant="ghost" size="icon" aria-label="Delete NFT" className="text-destructive hover:bg-destructive/10 h-11 w-11 mt-1" onClick={() => deleteNFT.mutate(nft.id)}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>

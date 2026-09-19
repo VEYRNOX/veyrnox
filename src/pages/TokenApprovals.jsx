@@ -224,7 +224,7 @@ export default function TokenApprovals() {
                 {monitorHighCount > 0 ? `, ${monitorHighCount} high` : ""})
               </span>
             </h2>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearMonitorAlerts}>
+            <Button variant="ghost" size="sm" className="h-11 text-xs" onClick={clearMonitorAlerts}>
               Dismiss all
             </Button>
           </div>
@@ -356,7 +356,7 @@ export default function TokenApprovals() {
                     <Button
                       size="sm"
                       variant="destructive"
-                      className="gap-1 text-xs h-8"
+                      className="gap-1 text-xs h-11"
                       disabled={pending}
                       onClick={() => guardedRevoke(a)}
                     >

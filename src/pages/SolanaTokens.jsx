@@ -95,7 +95,7 @@ export default function SolanaTokens() {
                 ? <p className="text-sm text-destructive">{error}</p>
                 : <p className="text-sm text-muted-foreground">{loading ? "Loading…" : "—"}</p>
               }
-              <Button variant="ghost" size="icon" className="mb-1 h-7 w-7" aria-label="Refresh balance" onClick={fetchBalance} disabled={loading}>
+              <Button variant="ghost" size="icon" className="mb-1 h-11 w-11" aria-label="Refresh balance" onClick={fetchBalance} disabled={loading}>
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? "motion-safe:animate-spin" : ""}`} />
               </Button>
             </div>
@@ -113,13 +113,13 @@ export default function SolanaTokens() {
             <p className="text-[10px] text-muted-foreground">Derivation path: {solAccount.path}</p>
             <div className="flex gap-2 pt-1">
               <a href={explorerUrl} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7">
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-11">
                   <ExternalLink className="h-3 w-3" /> Explorer
                 </Button>
               </a>
               {!ALLOW_SOL_MAINNET && (
                 <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7">
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs h-11">
                     Devnet Faucet
                   </Button>
                 </a>

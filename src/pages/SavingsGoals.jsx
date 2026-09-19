@@ -157,11 +157,11 @@ export default function SavingsGoals() {
                   <span className="text-xs text-muted-foreground">{Math.round(pct)}% complete</span>
                   <div className="flex gap-2">
                     {!done && (
-                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setDepositId(goal.id)}>
+                      <Button size="sm" variant="outline" className="h-11 text-xs" onClick={() => setDepositId(goal.id)}>
                         <Plus className="h-3 w-3 me-1" /> Deposit
                       </Button>
                     )}
-                    <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" aria-label={`Delete goal ${goal.title}`} onClick={() => remove.mutate(goal.id)}>
+                    <Button size="sm" variant="ghost" className="h-11 text-xs text-destructive hover:text-destructive" aria-label={`Delete goal ${goal.title}`} onClick={() => remove.mutate(goal.id)}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -169,11 +169,11 @@ export default function SavingsGoals() {
 
                 {depositId === goal.id && (
                   <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-                    <Input aria-label="Deposit amount" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="Amount USD" className="h-8 text-xs flex-1" type="text" inputMode="decimal" />
-                    <Button size="sm" className="h-8 text-xs" onClick={() => deposit.mutate({ id: goal.id, current: goal.current_amount_usd || 0, amount: depositAmount })} disabled={!depositAmount}>
+                    <Input aria-label="Deposit amount" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="Amount USD" className="h-11 text-xs flex-1" type="text" inputMode="decimal" />
+                    <Button size="sm" className="h-11 text-xs" onClick={() => deposit.mutate({ id: goal.id, current: goal.current_amount_usd || 0, amount: depositAmount })} disabled={!depositAmount}>
                       Add
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setDepositId(null)}>Cancel</Button>
+                    <Button size="sm" variant="ghost" className="h-11 text-xs" onClick={() => setDepositId(null)}>Cancel</Button>
                   </div>
                 )}
               </div>

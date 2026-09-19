@@ -149,7 +149,7 @@ export default function NetworkManager() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {!n.is_active && (
-                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => activate.mutate(n.id)}>Switch</Button>
+                <Button size="sm" variant="outline" className="h-11 text-xs" onClick={() => activate.mutate(n.id)}>Switch</Button>
               )}
               {safeExplorerUrl(n.explorer_url) && (
                 <a href={safeExplorerUrl(n.explorer_url)} target="_blank" rel="noreferrer" aria-label="Open block explorer" className="p-1.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-muted-foreground hover:text-foreground"><Globe className="h-3.5 w-3.5" /></a>

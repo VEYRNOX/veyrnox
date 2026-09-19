@@ -111,10 +111,15 @@ export default function MultiChainNFT() {
             <span className="text-muted-foreground">Floor: {n.current_floor || 0} ETH</span>
             <span className={pnl >= 0 ? "text-success" : "text-destructive"}>{pnl >= 0 ? "+" : ""}{pnlPct}%</span>
           </div>
-          <div className="flex gap-1 pt-1">
-            <Button variant="ghost" size="sm" className="flex-1 h-6 text-[10px]" onClick={() => updateStatus.mutate({ id: n.id, status: n.status === "holding" ? "listed" : "holding" })}>{n.status === "listed" ? "Delist" : "List"}</Button>
-            <Button variant="ghost" size="sm" aria-label="Remove NFT" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => remove.mutate(n.id)}><Trash2 className="h-3 w-3" /></Button>
-            <Button variant="ghost" size="sm" aria-label="View on marketplace" className="h-6 w-6 p-0 text-muted-foreground" onClick={() => window.open(`${chain(n.chain)?.marketplace}/${n.contract_address}/${n.token_id}`, "_blank")}><ExternalLink className="h-3 w-3" /></Button>
+          {/* basis-full puts List/Delist on its own line. At 44px targets the three
+              buttons no longer fit across one row: the card is ~165px wide at
+              grid-cols-2 on a 375px phone (~141px inside p-3), and two 44px icon
+              buttons plus gaps eat ~96px of it. Wrapping is what makes the touch
+              targets affordable here — do not collapse this back to one row. */}
+          <div className="flex flex-wrap gap-1 pt-1">
+            <Button variant="ghost" size="sm" className="basis-full h-11 text-xs" onClick={() => updateStatus.mutate({ id: n.id, status: n.status === "holding" ? "listed" : "holding" })}>{n.status === "listed" ? "Delist" : "List"}</Button>
+            <Button variant="ghost" size="sm" aria-label="Remove NFT" className="h-11 w-11 p-0 text-muted-foreground hover:text-destructive" onClick={() => remove.mutate(n.id)}><Trash2 className="h-3 w-3" /></Button>
+            <Button variant="ghost" size="sm" aria-label="View on marketplace" className="h-11 w-11 p-0 text-muted-foreground" onClick={() => window.open(`${chain(n.chain)?.marketplace}/${n.contract_address}/${n.token_id}`, "_blank")}><ExternalLink className="h-3 w-3" /></Button>
           </div>
         </div>
       </div>
@@ -191,8 +196,8 @@ export default function MultiChainNFT() {
           </SelectContent>
         </Select>
         <div className="flex gap-1 ms-auto">
-          <Button variant={viewMode === "grid" ? "default" : "outline"} size="icon" aria-label="Grid view" className="h-8 w-8" onClick={() => setViewMode("grid")}><Grid3X3 className="h-3.5 w-3.5" /></Button>
-          <Button variant={viewMode === "list" ? "default" : "outline"} size="icon" aria-label="List view" className="h-8 w-8" onClick={() => setViewMode("list")}><List className="h-3.5 w-3.5" /></Button>
+          <Button variant={viewMode === "grid" ? "default" : "outline"} size="icon" aria-label="Grid view" className="h-11 w-11" onClick={() => setViewMode("grid")}><Grid3X3 className="h-3.5 w-3.5" /></Button>
+          <Button variant={viewMode === "list" ? "default" : "outline"} size="icon" aria-label="List view" className="h-11 w-11" onClick={() => setViewMode("list")}><List className="h-3.5 w-3.5" /></Button>
         </div>
       </div>
 
