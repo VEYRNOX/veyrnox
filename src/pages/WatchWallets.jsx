@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import EmptyState from "@/components/EmptyState";
 
 
 export default function WatchWallets() {
@@ -57,13 +58,14 @@ export default function WatchWallets() {
       </div>
 
       {isError ? (
-        <div className="text-center py-14 text-sm text-destructive">Couldn't load your watched wallets. Please try again.</div>
+        <div role="alert" className="text-center py-14 text-sm text-destructive">Couldn&apos;t load your watched wallets. The addresses you added are still saved — this is a read failure, not a loss. Pull to refresh or try again.</div>
       ) : displayed.length === 0 ? (
-        <div className="text-center py-14 text-muted-foreground">
-          <Eye className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No watched wallets</p>
-          <p className="text-sm mt-1">Add any public address to start monitoring</p>
-        </div>
+        <EmptyState
+          kind="wallets"
+          title="No watched wallets"
+          description="Watch any public address to follow its balance and transactions. No private key or seed phrase is ever needed, and watching does not give you the ability to spend from it."
+          action={<Button onClick={() => setOpen(true)} className="gap-1.5"><Plus className="h-4 w-4" /> Watch an address</Button>}
+        />
       ) : (
         <div className="space-y-3">
           {displayed.map(w => {
