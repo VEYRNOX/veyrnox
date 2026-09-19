@@ -157,7 +157,7 @@ async function getPartnerToken(env, clientIp) {
   const cached = await cache.match(cacheKey);
   if (cached) {
     const { accessToken } = await cached.json();
-    if (accessToken) return { accessToken, urls };
+    if (accessToken) return { accessToken, urls, fromCache: true };
   }
 
   const apiSecret = env.TRANSAK_API_SECRET;
@@ -168,6 +168,7 @@ async function getPartnerToken(env, clientIp) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      accept: 'application/json',
       'api-secret': apiSecret,
       'x-api-key': apiKey,
       'x-user-ip': clientIp || '0.0.0.0',
@@ -195,7 +196,7 @@ async function getPartnerToken(env, clientIp) {
   });
   await cache.put(cacheKey, cacheResponse);
 
-  return { accessToken, urls };
+  return { accessToken, urls, fromCache: false };
 }
 
 export async function onRequestPost(context) {
@@ -260,17 +261,20 @@ export async function onRequestPost(context) {
     widgetParams.fiatCurrency = cur;
   }
 
-  const sessionBody = {
-    apiKey,
-    referrerDomain: 'veyrnox.com',
-    widgetParams,
-  };
+  // Transak's Create Widget URL spec takes `widgetParams` and nothing else;
+  // `apiKey` and `referrerDomain` are mandatory INSIDE that object (they are
+  // set in widgetParams above). We also sent them at the top level, which the
+  // spec does not define. Harmless while they ignored unknown fields, but an
+  // undefined field is not a contract — dropped to match the published shape
+  // exactly. https://docs.transak.com/reference/create-widget-url
+  const sessionBody = { widgetParams };
 
   async function callCreateSession(token, urls) {
     return fetchUpstream(urls.createSession, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        accept: 'application/json',
         'x-api-key': apiKey,
         'x-user-ip': clientIp,
         'access-token': token,
@@ -280,10 +284,23 @@ export async function onRequestPost(context) {
     });
   }
 
-  let { accessToken, urls } = await getPartnerToken(env, clientIp);
+  let { accessToken, urls, fromCache: tokenFromCache } = await getPartnerToken(env, clientIp);
   let sessionRes = await callCreateSession(accessToken, urls);
 
-  if (sessionRes.status === 401) {
+  // Retry ONCE, and only if the token we just used came from the cache.
+  //
+  // Transak's refresh-token docs: "Invoke this endpoint only when the existing
+  // access token has expired (validity: 7 days). Do not call it repeatedly or
+  // on every request, as this can cause unnecessary token regeneration and
+  // potential rate-limiting issues" — and each new token invalidates the last.
+  //
+  // The previous code purged and re-minted on EVERY 401, including a 401 that
+  // has nothing to do with the token. During the 2026-09-16 outage, when
+  // create-session began returning 401 for every caller, that turned each Buy
+  // tap into a token regeneration against the endpoint they warn about, at the
+  // rate of live user traffic. A freshly minted token cannot be expired, so
+  // re-minting after it fails is never the right move.
+  if (sessionRes.status === 401 && tokenFromCache) {
     await caches.default.delete(
       new Request(`https://edge-cache.internal/transak-partner-token-${env.TRANSAK_ENVIRONMENT || 'STAGING'}`)
     );
