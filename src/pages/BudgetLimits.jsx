@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import EmptyState from "@/components/EmptyState";
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
@@ -126,11 +127,12 @@ export default function BudgetLimits() {
       )}
 
       {budgets.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <p className="text-4xl mb-3">💰</p>
-          <p className="font-medium">No budget limits set</p>
-          <p className="text-sm mt-1">Set spending limits to stay in control of your crypto outflows</p>
-        </div>
+        <EmptyState
+          kind="generic"
+          title="No budget limits set"
+          description="A limit warns you when your outgoing spend over a period passes an amount you choose. It is a warning, not a block — it never prevents a transaction you confirm."
+          action={<Button onClick={() => setOpen(true)} className="gap-1.5"><Plus className="h-4 w-4" /> Add a limit</Button>}
+        />
       ) : (
         <div className="space-y-3">
           {budgets.map(b => {

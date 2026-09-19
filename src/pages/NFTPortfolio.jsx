@@ -14,6 +14,7 @@ import { safeNftImageUrl } from "@/lib/nftImageUrl";
 import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import EmptyState from "@/components/EmptyState";
 
 const CHAIN_COLORS = { ethereum: "bg-secondary text-muted-foreground", solana: "bg-secondary text-muted-foreground", polygon: "bg-secondary text-muted-foreground", base: "bg-secondary text-muted-foreground" };
 const STATUS_COLORS = { holding: "bg-success/10 text-success", listed: "bg-caution/10 text-caution", sold: "bg-muted text-muted-foreground" };
@@ -102,15 +103,14 @@ export default function NFTPortfolio() {
       {isLoading ? (
         <Spinner className="py-12" />
       ) : isError ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Image className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm text-destructive">Couldn&apos;t load your NFTs. Please try again.</p>
-        </div>
+        <div role="alert" className="text-center py-16 text-sm text-destructive">Couldn&apos;t load your tracked NFTs. Nothing has been removed — this is a read failure. Try again.</div>
       ) : nfts.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Image className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No NFTs tracked yet</p>
-        </div>
+        <EmptyState
+          kind="generic"
+          title="No NFTs tracked yet"
+          description="This page tracks NFTs you add by hand, with the floor price you paid. It does not scan your wallets, so an empty list here does not mean you hold none."
+          action={<Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 me-1.5" /> Add NFT</Button>}
+        />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {nfts.map(nft => {

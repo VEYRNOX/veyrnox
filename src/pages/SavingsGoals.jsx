@@ -17,6 +17,7 @@ import { safeFormat } from "@/lib/safeDate";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 import Spinner from "@/components/Spinner";
+import EmptyState from "@/components/EmptyState";
 
 const EMOJIS = ["🎯","🏠","🚀","✈️","💎","🏖️","🎓","💻","🏋️","🎸"];
 
@@ -120,13 +121,14 @@ export default function SavingsGoals() {
       {isLoading ? (
         <Spinner className="py-12" label="Loading savings goals…" />
       ) : isError ? (
-        <div className="text-center py-12 text-destructive text-sm">Couldn't load savings goals. Please try again.</div>
+        <div role="alert" className="text-center py-12 text-destructive text-sm">Couldn&apos;t load your savings goals. Nothing has been lost — this is a read failure. Try again.</div>
       ) : goals.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-4xl mb-3">🎯</p>
-          <p className="text-muted-foreground text-sm">No savings goals yet</p>
-          <Button className="mt-4" onClick={() => setOpen(true)}><Plus className="h-4 w-4 me-1" /> Create Goal</Button>
-        </div>
+        <EmptyState
+          kind="generic"
+          title="No savings goals yet"
+          description="A goal tracks progress towards an amount you name. Progress is recorded by you — Veyrnox does not move or hold funds on your behalf."
+          action={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 me-1" /> Create a goal</Button>}
+        />
       ) : (
         <div className="grid gap-3">
           {goals.map(goal => {

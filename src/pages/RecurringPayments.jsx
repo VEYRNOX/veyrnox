@@ -20,6 +20,7 @@ import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import Spinner from "@/components/Spinner";
 import { formatCryptoAmount, parseLocaleNumber, resolveLocale } from "@/lib/locale";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import EmptyState from "@/components/EmptyState";
 
 const FREQ_LABELS = { daily: "Daily", weekly: "Weekly", biweekly: "Every 2 Weeks", monthly: "Monthly" };
 const FREQ_DAYS = { daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
@@ -231,10 +232,12 @@ export default function RecurringPayments() {
 
       {isLoading ? <Spinner className="py-8" />
         : payments.length === 0 ? (
-          <div className="text-center py-14 text-muted-foreground">
-            <Repeat className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No recurring payments set up</p>
-          </div>
+          <EmptyState
+            kind="generic"
+            title="No recurring payments set up"
+            description="A schedule reminds you when a payment is due and pre-fills it. Veyrnox never signs or sends on its own — every payment still needs you to confirm it in Send."
+            action={<Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 me-1.5" /> New schedule</Button>}
+          />
         ) : (
           <div className="space-y-3">
             {payments.map(p => {
