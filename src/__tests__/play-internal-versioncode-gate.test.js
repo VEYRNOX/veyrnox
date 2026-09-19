@@ -1,10 +1,11 @@
-// Static contract guard for the Play closed-testing upload gate in ci.yml.
+// Static contract guard for the Play internal-testing upload gate in ci.yml.
 //
 // A versionCode is consumed permanently by its first successful upload, but
-// publish-to-play-closed runs on every main push. Without the gate below,
+// publish-to-play-internal runs on every main push. Without the gate below,
 // every push after a bump re-attempts an already-consumed code and reds main
 // — which is exactly what happened 7 runs out of 7 between the 2026-09-08
-// internal->closed rename (ae514917) and the fix.
+// internal->closed rename (ae514917), which was reversed back to internal on
+// 2026-09-19 and the fix.
 //
 // This pins the gate so it cannot be dropped the way the release-cert guard
 // was (#1310 added -> #1313 silently dropped -> #1325 restored -> #1338
@@ -32,7 +33,7 @@ const code = workflow
 
 const GATE_IF = "if: steps.gate.outputs.upload == 'true'";
 
-describe('publish-to-play-closed versionCode gate', () => {
+describe('publish-to-play-internal versionCode gate', () => {
   it('declares the gate step that reads both versionCodes', () => {
     expect(code).toContain('- name: Skip when this versionCode was already consumed');
     expect(code).toContain('id: gate');
@@ -49,7 +50,7 @@ describe('publish-to-play-closed versionCode gate', () => {
     // The action step specifically must be gated: assert the condition sits
     // on the line right after its name, not merely somewhere in the file.
     expect(code).toMatch(
-      /- name: Upload to Play closed testing track\n\s+if: steps\.gate\.outputs\.upload == 'true'/,
+      /- name: Upload to Play internal testing track\n\s+if: steps\.gate\.outputs\.upload == 'true'/,
     );
   });
 
@@ -64,10 +65,31 @@ describe('publish-to-play-closed versionCode gate', () => {
     expect(code).toMatch(/if \[ "\$FORCED" = "true" \]; then\n\s+echo "upload=true"/);
   });
 
-  it('allows Play to send a closed-track edit through its required review state', () => {
+  // The track VALUE had no pin at all until 2026-09-19, which is how it moved
+  // internal -> alpha -> internal three times with only comments recording it,
+  // and how the job name and a step name were left saying "closed testing"
+  // while uploading to internal. A mutation check confirmed the gap: flipping
+  // `track: internal` back to `alpha` left every test in this file green.
+  //
+  // This does not forbid changing the track — it forbids changing it SILENTLY.
+  // If you move it, update this pin in the same commit and say why in the job
+  // header, where the track history lives.
+  // `code` is the workflow with full-line comments stripped — which is what
+  // makes the absence assertions below safe. Against the raw file they would
+  // match the comment recording the rename, i.e. fire on their own
+  // documentation. This file already solved that; use `code`, never `workflow`.
+  it('uploads to the internal track, and says so consistently', () => {
+    expect(code).toMatch(/^\s+track: internal$/m)
+    // The wording around it must not drift back to naming a different track.
+    expect(code).not.toMatch(/uploading to Play closed testing/)
+    expect(code).not.toMatch(/- name: Upload to Play closed testing track/)
+    expect(code).not.toMatch(/^\s+publish-to-play-closed:/m)
+  })
+
+  it('allows Play to send the track edit through its required review state', () => {
     // Google rejects changesNotSentForReview=true when this app's track is
     // configured to send changes for review. Managed publishing still keeps
-    // a closed-track upload from promoting to production.
+    // an internal-track upload from promoting to production.
     expect(code).toMatch(/changesNotSentForReview:\s*false/);
   });
 });
