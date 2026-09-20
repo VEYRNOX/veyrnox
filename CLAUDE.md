@@ -71,6 +71,46 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
     older shape. If `TIP_CHAT_BASE_URL` is ever unset, chat silently reverts
     to Turnstile-blocked. `verify_jwt: false` on the function (the header
     comment above explains why — CORS OPTIONS preflight carries no auth).
+    **2026-09-20 — THAT REDEPLOY ALSO DROPPED THE ENTITLEMENT GATE, AND
+    PROD HAS BEEN UNGATED EVER SINCE. Measured, not inferred; tracked as
+    [#2659](https://github.com/VEYRNOX/veyrnox/issues/2659); prod
+    deliberately left as is by owner decision.** `main` requires
+    `X-Rc-User-Id` and an active `ai_security_protection` entitlement
+    (`index.ts:248-253`, RevenueCat v1 lookup). The DEPLOYED functions do
+    not read that header at all — prod v38 (2026-08-23 18:18 UTC) and
+    staging v14 (2026-08-12 07:08 UTC) contain no `REQUIRED_ENTITLEMENT`,
+    no `hasRequiredEntitlement`, no `api.revenuecat.com` call, and their
+    CORS `Access-Control-Allow-Headers` omits `x-rc-user-id`. Proof: a POST
+    to the public Pages proxy `/api/edge/tip-chat` with NO rc id, and again
+    with a bogus `$RCAnonymousID:ffff…`, both returned `200
+    text/event-stream` and streamed a real
+    `@cf/meta/llama-3.1-8b-fast-v2` completion; same result posting
+    straight to `…supabase.co/functions/v1/tip-chat` with the anon key. On
+    `main`'s source both are `403 entitlement_required`. So the paid
+    AI Security Protection tier on the online Advisor is enforced ONLY by
+    `hasAdvisorOnlineAccess()` in `src/lib/tier.js:49` — client-side, which
+    is not a boundary. Bounded by TIP's own per-`device_id` cap (30/24h,
+    caller-supplied id), so the cost is metered abuse, not wallet data:
+    since 2026-09-05 the body carries only `current_screen` and
+    `wallet_chain`.
+    **The gate merged in d8dc6e61 (#2027) the SAME DAY v38 was deployed**,
+    and v38 was cut from the pre-gate shape to fit the MCP payload cap —
+    exactly what the paragraph above forbids, failing on a rule it does not
+    mention. 038663df (2026-09-16, bounded lookup + cached verdicts) was
+    never deployed either. **A redeploy carries whatever the deployer
+    pasted, and a "DEPLOY REQUIRED" header in the repo cannot tell you what
+    is live** — read the deployed body back (Supabase MCP
+    `get_edge_function`) rather than trusting the source file or this note.
+    If it is ever redeployed: verbatim from
+    `supabase/functions/tip-chat/index.ts`, staging first, and confirm
+    shipped 1.0.1 native builds send `X-Rc-User-Id` before prod or entitled
+    subscribers get 403. `functions/api/edge/[fn].js` already forwards it;
+    `REVENUECAT_V1_SECRET_KEY` is already set on both projects.
+    **The entitled 200 branch has never been exercised and could not be**:
+    `ai_security_protection` (`entl262ea1e9d4`) has four attached products,
+    the two Apple ones are `READY_TO_SUBMIT` and never sellable, and the
+    only production purchase on record grants `safety_plus`. No subscriber
+    holding it exists to test with.
   - **Supabase Edge Function `tip-screen`** — signing helpers, endpoint
     binding (`/api/v1/screen` only; the historical `action:'chat'` branch
     is deliberately removed and must stay removed).
