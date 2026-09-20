@@ -144,6 +144,7 @@ import { setLivePricesEnabled } from '@/lib/priceFeed';
 import { initCode, getPendingReferral, clearPendingReferral, hasRedeemed, markRedeemed, applyRedemption, getLocalState as getReferralState } from '@/lib/referral';
 import { generateServerCode, redeemCode } from '@/api/referralApi';
 import { trackEvent, EVENT } from '@/api/trackEvent';
+import { recordWin, WIN } from '@/lib/winPaywall';
 import { toast } from '@/lib/toast';
 import { incrementSessionDayCount } from '@/components/PaywallNudge';
 // D-05: localStorage marker recording that biometric unlock was enabled SOLELY to
@@ -1069,6 +1070,10 @@ export function WalletProvider({ children }) {
     // suppresses in a decoy/demo session; the I3 guard lives in lib/consent.js.
     try { clearConsent(); } catch { /* best-effort */ }
     void trackEvent(EVENT.WALLET_CREATED).catch(() => {});
+    // No WIN paywall here (owner, 2026-09-20). Creation is mid-onboarding and
+    // the user is seconds from the seed-backup step, which fires
+    // WIN.BACKUP_CONFIRMED — two modals for one flow. Import DOES fire one:
+    // that path lands the user in a finished wallet with nothing queued behind it.
     refreshWalletsState();
     refreshPortfoliosState();
     touch();
@@ -1121,6 +1126,7 @@ export function WalletProvider({ children }) {
     // imported wallet is a new identity and must not inherit prior consent.
     try { clearConsent(); } catch { /* best-effort */ }
     void trackEvent(EVENT.WALLET_IMPORTED).catch(() => {});
+    recordWin(WIN.WALLET_IMPORTED);
     refreshWalletsState();
     refreshPortfoliosState();
     touch();
@@ -1453,6 +1459,7 @@ export function WalletProvider({ children }) {
     if (!id) return;
     setWalletBackedUp(id, true);
     void trackEvent(EVENT.BACKUP_CONFIRMED).catch(() => {});
+    recordWin(WIN.BACKUP_CONFIRMED);
     refreshWalletsState();
   }, [isDecoy, isHidden, refreshWalletsState]);
 
@@ -2762,6 +2769,7 @@ export function WalletProvider({ children }) {
       void initCode(generateServerCode).catch(() => {});
       try { clearConsent(); } catch { /* best-effort */ }
       void trackEvent(EVENT.WALLET_IMPORTED).catch(() => {});
+      recordWin(WIN.WALLET_IMPORTED);
       refreshWalletsState();
       refreshPortfoliosState();
       touch();

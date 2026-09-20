@@ -21,6 +21,7 @@ import { useDigitalShield } from '@/context/DigitalShieldContext';
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import ReferralPrompt from "@/components/ReferralPrompt";
 import { recordSuccessfulSend, triggerReviewPromptIfEligible } from "@/lib/reviewPrompt";
+import { recordWin, WIN } from "@/lib/winPaywall";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -263,6 +264,8 @@ function SendDoneView({ amount, currency, txResult, onSendAnother }) {
   useEffect(() => {
     recordSuccessfulSend();
     triggerReviewPromptIfEligible().catch(() => {});
+    // WIN paywall — a confirmed send is a success moment. I3-gated inside.
+    recordWin(WIN.SEND_COMPLETED);
   }, []);
 
   const container = {

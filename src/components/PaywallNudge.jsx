@@ -35,8 +35,8 @@ const NUDGE_DISMISSED_KEY = 'veyrnox-paywall-nudge-dismissed';
 // unreachable at ANY threshold >= 2 — so raising this back does not tune the
 // nudge down, it switches it off. Leaving it at 1 accepts a first-day upsell
 // 2.5s (SETTLE_MS) after unlock, in the window where the user may still be
-// completing seed backup and BackupPaywallNudge already upsells inline. Owner
-// call, not a tuning detail.
+// completing seed backup, where the WIN paywall (lib/winPaywall.js) already
+// upsells on backup confirmation. Owner call, not a tuning detail.
 //
 // Measured on production `public.events` 2026-09-17: of 2,139 devices that had
 // ever emitted session_start, 2,114 (98.8%) did so on exactly ONE calendar day,

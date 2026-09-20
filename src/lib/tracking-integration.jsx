@@ -73,6 +73,7 @@ import { assignHoldout } from "@/lib/holdout";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { DEMO } from "@/api/demoClient";
 import { recordMilestone, triggerReviewPromptIfEligible } from "@/lib/reviewPrompt";
+import { recordWin, WIN } from "@/lib/winPaywall";
 
 /**
  * Must this session leave no local trace? Fails CLOSED — every read inside
@@ -164,6 +165,7 @@ export function useFirstInbound(balance) {
       // reviewPrompt module. fireOnce means this runs at most once ever.
       recordMilestone();
       triggerReviewPromptIfEligible().catch(() => {});
+      recordWin(WIN.FIRST_INBOUND);
     });
   }, [balance]);
 }

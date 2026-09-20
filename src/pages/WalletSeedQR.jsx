@@ -8,13 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/lib/WalletProvider";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
-import BackupPaywallNudge from "@/components/BackupPaywallNudge";
-import { useTier } from "@/lib/TierProvider";
 import { toast } from "@/lib/toast";
 
 export default function WalletSeedQR() {
   const { wallets, confirmWalletBackup } = useWallet();
-  const { currentTier } = useTier();
 
   const [selectedWalletId, setSelectedWalletId] = useState("");
   const [mnemonic, setMnemonic] = useState(null);
@@ -268,11 +265,14 @@ export default function WalletSeedQR() {
           <Button onClick={handlePrint} className="gap-2 w-full" variant="outline" disabled={printPending}>
             <Printer className="h-4 w-4" /> {printPending ? "Preparing Backup…" : Capacitor.isNativePlatform() ? "I've Written These Words Down" : "Print Secure Backup"}
           </Button>
+          {/* Upsell removed 2026-09-20 (owner): confirming the backup fires the
+              WIN paywall (lib/winPaywall.js WIN.BACKUP_CONFIRMED) from
+              WalletProvider.confirmWalletBackup, which handlePrint calls a few
+              lines up. The inline BackupPaywallNudge that used to sit here made
+              that two upsells for one action. Do not reintroduce one here
+              without removing the win. */}
           {printed && (
-            <>
-              <p className="text-xs text-success">✓ Printed — backup confirmed.</p>
-              <BackupPaywallNudge currentTier={currentTier} />
-            </>
+            <p className="text-xs text-success">✓ Printed — backup confirmed.</p>
           )}
 
           <Button

@@ -73,7 +73,8 @@ describe('paywall surfaces use the asleep state', () => {
 
   it.each([
     ['PaywallNudge.jsx'],
-    ['BackupPaywallNudge.jsx'],
+    ['WinPaywall.jsx'],
+    ['BackupNagSheet.jsx'],
     ['TierLockedPage.jsx'],
   ])('%s renders Vigil only as asleep', async (file) => {
     const text = await src(file);
