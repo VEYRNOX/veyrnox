@@ -36,10 +36,13 @@ vi.mock('@revenuecat/purchases-capacitor', () => ({
   LOG_LEVEL: { VERBOSE: 'VERBOSE', DEBUG: 'DEBUG', INFO: 'INFO', WARN: 'WARN', ERROR: 'ERROR' },
 }));
 
-const openUrlMock = vi.fn();
-vi.mock('@capacitor/app', () => ({
-  App: {
-    openUrl: (...a) => openUrlMock(...a),
+// Mock only methods these plugins actually have. This previously mocked
+// App.openUrl, which @capacitor/app does not expose, so manageSubscription's
+// tests passed while the deep link rejected at the bridge on every device.
+const browserOpenMock = vi.fn();
+vi.mock('@capacitor/browser', () => ({
+  Browser: {
+    open: (...a) => browserOpenMock(...a),
   },
 }));
 
@@ -130,7 +133,7 @@ describe('purchases.js — web (no App Store / Play Store)', () => {
 
   it('manageSubscription throws PURCHASES_NATIVE_ONLY on web', async () => {
     await expect(manageSubscription()).rejects.toThrow('PURCHASES_NATIVE_ONLY');
-    expect(openUrlMock).not.toHaveBeenCalled();
+    expect(browserOpenMock).not.toHaveBeenCalled();
   });
 });
 
@@ -184,16 +187,16 @@ describe('purchases.js — native', () => {
   });
 
   it('manageSubscription opens the App Store subscriptions URL on iOS', async () => {
-    openUrlMock.mockResolvedValue(undefined);
+    browserOpenMock.mockResolvedValue(undefined);
     await manageSubscription();
-    expect(openUrlMock).toHaveBeenCalledWith({ url: 'itms-apps://apps.apple.com/account/subscriptions' });
+    expect(browserOpenMock).toHaveBeenCalledWith({ url: 'https://apps.apple.com/account/subscriptions' });
   });
 
   it('manageSubscription opens the Play Store subscriptions URL on Android', async () => {
     getPlatform.mockReturnValue('android');
-    openUrlMock.mockResolvedValue(undefined);
+    browserOpenMock.mockResolvedValue(undefined);
     await manageSubscription();
-    expect(openUrlMock).toHaveBeenCalledWith({ url: 'https://play.google.com/store/account/subscriptions' });
+    expect(browserOpenMock).toHaveBeenCalledWith({ url: 'https://play.google.com/store/account/subscriptions' });
   });
 });
 
