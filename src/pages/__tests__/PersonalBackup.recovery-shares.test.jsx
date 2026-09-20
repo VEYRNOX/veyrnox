@@ -157,14 +157,14 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
       target: { value: 'a-nice-and-long-passphrase' },
     });
     fireEvent.click(screen.getByRole('button', { name: /split & save 3 shares/i }));
-    // Argon2id wrap × 3 shares is ~seconds; use the same 15s waitFor +
-    // 30s test timeout as the "encrypts ALL 3 shares" case below.
+    // Three Argon2id wraps contend with CI's per-file workers. Keep the
+    // assertion strict, but allow the genuine cryptographic work to finish.
     await waitFor(
       () => expect(screen.getByText(/all 3 recovery shares saved/i)).toBeTruthy(),
-      { timeout: 15_000 },
+      { timeout: 45_000 },
     );
     expect(exportRecoveryBundles).toHaveBeenCalledWith(TEST_PIN);
-  }, 30_000);
+  }, 60_000);
 
   it('surfaces a fail-closed error when exportRecoveryBundles throws', async () => {
     const exportRecoveryBundles = vi.fn(async () => {
