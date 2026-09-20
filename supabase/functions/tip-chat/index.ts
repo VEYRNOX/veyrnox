@@ -268,15 +268,51 @@ async function hasRequiredEntitlement(appUserId: string): Promise<boolean> {
       },
     );
     if (!resp.ok) {
-      // A 4xx is a verdict about this id (404 = no such customer, 401/403 =
-      // our key cannot see it) and is safe to remember briefly. A 5xx is
-      // RevenueCat having a bad minute — never cached, so an outage does not
-      // compound into a self-inflicted lockout on top of it.
-      if (resp.status >= 400 && resp.status < 500) rememberEntitlement(appUserId, false);
+      // ONLY a 404 is a verdict about this customer: RevenueCat has never seen
+      // the id. Every other status is a fact about US, and filing it in a
+      // per-customer cache records the wrong thing about the wrong party.
+      //
+      // This mattered in practice. The V1 key incompatibility that #2663 fixed
+      // answered 403 code 7723 on every single call, and this line filed each
+      // one as "this subscriber is not entitled" — a wholly misconfigured gate
+      // wearing the costume of a correct denial. A 429 has the same shape and
+      // is worse live: ten seconds of RevenueCat throttling us becomes ten
+      // seconds of every paying subscriber being unentitled.
+      //
+      // A 5xx was already excluded for exactly this reason; this widens the
+      // rule to the rest of the statuses that are not about the customer.
+      if (resp.status === 404) rememberEntitlement(appUserId, false);
       return false;
     }
-    const body = await resp.json().catch(() => null) as Record<string, unknown> | null;
-    const items = Array.isArray(body?.items) ? body.items as Record<string, unknown>[] : [];
+    // Read as text and parse here, rather than `resp.json().catch(() => null)`.
+    //
+    // That form collapsed "RevenueCat says this customer has nothing" and "we
+    // could not read what RevenueCat said" into the same null, and the cache
+    // write below then recorded it as a denial. Measured on staging
+    // 2026-09-20: the gate denied a genuinely entitled subscriber when requests
+    // arrived in a burst and admitted the same subscriber when they were
+    // spaced — the hardest symptom in this function to reason about, precisely
+    // because the failure erased its own evidence.
+    //
+    // So an unreadable 2xx is not cached, and it is logged. Three separate
+    // defects in this gate have now presented as the same silent 403; the log
+    // line is what stops the fourth one doing the same.
+    const text = await resp.text().catch(() => null);
+    let body: unknown = null;
+    try {
+      body = typeof text === 'string' ? JSON.parse(text) : null;
+    } catch {
+      body = null;
+    }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      console.error(
+        `[tip-chat] entitlement lookup: unreadable ${resp.status} body `
+        + `(${text === null ? 'unread' : `${text.length} chars`})`,
+      );
+      return false;
+    }
+    const rawItems = (body as Record<string, unknown>).items;
+    const items = Array.isArray(rawItems) ? rawItems as Record<string, unknown>[] : [];
     // This endpoint returns ACTIVE entitlements only, so presence is access.
     // expires_at is still checked when present: it costs one comparison and
     // makes a stale or clock-skewed page fail closed rather than open.
@@ -486,7 +522,10 @@ serve(async (req) => {
     return new Response(upstream.body, {
       status: 200,
       headers: {
-        'Content-Type': upstream.headers.get('Content-Type') ?? 'text/event-stream',
+        // Guarded just above, so use the value that was checked instead of
+        // re-reading the header and re-applying the default — that default is
+        // what dressed a Cloudflare Access page up as a token stream.
+        'Content-Type': upstreamType,
         'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
         ...corsHeaders(origin),
