@@ -19,24 +19,34 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
 
 - **Supabase project inventory and scope (re-confirm before every live audit).**
   Enumerate projects from the Supabase API; never infer the set from names or a
-  previous audit. The organisation currently has three active projects:
+  previous audit. The organisation has FOUR active projects as of 2026-09-20:
   `jwstkrtslotnjyerzzsi` (Veyrnox wallet production, eu-central-1),
-  `nszlbcmcysftwyudthjz` (Veyrnox wallet staging, eu-central-1), and
-  `yrqzwqywxfesmbvhzjgj` (the separate `veyrnox.ai` service, us-east-2).
-  Wallet parity audits and wallet SQL remediation target only the first two.
+  `nszlbcmcysftwyudthjz` (Veyrnox wallet staging, eu-central-1),
+  `yrqzwqywxfesmbvhzjgj` (the separate `veyrnox.ai` service, us-east-2), and
+  `xdxdzmsztyzbnzeforxx` (`veyrnox-ai-production-eu`, eu-central-1, created
+  2026-09-12). **This paragraph said THREE until 2026-09-20, eight days after
+  the fourth appeared** — which is the rule's own point turned on its author:
+  a written inventory decays the moment someone creates a project, and only
+  the API knows. Wallet parity audits and wallet SQL remediation target only
+  the first two.
   The `veyrnox.ai` project is not a disposable staging environment and must
   never receive wallet DDL, grants, secrets, or migrations; audit it separately
   under its own service ownership.
-  **`yrqzwqywxfesmbvhzjgj` is still NAMED `veyrnox-staging` in the Supabase
-  API, and that name is a misnomer.** It was created at
+  **`yrqzwqywxfesmbvhzjgj` WAS named `veyrnox-staging`; it now reads
+  `veyrnox.ai staging` (verified 2026-09-20), so the trap below is softened
+  but NOT gone — the word "staging" is still in the name, and there are still
+  two such projects.** It was created at
   `2026-07-29T05:29:24Z`, ten minutes before the real wallet staging project
   `nszlbcmcysftwyudthjz` (`05:39:23Z`), and the name is left over from that
   abandoned first attempt; the project was later repurposed as the veyrnox.ai
   backend and is live. So enumerating from the API — which this rule requires —
   returns TWO projects whose names contain "staging", and the second one is not
-  one. This is the exact trap behind #2505/#2506, and renaming the project in
-  Supabase is the only thing that disarms it; until an owner does that, match on
-  the ref and treat every name in this paragraph as a label, not evidence.
+  one. This is the exact trap behind #2505/#2506. The rename asked for here has
+  happened — the `.ai` now distinguishes them at a glance — but match on the ref
+  regardless and treat every name in this paragraph as a label, not evidence.
+  The fourth project makes that sharper, not weaker: `veyrnox-ai-production-eu`
+  sits in eu-central-1 alongside both wallet projects, so region is not a
+  discriminator either.
 
 - **DO NOT TOUCH THE CORE INFRA WIRING — locked 2026-08-11.** The chain
   {Client → Supabase Edge Function → Cloudflare Worker → Workers AI / RevenueCat}
@@ -71,10 +81,32 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
     older shape. If `TIP_CHAT_BASE_URL` is ever unset, chat silently reverts
     to Turnstile-blocked. `verify_jwt: false` on the function (the header
     comment above explains why — CORS OPTIONS preflight carries no auth).
-    **2026-09-20 — THAT REDEPLOY ALSO DROPPED THE ENTITLEMENT GATE, AND
-    PROD HAS BEEN UNGATED EVER SINCE. Measured, not inferred; tracked as
-    [#2659](https://github.com/VEYRNOX/veyrnox/issues/2659); prod
-    deliberately left as is by owner decision.** `main` requires
+    **2026-09-20, LATER THE SAME DAY — PROD IS NOW GATED. The paragraph
+    below is HISTORY; read it for the mechanism, not the state.** `tip-chat`
+    was deployed to prod from `origin/main` at `fd3078fc` via the Supabase
+    CLI, and the deployed source was downloaded and diffed against
+    `supabase/functions/tip-chat/index.ts` — byte-identical, sha256
+    `9afc559c…`. Verified live on prod, all three cases: no `X-Rc-User-Id`
+    and a bogus id both return `403 entitlement_required`, and a genuinely
+    entitled RevenueCat customer returns `200 text/event-stream` with real
+    `@cf/meta/llama-3.1-8b-fast-v2` tokens. `REVENUECAT_PROJECT_ID` is set on
+    both projects, which the v2 lookup requires and without which the gate
+    denies everyone. Advisor online chat is therefore SUBSCRIBER-ONLY on prod
+    now, and no account currently holds `ai_security_protection`, so in
+    practice nobody has it until those products are sellable — that is the
+    paywall working, not an outage. Tracked in
+    [#2659](https://github.com/VEYRNOX/veyrnox/issues/2659) and
+    [#2662](https://github.com/VEYRNOX/veyrnox/issues/2662).
+    **This correction was written the same session as the note it corrects**
+    — [#2660](https://github.com/VEYRNOX/veyrnox/pull/2660) merged the text
+    below at 12:26Z and the deploy landed at 13:4x, so a file that had been
+    accurate for four weeks was stale within ninety minutes. Nothing about
+    the original was careless; the lesson is only that a state note earns its
+    keep by being amended in the session that changes the state.
+
+    **Historical, and the reason the gate existed to be deployed at all —
+    2026-09-20: THAT REDEPLOY ALSO DROPPED THE ENTITLEMENT GATE, AND PROD HAD
+    BEEN UNGATED SINCE 2026-08-23. Measured, not inferred.** `main` requires
     `X-Rc-User-Id` and an active `ai_security_protection` entitlement
     (`index.ts:248-253`, RevenueCat v1 lookup). The DEPLOYED functions do
     not read that header at all — prod v38 (2026-08-23 18:18 UTC) and
@@ -1492,8 +1524,17 @@ LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
     `first-referral-bonus` still runs with `verify_jwt=true` because that function is
     called from the client via the Pages proxy, which carries the Supabase anon key.
   - **Secrets:** `REVENUECAT_V1_SECRET_KEY` set on both Supabase Edge Function stores
-    (identical digest — v2-generation `sk_` key working against the v1 REST endpoint;
-    v1 issuance is no longer available in the RC UI).
+    (identical digest — a v2-generation `sk_` key; v1 issuance is no longer
+    available in the RC UI).
+    **It does NOT work against the v1 REST endpoint, and this line said it did
+    until 2026-09-20.** Measured: `GET api.revenuecat.com/v1/subscribers/<id>`
+    with that key returns `403 {"code":7723,"message":"You're trying to use a
+    secret API key incompatible with RevenueCat API V1."}`. It works on v2,
+    which is why `tip-chat`'s entitlement lookup moved to
+    `/v2/projects/{project_id}/customers/{id}/active_entitlements` in #2663 —
+    see [#2662](https://github.com/VEYRNOX/veyrnox/issues/2662). **Any other
+    function still calling a v1 endpoint with this secret is failing silently:
+    `first-referral-bonus` reads the same secret and has NOT been checked.**
     `REVENUECAT_WEBHOOK_AUTHORIZATION` **set on both projects 2026-09-08** (64-char
     random secret, sha256 `8d56050d5177fcfa39b227f4f2329093c5d509f436bc2a46453278b6792a3733`).
     Persisted at `~/.veyrnox/rc-webhook-secret` (mode 600) on the dev machine. To
