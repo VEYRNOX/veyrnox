@@ -43,6 +43,10 @@
 //   SUPABASE_URL     — auto-injected
 //   TIP_BASE_URL     — same value tip-screen uses (e.g. https://veyrnox-tip.al-jobson.workers.dev)
 //   ALLOWED_ORIGINS  — optional, comma-separated extra browser origins
+//   REVENUECAT_SECRET_KEY (or the older REVENUECAT_V1_SECRET_KEY, which now
+//                    holds a v2 `sk_` key despite its name) — entitlement gate
+//   REVENUECAT_PROJECT_ID — required by the v2 entitlement lookup; when it is
+//                    unset the gate denies every request
 //
 // ─── STATUS: BUILT, WIRED, DEPLOY REQUIRED ──────────────────────────────────
 //
@@ -104,6 +108,12 @@ const ENTITLEMENT_CACHE_TTL_MS = 60_000;
 const ENTITLEMENT_NEG_CACHE_TTL_MS = 10_000;
 const REVENUECAT_TIMEOUT_MS = 3_000;
 const REQUIRED_ENTITLEMENT = 'ai_security_protection';
+const REVENUECAT_API_BASE = 'https://api.revenuecat.com/v2';
+// Resolved lookup_key -> entitlement id, cached for the isolate's lifetime.
+// Entitlement ids are stable for the life of the entitlement, so unlike the
+// per-customer verdicts below this needs no TTL; it is only ever populated
+// from a successful lookup, so a failure re-resolves next time.
+let resolvedEntitlementId: string | null = null;
 // Caching a caller-supplied key makes the map itself a target — unbounded, it
 // is a memory sink fed by whoever sends the most distinct ids. Cleared wholesale
 // rather than evicted LRU: the map is a latency optimisation, so the worst a
@@ -184,26 +194,81 @@ function json(body: unknown, status: number, origin: string | null): Response {
   });
 }
 
+// The entitlement lookup runs against RevenueCat API **v2**, not v1.
+//
+// It was written against v1 and could never have returned true, for two
+// independent reasons, both measured against a live subscriber on 2026-09-20
+// (a promotional grant of ai_security_protection, confirmed active in the
+// RevenueCat dashboard):
+//
+//  1. The key it is given is a v2-generation `sk_` secret. v1 rejects those
+//     outright: `403 {"code":7723,"message":"You're trying to use a secret API
+//     key incompatible with RevenueCat API V1."}`. Every lookup took the
+//     `!resp.ok` branch. RevenueCat no longer issues v1 keys, so this is not
+//     fixable by swapping the secret.
+//  2. It read `subscriber.entitlements.active`. The v1 REST subscriber has no
+//     such sub-object — `entitlements` is a flat map keyed by identifier, and
+//     `.active` belongs to the SDK's CustomerInfo. Even with a valid v1 key the
+//     result would have been undefined.
+//
+// Both failure modes are silent and deny access, so the gate read as "working"
+// while locking out every paying subscriber. Do not "simplify" this back to a
+// single v1 call.
+//
+// v2 needs the project id, which v1 did not, hence REVENUECAT_PROJECT_ID.
+// Absent config denies (I4) rather than admitting everyone — so set the secret
+// BEFORE deploying this to an environment that gates real subscribers.
+async function resolveEntitlementId(secret: string, signal: AbortSignal): Promise<string | null> {
+  if (resolvedEntitlementId) return resolvedEntitlementId;
+  const projectId = Deno.env.get('REVENUECAT_PROJECT_ID') ?? '';
+  if (!projectId) return null;
+  // v2 identifies entitlements by an opaque id (`entl...`), while this file —
+  // and the store configuration, and the paywall — speak the lookup_key. The
+  // list is short and the mapping is stable, so resolve it once rather than
+  // pinning an opaque id in config where it could drift silently.
+  const resp = await fetch(`${REVENUECAT_API_BASE}/projects/${encodeURIComponent(projectId)}/entitlements`, {
+    headers: { 'Authorization': `Bearer ${secret}` },
+    signal,
+  });
+  if (!resp.ok) return null;
+  const body = await resp.json().catch(() => null) as Record<string, unknown> | null;
+  const items = Array.isArray(body?.items) ? body.items as Record<string, unknown>[] : [];
+  const match = items.find((i) => i && i.lookup_key === REQUIRED_ENTITLEMENT);
+  const id = match && typeof match.id === 'string' ? match.id : null;
+  if (id) resolvedEntitlementId = id;
+  return id;
+}
+
 async function hasRequiredEntitlement(appUserId: string): Promise<boolean> {
   const now = Date.now();
   const cached = entitlementCache.get(appUserId);
   if (cached && cached.expiresAt > now) return cached.ok;
 
-  const secret = Deno.env.get('REVENUECAT_V1_SECRET_KEY') ?? '';
+  const secret = Deno.env.get('REVENUECAT_SECRET_KEY')
+    || Deno.env.get('REVENUECAT_V1_SECRET_KEY')
+    || '';
   if (!secret) return false;
+  const projectId = Deno.env.get('REVENUECAT_PROJECT_ID') ?? '';
+  if (!projectId) return false;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REVENUECAT_TIMEOUT_MS);
   try {
-    const resp = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`, {
-      headers: {
-        'Authorization': `Bearer ${secret}`,
-        'Content-Type': 'application/json',
+    const entitlementId = await resolveEntitlementId(secret, controller.signal);
+    // A failure to resolve is a configuration or outage problem, not a verdict
+    // about this caller, so it is never cached.
+    if (!entitlementId) return false;
+
+    const resp = await fetch(
+      `${REVENUECAT_API_BASE}/projects/${encodeURIComponent(projectId)}`
+      + `/customers/${encodeURIComponent(appUserId)}/active_entitlements`,
+      {
+        headers: { 'Authorization': `Bearer ${secret}` },
+        signal: controller.signal,
       },
-      signal: controller.signal,
-    });
+    );
     if (!resp.ok) {
-      // A 4xx is a verdict about this id (404 = no such subscriber, 401/403 =
+      // A 4xx is a verdict about this id (404 = no such customer, 401/403 =
       // our key cannot see it) and is safe to remember briefly. A 5xx is
       // RevenueCat having a bad minute — never cached, so an outage does not
       // compound into a self-inflicted lockout on top of it.
@@ -211,14 +276,19 @@ async function hasRequiredEntitlement(appUserId: string): Promise<boolean> {
       return false;
     }
     const body = await resp.json().catch(() => null) as Record<string, unknown> | null;
-    const subscriber = body?.subscriber;
-    const entitlements = subscriber && typeof subscriber === 'object'
-      ? (subscriber as Record<string, unknown>).entitlements
-      : null;
-    const active = entitlements && typeof entitlements === 'object'
-      ? (entitlements as Record<string, unknown>).active
-      : null;
-    const ok = !!(active && typeof active === 'object' && REQUIRED_ENTITLEMENT in active);
+    const items = Array.isArray(body?.items) ? body.items as Record<string, unknown>[] : [];
+    // This endpoint returns ACTIVE entitlements only, so presence is access.
+    // expires_at is still checked when present: it costs one comparison and
+    // makes a stale or clock-skewed page fail closed rather than open.
+    // Pagination is not followed on purpose — the project has two entitlements
+    // in total, so a match cannot fall off the first page. Revisit if that
+    // stops being true.
+    const ok = items.some((i) => {
+      if (!i || i.entitlement_id !== entitlementId) return false;
+      const expiresAt = i.expires_at;
+      if (expiresAt === null || expiresAt === undefined) return true;
+      return typeof expiresAt === 'number' && expiresAt > Date.now();
+    });
     rememberEntitlement(appUserId, ok);
     return ok;
   } catch {
@@ -382,6 +452,30 @@ serve(async (req) => {
       console.error(
         `[tip-chat] upstream ${upstream.status} ref=${ref} `
         + `ct=${upstream.headers.get('content-type') ?? ''} `
+        + `body=${detail.slice(0, 500)}`,
+      );
+      return json({ error: 'tip_upstream_error', ref }, 502, origin);
+    }
+
+    // A 200 is not proof of an SSE stream, and this is not hypothetical: on
+    // 2026-09-20 staging's upstream answered `200 text/html` with a Cloudflare
+    // Access sign-in page, which this branch streamed to the client verbatim.
+    // The client sets offline=false on a 2xx and then reads HTML as tokens, so
+    // a login wall renders as a working Advisor — the exact shape of the
+    // 2026-08-23 Turnstile outage, except that one at least failed with a 502.
+    //
+    // An interstitial always answers 200 with an HTML body, so status alone
+    // cannot detect it; the content type is what distinguishes a stream from a
+    // challenge. Anything that is not an event stream is treated as an upstream
+    // failure and fails closed (I4), with the detail going to the log under the
+    // same `ref` as the branch above.
+    const upstreamType = upstream.headers.get('Content-Type') ?? '';
+    if (!upstreamType.toLowerCase().includes('text/event-stream')) {
+      const ref = crypto.randomUUID().slice(0, 8);
+      const detail = await upstream.text().catch(() => '');
+      console.error(
+        `[tip-chat] upstream 200 but non-stream ref=${ref} `
+        + `ct=${upstreamType} `
         + `body=${detail.slice(0, 500)}`,
       );
       return json({ error: 'tip_upstream_error', ref }, 502, origin);
