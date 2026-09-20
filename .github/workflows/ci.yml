@@ -108,7 +108,7 @@ jobs:
       effective_sha: ${{ steps.resolve.outputs.effective_sha }}
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Resolve and validate
@@ -161,7 +161,7 @@ jobs:
     outputs:
       has_changes: ${{ steps.detect.outputs.has_changes }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           # Full history so `git diff <base>...HEAD` can find the merge-base;
@@ -245,7 +245,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: target-sha-guard
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
       - name: Check out validated target
@@ -369,7 +369,7 @@ jobs:
     needs: target-sha-guard
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           # Full history: the scan walks a commit RANGE, and a shallow clone
@@ -438,7 +438,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: target-sha-guard
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
       - name: Check out validated target
@@ -460,7 +460,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [verify, target-sha-guard]
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
       - name: Check out validated target
@@ -505,7 +505,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [verify, target-sha-guard]
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
       - name: Check out validated target
@@ -548,7 +548,7 @@ jobs:
       && (inputs.build_release == true || inputs.build_staging_release == true))
     needs: [verify, target-sha-guard]
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
       - name: Check out validated target
@@ -687,7 +687,7 @@ jobs:
       && (inputs.build_release == true || inputs.build_staging_release == true))
     needs: [verify, target-sha-guard]
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
       - name: Check out validated target
@@ -783,7 +783,7 @@ jobs:
       || (github.event_name == 'workflow_dispatch' && inputs.build_firebase_test == true)
     needs: [verify, target-sha-guard]
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
       - name: Check out validated target
@@ -1152,7 +1152,7 @@ jobs:
             echo "Nothing guard-relevant changed — the release-cert guard test is not required for this change."
             echo "### Release-cert guard: not needed for this change" >> "$GITHUB_STEP_SUMMARY"
           fi
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
         if: env.NEEDED == 'true'
