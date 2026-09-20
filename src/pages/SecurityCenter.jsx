@@ -365,11 +365,24 @@ export default function SecurityCenter() {
                   input entirely. text preserves the raw string so
                   parseLocaleNumber (in the save handler) can canonicalise it
                   and refuse anything unrecognised. */}
-              <Input id="security-daily-limit" type="text" inputMode="decimal" value={dailyLimit} onChange={e => setDailyLimit(e.target.value)} placeholder="e.g. 1000" className="mt-1.5" />
+              {/* The $ is a PERSISTENT affordance, not part of the value: these
+                  caps are USD-denominated (lib/txLimits.js converts with
+                  USD_RATES), and a bare number field reads as "amount of the
+                  selected currency". It stays visible while typing rather than
+                  being prefixed into the string, so parseLocaleNumber still
+                  sees exactly what the user typed and can refuse anything
+                  ambiguous. Logical properties (start/ps) so it flips in RTL. */}
+              <div className="relative mt-1.5">
+                <span aria-hidden="true" className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input id="security-daily-limit" type="text" inputMode="decimal" value={dailyLimit} onChange={e => setDailyLimit(e.target.value)} placeholder="1000" className="ps-7" />
+              </div>
             </div>
             <div>
               <Label htmlFor="security-tx-limit">Per Transaction Limit (USD)</Label>
-              <Input id="security-tx-limit" type="text" inputMode="decimal" value={perTxLimit} onChange={e => setPerTxLimit(e.target.value)} placeholder="e.g. 500" className="mt-1.5" />
+              <div className="relative mt-1.5">
+                <span aria-hidden="true" className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input id="security-tx-limit" type="text" inputMode="decimal" value={perTxLimit} onChange={e => setPerTxLimit(e.target.value)} placeholder="500" className="ps-7" />
+              </div>
             </div>
             <Button className="w-full" onClick={() => addLimit.mutate()} disabled={addLimit.isPending || (!dailyLimit && !perTxLimit)}>
               Save Limit
