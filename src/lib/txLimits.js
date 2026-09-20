@@ -129,3 +129,18 @@ export function evaluateSendAgainstLimits({
 
   return { blocked: reasons.length > 0, amountUSD, reasons: /** @type {Array<{kind:'daily'|'per_tx', currency:string, limitUSD:number, spentTodayUSD?:number, projectedUSD?:number}>} */ (reasons) };
 }
+
+/**
+ * True if the user has ANY enabled cap that a send could breach. Pure.
+ *
+ * This is the precondition for the Theft-Protection-over-limit path in
+ * sendGate.js: with no enabled cap, `evaluateSendAgainstLimits` never blocks,
+ * so Theft Protection only ever applies at unlock. Security Center renders
+ * that fact from this helper rather than implying send-side enforcement the
+ * user has not configured (I4 — say what is actually on).
+ */
+export function hasEnabledSpendLimit(limits) {
+  return Array.isArray(limits) && limits.some(
+    (l) => l && l.enabled && (l.per_transaction_limit != null || l.daily_limit != null),
+  );
+}
