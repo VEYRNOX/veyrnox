@@ -457,6 +457,30 @@ serve(async (req) => {
       return json({ error: 'tip_upstream_error', ref }, 502, origin);
     }
 
+    // A 200 is not proof of an SSE stream, and this is not hypothetical: on
+    // 2026-09-20 staging's upstream answered `200 text/html` with a Cloudflare
+    // Access sign-in page, which this branch streamed to the client verbatim.
+    // The client sets offline=false on a 2xx and then reads HTML as tokens, so
+    // a login wall renders as a working Advisor — the exact shape of the
+    // 2026-08-23 Turnstile outage, except that one at least failed with a 502.
+    //
+    // An interstitial always answers 200 with an HTML body, so status alone
+    // cannot detect it; the content type is what distinguishes a stream from a
+    // challenge. Anything that is not an event stream is treated as an upstream
+    // failure and fails closed (I4), with the detail going to the log under the
+    // same `ref` as the branch above.
+    const upstreamType = upstream.headers.get('Content-Type') ?? '';
+    if (!upstreamType.toLowerCase().includes('text/event-stream')) {
+      const ref = crypto.randomUUID().slice(0, 8);
+      const detail = await upstream.text().catch(() => '');
+      console.error(
+        `[tip-chat] upstream 200 but non-stream ref=${ref} `
+        + `ct=${upstreamType} `
+        + `body=${detail.slice(0, 500)}`,
+      );
+      return json({ error: 'tip_upstream_error', ref }, 502, origin);
+    }
+
     // Stream the SSE body straight through. Preserve Content-Type so the
     // browser's EventSource / streaming fetch reader keeps working.
     return new Response(upstream.body, {

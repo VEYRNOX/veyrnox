@@ -55,6 +55,17 @@ describe('tip-chat entitlement lookup', () => {
     expect(CODE).toMatch(/if \(!projectId\) return false;/);
   });
 
+  it('rejects a 200 that is not an event stream', () => {
+    // A Cloudflare Access / Turnstile interstitial answers 200 with an HTML
+    // body, so `upstream.ok` is true and the old code streamed the login page
+    // to the client as if it were tokens. Observed on staging 2026-09-20.
+    expect(CODE).toContain("upstream.headers.get('Content-Type')");
+    expect(CODE).toMatch(/includes\('text\/event-stream'\)/);
+    // and it must fail CLOSED rather than pass the body through
+    const guard = CODE.slice(CODE.indexOf('upstreamType'));
+    expect(guard).toMatch(/return json\(\{ error: 'tip_upstream_error', ref \}, 502, origin\);/);
+  });
+
   it('resolves the entitlement id from its lookup_key', () => {
     // Pinning the opaque `entl...` id in config would drift silently against
     // the identifier the store and paywall use.
