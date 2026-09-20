@@ -83,7 +83,25 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
-const BONUS_DURATION = 'P1M'; // ISO 8601: 1 month
+// One calendar month of bonus access, expressed as an absolute expiry at call
+// time because RevenueCat API v2 takes `expires_at` (ms since epoch) rather
+// than v1's `duration` string. Calendar month, not 30 days, so a bonus granted
+// on the 31st lands on the last day of the next month instead of drifting.
+function bonusExpiresAt(from: Date = new Date()): number {
+  const d = new Date(from.getTime());
+  const day = d.getUTCDate();
+  d.setUTCMonth(d.getUTCMonth() + 1);
+  // setUTCMonth overflows (31 Jan + 1 month = 2 or 3 Mar); clamp back to the
+  // last day of the intended month.
+  if (d.getUTCDate() < day) d.setUTCDate(0);
+  return d.getTime();
+}
+
+const REVENUECAT_API_BASE = 'https://api.revenuecat.com/v2';
+// Resolved lookup_key -> entitlement id, cached for the isolate's lifetime.
+// Entitlement ids are stable, so this needs no TTL; it is only populated from
+// a successful lookup, so a failure re-resolves next time.
+const entitlementIdCache = new Map<string, string>();
 
 // M-8: RC calls can hang. AbortController + this timeout turn a hang into a
 // distinguishable outcome (rc_timeout_held) instead of a stuck Edge invocation.
@@ -140,6 +158,33 @@ function resolveBonusEntitlementId(plan: string | null): string | null {
     return aiEntitlement;
   }
   return null;
+}
+
+// v2 addresses entitlements by opaque id (`entl...`); this file, the store
+// config and the paywall all speak the lookup_key. Resolve rather than pinning
+// an opaque id in config, where it would drift silently. A value that already
+// looks like an id is passed through, so the existing
+// *_REFERRAL_BONUS_ENTITLEMENT_ID overrides keep working either way.
+async function resolveEntitlementApiId(
+  lookupKey: string,
+  secret: string,
+  projectId: string,
+  signal: AbortSignal,
+): Promise<string | null> {
+  if (lookupKey.startsWith('entl')) return lookupKey;
+  const cached = entitlementIdCache.get(lookupKey);
+  if (cached) return cached;
+  const resp = await fetch(
+    `${REVENUECAT_API_BASE}/projects/${encodeURIComponent(projectId)}/entitlements`,
+    { headers: { 'Authorization': `Bearer ${secret}` }, signal },
+  );
+  if (!resp.ok) return null;
+  const body = await resp.json().catch(() => null) as Record<string, unknown> | null;
+  const items = Array.isArray(body?.items) ? body.items as Record<string, unknown>[] : [];
+  const match = items.find((i) => i && i.lookup_key === lookupKey);
+  const id = match && typeof match.id === 'string' ? match.id : null;
+  if (id) entitlementIdCache.set(lookupKey, id);
+  return id;
 }
 
 function allowedOrigins(): Set<string> {
@@ -270,7 +315,12 @@ serve(async (req: Request) => {
     // check silently disabled (I4). anonKey is included: without it there is
     // nothing to compare the bearer token against, and proceeding would mean
     // serving traffic with the key check quietly switched off.
-    if (!supabaseUrl || !serviceRoleKey || !anonKey || !rcSecretKey) {
+    // REVENUECAT_PROJECT_ID is required by the v2 grant route (v1 addressed
+    // the subscriber directly and needed no project). Missing config fails
+    // closed here rather than at the grant call, so a half-configured deploy
+    // never holds a claim it cannot fulfil.
+    const rcProjectId = Deno.env.get('REVENUECAT_PROJECT_ID');
+    if (!supabaseUrl || !serviceRoleKey || !anonKey || !rcSecretKey || !rcProjectId) {
       console.error('server_config_missing: one or more required env vars unset');
       return json({ error: 'server_config_missing' }, 500, origin);
     }
@@ -400,7 +450,25 @@ serve(async (req: Request) => {
       return json({ error: 'unsupported_plan', released: true }, 422, origin);
     }
 
-    const rcUrl = `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(rcUserId)}/entitlements/${entitlementId}/promotional`;
+    // GRANT VIA API v2, NOT v1.
+    //
+    // This called `POST /v1/subscribers/{id}/entitlements/{ent}/promotional`
+    // until 2026-09-20. It could never have succeeded: the secret in
+    // REVENUECAT_V1_SECRET_KEY is a v2-generation `sk_` key, and v1 rejects
+    // those with `403 {"code":7723,...incompatible with RevenueCat API V1}`.
+    // RevenueCat no longer issues v1 keys, so this was not fixable by swapping
+    // the secret. Same root cause as the Advisor entitlement gate (#2662).
+    //
+    // The failure was honest — a 403 is a genuine 4xx, so the claim was
+    // released and audited rather than lost — and the audit table was empty on
+    // production, so no referrer has actually been denied a bonus yet. That is
+    // luck about timing, not a property of the code.
+    //
+    // v2 takes an absolute `expires_at` instead of v1's `duration`, hence
+    // bonusExpiresAt(). Both routes verified against the live API on
+    // 2026-09-20: grant returns 201 with the customer's active_entitlements.
+    const rcUrl = `${REVENUECAT_API_BASE}/projects/${encodeURIComponent(rcProjectId)}`
+      + `/customers/${encodeURIComponent(rcUserId)}/actions/grant_entitlement`;
 
     // audit(outcome, status?, errorExcerpt?) — best-effort; if the insert
     // itself fails we log and move on, because failing the response on an
@@ -434,6 +502,26 @@ serve(async (req: Request) => {
     let rcResponse: Response;
     const controller = new AbortController();
     const timeoutHandle = setTimeout(() => controller.abort(), RC_TIMEOUT_MS);
+
+    const rcEntitlementApiId = await resolveEntitlementApiId(
+      entitlementId,
+      rcSecretKey,
+      rcProjectId,
+      controller.signal,
+    );
+    if (!rcEntitlementApiId) {
+      // Resolution failure is a config or outage problem, not a verdict about
+      // this referrer, so HOLD the claim for a retry rather than releasing it.
+      console.error('entitlement_id_unresolved:', entitlementId);
+      clearTimeout(timeoutHandle);
+      await audit('rc_5xx_held', null, `entitlement_id_unresolved:${entitlementId}`);
+      return json(
+        { error: 'revenuecat_error', held: true, retryable: true },
+        502,
+        origin,
+      );
+    }
+
     try {
       rcResponse = await fetch(rcUrl, {
         method: 'POST',
@@ -445,7 +533,10 @@ serve(async (req: Request) => {
           'X-Idempotency-Key': idemKey,
           'Idempotency-Key': idemKey,
         },
-        body: JSON.stringify({ duration: BONUS_DURATION }),
+        body: JSON.stringify({
+          entitlement_id: rcEntitlementApiId,
+          expires_at: bonusExpiresAt(),
+        }),
         signal: controller.signal,
       });
     } catch (netErr) {
