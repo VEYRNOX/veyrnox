@@ -1,10 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const openUrlMock = vi.fn();
+const presentCodeRedemptionSheet = vi.fn();
+const browserOpen = vi.fn();
 const isNativePlatform = vi.fn();
 const getPlatform = vi.fn();
 
-vi.mock('@capacitor/app', () => ({ App: { openUrl: (...a) => openUrlMock(...a) } }));
+// Mock only methods that genuinely exist on these plugins. The previous
+// version of this file mocked App.openUrl — a method @capacitor/app does not
+// have — so all three cases passed while the feature was dead on device.
+vi.mock('@revenuecat/purchases-capacitor', () => ({
+  Purchases: { presentCodeRedemptionSheet: (...a) => presentCodeRedemptionSheet(...a) },
+}));
+vi.mock('@capacitor/browser', () => ({ Browser: { open: (...a) => browserOpen(...a) } }));
 vi.mock('@capacitor/core', () => ({
   Capacitor: {
     isNativePlatform: () => isNativePlatform(),
@@ -18,28 +25,36 @@ beforeEach(() => {
   vi.clearAllMocks();
   isNativePlatform.mockReturnValue(true);
   getPlatform.mockReturnValue('ios');
-  openUrlMock.mockResolvedValue(undefined);
+  presentCodeRedemptionSheet.mockResolvedValue(undefined);
+  browserOpen.mockResolvedValue(undefined);
 });
 
 describe('redeemCode', () => {
   it('throws PURCHASES_NATIVE_ONLY on web', async () => {
     isNativePlatform.mockReturnValue(false);
     await expect(redeemCode()).rejects.toThrow('PURCHASES_NATIVE_ONLY');
-    expect(openUrlMock).not.toHaveBeenCalled();
+    expect(presentCodeRedemptionSheet).not.toHaveBeenCalled();
+    expect(browserOpen).not.toHaveBeenCalled();
   });
 
-  it('opens the App Store Offer Codes sheet on iOS', async () => {
+  it('presents the native StoreKit offer-code sheet on iOS', async () => {
     await redeemCode();
-    expect(openUrlMock).toHaveBeenCalledWith({
-      url: 'itms-apps://apps.apple.com/redeem?ctx=offercodes',
-    });
+    expect(presentCodeRedemptionSheet).toHaveBeenCalledTimes(1);
+    // No deep link on iOS — the sheet is in-app.
+    expect(browserOpen).not.toHaveBeenCalled();
   });
 
   it('opens the Play Store Redeem page on Android', async () => {
     getPlatform.mockReturnValue('android');
     await redeemCode();
-    expect(openUrlMock).toHaveBeenCalledWith({
-      url: 'https://play.google.com/redeem',
-    });
+    expect(browserOpen).toHaveBeenCalledWith({ url: 'https://play.google.com/redeem' });
+    // RevenueCat's Android presentCodeRedemptionSheet is a logged no-op stub,
+    // so it must not be relied on there.
+    expect(presentCodeRedemptionSheet).not.toHaveBeenCalled();
+  });
+
+  it('propagates a rejection so the caller can surface it', async () => {
+    presentCodeRedemptionSheet.mockRejectedValue(new Error('nope'));
+    await expect(redeemCode()).rejects.toThrow('nope');
   });
 });
