@@ -14,7 +14,7 @@ index f5e7cc4..f44bc58 100644
 +            // encrypted vault blob (SecureStorage.get result) into adb-accessible
 +            // logs. Payloads for the plugins listed here are redacted before logging;
 +            // call metadata (pluginId, methodName, callbackId, success) still logs.
-+            // Only the LOGGER is patched — the bridge itself is untouched and callers
++            // Only the LOGGER is patched - the bridge itself is untouched and callers
 +            // receive full, unredacted results.
 +            const VEYRNOX_SENSITIVE_PLUGINS = ['HardwareKek', 'SecureStorage'];
 +            const VEYRNOX_REDACTED = '[REDACTED sensitive plugin payload - Veyrnox log-redaction patch]';
