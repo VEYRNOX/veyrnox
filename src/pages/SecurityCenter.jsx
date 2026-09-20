@@ -54,6 +54,11 @@ export default function SecurityCenter() {
   const deniable = isDecoy || isHidden;
   // window.confirm broke out of the near-black UI with an OS dialog while every
   // other destructive confirmation in this surface uses the app's own Dialog.
+  // Deleting a limit is destructive and was a single unconfirmed click, while
+  // sign-out on this same page already routes through a Dialog. Holding the ROW
+  // (not just the id) lets the prompt name the cap being removed — "Delete" on
+  // its own does not tell you which of several rows you are about to lose.
+  const [pendingDeleteLimit, setPendingDeleteLimit] = useState(/** @type {any} */ (null));
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [pendingSignOutId, setPendingSignOutId] = useState(/** @type {any} */ (null));
   const [showAddLimit, setShowAddLimit] = useState(false);
@@ -367,7 +372,7 @@ export default function SecurityCenter() {
                 <Button variant="ghost" size="icon" aria-label={`Edit ${l.currency} limit`} onClick={() => openEditLimit(l)}>
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" aria-label={`Delete ${l.currency} limit`} onClick={() => deleteLimit.mutate(l.id)}>
+                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" aria-label={`Delete ${l.currency} limit`} onClick={() => setPendingDeleteLimit(l)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -428,6 +433,40 @@ export default function SecurityCenter() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Delete-limit confirmation. Same shape as the sign-out prompt below —
+          an in-app Dialog, never window.confirm, which breaks out of the
+          near-black UI with an OS sheet. */}
+      <Dialog open={!!pendingDeleteLimit} onOpenChange={(o) => { if (!o) setPendingDeleteLimit(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Delete this spending limit?</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {pendingDeleteLimit && (() => {
+                const caps = [
+                  pendingDeleteLimit.daily_limit != null && `$${pendingDeleteLimit.daily_limit.toLocaleString()} per day`,
+                  pendingDeleteLimit.per_transaction_limit != null && `$${pendingDeleteLimit.per_transaction_limit.toLocaleString()} per transaction`,
+                ].filter(Boolean).join(" and ");
+                return `Sends will no longer be checked against ${caps || "this limit"}${pendingDeleteLimit.currency && pendingDeleteLimit.currency !== "ALL" ? ` for ${pendingDeleteLimit.currency}` : ""}. To change the amount instead, use Edit.`;
+              })()}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={() => setPendingDeleteLimit(null)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                className="flex-1 gap-1.5"
+                onClick={() => {
+                  const id = pendingDeleteLimit?.id;
+                  setPendingDeleteLimit(null);
+                  if (id) deleteLimit.mutate(id);
+                }}
+              >
+                <Trash2 className="h-4 w-4" /> Delete
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Sign-out confirmation — replaces window.confirm so the coercion-resistance
           surface keeps one visual language. The guard still runs afterwards; this
           dialog adds friction, it does not replace the gate. */}

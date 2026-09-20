@@ -6,12 +6,13 @@
 // what was typed (see the de-DE "1,5" comment those inputs carry).
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const rows = [];
 const limitCreate = vi.fn(async (r) => ({ id: 'new', ...r }));
 const limitUpdate = vi.fn(async () => ({}));
+const limitDelete = vi.fn(async () => ({}));
 vi.mock('@/api/base44Client', () => ({
   base44: {
     entities: {
@@ -20,7 +21,7 @@ vi.mock('@/api/base44Client', () => ({
         list: async () => rows.slice(),
         create: (...a) => limitCreate(...a),
         update: (...a) => limitUpdate(...a),
-        delete: vi.fn(),
+        delete: (...a) => limitDelete(...a),
       },
       Transaction: { list: async () => [] },
     },
@@ -160,5 +161,90 @@ describe('a spend limit can be adjusted in place', () => {
     await waitFor(() => expect(limitCreate).toHaveBeenCalledTimes(1));
     expect(limitCreate.mock.calls[0][0].enabled).toBe(true);
     expect(limitUpdate).not.toHaveBeenCalled();
+  });
+});
+
+// Deleting a limit is destructive and used to be one unconfirmed click, while
+// sign-out on this same page already routes through a Dialog.
+describe('deleting a spend limit asks first', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.matchMedia = window.matchMedia || ((q) => ({
+      matches: false, media: q, addEventListener: () => {}, removeEventListener: () => {},
+      addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false,
+    }));
+    rows.length = 0;
+    rows.push({ id: 'seed1', currency: 'ALL', daily_limit: null, per_transaction_limit: 500, enabled: true });
+    limitDelete.mockClear();
+  });
+
+  const clickDelete = async () => {
+    const tab = screen.getByRole('tab', { name: /spend limits/i });
+    fireEvent.mouseDown(tab); fireEvent.focus(tab); fireEvent.click(tab);
+    fireEvent.click(await screen.findByRole('button', { name: /delete ALL limit/i }));
+  };
+
+  it('does not delete on the first click — it names the cap and waits', async () => {
+    wrap();
+    await clickDelete();
+    expect(await screen.findByText(/Delete this spending limit\?/i)).toBeTruthy();
+    // The prompt must say WHICH cap: "Delete" alone does not identify a row.
+    expect(screen.getByText(/\$500 per transaction/i)).toBeTruthy();
+    expect(limitDelete).not.toHaveBeenCalled();
+  });
+
+  it('Cancel leaves the limit alone', async () => {
+    wrap();
+    await clickDelete();
+    fireEvent.click(await screen.findByRole('button', { name: /^cancel$/i }));
+    expect(limitDelete).not.toHaveBeenCalled();
+  });
+
+  it('confirming deletes that row', async () => {
+    wrap();
+    await clickDelete();
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: /^delete$/i }));
+    await waitFor(() => expect(limitDelete).toHaveBeenCalledWith('seed1'));
+  });
+});
+
+// The seeded cap is a STARTING POINT, not a floor. Any positive amount is
+// allowed — below $500 as well as above — and the only rejection is a
+// non-positive or unparseable one. Pinned so nobody later "helpfully" adds a
+// minimum and quietly traps a user who wants a tighter cap than the default.
+describe('a limit can be set BELOW the seeded $500', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.matchMedia = window.matchMedia || ((q) => ({
+      matches: false, media: q, addEventListener: () => {}, removeEventListener: () => {},
+      addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false,
+    }));
+    rows.length = 0;
+    rows.push({ id: 'seed1', currency: 'ALL', daily_limit: null, per_transaction_limit: 500, enabled: true });
+    limitUpdate.mockClear(); limitCreate.mockClear();
+  });
+
+  const editPerTxTo = async (value) => {
+    const tab = screen.getByRole('tab', { name: /spend limits/i });
+    fireEvent.mouseDown(tab); fireEvent.focus(tab); fireEvent.click(tab);
+    fireEvent.click(await screen.findByRole('button', { name: /edit ALL limit/i }));
+    fireEvent.change(screen.getByLabelText(/per transaction limit/i), { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+  };
+
+  it.each(['50', '1', '12.5', '0.25'])('accepts %s — lower than the seeded default', async (value) => {
+    wrap();
+    await editPerTxTo(value);
+    await waitFor(() => expect(limitUpdate).toHaveBeenCalledTimes(1));
+    expect(limitUpdate.mock.calls[0][1].per_transaction_limit).toBe(Number(value));
+  });
+
+  it.each(['0', '-5', 'abc'])('still refuses %s, and writes nothing', async (value) => {
+    wrap();
+    await editPerTxTo(value);
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+    expect(limitUpdate).not.toHaveBeenCalled();
+    expect(limitCreate).not.toHaveBeenCalled();
   });
 });
