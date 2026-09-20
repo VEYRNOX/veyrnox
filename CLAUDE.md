@@ -996,14 +996,22 @@ stays wired but its failure is not a required check on `main` (verified 2026-09-
 required contexts are `verify`, `unit-tests`, `Release-cert guard rejects wrong
 fingerprints`, `mainnet-flag-gate`, `staging-gate` — none of them FTL).
 
-**Pre-submission verification for 1.0.1 (BOTH stores) — MUST run before any human
-review submission.** Added 2026-08-12 after Play rejected build 5 under Broken
-Functionality policy: reviewer tapped Create Wallet on a stock device and the setup
-failed with `"Wallet setup couldn't finish securely, so nothing was saved. Please set
-your PIN and try again."` — an unresponsive-UI outcome from our KEK/RASP path failing
-closed on hardware we never tested. Neither store's automated tools caught it because
-neither had been run against build 5 (Play Pre-launch report showed
+**Pre-submission verification (BOTH stores) — MUST run before any human review
+submission, including every 1.0.2 build.** Added 2026-08-12 after Play rejected
+build 5 under Broken Functionality policy: reviewer tapped Create Wallet on a
+stock device and the setup failed with `"Wallet setup couldn't finish securely,
+so nothing was saved. Please set your PIN and try again."` — an unresponsive-UI
+outcome from our KEK/RASP path failing closed on hardware we never tested.
+Neither store's automated tools caught it because neither had been run against
+build 5 (Play Pre-launch report showed
 "Upload artifacts to generate pre-launch reports"; iOS has no equivalent auto-tool).
+
+The heading on this block read "for 1.0.1" until 2026-09-20, which made it look
+retired the moment the 1.0.2 train opened. It was never version-scoped — the
+paragraph above already calls it the standard for the next submission of any
+build to either store — so the version came out of the heading rather than being
+bumped, which would only have set the same trap for 1.0.3.
+
 - **Play (SUPERSEDED 2026-09-10):** this bullet described "confirm a Pre-launch
   report exists" as mandatory before promoting to review. Both automated Play
   checks (Pre-launch report AND FTL Robo substitute) are now WAIVED as accepted
@@ -1093,6 +1101,61 @@ neither had been run against build 5 (Play Pre-launch report showed
   Organizer's **Metrics → Hangs** in particular — an unresponsive UI without a
   crash still reads to Apple's reviewer exactly like Play's Broken Functionality
   finding.
+
+  **Run the API read too, not just the two consoles. Mandatory from 1.0.2:**
+
+  ```bash
+  ASC_KEY_ID=<key id> ASC_ISSUER_ID=<issuer id> bash scripts/asc-crashes.sh
+  ```
+
+  It reads three things the consoles show separately — tester crash submissions,
+  `diagnosticSignatures`, and Organizer `perfPowerMetrics` — and it exits 2 if any
+  query errored, so an unread gate cannot pass as a clean one. **Read the words,
+  not the numbers.** Four outcomes are deliberately distinct and only one of them
+  is a pass:
+
+  | outcome | means |
+  |---|---|
+  | `CLEAN` / `0 diagnostic groups` | measured, and genuinely zero |
+  | `EMPTY` | the resource answered with no rows — unmeasured, NOT clean |
+  | `UNAVAILABLE` | HTTP 404, the build has no such resource — never a zero |
+  | `ERROR` | the query failed; exit 2 |
+
+  A run that is `UNAVAILABLE` or `EMPTY` everywhere has told you nothing and does
+  not satisfy this row. Measured 2026-09-20: nine of the ten most recent builds
+  return 404 for both per-build endpoints — only the RELEASED build had either —
+  and `perfPowerMetrics` on that one was `EMPTY`. So on a fresh TestFlight build
+  this check will usually be silent, and its real yield is the crash-submission
+  and tester-feedback half.
+
+  **Read the tester feedback comments the script prints, every time.** This row
+  exists in its current form because of what they contained. On 2026-08-16 a
+  tester filed *"App is not loading"* against 1.0.1 build 11, five minutes after
+  that build finished uploading, with zero screenshots attached — it was filed
+  from the TestFlight app because the app itself would not come up. It was a real,
+  total, native-only unlock failure: #1825 had shipped the `UNLOCK_SUPERSEDED`
+  race guard without the three fixes that followed it (#1876, #1880, #1892), so on
+  a Secure Enclave device **every** PIN unlock fired Face ID, backgrounded the
+  app, tripped the unsuppressed `appStateChange` listener, and aborted the unlock
+  — surfacing as *"Incorrect PIN"* and incrementing the panic-wipe counter toward
+  a wipe at ten. `web-e2e-tests` was green throughout, because a browser has no
+  Face ID to background it. **Nobody read that report for five weeks**, because
+  the script backing this row queried only `diagnosticSignatures` and never asked
+  for crashes or feedback at all. A one-line free-text comment was the only signal
+  any real device ever gave.
+
+  Attribution caveat, because it matters for the next one of these: build 11 has
+  no commit pinning it — `CURRENT_PROJECT_VERSION` in the repo read `10` from
+  2026-08-14 until the bump to `16` on 2026-08-16, so 11 was an uncommitted local
+  bump. #1825's presence is inferred from merge time (2026-08-15 20:24Z) against
+  upload time (2026-08-16 04:50Z), not read off a build record. **A TestFlight
+  build that cannot be traced to a commit cannot be diagnosed from the repo** —
+  if a build is worth uploading, commit the version bump that made it.
+
+  **A zero crash count is only evidence if the endpoint is answering.** The script
+  reads `betaFeedbackScreenshotSubmissions` alongside the crash count as the
+  control and reports `UNVERIFIED` when both are zero. Do not accept a bare zero
+  from the console for this row — the console shows the same nothing either way.
 - **Both stores — telemetry-opt-in rule:** any internal tester whose device is not
   set to share diagnostics is invisible to Vitals/Organizer. Confirm the opt-in on
   each test device before install, or the "clean" verdict is a false negative.
