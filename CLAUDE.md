@@ -137,6 +137,33 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
     a "leaked key" theory for a value the vendor publishes in a URL. Never set
     `TRANSAK_ENVIRONMENT=PRODUCTION` on `veyrnox-staging` unless you
     genuinely intend every staging test to charge real cards.
+    **There is a DECLARATION at Transak describing how we integrate, and it is
+    not in this repo.** The Mandatory Security checklist (submitted
+    2026-08-31) records our platforms, integration type per platform, backend
+    IPs and backend-for-frontend URL. Transak validates against what we
+    declared, so a change to HOW the widget opens is a change to a form only
+    they hold. Nothing in the repo said this existed, which is why the
+    mismatch below survived two weeks unnoticed.
+    As submitted 2026-08-31, and what the code actually does:
+    - **Web: iFrame** — correct. `BuyCrypto.jsx` renders an `<iframe>` with a
+      sandbox allowlist and `allow="camera;microphone;payment"`.
+    - **Mobile: Android/iOS Native Webview** — **WRONG since 2026-09-07.**
+      #2408 changed native to `Browser.open({ url })` via `@capacitor/browser`
+      (SFSafariViewController / Chrome Custom Tabs). That is **Browser
+      Redirection** in Transak's taxonomy. A system browser opening the widget
+      URL sends **no `Referer`**, and Transak uses `Referer` as the runtime
+      domain signal — so domain validation on the mobile path cannot succeed
+      while we are declared as a webview. This is the likely source of the
+      `T-INF-103` users see ON THE WIDGET PAGE, which is a SEPARATE fault from
+      the `auth/session` 401 that currently blocks Buy entirely.
+    - **Backend IPs: submitted as a note**, not addresses ("N/A … Cloudflare's
+      public ranges + x-api-key/x-user-ip gating"), because Pages Functions
+      have no static egress IP. The field is required and gates the session
+      API: "any request from an unrecognised IP is blocked, even if the API
+      key is valid."
+    **Standing rule: if you change how the Buy widget opens, or where the
+    backend runs, the Transak declaration must be resubmitted in the same
+    session.** It is a form, it is invisible to git, and it is enforced.
     **Current partner state (2026-09-19): prod Buy is DOWN, and it is account
     provisioning on Transak's side — not credentials, not our code.** Proven by
     elimination over one session; do not re-diagnose it into the stack:
