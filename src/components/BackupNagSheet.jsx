@@ -7,7 +7,9 @@
 // in decoy/demo (defence-in-depth, matches FirstRunTour/consent pattern).
 
 import { useNavigate } from "react-router";
-import { Shield, X } from "lucide-react";
+import { X } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import Vigil from "@/components/Vigil";
 import { Button } from "@/components/ui/button";
 import { useBackupNag } from "@/lib/useBackupNag";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
@@ -15,6 +17,7 @@ import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 export default function BackupNagSheet({ publicAddresses }) {
   const navigate = useNavigate();
   const { shouldShow, dismissForSession, promoteToCompleted } = useBackupNag(publicAddresses);
+  const reduce = useReducedMotion();
 
   if (isDeniabilityOrDemoActive() || !shouldShow) return null;
 
@@ -23,9 +26,18 @@ export default function BackupNagSheet({ publicAddresses }) {
       <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-background/95 p-4 shadow-2xl backdrop-blur">
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2.5">
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-primary/15 text-primary">
-              <Shield className="h-[18px] w-[18px]" />
-            </div>
+            {/* Vigil asleep — encrypted backup is NOT running on this wallet
+                yet. A shield here claimed protection the user has not got (I4).
+                Animated on entrance only: the sheet appearing is the state
+                change, and Vigil.jsx forbids an idle decorative loop. */}
+            <motion.div
+              className="shrink-0"
+              initial={reduce ? false : { scale: 0.7, opacity: 0, rotate: -6 }}
+              animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 260, damping: 15 }}
+            >
+              <Vigil state="asleep" size={44} shadow={false} />
+            </motion.div>
             <p className="text-[15px] font-semibold text-foreground">Protect your wallet</p>
           </div>
           <button

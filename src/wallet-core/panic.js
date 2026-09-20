@@ -411,7 +411,10 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-kek-insecure-tier',
   // Codex P2 2026-08-15: paywall + session-day residue. Writers:
   // components/PaywallNudge.jsx SESSION_COUNT_KEY / SESSION_LAST_DAY_KEY /
-  // NUDGE_DISMISSED_KEY, and components/BackupPaywallNudge.jsx. Each proves
+  // NUDGE_DISMISSED_KEY, and the deleted components/BackupPaywallNudge.jsx
+  // (removed 2026-09-20 — the WIN paywall replaced it). A DELETED writer does
+  // not retire its key: installs that already wrote it still carry the tell,
+  // and presence is what makes a key a tell. Each proves
   // a real Veyrnox install accumulated multiple wallet-use days or dismissed
   // an upgrade nag on this device — same tell class as veyrnox-first-open-
   // fired above. Without these, panic wipe left a forensic trail tying the

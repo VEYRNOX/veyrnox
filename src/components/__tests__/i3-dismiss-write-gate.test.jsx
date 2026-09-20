@@ -36,24 +36,17 @@ vi.mock('@/lib/toast', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-import BackupPaywallNudge from '@/components/BackupPaywallNudge';
 import ReferralPrompt from '@/components/ReferralPrompt';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
-const BACKUP_KEY = 'veyrnox-backup-nudge-dismissed';
 const REFERRAL_KEY = 'veyrnox-referral-prompt-dismissed';
 
+// BackupPaywallNudge was deleted 2026-09-20 — the WIN paywall
+// (lib/winPaywall.js) now covers the post-backup upsell, and it persists
+// nothing, so it has no dismiss write to gate. Its residue key
+// `veyrnox-backup-nudge-dismissed` deliberately STAYS in panic.js
+// ALL_RESIDUE_KEYS: installs that already wrote it still carry the tell.
 const cases = [
-  {
-    name: 'BackupPaywallNudge',
-    key: BACKUP_KEY,
-    mount: () =>
-      render(
-        <MemoryRouter>
-          <BackupPaywallNudge currentTier="free" />
-        </MemoryRouter>,
-      ),
-  },
   {
     name: 'ReferralPrompt',
     key: REFERRAL_KEY,

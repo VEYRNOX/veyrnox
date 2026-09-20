@@ -13,6 +13,7 @@ import PageNotFound from './lib/PageNotFound';
 import { WalletProvider } from '@/lib/WalletProvider';
 import { DigitalShieldProvider } from '@/context/DigitalShieldContext';
 import { TierProvider } from '@/lib/TierProvider';
+import WinPaywall from '@/components/WinPaywall';
 import WalletGate from '@/components/WalletGate';
 import { NotificationsProvider } from '@/notify/useNotifications';
 import { Navigate } from 'react-router';
@@ -294,6 +295,13 @@ function App() {
                     <DeepLinkHandler />
                     <EnvBadge />
                     <AuthenticatedApp />
+                    {/* WIN paywall — mounted HERE, not in Layout: the wallet
+                        create/import and backup-confirm wins fire from
+                        WalletEntry, which WalletGate renders OUTSIDE Layout, so
+                        a Layout-mounted listener would drop exactly the two
+                        onboarding wins and do it silently. Tier-aware,
+                        I3-gated, renders nothing until a win fires. */}
+                    <WinPaywall />
                     <VoiceFab />
                     <OfflineBanner />
                   </DigitalShieldProvider>

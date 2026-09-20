@@ -53,6 +53,7 @@
 //   useFirstSend          → SendCrypto.jsx
 //   useFirstReceiveShown  → WalletEntry.jsx (via FirstReceiveCardWithTelemetry)
 //   cancelVerificationReminders → SeedVerificationPage.jsx
+//   armDormancyReminder   → WalletProvider.jsx (both unlock paths)
 //
 // NOT WIRED — exported but no call site anywhere in src/. These do not
 // produce funnel coverage today and must not be counted as if they did:
@@ -61,7 +62,7 @@
 //   useLockMethodSet, useUnlockTracking, useDappConnectTracking,
 //   emitTamperSignal, emitSecurityModal, emitKekUnwrapFailed,
 //   scheduleFundingReminders, cancelFundingReminders,
-//   scheduleVerificationReminders
+//   scheduleVerificationReminders, cancelDormancyReminder
 // Before wiring useDappConnectTracking, note that it sends the dApp `origin`
 // — browsing-shaped data the consent copy does not currently cover.
 
@@ -73,6 +74,7 @@ import { assignHoldout } from "@/lib/holdout";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { DEMO } from "@/api/demoClient";
 import { recordMilestone, triggerReviewPromptIfEligible } from "@/lib/reviewPrompt";
+import { recordWin, WIN } from "@/lib/winPaywall";
 
 /**
  * Must this session leave no local trace? Fails CLOSED — every read inside
@@ -164,6 +166,7 @@ export function useFirstInbound(balance) {
       // reviewPrompt module. fireOnce means this runs at most once ever.
       recordMilestone();
       triggerReviewPromptIfEligible().catch(() => {});
+      recordWin(WIN.FIRST_INBOUND);
     });
   }, [balance]);
 }
@@ -316,6 +319,7 @@ export function emitKekUnwrapFailed() {
 
 const FUNDING_REMINDER_IDS = [9001, 9002];
 const VERIFICATION_REMINDER_IDS = [9003, 9004];
+const DORMANCY_REMINDER_IDS = [9005];
 
 const FUNDING_REMINDER_TITLE = "Veyrnox";
 const FUNDING_REMINDER_BODY =
@@ -324,6 +328,14 @@ const FUNDING_REMINDER_BODY =
 const VERIFICATION_REMINDER_TITLE = "Veyrnox";
 const VERIFICATION_REMINDER_BODY =
   "Your wallet setup isn't finished yet. Open Veyrnox to complete it.";
+
+// Dormancy re-engagement. ONE notification, 7 days out, with no follow-up
+// chain: a series of escalating "come back" pings is how a wallet teaches its
+// users that urgent Veyrnox notifications are normal, which is the habit the
+// copy rules above exist to prevent.
+const DORMANCY_DAYS = 7;
+const DORMANCY_REMINDER_TITLE = "Veyrnox";
+const DORMANCY_REMINDER_BODY = "It's been a while since you opened Veyrnox.";
 
 async function scheduleReminders(ids, delaysHours, title, body) {
   // A reminder that surfaces 24h later — "You haven't added funds yet. Open
@@ -387,4 +399,38 @@ export function scheduleVerificationReminders() {
 
 export function cancelVerificationReminders() {
   return cancelReminders(VERIFICATION_REMINDER_IDS);
+}
+
+// ── Dormancy re-engagement ──────────────────────────────────────────────
+//
+// Neither platform has a "fire if the app has been idle" primitive, so
+// idleness is expressed by rescheduling: every successful unlock cancels the
+// pending reminder and arms a fresh one 7 days out. The notification therefore
+// only lands if the user genuinely does not come back, and "when did they last
+// open it" lives in the OS's pending-notification record rather than anything
+// we persist — no new localStorage key, so no new panic-wipe residue.
+//
+// FIRE ONCE means one notification per dormancy episode, not once per install.
+// Returning re-arms it; nobody gets a 7/14/21-day chain.
+//
+// The cancel/arm asymmetry is load-bearing, and it is the same one
+// cancelReminders documents: cancelling runs in EVERY session including a
+// decoy one, arming runs only in a non-suppressed one. A decoy unlock that
+// declined to cancel would leave the real session's reminder pending, to
+// surface "Open Veyrnox" on the lock screen of a phone someone else is holding
+// — the gate would manufacture the exact leak it exists to prevent. The cost
+// is the mirror image and is accepted: a decoy unlock disarms the real user's
+// reminder, which loses a nudge and leaks nothing.
+export async function armDormancyReminder() {
+  await cancelReminders(DORMANCY_REMINDER_IDS);
+  await scheduleReminders(
+    DORMANCY_REMINDER_IDS,
+    [DORMANCY_DAYS * 24],
+    DORMANCY_REMINDER_TITLE,
+    DORMANCY_REMINDER_BODY,
+  );
+}
+
+export function cancelDormancyReminder() {
+  return cancelReminders(DORMANCY_REMINDER_IDS);
 }

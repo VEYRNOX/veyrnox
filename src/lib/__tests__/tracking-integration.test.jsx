@@ -304,6 +304,34 @@ describe('tracking-integration', () => {
     expect(cancelMock).toHaveBeenCalledWith({ notifications: [{ id: 9003 }, { id: 9004 }] });
   });
 
+  it('armDormancyReminder cancels then schedules a SINGLE 9005 at +7 days', async () => {
+    const { armDormancyReminder } = await import('@/lib/tracking-integration');
+    const before = Date.now();
+    await armDormancyReminder();
+    // Cancel-then-schedule is the whole mechanism: without the cancel, an
+    // unlock stacks a second reminder instead of pushing the deadline out.
+    expect(cancelMock).toHaveBeenCalledWith({ notifications: [{ id: 9005 }] });
+    expect(scheduleMock).toHaveBeenCalledTimes(1);
+    const arg = scheduleMock.mock.calls[0][0];
+    // FIRE ONCE — exactly one notification, never a 7/14/21 chain.
+    expect(arg.notifications).toHaveLength(1);
+    expect(arg.notifications[0].id).toBe(9005);
+    const delayMs = arg.notifications[0].schedule.at.getTime() - before;
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    expect(delayMs).toBeGreaterThanOrEqual(sevenDays - 5000);
+    expect(delayMs).toBeLessThanOrEqual(sevenDays + 5000);
+    // Same anti-phishing copy rules as the other reminders.
+    expect(arg.notifications[0].body.toLowerCase())
+      .not.toMatch(/verify|confirm|action required|suspended|at risk/);
+    expect(arg.notifications[0].body).not.toMatch(/https?:\/\//);
+  });
+
+  it('cancelDormancyReminder cancels 9005', async () => {
+    const { cancelDormancyReminder } = await import('@/lib/tracking-integration');
+    await cancelDormancyReminder();
+    expect(cancelMock).toHaveBeenCalledWith({ notifications: [{ id: 9005 }] });
+  });
+
   it('notification schedulers no-op on web (non-native)', async () => {
     isNative = false;
     const { scheduleFundingReminders, cancelFundingReminders } = await import('@/lib/tracking-integration');
@@ -406,5 +434,26 @@ describe('tracking-integration — deniability (I3)', () => {
     const { cancelFundingReminders } = await import('@/lib/tracking-integration');
     await cancelFundingReminders();
     expect(cancelMock).toHaveBeenCalledWith({ notifications: [{ id: 9001 }, { id: 9002 }] });
+  });
+
+  // armDormancyReminder does BOTH halves in one call, and the two halves have
+  // opposite gates. This is the pin for that asymmetry: a decoy unlock must
+  // disarm the real user's pending reminder (cancel, ungated) and must not
+  // leave a new one behind to announce "Open Veyrnox" on a coerced phone's
+  // lock screen (schedule, gated).
+  it('armDormancyReminder cancels but does NOT arm in a deniability session', async () => {
+    deniabilityActive = true;
+    const { armDormancyReminder } = await import('@/lib/tracking-integration');
+    await armDormancyReminder();
+    expect(cancelMock).toHaveBeenCalledWith({ notifications: [{ id: 9005 }] });
+    expect(scheduleMock).not.toHaveBeenCalled();
+  });
+
+  it('armDormancyReminder cancels but does NOT arm in demo mode', async () => {
+    demoFlag = true;
+    const { armDormancyReminder } = await import('@/lib/tracking-integration');
+    await armDormancyReminder();
+    expect(cancelMock).toHaveBeenCalledWith({ notifications: [{ id: 9005 }] });
+    expect(scheduleMock).not.toHaveBeenCalled();
   });
 });
