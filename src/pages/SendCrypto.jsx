@@ -165,6 +165,28 @@ export function isFormAmountWellFormed(amountStr) {
   return /[1-9]/.test(s);
 }
 
+// Amount field font size, by how many characters are on screen. The field is
+// deliberately oversized (a send amount is the one figure a user must not
+// misread), but at 4.5rem only ~6 monospace characters fit a 390px phone, so a
+// long value would scroll out of view inside the input. Each step down is the
+// largest size whose character count still fits that width; measured against
+// the compiled stylesheet at 390px with :root at 18px (index.css bumps the root
+// below 640px, so these are rem-relative, not px-relative, thresholds).
+//
+// The `!` prefix is load-bearing on every branch. index.css carries a global
+// iOS-auto-zoom guard — `input:not([type=range])...{ font-size: max(16px,1em) }`
+// — whose specificity (0,3,1) beats any font-size utility (0,1,0), so a plain
+// `text-7xl` here computes to 18px and silently does nothing. Do not drop the
+// `!` without also re-scoping that rule.
+export function amountFontSizeClass(displayValue) {
+  const len = String(displayValue ?? '').length;
+  if (len > 16) return '!text-2xl';
+  if (len > 13) return '!text-3xl';
+  if (len > 10) return '!text-4xl';
+  if (len > 6) return '!text-5xl';
+  return '!text-7xl';
+}
+
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
 // address is safe — only that it resembles one the user has used before and
 // couldn't be verified. Renders nothing unless the local screen is suspicious.
@@ -2358,7 +2380,7 @@ export default function SendCrypto() {
                   }}
                   onBlur={() => setAmountTouched(true)}
                   placeholder={amountMode === 'fiat' ? tw("send.amount.fiat_placeholder") : tw("send.amount.placeholder")}
-                  className="mt-1.5 mono-value text-4xl font-bold h-auto py-3"
+                  className={`mt-1.5 mono-value ${amountFontSizeClass(amountMode === 'fiat' ? fiatDraft : amount)} font-bold h-auto py-3`}
                   aria-invalid={amountInvalid || undefined}
                   aria-describedby={amountInvalid ? "send-amount-error" : undefined}
                 />
@@ -2561,7 +2583,7 @@ export default function SendCrypto() {
                 remount, so navigating away is intentional, not costly). */}
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
               <p className="text-xs text-muted-foreground mb-1">{tw("send.verify.summary_label")}</p>
-              <p className="text-lg font-bold mono-value">
+              <p className="text-3xl font-bold mono-value break-all">
                 {amount}{' '}
                 <Link to="/" className="underline underline-offset-2 hover:text-primary" aria-label={`Open ${selectedWallet?.currency || 'asset'} on the Home dashboard`}>
                   {selectedWallet?.currency}
@@ -2778,7 +2800,7 @@ export default function SendCrypto() {
             {/* Compact recap — same summary card the review step opens with. */}
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
               <p className="text-xs text-muted-foreground mb-1">{tw("send.verify.summary_label")}</p>
-              <p className="text-lg font-bold mono-value">{amount} {selectedWallet?.currency}</p>
+              <p className="text-3xl font-bold mono-value break-all">{amount} {selectedWallet?.currency}</p>
               {amountUsd != null && <p className="text-xs text-muted-foreground mono-value">{approxUsd(amountUsd)}</p>}
               <p className="text-sm text-muted-foreground mono-value mt-1 break-all">{toAddress}</p>
             </div>
