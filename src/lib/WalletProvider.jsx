@@ -145,6 +145,7 @@ import { initCode, getPendingReferral, clearPendingReferral, hasRedeemed, markRe
 import { generateServerCode, redeemCode } from '@/api/referralApi';
 import { trackEvent, EVENT } from '@/api/trackEvent';
 import { recordWin, WIN } from '@/lib/winPaywall';
+import { armDormancyReminder } from '@/lib/tracking-integration';
 import { toast } from '@/lib/toast';
 import { incrementSessionDayCount } from '@/components/PaywallNudge';
 // D-05: localStorage marker recording that biometric unlock was enabled SOLELY to
@@ -2068,6 +2069,11 @@ export function WalletProvider({ children }) {
     sessionUnlockSecretRef.current = password;
     void trackEvent(EVENT.SESSION_START, { returning: true }).catch(() => {});
     incrementSessionDayCount();
+    // Re-arm the 7-day dormancy reminder: cancels the pending one and schedules
+    // a fresh one, so it only ever fires if the user does not come back. Runs on
+    // decoy unlocks too — by design, the cancel half must not be gated. See
+    // armDormancyReminder.
+    void armDormancyReminder().catch(() => {});
     // Keep the chaff pool seeded for this device (idempotent; never overwrites a
     // real hidden-wallet slot). Best-effort. See createWallet for the rationale.
     void ensureStealthPool().catch(() => {});
@@ -2346,6 +2352,7 @@ export function WalletProvider({ children }) {
       setWasWiped(false);
       void trackEvent(EVENT.SESSION_START, { returning: true }).catch(() => {});
       incrementSessionDayCount();
+      void armDormancyReminder().catch(() => {});
       void ensureStealthPool().catch(() => {});
       setLivePricesEnabled(true);
       void ensureBiometric2faOnNative().catch(() => {});
