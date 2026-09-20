@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import { useActionGuard } from "@/components/security/useActionGuard";
-import { Monitor, Trash2, Plus, LogOut } from "lucide-react";
+import { Monitor, Trash2, Plus, LogOut, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,10 +57,38 @@ export default function SecurityCenter() {
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [pendingSignOutId, setPendingSignOutId] = useState(/** @type {any} */ (null));
   const [showAddLimit, setShowAddLimit] = useState(false);
+  // null = the dialog is creating; an id = it is editing that row in place.
+  // Without this the ONLY way to change a cap was delete + re-add, and adding a
+  // BIGGER limit alongside the old one does not raise anything —
+  // evaluateSendAgainstLimits blocks if ANY matching limit is breached, so the
+  // smaller row silently keeps winning. Editing removes both traps.
+  const [editingId, setEditingId] = useState(/** @type {any} */ (null));
   const theftProtectionOn = isTheftProtectionEnabled();
   const [limitCurrency, setLimitCurrency] = useState("ALL");
   const [dailyLimit, setDailyLimit] = useState("");
   const [perTxLimit, setPerTxLimit] = useState("");
+
+  /** Render a stored number back into the user's own locale so the value the
+   *  field shows is the value they would have typed — and so parseLocaleNumber
+   *  reads it back identically. String(1500.5) would render "1500.5" to a de-DE
+   *  user, who writes that number "1500,5"; `useGrouping: false` keeps it free
+   *  of separators that the grouped-form parser would then have to undo. */
+  const forEditing = (n) =>
+    n == null ? "" : new Intl.NumberFormat(resolveLocale(), { useGrouping: false, maximumFractionDigits: 20 }).format(n);
+
+  const openCreateLimit = () => {
+    setEditingId(null);
+    setLimitCurrency("ALL"); setDailyLimit(""); setPerTxLimit("");
+    setShowAddLimit(true);
+  };
+
+  const openEditLimit = (/** @type {any} */ l) => {
+    setEditingId(l.id);
+    setLimitCurrency(l.currency || "ALL");
+    setDailyLimit(forEditing(l.daily_limit));
+    setPerTxLimit(forEditing(l.per_transaction_limit));
+    setShowAddLimit(true);
+  };
 
   // Two-factor (Action Password / passkey) now lives in Security Settings →
   // "Two-factor at critical actions". The Security Center is alerts/sessions/limits.
@@ -143,18 +171,25 @@ export default function SecurityCenter() {
       if (perTxLimit && (!Number.isFinite(perTx) || perTx <= 0)) {
         throw new Error("Per-transaction limit must be a positive number");
       }
-      return base44.entities.TransactionLimit.create({
+      const values = {
         currency: limitCurrency,
         daily_limit: daily,
         per_transaction_limit: perTx,
-        enabled: true,
-      });
+      };
+      // Editing writes the same validated values onto the existing row rather
+      // than appending a second one. `enabled` is deliberately NOT sent on the
+      // edit path — that switch is the user's own separate decision and an edit
+      // must not silently re-arm a limit they turned off.
+      return editingId
+        ? base44.entities.TransactionLimit.update(editingId, values)
+        : base44.entities.TransactionLimit.create({ ...values, enabled: true });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tx-limits"] });
       setShowAddLimit(false);
       setDailyLimit(""); setPerTxLimit(""); setLimitCurrency("ALL");
-      toast.success("Limit set");
+      toast.success(editingId ? "Limit updated" : "Limit set");
+      setEditingId(null);
     },
     onError: (/** @type {any} */ err) => {
       toast.error(err?.message || "Couldn't save limit — enter a positive number.");
@@ -260,7 +295,7 @@ export default function SecurityCenter() {
         <TabsContent value="limits" className="mt-4 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">Cap what you can send per day or per transaction.</p>
-            <Button size="sm" onClick={() => setShowAddLimit(true)}>
+            <Button size="sm" onClick={openCreateLimit}>
               <Plus className="h-3.5 w-3.5 me-1" /> Add Limit
             </Button>
           </div>
@@ -289,7 +324,7 @@ export default function SecurityCenter() {
               title="No limits configured"
               description="A spend limit makes a transaction above it ask for a second confirmation. It is a check, not a cap — it never blocks a transaction you approve."
               action={
-                <Button size="sm" onClick={() => setShowAddLimit(true)}>
+                <Button size="sm" onClick={openCreateLimit}>
                   <Plus className="h-3.5 w-3.5 me-1" /> Add a limit
                 </Button>}
             />
@@ -329,6 +364,9 @@ export default function SecurityCenter() {
                   checked={l.enabled}
                   onCheckedChange={(v) => toggleLimit.mutate({ id: l.id, enabled: v })}
                 />
+                <Button variant="ghost" size="icon" aria-label={`Edit ${l.currency} limit`} onClick={() => openEditLimit(l)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
                 <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" aria-label={`Delete ${l.currency} limit`} onClick={() => deleteLimit.mutate(l.id)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -342,9 +380,9 @@ export default function SecurityCenter() {
       </Tabs>
 
       {/* Add Limit Dialog */}
-      <Dialog open={showAddLimit} onOpenChange={setShowAddLimit}>
+      <Dialog open={showAddLimit} onOpenChange={(o) => { setShowAddLimit(o); if (!o) setEditingId(null); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Add Transaction Limit</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? "Edit Transaction Limit" : "Add Transaction Limit"}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
               <Label id="limit-currency-label">Currency</Label>
@@ -385,7 +423,7 @@ export default function SecurityCenter() {
               </div>
             </div>
             <Button className="w-full" onClick={() => addLimit.mutate()} disabled={addLimit.isPending || (!dailyLimit && !perTxLimit)}>
-              Save Limit
+              {editingId ? "Save Changes" : "Save Limit"}
             </Button>
           </div>
         </DialogContent>
