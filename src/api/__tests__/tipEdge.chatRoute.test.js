@@ -251,11 +251,13 @@ describe('tip-chat entitlement lookup is bounded and cached in both directions',
     expect(chatCode).toMatch(/entitlementCache\.clear\(\)/);
   });
 
-  it('remembers a 4xx verdict but never a 5xx', () => {
-    // A 404 is a fact about the id. A 503 is RevenueCat having a bad minute,
-    // and caching it would turn their outage into a lockout of our own
-    // subscribers on top of it.
-    expect(chatCode).toMatch(/resp\.status >= 400 && resp\.status < 500/);
+  it('remembers a 404 verdict but never any other status', () => {
+    // This assertion used to require `status >= 400 && status < 500`, on the
+    // reasoning that any 4xx is a fact about the id. It is not: a 403 (wrong
+    // RevenueCat API version for our key) and a 429 (RevenueCat throttling us)
+    // are facts about US, and caching them denied paying subscribers. Narrowed
+    // to 404; the reasoning lives in tipEdge.entitlementLookup.test.js.
+    expect(chatCode).toMatch(/resp\.status === 404\) rememberEntitlement\(appUserId, false\)/);
   });
 
   it('keeps the negative TTL shorter than the positive one', () => {

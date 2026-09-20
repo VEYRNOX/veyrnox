@@ -66,6 +66,109 @@ describe('tip-chat entitlement lookup', () => {
     expect(guard).toMatch(/return json\(\{ error: 'tip_upstream_error', ref \}, 502, origin\);/);
   });
 
+  it('remembers only a 404, the one 4xx that is a fact about the customer', () => {
+    // The two defects above both answered with a 4xx, and the cache wrote each
+    // one down as "this subscriber is not entitled" — the wrong fact about the
+    // wrong party, held for the negative TTL. A 429 is the live version of the
+    // same mistake: RevenueCat throttling us for ten seconds becomes ten
+    // seconds of every paying subscriber being unentitled.
+    expect(CODE).toMatch(/resp\.status === 404\) rememberEntitlement\(appUserId, false\)/);
+    expect(CODE).not.toMatch(/resp\.status >= 400 && resp\.status < 500/);
+  });
+
+  it('never caches a 2xx whose body it could not read', () => {
+    // `resp.json().catch(() => null)` collapsed "RevenueCat says nothing" and
+    // "we could not read the answer" into one null, which was then cached as a
+    // denial. Measured on staging 2026-09-20: the gate denied a genuinely
+    // entitled subscriber when requests arrived in a burst and admitted the
+    // same subscriber when they were spaced.
+    const lookup = CODE.slice(CODE.indexOf('active_entitlements'));
+    expect(lookup).toMatch(/await resp\.text\(\)/);
+    expect(lookup).not.toMatch(/await resp\.json\(\)/);
+    // and the unreadable branch must return BEFORE the cache write
+    const bail = lookup.indexOf('return false;');
+    const write = lookup.indexOf('rememberEntitlement(appUserId, ok)');
+    expect(bail).toBeGreaterThan(-1);
+    expect(write).toBeGreaterThan(-1);
+    expect(bail).toBeLessThan(write);
+  });
+
+  it('leaves a log line on the failure modes that are not a denial', () => {
+    // This gate shipped with no observability whatsoever, which is why three
+    // independent defects all rendered as the same silent 403 and none was
+    // visible from outside. A denial for a reason that is not "this customer
+    // is not entitled" now says so.
+    expect(CODE).toMatch(/\[tip-chat\] entitlement lookup: unreadable/);
+  });
+
+  it('streams under the Content-Type it checked, not a re-applied default', () => {
+    // `?? 'text/event-stream'` on the relay is what let a Cloudflare Access
+    // page reach the client wearing a stream's clothes. The guard above it
+    // already resolved the real value; use that.
+    const relay = CODE.slice(CODE.indexOf('new Response(upstream.body'));
+    expect(relay).toMatch(/'Content-Type': upstreamType,/);
+    expect(relay).not.toMatch(/\?\? 'text\/event-stream'/);
+  });
+
+  // The verdict predicate, EXECUTED rather than pattern-matched.
+  //
+  // Everything else in this file is structural, and structural assertions
+  // could not have caught either defect the file was created for: both denied
+  // for the wrong reason, which is indistinguishable from denying correctly.
+  // Only a POSITIVE case separates a gate that denies correctly from a gate
+  // that denies everything. The fixtures are verbatim RevenueCat v2
+  // active_entitlements items captured on 2026-09-20 from a live grant.
+  describe('the active_entitlements predicate, lifted out and run', () => {
+    const src = /items\.some\(\(i\) => \{\n[\s\S]*?\n    \}\);/.exec(CODE)?.[0];
+
+    it('extracted the predicate from the Deno source', () => {
+      expect(src).toBeTruthy();
+    });
+
+    const predicate = new Function(
+      'items',
+      'entitlementId',
+      `return ${String(src).replace(/^items\./, 'items.').replace(/;$/, '')};`,
+    );
+    const ID = 'entl262ea1e9d4';
+    const check = (item) => predicate([item], ID);
+
+    it('grants a live subscriber — the case neither old path could reach', () => {
+      expect(check({
+        object: 'customer.active_entitlement',
+        entitlement_id: ID,
+        expires_at: Date.now() + 3_600_000,
+      })).toBe(true);
+    });
+
+    it('grants a lifetime entitlement, which carries a null expiry', () => {
+      expect(check({ entitlement_id: ID, expires_at: null })).toBe(true);
+      expect(check({ entitlement_id: ID })).toBe(true);
+    });
+
+    it('denies a different entitlement — Safety Plus must not unlock Vigil', () => {
+      // The project defines two entitlements. A Safety Plus subscriber is a
+      // paying customer who has not bought this tier.
+      expect(check({ entitlement_id: 'entlf563332478', expires_at: Date.now() + 3_600_000 }))
+        .toBe(false);
+      // and the lookup_key is not the id, so it must not match either
+      expect(check({ entitlement_id: 'ai_security_protection', expires_at: Date.now() + 1000 }))
+        .toBe(false);
+    });
+
+    it('denies an entitlement that lapsed between RevenueCat and us', () => {
+      expect(check({ entitlement_id: ID, expires_at: Date.now() - 1000 })).toBe(false);
+    });
+
+    it('fails closed on a non-numeric expiry and on junk items', () => {
+      // v1 served ISO strings here; v2 serves epoch ms. A string must never be
+      // coerced into a verdict.
+      expect(check({ entitlement_id: ID, expires_at: '2099-01-01T00:00:00Z' })).toBe(false);
+      for (const v of [null, undefined, 0, '', 'x', []]) expect(check(v)).toBe(false);
+      expect(predicate([], ID)).toBe(false);
+    });
+  });
+
   it('resolves the entitlement id from its lookup_key', () => {
     // Pinning the opaque `entl...` id in config would drift silently against
     // the identifier the store and paywall use.
