@@ -25,6 +25,45 @@ import {
   getTheftProtectionSupport,
 } from '@/lib/theftProtection';
 
+/**
+ * Default per-transaction cap (USD) seeded when Theft Protection is switched on
+ * and the user has NO spend limits at all. Without an enabled limit the
+ * send-side leg of Theft Protection is inert — sendGate's
+ * THEFT_PROTECTION_REQUIRED branch only fires when evaluateSendAgainstLimits()
+ * blocks — so enabling the feature used to protect unlock and nothing else.
+ *
+ * It is a STARTING POINT, not a policy: it is an ordinary TransactionLimit row,
+ * editable and deletable from Security Center → Spend Limits like any other.
+ * A user who already has limits (enabled OR disabled) keeps exactly what they
+ * configured — we never add a second row or re-enable one they turned off.
+ */
+export const DEFAULT_THEFT_PROTECTION_PER_TX_USD = 500;
+
+/**
+ * Seed the default cap. Returns the seeded amount, or null when nothing was
+ * written (limits already exist, or the entity layer failed).
+ *
+ * Dynamically imported so the entity layer is not pulled into this settings
+ * component's static graph, and fully swallowed: a seed failure must never
+ * block Theft Protection itself, which still protects unlock on its own.
+ */
+async function seedDefaultSpendLimit() {
+  try {
+    const { base44 } = await import('@/api/base44Client');
+    const existing = await base44.entities.TransactionLimit.list();
+    if (Array.isArray(existing) && existing.length > 0) return null;
+    await base44.entities.TransactionLimit.create({
+      currency: 'ALL',
+      daily_limit: null,
+      per_transaction_limit: DEFAULT_THEFT_PROTECTION_PER_TX_USD,
+      enabled: true,
+    });
+    return DEFAULT_THEFT_PROTECTION_PER_TX_USD;
+  } catch {
+    return null;
+  }
+}
+
 const UNSUPPORTED_COPY = {
   'not-native': 'Theft Protection needs the Veyrnox app on iPhone or Android.',
   'no-biometric': 'Set up Face ID, face unlock or a fingerprint in your device settings first.',
@@ -35,9 +74,11 @@ export default function TheftProtectionSettings() {
   const [on, setOn] = useState(() => isTheftProtectionEnabled());
   const [checking, setChecking] = useState(false);
   const [note, setNote] = useState('');
+  const [noteIsError, setNoteIsError] = useState(true);
 
   const toggle = async (next) => {
     setNote('');
+    setNoteIsError(true);
     if (next) {
       setChecking(true);
       try {
@@ -51,7 +92,21 @@ export default function TheftProtectionSettings() {
       }
     }
     setTheftProtectionEnabled(next);
-    setOn(isTheftProtectionEnabled()); // reflect what actually persisted
+    const persisted = isTheftProtectionEnabled();
+    setOn(persisted); // reflect what actually persisted
+    // Seed the starter cap only when the setting ACTUALLY persisted. In a
+    // decoy/demo session setTheftProtectionEnabled() is an I3 no-op, so
+    // `persisted` stays false there and no entity row is written either —
+    // the guard is inherited rather than duplicated (K-2).
+    if (next && persisted) {
+      const seeded = await seedDefaultSpendLimit();
+      if (seeded) {
+        setNoteIsError(false);
+        setNote(
+          `Added a $${seeded.toLocaleString()} per-transaction limit so Theft Protection also covers sending. Change or remove it in Security Center → Spend Limits.`,
+        );
+      }
+    }
   };
 
   return (
@@ -69,9 +124,10 @@ export default function TheftProtectionSettings() {
             device-verified).
           </p>
           <p className="text-xs text-muted-foreground/80 mt-1">
-            When you also set a spending limit in Security Center, Theft
-            Protection enforces the limit: an over-limit send needs the same
-            biometric check before it can sign.
+            Turning this on also adds a $500 per-transaction limit if you have
+            none, so an over-limit send needs the same biometric check before it
+            can sign. Change or remove that limit any time in Security Center →
+            Spend Limits.
           </p>
         </div>
         <Switch
@@ -83,7 +139,11 @@ export default function TheftProtectionSettings() {
         />
       </div>
       {note && (
-        <p role="status" className="text-sm text-destructive mt-2" data-testid="theft-protection-unsupported">
+        <p
+          role="status"
+          className={`text-sm mt-2 ${noteIsError ? 'text-destructive' : 'text-muted-foreground'}`}
+          data-testid={noteIsError ? 'theft-protection-unsupported' : 'theft-protection-seeded-limit'}
+        >
           {note}
         </p>
       )}

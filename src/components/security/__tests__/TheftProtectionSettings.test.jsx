@@ -25,7 +25,18 @@ vi.mock('@/rasp', () => ({
   getFreshRaspArtifact: vi.fn(),
   TIER: Object.freeze({ ALLOW: 'allow', WARN: 'warn-before-sign', BLOCK: 'block-signing' }),
 }));
-vi.mock('@/wallet-core/deniabilitySession', () => ({ isDeniabilityOrDemoActive: vi.fn(() => false) }));
+const { deniableMock } = vi.hoisted(() => ({ deniableMock: vi.fn(() => false) }));
+vi.mock('@/wallet-core/deniabilitySession', () => ({ isDeniabilityOrDemoActive: (...a) => deniableMock(...a) }));
+
+// The entity layer behind the seeded starter cap (#2515 follow-up). Mocked so
+// the test asserts WHAT was written, not that IndexedDB happened to work.
+const { limitListMock, limitCreateMock } = vi.hoisted(() => ({
+  limitListMock: vi.fn(async () => []),
+  limitCreateMock: vi.fn(async (r) => r),
+}));
+vi.mock('@/api/base44Client', () => ({
+  base44: { entities: { TransactionLimit: { list: (...a) => limitListMock(...a), create: (...a) => limitCreateMock(...a) } } },
+}));
 
 import { THEFT_PROTECTION_KEY } from '@/lib/theftProtection';
 import TheftProtectionSettings from '@/components/security/TheftProtectionSettings';
@@ -36,6 +47,9 @@ beforeEach(() => {
   localStorage.clear();
   platformMock.mockReset().mockReturnValue('ios');
   probeMock.mockReset().mockResolvedValue(null);
+  limitListMock.mockReset().mockResolvedValue([]);
+  limitCreateMock.mockReset().mockImplementation(async (r) => r);
+  deniableMock.mockReset().mockReturnValue(false);
 });
 afterEach(() => { cleanup(); });
 
@@ -100,5 +114,76 @@ describe('TheftProtectionSettings — enable is capability-gated (#2515)', () =>
     fireEvent.click(toggle());
     await waitFor(() => expect(localStorage.getItem(THEFT_PROTECTION_KEY)).toBeNull());
     expect(probeMock).not.toHaveBeenCalled();
+  });
+});
+
+// Seeded starter cap. Theft Protection's send-side leg is inert with no enabled
+// spend limit (sendGate only reaches THEFT_PROTECTION_REQUIRED when
+// evaluateSendAgainstLimits blocks), so enabling the feature with an empty
+// limit list used to protect unlock and nothing else.
+describe('TheftProtectionSettings — default spend limit', () => {
+  it('seeds one enabled $500 per-transaction limit when the user has none', async () => {
+    probeMock.mockResolvedValue({ isAvailable: true, biometryType: 'faceId' });
+    render(<TheftProtectionSettings />);
+    fireEvent.click(toggle());
+
+    await waitFor(() => expect(limitCreateMock).toHaveBeenCalledTimes(1));
+    expect(limitCreateMock).toHaveBeenCalledWith({
+      currency: 'ALL',
+      daily_limit: null,
+      per_transaction_limit: 500,
+      enabled: true,
+    });
+    expect(localStorage.getItem(THEFT_PROTECTION_KEY)).toBe('1');
+    expect(await screen.findByTestId('theft-protection-seeded-limit')).toBeTruthy();
+  });
+
+  it('never touches limits the user already configured — including a disabled one', async () => {
+    probeMock.mockResolvedValue({ isAvailable: true, biometryType: 'faceId' });
+    limitListMock.mockResolvedValue([{ id: 'l1', currency: 'ALL', per_transaction_limit: 25, enabled: false }]);
+    render(<TheftProtectionSettings />);
+    fireEvent.click(toggle());
+
+    await waitFor(() => expect(localStorage.getItem(THEFT_PROTECTION_KEY)).toBe('1'));
+    await waitFor(() => expect(limitListMock).toHaveBeenCalled());
+    expect(limitCreateMock).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('theft-protection-seeded-limit')).toBeNull();
+  });
+
+  it('still enables Theft Protection when the entity layer throws', async () => {
+    probeMock.mockResolvedValue({ isAvailable: true, biometryType: 'faceId' });
+    limitListMock.mockRejectedValue(new Error('store unavailable'));
+    render(<TheftProtectionSettings />);
+    fireEvent.click(toggle());
+
+    await waitFor(() => expect(localStorage.getItem(THEFT_PROTECTION_KEY)).toBe('1'));
+    expect(limitCreateMock).not.toHaveBeenCalled();
+  });
+
+  it('writes no limit when the unsupported-device check refuses the opt-in', async () => {
+    platformMock.mockReturnValue('ios');
+    probeMock.mockResolvedValue({ isAvailable: true, biometryType: 'touchId' });
+    render(<TheftProtectionSettings />);
+    fireEvent.click(toggle());
+
+    expect(await screen.findByTestId('theft-protection-unsupported')).toBeTruthy();
+    expect(limitCreateMock).not.toHaveBeenCalled();
+    expect(localStorage.getItem(THEFT_PROTECTION_KEY)).toBeNull();
+  });
+
+  // K-2 / I3: setTheftProtectionEnabled is already a no-op in a decoy or demo
+  // session, and the seed hangs off what ACTUALLY persisted — so a coerced
+  // session writes neither the setting nor a TransactionLimit row. A seeded
+  // limit appearing in a decoy would be a tell about the real user's config.
+  it('writes neither the setting nor a limit in a decoy/demo session', async () => {
+    probeMock.mockResolvedValue({ isAvailable: true, biometryType: 'faceId' });
+    deniableMock.mockReturnValue(true);
+    render(<TheftProtectionSettings />);
+    fireEvent.click(toggle());
+
+    await waitFor(() => expect(probeMock).toHaveBeenCalled());
+    expect(localStorage.getItem(THEFT_PROTECTION_KEY)).toBeNull();
+    expect(limitCreateMock).not.toHaveBeenCalled();
+    expect(limitListMock).not.toHaveBeenCalled();
   });
 });

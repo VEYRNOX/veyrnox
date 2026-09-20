@@ -16,7 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/lib/toast";
 import { formatDistanceToNow } from "date-fns";
-import { sumSentTodayUSD } from "@/lib/txLimits";
+import { sumSentTodayUSD, hasEnabledSpendLimit } from "@/lib/txLimits";
+import { isTheftProtectionEnabled } from "@/lib/theftProtection";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 import { getSessionToken, ensureSessionToken } from "@/lib/sessionRevocation";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
@@ -56,6 +57,7 @@ export default function SecurityCenter() {
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [pendingSignOutId, setPendingSignOutId] = useState(/** @type {any} */ (null));
   const [showAddLimit, setShowAddLimit] = useState(false);
+  const theftProtectionOn = isTheftProtectionEnabled();
   const [limitCurrency, setLimitCurrency] = useState("ALL");
   const [dailyLimit, setDailyLimit] = useState("");
   const [perTxLimit, setPerTxLimit] = useState("");
@@ -264,6 +266,19 @@ export default function SecurityCenter() {
           </div>
           {errorLimits && (
             <p className="text-xs text-caution">Couldn't load limits.</p>
+          )}
+          {/* Theft Protection's send-side leg is INERT without an enabled cap:
+              sendGate's THEFT_PROTECTION_REQUIRED branch only fires when
+              evaluateSendAgainstLimits() blocks. State which of the two is
+              actually on rather than promising enforcement the user has not
+              configured (I4). Reads localStorage synchronously — cheap, and
+              the whole page is already primary-session only. */}
+          {theftProtectionOn && !errorLimits && (
+            <p className="text-xs text-muted-foreground" data-testid="theft-protection-limit-link">
+              {hasEnabledSpendLimit(limits)
+                ? "Theft Protection is on: a send over these limits needs its biometric check before it can sign."
+                : "Theft Protection is on, but with no limit enabled below it only applies when you unlock. Add or enable a limit to require its biometric check on an over-limit send."}
+            </p>
           )}
           {errorHistory && (
             <p className="text-xs text-caution">Couldn't load history — today's totals may be off.</p>
