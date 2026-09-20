@@ -1851,6 +1851,36 @@ m/44'/60' address; BTC (m/84'/UTXO/PSBT) and SOL (ed25519/SLIP-0010) have their 
   simulator builds carry entitlements in a Mach-O section (`ENTITLEMENTS_DESTINATION
   = __entitlements`), so an empty `[Dict]` there is normal; use the `otool` command
   above. Verified 2026-09-16 on iPhone 17 Pro / iOS 26.5.
+
+- **`VITE_BYPASS_RASP=1` CANNOT be combined with a built bundle, and the failure
+  is illegible.** `useRaspArtifact.js:56` throws at module init when
+  `VITE_BYPASS_RASP && import.meta.env.PROD` — a deliberate #1107 hard-fail, so a
+  bypass can never reach a shipped build. But **`vite build` always sets `PROD`**
+  (`--mode development` included — same fact that makes `VITE_FORCE_TIER` dead in
+  any build), so the guard fires for *every* static bundle built while
+  `.env.local` carries the flag. **The `.env.local` in the primary checkout
+  carries it.**
+
+  What you see is the boot watchdog's **"Veyrnox couldn't start"** card, and
+  nothing else: `capacitor.config.json` sets `loggingBehavior: "none"`, so the
+  guard's perfectly clear message never reaches the OS log, Safari Web Inspector
+  is a GUI step, and `simctl log show` is silent. It reads as a broken app.
+
+  This is almost certainly the real cause of the long-standing "simulator shows a
+  black screen with a static bundle" lore, and of why the documented workaround
+  (point Capacitor at the Vite dev server) appears to fix it — dev server means
+  `PROD` is false, so the guard does not fire. Verified 2026-09-20: the same
+  commit that showed the fallback booted to the entry screen after simply
+  removing `VITE_BYPASS_RASP` from `.env.local`, on iPhone 17 Pro / iOS 26.5.
+
+  **So: build the simulator bundle WITHOUT the flag.** RASP does not block a
+  simulator — `AppDelegate.swift:17`'s pre-WebView `earlyCheck()` would replace
+  the root view controller with a native block screen, and it does not fire; the
+  app reaches the normal entry tiles. If you must diagnose a boot failure, the
+  fastest route is a throwaway `window.addEventListener('error', …)` in
+  `public/boot-watchdog.js` that renders the message on screen — it runs before
+  the module entry and needs no logging bridge. It was filed as a real app defect
+  (#2677) before this was understood; that issue is closed as not-a-bug.
 - **A simulator cannot exercise a decoy session, and the two ways round it are
   mutually exclusive.** Recorded so it is not re-attempted (full write-up:
   https://github.com/VEYRNOX/veyrnox/issues/2537#issuecomment-5709674012).
