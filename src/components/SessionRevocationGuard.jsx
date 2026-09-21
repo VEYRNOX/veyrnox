@@ -18,7 +18,7 @@
 // revoked. This component performs NO crypto and touches NO key material; lock()
 // is the EXISTING WalletProvider path.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useWallet } from '@/lib/WalletProvider';
@@ -32,43 +32,42 @@ import {
 
 export default function SessionRevocationGuard() {
   const { lock } = useWallet();
-  // getSessionToken() is a SYNCHRONOUS read of secureStore's cache, and on
-  // native that cache is filled by an async boot hydrate. Reading it once at
-  // render is therefore not enough on its own: if this component mounts before
-  // hydrate settles, the token is null, the query below is disabled, and
-  // nothing re-subscribes when the value later arrives — the guard would sit
-  // dormant until some unrelated re-render happened to re-read it. In practice
-  // Layout only mounts after unlock, by which point hydrate has long finished,
-  // so this was a latent fragility rather than an observed failure; awaiting
-  // the (memoised, never-rejecting) hydrate promise makes it deterministic
-  // instead of incidental.
-  const [token, setToken] = useState(() => getSessionToken());
-  useEffect(() => {
-    if (token) return undefined;
-    let alive = true;
-    hydrateSecureStore().then(() => { if (alive) setToken(getSessionToken()); });
-    return () => { alive = false; };
-  }, [token]);
-  // Guard against locking more than once per revocation event.
-  const handledRef = useRef(false);
+  // The session token is read LIVE on every poll, never captured at mount.
+  // SEC-03 (QA 2026-09-21): it used to be captured once (useState + a single
+  // post-hydrate re-read). On a fresh wallet Layout mounts this guard at
+  // unlock, BEFORE Security Center mints the token (ensureSessionToken), so
+  // the late token was never seen, the query stayed disabled, and revoking
+  // the current device never locked this session. Awaiting the (memoised,
+  // never-rejecting) hydrate first keeps the REVIEW-A guarantee: on native,
+  // getSessionToken() is a synchronous read of a cache filled by an async
+  // boot hydrate. No token → no store read at all.
+  // Remember WHICH token was handled, so each revocation locks exactly once.
+  const handledRef = useRef(/** @type {string|null} */ (null));
 
   // Poll only THIS device's session record. Cheap (single-token filter), backed
   // by the SAME store Security Center / Session Manager write to. Refetch on a
   // short interval and on window focus so a revoke from elsewhere lands promptly
   // the next time this device is looked at.
-  const { data: mine = [] } = useQuery({
-    queryKey: ['session-revocation-check', token],
-    queryFn: () => base44.entities.UserSession.filter({ session_token: token }),
-    enabled: !!token,
+  const { data } = useQuery({
+    queryKey: ['session-revocation-check'],
+    queryFn: async () => {
+      let token = getSessionToken();
+      if (!token) { await hydrateSecureStore(); token = getSessionToken(); }
+      if (!token) return { token: null, mine: [] };
+      const mine = await base44.entities.UserSession.filter({ session_token: token });
+      return { token, mine };
+    },
     refetchInterval: 10000,
     refetchOnWindowFocus: true,
     retry: false,
   });
+  const token = data?.token ?? null;
+  const mine = data?.mine;
 
   useEffect(() => {
-    if (!token || handledRef.current) return;
+    if (!token || handledRef.current === token) return;
     if (isCurrentSessionRevoked(mine, token)) {
-      handledRef.current = true;
+      handledRef.current = token;
       /** @type {any} */ (lock)(); // real access control — drop the in-memory secret
       clearSessionToken(); // sign this device out; re-auth makes a new session
       toast.error(
