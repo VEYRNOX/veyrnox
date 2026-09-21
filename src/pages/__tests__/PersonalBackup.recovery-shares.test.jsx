@@ -65,13 +65,16 @@ vi.mock('@/lib/toast', () => ({ toast: { error: (...a) => toastError(...a), succ
 
 // createObjectURL / anchor click stubs so the web save path runs in jsdom
 beforeEach(() => {
-  if (!URL.createObjectURL) URL.createObjectURL = vi.fn(() => 'blob:stub');
-  if (!URL.revokeObjectURL) URL.revokeObjectURL = vi.fn();
+  // jsdom's provided implementation can reject the Blob used by saveShareFile.
+  // Always stub the download URLs, even when the environment provides them.
+  URL.createObjectURL = vi.fn(() => 'blob:stub');
+  URL.revokeObjectURL = vi.fn();
   try { localStorage.clear(); } catch { /* shimmed */ }
 });
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
+  vi.doUnmock('@/wallet-core/recoveryShare');
   vi.resetModules();
   toastError.mockClear();
   cleanup();
@@ -175,14 +178,21 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
       target: { value: 'a-nice-and-long-passphrase' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /split & save 3 shares/i }));
-    // The wrapper is stubbed above; this test covers UI orchestration while
-    // wallet-core owns the real Argon2id + AES-GCM coverage.
-    await waitFor(
-      () => expect(screen.getByText(/all 3 recovery shares saved/i)).toBeTruthy(),
-      { timeout: 15_000 },
-    );
-    expect(exportRecoveryBundles).toHaveBeenCalledWith(TEST_PIN);
+    const btn = screen.getByRole('button', { name: /split & save 3 shares/i });
+    console.log('[diag] disabled at click:', btn.disabled,
+      '| createObjectURL native:', !vi.isMockFunction(URL.createObjectURL));
+    try {
+      fireEvent.click(btn);
+      // The wrapper is stubbed above; this test covers UI orchestration while
+      // wallet-core owns the real Argon2id + AES-GCM coverage.
+      await waitFor(
+        () => expect(screen.getByText(/all 3 recovery shares saved/i)).toBeTruthy(),
+        { timeout: 15_000 },
+      );
+      expect(exportRecoveryBundles).toHaveBeenCalledWith(TEST_PIN);
+    } finally {
+      console.log('[diag] toast.error calls:', JSON.stringify(toastError.mock.calls));
+    }
   });
 
   it('surfaces a fail-closed error when exportRecoveryBundles throws', async () => {
