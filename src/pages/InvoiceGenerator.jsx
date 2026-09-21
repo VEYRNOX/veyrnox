@@ -111,7 +111,7 @@ export default function InvoiceGenerator() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Invoice Generator</h1>
-          <p className="text-sm text-muted-foreground">{invoices.length} invoices · ${totalPaid.toLocaleString()} received</p>
+          <p className="text-sm text-muted-foreground">{invoices.length} invoice{invoices.length === 1 ? '' : 's'} · ${totalPaid.toLocaleString()} received</p>
         </div>
         <Button onClick={() => setOpen(true)} size="sm"><Plus className="h-4 w-4 me-1" /> New Invoice</Button>
       </div>

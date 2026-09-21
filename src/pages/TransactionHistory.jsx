@@ -243,6 +243,15 @@ export default function TransactionHistory() {
     staleTime: 30000,
     retry: 1,
   });
+  // MNY-03: `error.message` for a Solana history failure is the raw upstream
+  // JSON-RPC error body (HTTP code + full JSON, including a request id) --
+  // never safe to render (see the sanitisation comment on error_prefix
+  // below, and CandlestickChart.jsx's identical "raw provider errors must
+  // never render" rule). Keep the real detail available for debugging, but
+  // DEV-only -- same pattern as WalletEntry.jsx / tipScreen.js.
+  if (import.meta.env.DEV && isError && error) {
+    console.error('[TransactionHistory] history fetch failed:', error);
+  }
 
   // Locally-stored sends (Transaction entity, on-device IndexedDB). Read-only,
   // gated on the same deniability flag as the chain fetch — a decoy session
@@ -349,7 +358,11 @@ export default function TransactionHistory() {
           <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 space-y-3">
             <div className="flex items-start gap-2 text-sm text-destructive">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>{t("tx.history.error_prefix", { reason: error?.message?.toLowerCase().includes("fetch") ? t("tx.history.error_fetch_reason") : (error?.message || t("tx.history.error_generic_reason")) })}</span>
+              {/* MNY-03: never interpolate the raw error.message -- for Solana
+                  it's the upstream JSON-RPC error body verbatim (HTTP code +
+                  full JSON + a request uuid). Route through the two sanctioned,
+                  client-safe reasons only; the real detail is DEV-logged above. */}
+              <span>{t("tx.history.error_prefix", { reason: error?.message?.toLowerCase().includes("fetch") ? t("tx.history.error_fetch_reason") : t("tx.history.error_generic_reason") })}</span>
             </div>
             {egressAllowed && (
               <button
