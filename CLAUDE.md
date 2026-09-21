@@ -236,6 +236,21 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
     **Standing rule: if you change how the Buy widget opens, or where the
     backend runs, the Transak declaration must be resubmitted in the same
     session.** It is a form, it is invisible to git, and it is enforced.
+    **ROOT CAUSE CONFIRMED BY TRANSAK (2026-09-21): the Backend IPs field on
+    our 2026-08-31 Mandatory Security checklist was left without an address.**
+    Transak support (Harsh Shah) wrote that the IP field was blank and asked
+    for a static backend IP. Their partner APIs are gated on that allowlist, so
+    once enforced, every `auth/session` call from every source was refused —
+    which is what every measurement below shows. Cloudflare Pages Functions
+    have no static egress IP, so a **static-egress relay** now exists for the
+    two partner calls: GCP `veyrnox-wallet`, VM `transak-relay`, static IP
+    **`34.56.200.9`**, hostname `transak-relay.veyrnox.com`. It is BUILT and
+    NOT YET ACTIVE until `TRANSAK_PROXY_BASE` is set on `veyrnox-prod`.
+    **Runbook: `docs/transak-relay.md`** — activation, secrets, rotation,
+    rollback, and the standing rule that the IP is registered with Transak and
+    must never be released or moved without resubmitting it first.
+    The paragraph below is the pre-confirmation diagnosis, kept as the record
+    of how it was reached.
     **Current partner state (2026-09-19): prod Buy is DOWN, and it is account
     provisioning on Transak's side — not credentials, not our code.** Proven by
     elimination over one session; do not re-diagnose it into the stack:
