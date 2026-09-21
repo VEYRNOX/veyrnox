@@ -27,7 +27,7 @@
 //   1. PROXY_SHARED_SECRET — constant-time compared. No secret, no service.
 //   2. Only the two Transak paths below are forwardable. No wildcard, no
 //      caller-supplied host, no path passthrough.
-//   3. Request bodies are capped.
+//   3. Request bodies are capped, and so are upstream response bodies.
 // The Transak secret itself is NOT stored here — it arrives in the forwarded
 // headers from the Pages Function, which already holds it. That keeps exactly
 // one copy of the credential.
@@ -38,6 +38,10 @@ import { timingSafeEqual } from 'node:crypto';
 const PORT = Number(process.env.PORT || 8080);
 const SHARED_SECRET = process.env.PROXY_SHARED_SECRET || '';
 const MAX_BODY_BYTES = 64 * 1024;
+// Transak's token and session responses are a few hundred bytes. The cap is
+// generous for them and still stops a misbehaving upstream (or anything a
+// redirect lands on) from making this small VM buffer an unbounded body.
+export const MAX_RESPONSE_BYTES = 64 * 1024;
 
 // The ONLY upstreams this relay will talk to. Keyed by the path the caller
 // asks for, so a caller can never name a host.
@@ -69,6 +73,36 @@ async function readBody(req) {
     total += chunk.length;
     if (total > MAX_BODY_BYTES) throw new Error('body too large');
     chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
+ * Read an upstream fetch Response without buffering more than `maxBytes`.
+ * Content-Length is a cheap early reject but is advisory (chunked responses
+ * have none, and it can lie), so the count is enforced on the actual read.
+ * Throws rather than truncating: a silently cut JSON body would be relayed as
+ * a malformed success. Mirrors readCapped() in functions/api/_lib/upstream.js.
+ * @param {Response} upstreamRes
+ * @param {number} [maxBytes]
+ * @returns {Promise<Buffer>}
+ */
+export async function readCappedResponse(upstreamRes, maxBytes = MAX_RESPONSE_BYTES) {
+  const declared = Number(upstreamRes.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > maxBytes) throw new Error('response too large');
+  if (!upstreamRes.body) return Buffer.alloc(0);
+  const reader = upstreamRes.body.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => {});
+      throw new Error('response too large');
+    }
+    chunks.push(value);
   }
   return Buffer.concat(chunks);
 }
@@ -107,15 +141,22 @@ const server = createServer(async (req, res) => {
       body,
       signal: AbortSignal.timeout(8000),
     });
-    const text = await upstreamRes.text();
+    let payload;
+    try { payload = await readCappedResponse(upstreamRes); }
+    catch { return send(res, 502, { error: 'upstream_too_large' }); }
     res.writeHead(upstreamRes.status, {
       'content-type': upstreamRes.headers.get('content-type') || 'application/json',
+      'content-length': payload.length,
     });
-    res.end(text);
+    res.end(payload);
   } catch (e) {
     // Never echo upstream internals; the Pages Function logs the detail.
     send(res, 502, { error: 'upstream_unreachable' });
   }
 });
 
-server.listen(PORT, () => console.log(`transak-proxy listening on ${PORT}`));
+// Tests import this file for readCappedResponse; everything else (the VM's
+// startup script) runs it as-is and must keep listening by default.
+if (process.env.TRANSAK_PROXY_NO_LISTEN !== '1') {
+  server.listen(PORT, () => console.log(`transak-proxy listening on ${PORT}`));
+}

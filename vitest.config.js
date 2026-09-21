@@ -111,7 +111,9 @@ export default defineConfig({
     // production on every request without anyone noticing.
     // workers/** are standalone Cloudflare Workers (e.g. the veyrnox.com/r/*
     // share-link redirect, #2529) — same reasoning as functions/** above.
-    include: ['src/**/*.test.{js,jsx}', 'functions/**/*.test.{js,jsx}', 'workers/**/*.test.{js,jsx}'],
+    // services/** is the Transak static-egress relay (services/transak-proxy),
+    // a single-file Node server — real describe/it suites, same reasoning.
+    include: ['src/**/*.test.{js,jsx}', 'functions/**/*.test.{js,jsx}', 'workers/**/*.test.{js,jsx}', 'services/**/*.test.{js,jsx}'],
     globals: true, // Faster test execution
     // The at-rest Argon2id KDF was raised to 192 MiB / t=3 (SAST M3). The pure-JS
     // WASM build in the Node/jsdom test env runs that KDF much slower than the
