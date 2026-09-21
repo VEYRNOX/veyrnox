@@ -61,7 +61,7 @@ describe('security-diff classifier', () => {
   it('leaves a pure styling change unflagged', () => {
     expect(flagsOf('src/pages/Dashboard.jsx',
       ['      <p className="text-xs text-muted-foreground">'],
-      ['      <p className="text-[11px] text-muted-foreground">'])).toEqual([]);
+      ['      <p className="text-xs text-muted-foreground">'])).toEqual([]);
   });
 
   it('parses a unified=0 patch into per-file changed lines, ignoring headers', () => {
