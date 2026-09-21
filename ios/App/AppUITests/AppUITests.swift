@@ -44,10 +44,17 @@ final class AppUITests: XCTestCase {
         )
     }
 
-    /// Simulator smoke: native provisioning must fail closed when the simulator
-    /// cannot provide a passcode-backed secure store. A real device is required
-    /// to verify successful wallet creation and hardware-gated unlock.
-    func test_simulatorFailsClosedWithoutSecureStore() throws {
+    /// Unsigned-build smoke — NOT a test of the DEVICE_NOT_SECURE
+    /// passcode/biometric gate. `.github/workflows/ios-xcuitest-smoke.yml`
+    /// builds this target with `CODE_SIGNING_ALLOWED=NO`, so the binary has
+    /// no `__entitlements` section and every Keychain write fails with
+    /// errSecMissingEntitlement (-34018) regardless of device state. This
+    /// asserts onboarding fails closed on THAT error. It cannot exercise the
+    /// real gate: Simulator's `.deviceOwnerAuthentication` reports the
+    /// device as secure unconditionally, so `checkBiometry()` never returns
+    /// false here (#2714). Verifying the real gate needs a physical device
+    /// with passcode and biometrics disabled.
+    func test_unsignedBuildKeychainWriteFailsClosed() throws {
         let app = XCUIApplication()
         app.launchArguments += ["--uitest-fresh-install"]
         app.launch()
@@ -118,20 +125,25 @@ final class AppUITests: XCTestCase {
         //    recovered by re-running the ceremony.
         setPinCeremony(app: app, pin: pin)
 
-        // 5. iOS Simulator has no device passcode or enrolled biometrics, so it
-        //    cannot satisfy the native secure-store precondition. The only
-        //    honest simulator outcome is an explicit fail-closed result with no
-        //    usable wallet. Successful provisioning remains real-device-only.
-        //    See assertFailedClosed for what that outcome now looks like on
+        // 5. This build is unsigned (CODE_SIGNING_ALLOWED=NO), so it has no
+        //    __entitlements section and every Keychain write fails with
+        //    errSecMissingEntitlement (-34018) — the same failure regardless
+        //    of Simulator passcode/biometric state, which
+        //    .deviceOwnerAuthentication reports as satisfied unconditionally
+        //    on Simulator anyway (#2714). The only honest outcome here is an
+        //    explicit fail-closed result with no usable wallet; the real
+        //    DEVICE_NOT_SECURE gate is real-device-only (#2714). See
+        //    assertFailedClosed for what that outcome now looks like on
         //    screen, and why it stopped being "the entry tiles came back".
         assertPinFlowLeftPinSetup(app: app)
         assertFailedClosed(app: app, action: "create")
         snap(app: app, name: "create-04-post-fail-closed")
     }
 
-    /// Import follows the same native secure-store rule as new-wallet creation:
-    /// simulators must fail honestly rather than provisioning a usable vault.
-    func test_simulatorImportFailsClosedWithoutSecureStore() throws {
+    /// Import counterpart to test_unsignedBuildKeychainWriteFailsClosed:
+    /// same unsigned-build Keychain-write failure, not the DEVICE_NOT_SECURE
+    /// gate — see that test's doc comment for why (#2714).
+    func test_unsignedBuildImportKeychainWriteFailsClosed() throws {
         let app = XCUIApplication()
         app.launchArguments += ["--uitest-fresh-install"]
         app.launch()
@@ -539,13 +551,18 @@ final class AppUITests: XCTestCase {
     /// fires alongside, which renders in a portal-mounted <li> that XCUITest
     /// cannot see (runs 33524731172 + 33526853634) and must never be polled.
     ///
-    /// Both known fail-closed messages are accepted, because which one the
-    /// simulator produces has never actually been observed:
+    /// Both known fail-closed messages are accepted, though on THIS job only
+    /// one is reachable (#2714):
     ///   - DEVICE_NOT_SECURE — createVault's userMessage when
     ///     checkBiometry() reports deviceIsSecure false
-    ///     (src/wallet-core/keystore/native.js).
+    ///     (src/wallet-core/keystore/native.js). Unreachable on Simulator:
+    ///     `.deviceOwnerAuthentication` reports the device as secure
+    ///     unconditionally there, so checkBiometry() never returns false and
+    ///     this banner can never fire in this job. Kept in the accepted set
+    ///     only so a future signed/device run does not need a new matcher.
     ///   - the generic "nothing was saved" banner — the Play build-5
-    ///     rejection string this file's header exists to catch.
+    ///     rejection string this file's header exists to catch, and the one
+    ///     an unsigned build's Keychain-write failure actually produces.
     /// Both mean the vault was refused, which is the security property under
     /// test; WHICH one appears is a UX question, and asserting a guess would
     /// be a red test dressed up as a finding. A third, unknown message is not

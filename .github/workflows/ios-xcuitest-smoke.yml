@@ -1,14 +1,21 @@
 name: iOS XCUITest Smoke
 
 # Machine-driven iOS crash catcher. macOS runner boots an iPhone simulator,
-# builds the App scheme, and runs a simulator-only fail-closed smoke. The test
-# walks fresh install → New wallet → PIN and verifies that an iOS Simulator,
-# which has no passcode-backed secure store, never creates a wallet. Successful
-# native provisioning is real-device-only and is not claimed by this workflow.
+# builds the App scheme UNSIGNED (CODE_SIGNING_ALLOWED=NO below), and runs a
+# simulator-only fail-closed smoke. The test walks fresh install → New
+# wallet → PIN and verifies that an unsigned build — which has no
+# __entitlements section, so every Keychain write fails with
+# errSecMissingEntitlement (-34018) — never creates a wallet. This is NOT a
+# test of the DEVICE_NOT_SECURE passcode/biometric gate: Simulator's
+# `.deviceOwnerAuthentication` reports the device as secure unconditionally,
+# so that gate cannot be exercised here at all (#2714). Successful native
+# provisioning, and the real passcode/biometric gate, are real-device-only
+# and are not claimed by this workflow.
 #
 # HONESTY SCOPE: simulator-only. Real-device-only failure modes (StrongBox,
-# Secure Enclave attestation, RASP dyld scans) will not fire here. Crashes
-# do NOT populate ASC / Organizer — those are real-install-only telemetry.
+# Secure Enclave attestation, RASP dyld scans, and the DEVICE_NOT_SECURE
+# gate itself) will not fire here. Crashes do NOT populate ASC / Organizer —
+# those are real-install-only telemetry.
 
 on:
   push:
@@ -258,8 +265,8 @@ jobs:
             -project App.xcodeproj \
             -scheme App \
             -destination "$destination" \
-            -only-testing:AppUITests/AppUITests/test_simulatorFailsClosedWithoutSecureStore \
-            -only-testing:AppUITests/AppUITests/test_simulatorImportFailsClosedWithoutSecureStore \
+            -only-testing:AppUITests/AppUITests/test_unsignedBuildKeychainWriteFailsClosed \
+            -only-testing:AppUITests/AppUITests/test_unsignedBuildImportKeychainWriteFailsClosed \
             -resultBundlePath TestResults.xcresult \
             -clonedSourcePackagesDirPath SourcePackages \
             -derivedDataPath DerivedData \
