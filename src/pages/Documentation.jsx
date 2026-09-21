@@ -121,13 +121,16 @@ const workflows = [
   },
 ];
 
-// Both VERIFIED and BUILT render as "Live" — the on-chain evidence gate in
-// featureCatalogue.js is preserved (only STATUS.VERIFIED can be reached via a
-// txid entry in docs/verified-evidence.json) but the badge no longer surfaces
-// the distinction to users.
+// SET-03: VERIFIED and BUILT used to both render "LIVE" — a code-complete,
+// unverified feature read identically to one with a confirmed on-chain
+// transaction. That contradicts CLAUDE.md's "Verify, don't assert" rule and
+// the app's own /safety-plus disclosure ("BUILT and unit-tested; on-device
+// ... verification is still pending"). BUILT now gets its own label; the
+// evidence gate itself (only STATUS.VERIFIED can be reached via a txid entry
+// in docs/verified-evidence.json) is unchanged.
 const STATUS_META = {
-  [STATUS.VERIFIED]: { label: "LIVE",     className: "bg-success/10 text-success border-success/20" },
-  [STATUS.BUILT]:    { label: "LIVE",     className: "bg-success/10 text-success border-success/20" },
+  [STATUS.VERIFIED]: { label: "Live",     className: "bg-success/10 text-success border-success/20" },
+  [STATUS.BUILT]:    { label: "Built",    className: "bg-warning/10 text-warning border-warning/20" },
   [STATUS.ROADMAP]:  { label: "Roadmap",  className: "bg-muted/50 text-muted-foreground border-border" },
 };
 
@@ -253,12 +256,14 @@ export default function Documentation() {
             {totalFeatures} features across {features.length} categories. Custodial features (swaps, fiat off-ramp, KYC) are not built by design; the fiat on-ramp is a hand-off to a licensed third party.
           </CardDescription>
           <div className="flex flex-wrap gap-2 pt-2">
-            <Badge variant="outline" className={STATUS_META[STATUS.BUILT].className}>{verifiedCount + builtCount} Live</Badge>
+            <Badge variant="outline" className={STATUS_META[STATUS.VERIFIED].className}>{verifiedCount} Live</Badge>
+            {builtCount > 0 && <Badge variant="outline" className={STATUS_META[STATUS.BUILT].className}>{builtCount} Built</Badge>}
             {roadmapCount > 0 && <Badge variant="outline" className={STATUS_META[STATUS.ROADMAP].className}>{roadmapCount} Roadmap</Badge>}
           </div>
           <p className="text-xs text-muted-foreground pt-2 max-w-3xl">
-            <b>Live</b> means the code is shipped and working today. <b>Roadmap</b> means planned for
-            later. These labels describe what is built — they are not an independent security review.
+            <b>Live</b> means a real on-chain transaction has confirmed it works. <b>Built</b> means
+            the code is shipped and unit-tested; on-device verification is still pending. <b>Roadmap</b> means
+            planned for later. These labels describe what is built — they are not an independent security review.
           </p>
         </CardHeader>
         <CardContent>

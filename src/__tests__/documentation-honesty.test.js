@@ -107,26 +107,25 @@ describe('Documentation page — restored honesty caveats (S-1)', () => {
     expect(page).not.toContain('your balances, addresses, and seed phrase are never sent');
   });
 
-  // The page-facing three states (verified | built | roadmap) collapse to a
-  // two-state badge (Live | Roadmap) on 2026-08-25 — the underlying evidence
-  // gate in featureCatalogue.js is preserved but the badge no longer surfaces
-  // the distinction to users. The load-bearing honesty half is unchanged and
-  // still pinned: the page must say these labels are not an independent
-  // security review.
-  it('status legend explains the Live label and disclaims independent review', () => {
+  // SET-03: VERIFIED and BUILT used to both render "LIVE" (2026-08-25), so a
+  // code-complete-but-unverified feature read identically to an on-chain
+  // one — contradicting CLAUDE.md's "Verify, don't assert" rule. BUILT now
+  // gets its own "Built" label; the evidence gate in featureCatalogue.js
+  // (STATUS.VERIFIED only resolves via a real txid in
+  // docs/verified-evidence.json) is unchanged, and the distinction is once
+  // again surfaced on screen.
+  it('status legend explains the Live and Built labels and disclaims independent review', () => {
     expect(page).toContain('<b>Live</b>');
-    expect(page).toContain('the code is shipped and working');
+    expect(page).toContain('<b>Built</b>');
+    expect(page).toContain('a real on-chain transaction has confirmed it works');
+    expect(page).toContain('on-device verification is still pending');
     expect(page).toContain('not an independent security review');
   });
 
-  it('legend no longer surfaces the verified-vs-built distinction to users', () => {
-    // The two-state legend collapsed the "explorer-confirmed" and "code review
-    // can never turn a feature green" lines with the badge unification. The
-    // gate itself still exists in featureCatalogue.js (STATUS.VERIFIED only
-    // resolves when a real txid matches docs/verified-evidence.json), it just
-    // no longer shows up in the on-screen label.
-    expect(page).not.toContain('explorer-confirmed transaction proves it');
-    expect(page).not.toContain('can never turn a feature green');
+  it('Live and Built are rendered as two distinct badge labels, not the same one', () => {
+    const src = read('pages/Documentation.jsx');
+    expect(src).toMatch(/\[STATUS\.VERIFIED\]:\s*\{\s*label:\s*"Live"/);
+    expect(src).toMatch(/\[STATUS\.BUILT\]:\s*\{\s*label:\s*"Built"/);
   });
 });
 
