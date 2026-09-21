@@ -2361,6 +2361,22 @@ and one of them (this file's own author) did it twice in one afternoon.
   other agents' PR branches and merges PRs.** This is the mechanism behind
   `.claude/scheduled-tasks/daily-veyrnox-branch-review/SKILL.md`'s "PR #1789 was merged by
   another actor after its auto-merge had been explicitly disabled".
+- **It arms auto-merge as a MERGE COMMIT on every open PR, including ones you are
+  watching.** When the owner types "Fix all open PRs to merge" or "merge all open PRs
+  when green" into that thread, it runs
+  `gh pr merge <n> --repo VEYRNOX/veyrnox --auto --merge --delete-branch` on each open
+  PR, and `gh run rerun <id> --failed` on red ones. Verified 2026-09-21 by matching
+  each PR's timeline `auto_merge_enabled` event to the rollout, 1–3 s apart every time:
+  #2429 (2026-09-07), #2490 (09-10), #2679 (09-20), #2687 and #2688 (09-21).
+  **This was previously misread as a `gh` bug** ("`--squash --auto` sometimes arms as
+  MERGE, and re-running it is a no-op"). It was not: the PR was already armed by Codex,
+  so the Claude session's `--squash --auto` changed nothing. The repo allows all three
+  merge methods, so the result lands silently as a two-parent merge commit on `main`,
+  which cannot be rewritten afterwards. To merge a PR yourself, merge explicitly once
+  green — `gh pr merge <n> --squash --match-head-commit <sha>` — and if you watch or
+  arm one, re-read `autoMergeRequest.mergeMethod` inside the loop, because Codex can arm
+  it mid-watch. Repair while checks are still pending with `--disable-auto` then
+  `--auto --squash`; on an already-green PR, arming merges instantly.
 - **A PR's head can change under you, and `gh pr diff` will not warn you.** #2470 was
   force-pushed from a duplicate fixture change to a test-only change between one session
   reading it and another; both then described it correctly for their own snapshot and
