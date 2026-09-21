@@ -7,7 +7,7 @@ vi.mock('@/lib/TierProvider', () => ({
   useTier: vi.fn(() => ({ currentTier: 'free' })),
 }));
 
-import { shouldShowPaywallNudge, DAY_THRESHOLD } from '@/components/PaywallNudge';
+import { shouldShowPaywallNudge, DAY_THRESHOLD, NUDGE_BODY } from '@/components/PaywallNudge';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 const SESSION_COUNT_KEY = 'veyrnox-session-day-count';
@@ -72,5 +72,15 @@ describe('shouldShowPaywallNudge', () => {
     vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
     localStorage.setItem(SESSION_COUNT_KEY, '5');
     expect(shouldShowPaywallNudge('free')).toBe(false);
+  });
+});
+
+// I4: the nudge must not sell controls every tier already has. KEK and RASP
+// are ungated, spend limits work on Free, and "a stolen device can't access
+// your keys" is an absolute claim with the audit outstanding.
+describe('NUDGE_BODY', () => {
+  it('names only paid capabilities, and makes no absolute claim', () => {
+    expect(NUDGE_BODY).not.toMatch(/hardware|tamper|spend(ing)? limit|can.?t (access|reach)/i);
+    expect(NUDGE_BODY).toMatch(/duress/i);
   });
 });

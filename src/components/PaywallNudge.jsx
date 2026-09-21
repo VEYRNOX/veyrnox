@@ -50,6 +50,15 @@ const NUDGE_DISMISSED_KEY = 'veyrnox-paywall-nudge-dismissed';
 //   group by days order by days;
 export const DAY_THRESHOLD = 1;
 
+// I4: name ONLY capabilities Safety Plus actually gates (SAFETY_PLUS_ROUTES in
+// lib/safetyPlusRoutes.js). This read "Safety Plus adds hardware-bound
+// encryption, tamper detection, and spend limits — so even a stolen device
+// can't access your keys": KEK and RASP are on every tier, spend limits work on
+// Free, and the closing line was an absolute guarantee with the independent
+// audit outstanding. Same fix as WinPaywall's Free upsell; keep the two aligned.
+export const NUDGE_BODY =
+  'You’ve been using Veyrnox for a few days. Safety Plus adds a duress PIN that opens a decoy wallet, hidden wallets, panic wipe, and an encrypted backup you can keep off this device.';
+
 // Called once per SESSION_START. No-op in deniability/demo (I3 — must not
 // write any state that could distinguish a real session from a decoy one).
 export function incrementSessionDayCount() {
@@ -180,11 +189,7 @@ export default function PaywallNudge() {
         <div className="flex justify-center">
           <Vigil state="asleep" size={84} />
         </div>
-        <p className="text-sm text-muted-foreground">
-          You&rsquo;ve been using Veyrnox for a few days. Safety Plus adds hardware-bound
-          encryption, tamper detection, and spend limits — so even a stolen device
-          can&rsquo;t access your keys.
-        </p>
+        <p className="text-sm text-muted-foreground">{NUDGE_BODY}</p>
         <div className="flex gap-3">
           <Button onClick={handleUpgrade} className="flex-1">See plans</Button>
           <Button onClick={handleDismiss} variant="outline" className="flex-1">Not now</Button>
