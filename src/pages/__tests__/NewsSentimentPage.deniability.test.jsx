@@ -30,11 +30,19 @@ vi.mock('@/api/base44Client', () => ({
 vi.mock('@/components/CryptoNewsFeed', () => ({ default: () => null }));
 
 import NewsSentimentPage from '@/pages/NewsSentimentPage.jsx';
+import { base44 } from '@/api/base44Client';
 
-function renderPage() {
+const REAL_ROW = {
+  asset: 'BTC', headline: 'REAL-USER-SAVED-HEADLINE', source: 'x',
+  sentiment: 'bullish', score: 0.5, published_at: '2026-09-20T00:00:00Z', summary: 's',
+};
+
+function renderPage(seed) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+  // A cache warmed by the primary session survives a flip to decoy.
+  if (seed) qc.setQueryData(['news-sentiment'], seed);
   return render(
     <QueryClientProvider client={qc}>
       <NewsSentimentPage />
@@ -56,5 +64,36 @@ describe('NewsSentimentPage — I3 UI suspender', () => {
     setDeniabilitySession(false);
     renderPage();
     expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument();
+  });
+});
+
+// K-2: the saved rows are the real user's refresh history in the shared
+// entity store. A deniable session must not read them, and must not render a
+// copy left in the query cache by the primary session.
+describe('NewsSentimentPage — I3 shared-store read gate', () => {
+  beforeEach(() => {
+    setDeniabilitySession(false);
+    vi.mocked(base44.entities.NewsSentiment.list).mockClear();
+  });
+  afterEach(() => setDeniabilitySession(false));
+
+  it('does not read NewsSentiment in a deniability session', async () => {
+    setDeniabilitySession(true);
+    renderPage();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(base44.entities.NewsSentiment.list).not.toHaveBeenCalled();
+  });
+
+  it('does not render cached real-user rows in a deniability session', () => {
+    setDeniabilitySession(true);
+    renderPage([REAL_ROW]);
+    expect(screen.queryByText('REAL-USER-SAVED-HEADLINE')).not.toBeInTheDocument();
+  });
+
+  it('reads and renders the rows in a real session', async () => {
+    vi.mocked(base44.entities.NewsSentiment.list).mockResolvedValueOnce([REAL_ROW]);
+    renderPage();
+    expect(await screen.findByText('REAL-USER-SAVED-HEADLINE')).toBeInTheDocument();
+    expect(base44.entities.NewsSentiment.list).toHaveBeenCalled();
   });
 });
