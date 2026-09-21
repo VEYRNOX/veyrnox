@@ -51,6 +51,15 @@ vi.mock('@/components/backup/RestoreFromFile', () => ({
   default: () => <div data-testid="restore-from-file-stub" />,
 }));
 
+// The export click always performs a fresh, fail-closed RASP probe. Keep the
+// page-orchestration suite deterministic; the probe's allow/block behaviour
+// is covered by PersonalBackup.freshRasp.test.jsx.
+vi.mock('@/lib/getFreshLocalRaspArtifact', () => ({
+  getFreshLocalRaspArtifact: vi.fn(async () => ({
+    tier: 'ALLOW', sentence: null, blockedActions: [], requiresBiometric: false,
+  })),
+}));
+
 const toastError = vi.fn();
 vi.mock('@/lib/toast', () => ({ toast: { error: (...a) => toastError(...a), success: vi.fn(), warning: vi.fn() } }));
 
@@ -82,11 +91,12 @@ async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus', sh
     isHardwareKekEnrolled: vi.fn(async () => shardExportReady),
   }));
   if (mockBundleWrap) {
-    const recoveryShare = await import('@/wallet-core/recoveryShare');
     // The page test verifies orchestration; envelope cryptography is covered
     // independently in wallet-core/recoveryShare.bundle-wrap.test.js.
-    vi.spyOn(recoveryShare, 'wrapBundleWithPassphrase')
-      .mockResolvedValue('{"test":"wrapped-bundle"}');
+    vi.doMock('@/wallet-core/recoveryShare', async (importOriginal) => ({
+      ...(await importOriginal()),
+      wrapBundleWithPassphrase: vi.fn(async () => '{"test":"wrapped-bundle"}'),
+    }));
   }
   // Tier is now consumed inside PersonalBackup — the shard tab renders the
   // export panel for any tier with Safety Plus access, otherwise an upsell.
