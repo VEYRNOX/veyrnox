@@ -3231,6 +3231,20 @@ increment row is the evidence. Same correction already recorded for Android.
   So a passing run says the mechanism works when nothing goes wrong. #2640 means
   anything going wrong costs the referral without a trace.
 
+  **UPDATE 2026-09-21 — both defects are FIXED in code, not device-verified.** They
+  were fixed by `86ebe38a` (PR #2644, merged 2026-09-19) — the same day this entry
+  was written — and the two bullets above still read as open. Read from `main`, not
+  assumed:
+  - **#2639:** `captureReferralFromUrl()` now returns `'already_pending'` and leaves
+    the stored code alone when a *different* code is already pending. The first
+    link wins; a later one no longer overwrites it (`src/lib/referralAttribution.js`).
+  - **#2640:** the unlock-time redemption clears the pending code only after
+    `redeemCode()` succeeds, or when the server rejects the code (400/404, with an
+    error toast). A network or 5xx failure keeps the code for the next primary
+    unlock and warns the user (`src/lib/WalletProvider.jsx`).
+  Both issues were still OPEN on GitHub on 2026-09-21. The fix is BUILT and
+  unit-tested; no device run has exercised either failure path yet.
+
 ### Store copy is now inaccurate for iOS
 
 `store-metadata/en.json` `apple.whatsNew` says *"Tap an invite link before
