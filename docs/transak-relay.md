@@ -7,7 +7,11 @@ session URL from `/api/buy/session`. The relay answers `401` to requests
 without the correct `x-proxy-secret`.
 
 **Not verified:**
-- widget launch and quote display on web and native
+- widget launch and quote display on **web**. Native Buy was confirmed on iOS
+  and Android by owner test on 2026-09-21; no artifact was captured. An
+  automated web check from a UK machine is stopped by the deliberate UK block
+  in `src/lib/buy/useBuyEnabled.js` (`Europe/London` timezone or a GB locale)
+  before it reaches Transak.
 - bounded 401 handling on the relay path
 - Transak's written allowlist confirmation
 

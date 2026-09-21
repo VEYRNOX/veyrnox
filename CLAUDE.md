@@ -251,9 +251,12 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
     `200 {"url":"https://global.transak.com?apiKey=…&sessionId=…"}` from
     `/api/buy/session`. The relay VM was observed opening the outbound Transak
     connection during a probe, and it answers `401` to requests with no secret
-    or a wrong one. **Not verified at closure:** widget launch and quote on web
-    and native, bounded 401 handling on the relay path, and Transak's written
-    allowlist confirmation. The relay also has no rate limit of its own, no
+    or a wrong one. **Native Buy works on iOS and Android** (owner test,
+    2026-09-21, after closure; no artifact captured). **Not verified:** web
+    Buy — an automated check from a UK machine hits the deliberate UK block in
+    `src/lib/buy/useBuyEnabled.js`, which keys off `Europe/London` / a GB
+    locale, and never reaches Transak; bounded 401 handling on the relay path;
+    Transak's written allowlist confirmation. The relay also has no rate limit of its own, no
     per-request logs, and no monitoring beyond `/healthz` — accepted residuals,
     recorded on #2655.
     **Runbook: `docs/transak-relay.md`** — activation, secrets, rotation,
