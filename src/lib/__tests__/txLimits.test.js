@@ -11,6 +11,7 @@ import {
   isToday,
   sumSentTodayUSD,
   evaluateSendAgainstLimits,
+  hasEnabledSpendLimit,
 } from '../txLimits';
 
 const RATES = { ETH: 3200, USDC: 1, BTC: 68000 };
@@ -95,5 +96,28 @@ describe('evaluateSendAgainstLimits — daily cap (the previously-unenforced gap
     const off = [{ enabled: false, currency: 'ALL', per_transaction_limit: null, daily_limit: 1 }];
     const r = evaluateSendAgainstLimits({ amount: 1, currency: 'ETH', usdRates: RATES, history: HISTORY, limits: off, now: NOW });
     expect(r.blocked).toBe(false);
+  });
+});
+
+// hasEnabledSpendLimit — the precondition Security Center renders Theft
+// Protection's send-side status from, and the same predicate the WalletConnect
+// signer uses to decide whether an unvalued token must be rejected. With no
+// enabled cap the send-side TP leg is inert, so a false positive here would
+// make the UI promise enforcement that never fires.
+describe('hasEnabledSpendLimit', () => {
+  it('is false for no limits, a disabled limit, or an enabled limit with no cap value', () => {
+    expect(hasEnabledSpendLimit([])).toBe(false);
+    expect(hasEnabledSpendLimit(null)).toBe(false);
+    expect(hasEnabledSpendLimit([{ enabled: false, per_transaction_limit: 100, daily_limit: 500 }])).toBe(false);
+    expect(hasEnabledSpendLimit([{ enabled: true, per_transaction_limit: null, daily_limit: null }])).toBe(false);
+  });
+
+  it('is true when an enabled limit carries either cap', () => {
+    expect(hasEnabledSpendLimit([{ enabled: true, per_transaction_limit: 100, daily_limit: null }])).toBe(true);
+    expect(hasEnabledSpendLimit([{ enabled: true, per_transaction_limit: null, daily_limit: 500 }])).toBe(true);
+    expect(hasEnabledSpendLimit([
+      { enabled: false, per_transaction_limit: 1 },
+      { enabled: true, daily_limit: 500 },
+    ])).toBe(true);
   });
 });

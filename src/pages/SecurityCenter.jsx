@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import { useActionGuard } from "@/components/security/useActionGuard";
-import { Monitor, Trash2, Plus, LogOut } from "lucide-react";
+import { Monitor, Trash2, Plus, LogOut, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/lib/toast";
 import { formatDistanceToNow } from "date-fns";
-import { sumSentTodayUSD } from "@/lib/txLimits";
+import { sumSentTodayUSD, hasEnabledSpendLimit } from "@/lib/txLimits";
+import { isTheftProtectionEnabled } from "@/lib/theftProtection";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 import { getSessionToken, ensureSessionToken } from "@/lib/sessionRevocation";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
@@ -53,12 +54,46 @@ export default function SecurityCenter() {
   const deniable = isDecoy || isHidden;
   // window.confirm broke out of the near-black UI with an OS dialog while every
   // other destructive confirmation in this surface uses the app's own Dialog.
+  // Deleting a limit is destructive and was a single unconfirmed click, while
+  // sign-out on this same page already routes through a Dialog. Holding the ROW
+  // (not just the id) lets the prompt name the cap being removed — "Delete" on
+  // its own does not tell you which of several rows you are about to lose.
+  const [pendingDeleteLimit, setPendingDeleteLimit] = useState(/** @type {any} */ (null));
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [pendingSignOutId, setPendingSignOutId] = useState(/** @type {any} */ (null));
   const [showAddLimit, setShowAddLimit] = useState(false);
+  // null = the dialog is creating; an id = it is editing that row in place.
+  // Without this the ONLY way to change a cap was delete + re-add, and adding a
+  // BIGGER limit alongside the old one does not raise anything —
+  // evaluateSendAgainstLimits blocks if ANY matching limit is breached, so the
+  // smaller row silently keeps winning. Editing removes both traps.
+  const [editingId, setEditingId] = useState(/** @type {any} */ (null));
+  const theftProtectionOn = isTheftProtectionEnabled();
   const [limitCurrency, setLimitCurrency] = useState("ALL");
   const [dailyLimit, setDailyLimit] = useState("");
   const [perTxLimit, setPerTxLimit] = useState("");
+
+  /** Render a stored number back into the user's own locale so the value the
+   *  field shows is the value they would have typed — and so parseLocaleNumber
+   *  reads it back identically. String(1500.5) would render "1500.5" to a de-DE
+   *  user, who writes that number "1500,5"; `useGrouping: false` keeps it free
+   *  of separators that the grouped-form parser would then have to undo. */
+  const forEditing = (n) =>
+    n == null ? "" : new Intl.NumberFormat(resolveLocale(), { useGrouping: false, maximumFractionDigits: 20 }).format(n);
+
+  const openCreateLimit = () => {
+    setEditingId(null);
+    setLimitCurrency("ALL"); setDailyLimit(""); setPerTxLimit("");
+    setShowAddLimit(true);
+  };
+
+  const openEditLimit = (/** @type {any} */ l) => {
+    setEditingId(l.id);
+    setLimitCurrency(l.currency || "ALL");
+    setDailyLimit(forEditing(l.daily_limit));
+    setPerTxLimit(forEditing(l.per_transaction_limit));
+    setShowAddLimit(true);
+  };
 
   // Two-factor (Action Password / passkey) now lives in Security Settings →
   // "Two-factor at critical actions". The Security Center is alerts/sessions/limits.
@@ -141,18 +176,25 @@ export default function SecurityCenter() {
       if (perTxLimit && (!Number.isFinite(perTx) || perTx <= 0)) {
         throw new Error("Per-transaction limit must be a positive number");
       }
-      return base44.entities.TransactionLimit.create({
+      const values = {
         currency: limitCurrency,
         daily_limit: daily,
         per_transaction_limit: perTx,
-        enabled: true,
-      });
+      };
+      // Editing writes the same validated values onto the existing row rather
+      // than appending a second one. `enabled` is deliberately NOT sent on the
+      // edit path — that switch is the user's own separate decision and an edit
+      // must not silently re-arm a limit they turned off.
+      return editingId
+        ? base44.entities.TransactionLimit.update(editingId, values)
+        : base44.entities.TransactionLimit.create({ ...values, enabled: true });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tx-limits"] });
       setShowAddLimit(false);
       setDailyLimit(""); setPerTxLimit(""); setLimitCurrency("ALL");
-      toast.success("Limit set");
+      toast.success(editingId ? "Limit updated" : "Limit set");
+      setEditingId(null);
     },
     onError: (/** @type {any} */ err) => {
       toast.error(err?.message || "Couldn't save limit — enter a positive number.");
@@ -258,12 +300,25 @@ export default function SecurityCenter() {
         <TabsContent value="limits" className="mt-4 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">Cap what you can send per day or per transaction.</p>
-            <Button size="sm" onClick={() => setShowAddLimit(true)}>
+            <Button size="sm" onClick={openCreateLimit}>
               <Plus className="h-3.5 w-3.5 me-1" /> Add Limit
             </Button>
           </div>
           {errorLimits && (
             <p className="text-xs text-caution">Couldn't load limits.</p>
+          )}
+          {/* Theft Protection's send-side leg is INERT without an enabled cap:
+              sendGate's THEFT_PROTECTION_REQUIRED branch only fires when
+              evaluateSendAgainstLimits() blocks. State which of the two is
+              actually on rather than promising enforcement the user has not
+              configured (I4). Reads localStorage synchronously — cheap, and
+              the whole page is already primary-session only. */}
+          {theftProtectionOn && !errorLimits && (
+            <p className="text-xs text-muted-foreground" data-testid="theft-protection-limit-link">
+              {hasEnabledSpendLimit(limits)
+                ? "Theft Protection is on: a send over these limits needs its biometric check before it can sign."
+                : "Theft Protection is on, but with no limit enabled below it only applies when you unlock. Add or enable a limit to require its biometric check on an over-limit send."}
+            </p>
           )}
           {errorHistory && (
             <p className="text-xs text-caution">Couldn't load history — today's totals may be off.</p>
@@ -274,7 +329,7 @@ export default function SecurityCenter() {
               title="No limits configured"
               description="A spend limit makes a transaction above it ask for a second confirmation. It is a check, not a cap — it never blocks a transaction you approve."
               action={
-                <Button size="sm" onClick={() => setShowAddLimit(true)}>
+                <Button size="sm" onClick={openCreateLimit}>
                   <Plus className="h-3.5 w-3.5 me-1" /> Add a limit
                 </Button>}
             />
@@ -314,7 +369,10 @@ export default function SecurityCenter() {
                   checked={l.enabled}
                   onCheckedChange={(v) => toggleLimit.mutate({ id: l.id, enabled: v })}
                 />
-                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" aria-label={`Delete ${l.currency} limit`} onClick={() => deleteLimit.mutate(l.id)}>
+                <Button variant="ghost" size="icon" aria-label={`Edit ${l.currency} limit`} onClick={() => openEditLimit(l)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" aria-label={`Delete ${l.currency} limit`} onClick={() => setPendingDeleteLimit(l)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -327,9 +385,9 @@ export default function SecurityCenter() {
       </Tabs>
 
       {/* Add Limit Dialog */}
-      <Dialog open={showAddLimit} onOpenChange={setShowAddLimit}>
+      <Dialog open={showAddLimit} onOpenChange={(o) => { setShowAddLimit(o); if (!o) setEditingId(null); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Add Transaction Limit</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? "Edit Transaction Limit" : "Add Transaction Limit"}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
               <Label id="limit-currency-label">Currency</Label>
@@ -350,18 +408,65 @@ export default function SecurityCenter() {
                   input entirely. text preserves the raw string so
                   parseLocaleNumber (in the save handler) can canonicalise it
                   and refuse anything unrecognised. */}
-              <Input id="security-daily-limit" type="text" inputMode="decimal" value={dailyLimit} onChange={e => setDailyLimit(e.target.value)} placeholder="e.g. 1000" className="mt-1.5" />
+              {/* The $ is a PERSISTENT affordance, not part of the value: these
+                  caps are USD-denominated (lib/txLimits.js converts with
+                  USD_RATES), and a bare number field reads as "amount of the
+                  selected currency". It stays visible while typing rather than
+                  being prefixed into the string, so parseLocaleNumber still
+                  sees exactly what the user typed and can refuse anything
+                  ambiguous. Logical properties (start/ps) so it flips in RTL. */}
+              <div className="relative mt-1.5">
+                <span aria-hidden="true" className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input id="security-daily-limit" type="text" inputMode="decimal" value={dailyLimit} onChange={e => setDailyLimit(e.target.value)} placeholder="1000" className="ps-7" />
+              </div>
             </div>
             <div>
               <Label htmlFor="security-tx-limit">Per Transaction Limit (USD)</Label>
-              <Input id="security-tx-limit" type="text" inputMode="decimal" value={perTxLimit} onChange={e => setPerTxLimit(e.target.value)} placeholder="e.g. 500" className="mt-1.5" />
+              <div className="relative mt-1.5">
+                <span aria-hidden="true" className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input id="security-tx-limit" type="text" inputMode="decimal" value={perTxLimit} onChange={e => setPerTxLimit(e.target.value)} placeholder="500" className="ps-7" />
+              </div>
             </div>
             <Button className="w-full" onClick={() => addLimit.mutate()} disabled={addLimit.isPending || (!dailyLimit && !perTxLimit)}>
-              Save Limit
+              {editingId ? "Save Changes" : "Save Limit"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+      {/* Delete-limit confirmation. Same shape as the sign-out prompt below —
+          an in-app Dialog, never window.confirm, which breaks out of the
+          near-black UI with an OS sheet. */}
+      <Dialog open={!!pendingDeleteLimit} onOpenChange={(o) => { if (!o) setPendingDeleteLimit(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Delete this spending limit?</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {pendingDeleteLimit && (() => {
+                const caps = [
+                  pendingDeleteLimit.daily_limit != null && `$${pendingDeleteLimit.daily_limit.toLocaleString()} per day`,
+                  pendingDeleteLimit.per_transaction_limit != null && `$${pendingDeleteLimit.per_transaction_limit.toLocaleString()} per transaction`,
+                ].filter(Boolean).join(" and ");
+                return `Sends will no longer be checked against ${caps || "this limit"}${pendingDeleteLimit.currency && pendingDeleteLimit.currency !== "ALL" ? ` for ${pendingDeleteLimit.currency}` : ""}. To change the amount instead, use Edit.`;
+              })()}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={() => setPendingDeleteLimit(null)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                className="flex-1 gap-1.5"
+                onClick={() => {
+                  const id = pendingDeleteLimit?.id;
+                  setPendingDeleteLimit(null);
+                  if (id) deleteLimit.mutate(id);
+                }}
+              >
+                <Trash2 className="h-4 w-4" /> Delete
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Sign-out confirmation — replaces window.confirm so the coercion-resistance
           surface keeps one visual language. The guard still runs afterwards; this
           dialog adds friction, it does not replace the gate. */}

@@ -82,7 +82,7 @@ import {
 import { DEMO } from '@/api/demoClient';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { trackEvent, EVENT } from '@/api/trackEvent';
-import { evaluateSendAgainstLimits } from '@/lib/txLimits';
+import { evaluateSendAgainstLimits, hasEnabledSpendLimit } from '@/lib/txLimits';
 import {
   isTheftProtectionEnabled,
   runTheftProtectionGate,
@@ -333,13 +333,6 @@ export function resolveWcSpendAmount(txParams, net) {
     amount = Number(BigInt(txParams.value)) / 1e18;
   }
   return { valued: true, amount, currency: net?.symbol };
-}
-
-/** True if the user has ANY enabled cap that a send could breach. Pure. */
-function hasEnabledSpendLimit(limits) {
-  return Array.isArray(limits) && limits.some(
-    (l) => l && l.enabled && (l.per_transaction_limit != null || l.daily_limit != null),
-  );
 }
 
 // RASP-A3 (2026-07-05 internal audit, MEDIUM): the WalletConnect signing path has

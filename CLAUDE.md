@@ -19,24 +19,34 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
 
 - **Supabase project inventory and scope (re-confirm before every live audit).**
   Enumerate projects from the Supabase API; never infer the set from names or a
-  previous audit. The organisation currently has three active projects:
+  previous audit. The organisation has FOUR active projects as of 2026-09-20:
   `jwstkrtslotnjyerzzsi` (Veyrnox wallet production, eu-central-1),
-  `nszlbcmcysftwyudthjz` (Veyrnox wallet staging, eu-central-1), and
-  `yrqzwqywxfesmbvhzjgj` (the separate `veyrnox.ai` service, us-east-2).
-  Wallet parity audits and wallet SQL remediation target only the first two.
+  `nszlbcmcysftwyudthjz` (Veyrnox wallet staging, eu-central-1),
+  `yrqzwqywxfesmbvhzjgj` (the separate `veyrnox.ai` service, us-east-2), and
+  `xdxdzmsztyzbnzeforxx` (`veyrnox-ai-production-eu`, eu-central-1, created
+  2026-09-12). **This paragraph said THREE until 2026-09-20, eight days after
+  the fourth appeared** — which is the rule's own point turned on its author:
+  a written inventory decays the moment someone creates a project, and only
+  the API knows. Wallet parity audits and wallet SQL remediation target only
+  the first two.
   The `veyrnox.ai` project is not a disposable staging environment and must
   never receive wallet DDL, grants, secrets, or migrations; audit it separately
   under its own service ownership.
-  **`yrqzwqywxfesmbvhzjgj` is still NAMED `veyrnox-staging` in the Supabase
-  API, and that name is a misnomer.** It was created at
+  **`yrqzwqywxfesmbvhzjgj` WAS named `veyrnox-staging`; it now reads
+  `veyrnox.ai staging` (verified 2026-09-20), so the trap below is softened
+  but NOT gone — the word "staging" is still in the name, and there are still
+  two such projects.** It was created at
   `2026-07-29T05:29:24Z`, ten minutes before the real wallet staging project
   `nszlbcmcysftwyudthjz` (`05:39:23Z`), and the name is left over from that
   abandoned first attempt; the project was later repurposed as the veyrnox.ai
   backend and is live. So enumerating from the API — which this rule requires —
   returns TWO projects whose names contain "staging", and the second one is not
-  one. This is the exact trap behind #2505/#2506, and renaming the project in
-  Supabase is the only thing that disarms it; until an owner does that, match on
-  the ref and treat every name in this paragraph as a label, not evidence.
+  one. This is the exact trap behind #2505/#2506. The rename asked for here has
+  happened — the `.ai` now distinguishes them at a glance — but match on the ref
+  regardless and treat every name in this paragraph as a label, not evidence.
+  The fourth project makes that sharper, not weaker: `veyrnox-ai-production-eu`
+  sits in eu-central-1 alongside both wallet projects, so region is not a
+  discriminator either.
 
 - **DO NOT TOUCH THE CORE INFRA WIRING — locked 2026-08-11.** The chain
   {Client → Supabase Edge Function → Cloudflare Worker → Workers AI / RevenueCat}
@@ -71,10 +81,32 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
     older shape. If `TIP_CHAT_BASE_URL` is ever unset, chat silently reverts
     to Turnstile-blocked. `verify_jwt: false` on the function (the header
     comment above explains why — CORS OPTIONS preflight carries no auth).
-    **2026-09-20 — THAT REDEPLOY ALSO DROPPED THE ENTITLEMENT GATE, AND
-    PROD HAS BEEN UNGATED EVER SINCE. Measured, not inferred; tracked as
-    [#2659](https://github.com/VEYRNOX/veyrnox/issues/2659); prod
-    deliberately left as is by owner decision.** `main` requires
+    **2026-09-20, LATER THE SAME DAY — PROD IS NOW GATED. The paragraph
+    below is HISTORY; read it for the mechanism, not the state.** `tip-chat`
+    was deployed to prod from `origin/main` at `fd3078fc` via the Supabase
+    CLI, and the deployed source was downloaded and diffed against
+    `supabase/functions/tip-chat/index.ts` — byte-identical, sha256
+    `9afc559c…`. Verified live on prod, all three cases: no `X-Rc-User-Id`
+    and a bogus id both return `403 entitlement_required`, and a genuinely
+    entitled RevenueCat customer returns `200 text/event-stream` with real
+    `@cf/meta/llama-3.1-8b-fast-v2` tokens. `REVENUECAT_PROJECT_ID` is set on
+    both projects, which the v2 lookup requires and without which the gate
+    denies everyone. Advisor online chat is therefore SUBSCRIBER-ONLY on prod
+    now, and no account currently holds `ai_security_protection`, so in
+    practice nobody has it until those products are sellable — that is the
+    paywall working, not an outage. Tracked in
+    [#2659](https://github.com/VEYRNOX/veyrnox/issues/2659) and
+    [#2662](https://github.com/VEYRNOX/veyrnox/issues/2662).
+    **This correction was written the same session as the note it corrects**
+    — [#2660](https://github.com/VEYRNOX/veyrnox/pull/2660) merged the text
+    below at 12:26Z and the deploy landed at 13:4x, so a file that had been
+    accurate for four weeks was stale within ninety minutes. Nothing about
+    the original was careless; the lesson is only that a state note earns its
+    keep by being amended in the session that changes the state.
+
+    **Historical, and the reason the gate existed to be deployed at all —
+    2026-09-20: THAT REDEPLOY ALSO DROPPED THE ENTITLEMENT GATE, AND PROD HAD
+    BEEN UNGATED SINCE 2026-08-23. Measured, not inferred.** `main` requires
     `X-Rc-User-Id` and an active `ai_security_protection` entitlement
     (`index.ts:248-253`, RevenueCat v1 lookup). The DEPLOYED functions do
     not read that header at all — prod v38 (2026-08-23 18:18 UTC) and
@@ -964,14 +996,22 @@ stays wired but its failure is not a required check on `main` (verified 2026-09-
 required contexts are `verify`, `unit-tests`, `Release-cert guard rejects wrong
 fingerprints`, `mainnet-flag-gate`, `staging-gate` — none of them FTL).
 
-**Pre-submission verification for 1.0.1 (BOTH stores) — MUST run before any human
-review submission.** Added 2026-08-12 after Play rejected build 5 under Broken
-Functionality policy: reviewer tapped Create Wallet on a stock device and the setup
-failed with `"Wallet setup couldn't finish securely, so nothing was saved. Please set
-your PIN and try again."` — an unresponsive-UI outcome from our KEK/RASP path failing
-closed on hardware we never tested. Neither store's automated tools caught it because
-neither had been run against build 5 (Play Pre-launch report showed
+**Pre-submission verification (BOTH stores) — MUST run before any human review
+submission, including every 1.0.2 build.** Added 2026-08-12 after Play rejected
+build 5 under Broken Functionality policy: reviewer tapped Create Wallet on a
+stock device and the setup failed with `"Wallet setup couldn't finish securely,
+so nothing was saved. Please set your PIN and try again."` — an unresponsive-UI
+outcome from our KEK/RASP path failing closed on hardware we never tested.
+Neither store's automated tools caught it because neither had been run against
+build 5 (Play Pre-launch report showed
 "Upload artifacts to generate pre-launch reports"; iOS has no equivalent auto-tool).
+
+The heading on this block read "for 1.0.1" until 2026-09-20, which made it look
+retired the moment the 1.0.2 train opened. It was never version-scoped — the
+paragraph above already calls it the standard for the next submission of any
+build to either store — so the version came out of the heading rather than being
+bumped, which would only have set the same trap for 1.0.3.
+
 - **Play (SUPERSEDED 2026-09-10):** this bullet described "confirm a Pre-launch
   report exists" as mandatory before promoting to review. Both automated Play
   checks (Pre-launch report AND FTL Robo substitute) are now WAIVED as accepted
@@ -1061,6 +1101,61 @@ neither had been run against build 5 (Play Pre-launch report showed
   Organizer's **Metrics → Hangs** in particular — an unresponsive UI without a
   crash still reads to Apple's reviewer exactly like Play's Broken Functionality
   finding.
+
+  **Run the API read too, not just the two consoles. Mandatory from 1.0.2:**
+
+  ```bash
+  ASC_KEY_ID=<key id> ASC_ISSUER_ID=<issuer id> bash scripts/asc-crashes.sh
+  ```
+
+  It reads three things the consoles show separately — tester crash submissions,
+  `diagnosticSignatures`, and Organizer `perfPowerMetrics` — and it exits 2 if any
+  query errored, so an unread gate cannot pass as a clean one. **Read the words,
+  not the numbers.** Four outcomes are deliberately distinct and only one of them
+  is a pass:
+
+  | outcome | means |
+  |---|---|
+  | `CLEAN` / `0 diagnostic groups` | measured, and genuinely zero |
+  | `EMPTY` | the resource answered with no rows — unmeasured, NOT clean |
+  | `UNAVAILABLE` | HTTP 404, the build has no such resource — never a zero |
+  | `ERROR` | the query failed; exit 2 |
+
+  A run that is `UNAVAILABLE` or `EMPTY` everywhere has told you nothing and does
+  not satisfy this row. Measured 2026-09-20: nine of the ten most recent builds
+  return 404 for both per-build endpoints — only the RELEASED build had either —
+  and `perfPowerMetrics` on that one was `EMPTY`. So on a fresh TestFlight build
+  this check will usually be silent, and its real yield is the crash-submission
+  and tester-feedback half.
+
+  **Read the tester feedback comments the script prints, every time.** This row
+  exists in its current form because of what they contained. On 2026-08-16 a
+  tester filed *"App is not loading"* against 1.0.1 build 11, five minutes after
+  that build finished uploading, with zero screenshots attached — it was filed
+  from the TestFlight app because the app itself would not come up. It was a real,
+  total, native-only unlock failure: #1825 had shipped the `UNLOCK_SUPERSEDED`
+  race guard without the three fixes that followed it (#1876, #1880, #1892), so on
+  a Secure Enclave device **every** PIN unlock fired Face ID, backgrounded the
+  app, tripped the unsuppressed `appStateChange` listener, and aborted the unlock
+  — surfacing as *"Incorrect PIN"* and incrementing the panic-wipe counter toward
+  a wipe at ten. `web-e2e-tests` was green throughout, because a browser has no
+  Face ID to background it. **Nobody read that report for five weeks**, because
+  the script backing this row queried only `diagnosticSignatures` and never asked
+  for crashes or feedback at all. A one-line free-text comment was the only signal
+  any real device ever gave.
+
+  Attribution caveat, because it matters for the next one of these: build 11 has
+  no commit pinning it — `CURRENT_PROJECT_VERSION` in the repo read `10` from
+  2026-08-14 until the bump to `16` on 2026-08-16, so 11 was an uncommitted local
+  bump. #1825's presence is inferred from merge time (2026-08-15 20:24Z) against
+  upload time (2026-08-16 04:50Z), not read off a build record. **A TestFlight
+  build that cannot be traced to a commit cannot be diagnosed from the repo** —
+  if a build is worth uploading, commit the version bump that made it.
+
+  **A zero crash count is only evidence if the endpoint is answering.** The script
+  reads `betaFeedbackScreenshotSubmissions` alongside the crash count as the
+  control and reports `UNVERIFIED` when both are zero. Do not accept a bare zero
+  from the console for this row — the console shows the same nothing either way.
 - **Both stores — telemetry-opt-in rule:** any internal tester whose device is not
   set to share diagnostics is invisible to Vitals/Organizer. Confirm the opt-in on
   each test device before install, or the "clean" verdict is a false negative.
@@ -1492,8 +1587,17 @@ LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
     `first-referral-bonus` still runs with `verify_jwt=true` because that function is
     called from the client via the Pages proxy, which carries the Supabase anon key.
   - **Secrets:** `REVENUECAT_V1_SECRET_KEY` set on both Supabase Edge Function stores
-    (identical digest — v2-generation `sk_` key working against the v1 REST endpoint;
-    v1 issuance is no longer available in the RC UI).
+    (identical digest — a v2-generation `sk_` key; v1 issuance is no longer
+    available in the RC UI).
+    **It does NOT work against the v1 REST endpoint, and this line said it did
+    until 2026-09-20.** Measured: `GET api.revenuecat.com/v1/subscribers/<id>`
+    with that key returns `403 {"code":7723,"message":"You're trying to use a
+    secret API key incompatible with RevenueCat API V1."}`. It works on v2,
+    which is why `tip-chat`'s entitlement lookup moved to
+    `/v2/projects/{project_id}/customers/{id}/active_entitlements` in #2663 —
+    see [#2662](https://github.com/VEYRNOX/veyrnox/issues/2662). **Any other
+    function still calling a v1 endpoint with this secret is failing silently:
+    `first-referral-bonus` reads the same secret and has NOT been checked.**
     `REVENUECAT_WEBHOOK_AUTHORIZATION` **set on both projects 2026-09-08** (64-char
     random secret, sha256 `8d56050d5177fcfa39b227f4f2329093c5d509f436bc2a46453278b6792a3733`).
     Persisted at `~/.veyrnox/rc-webhook-secret` (mode 600) on the dev machine. To
@@ -1810,6 +1914,36 @@ m/44'/60' address; BTC (m/84'/UTXO/PSBT) and SOL (ed25519/SLIP-0010) have their 
   simulator builds carry entitlements in a Mach-O section (`ENTITLEMENTS_DESTINATION
   = __entitlements`), so an empty `[Dict]` there is normal; use the `otool` command
   above. Verified 2026-09-16 on iPhone 17 Pro / iOS 26.5.
+
+- **`VITE_BYPASS_RASP=1` CANNOT be combined with a built bundle, and the failure
+  is illegible.** `useRaspArtifact.js:56` throws at module init when
+  `VITE_BYPASS_RASP && import.meta.env.PROD` — a deliberate #1107 hard-fail, so a
+  bypass can never reach a shipped build. But **`vite build` always sets `PROD`**
+  (`--mode development` included — same fact that makes `VITE_FORCE_TIER` dead in
+  any build), so the guard fires for *every* static bundle built while
+  `.env.local` carries the flag. **The `.env.local` in the primary checkout
+  carries it.**
+
+  What you see is the boot watchdog's **"Veyrnox couldn't start"** card, and
+  nothing else: `capacitor.config.json` sets `loggingBehavior: "none"`, so the
+  guard's perfectly clear message never reaches the OS log, Safari Web Inspector
+  is a GUI step, and `simctl log show` is silent. It reads as a broken app.
+
+  This is almost certainly the real cause of the long-standing "simulator shows a
+  black screen with a static bundle" lore, and of why the documented workaround
+  (point Capacitor at the Vite dev server) appears to fix it — dev server means
+  `PROD` is false, so the guard does not fire. Verified 2026-09-20: the same
+  commit that showed the fallback booted to the entry screen after simply
+  removing `VITE_BYPASS_RASP` from `.env.local`, on iPhone 17 Pro / iOS 26.5.
+
+  **So: build the simulator bundle WITHOUT the flag.** RASP does not block a
+  simulator — `AppDelegate.swift:17`'s pre-WebView `earlyCheck()` would replace
+  the root view controller with a native block screen, and it does not fire; the
+  app reaches the normal entry tiles. If you must diagnose a boot failure, the
+  fastest route is a throwaway `window.addEventListener('error', …)` in
+  `public/boot-watchdog.js` that renders the message on screen — it runs before
+  the module entry and needs no logging bridge. It was filed as a real app defect
+  (#2677) before this was understood; that issue is closed as not-a-bug.
 - **A simulator cannot exercise a decoy session, and the two ways round it are
   mutually exclusive.** Recorded so it is not re-attempted (full write-up:
   https://github.com/VEYRNOX/veyrnox/issues/2537#issuecomment-5709674012).
@@ -2227,6 +2361,22 @@ and one of them (this file's own author) did it twice in one afternoon.
   other agents' PR branches and merges PRs.** This is the mechanism behind
   `.claude/scheduled-tasks/daily-veyrnox-branch-review/SKILL.md`'s "PR #1789 was merged by
   another actor after its auto-merge had been explicitly disabled".
+- **It arms auto-merge as a MERGE COMMIT on every open PR, including ones you are
+  watching.** When the owner types "Fix all open PRs to merge" or "merge all open PRs
+  when green" into that thread, it runs
+  `gh pr merge <n> --repo VEYRNOX/veyrnox --auto --merge --delete-branch` on each open
+  PR, and `gh run rerun <id> --failed` on red ones. Verified 2026-09-21 by matching
+  each PR's timeline `auto_merge_enabled` event to the rollout, 1–3 s apart every time:
+  #2429 (2026-09-07), #2490 (09-10), #2679 (09-20), #2687 and #2688 (09-21).
+  **This was previously misread as a `gh` bug** ("`--squash --auto` sometimes arms as
+  MERGE, and re-running it is a no-op"). It was not: the PR was already armed by Codex,
+  so the Claude session's `--squash --auto` changed nothing. The repo allows all three
+  merge methods, so the result lands silently as a two-parent merge commit on `main`,
+  which cannot be rewritten afterwards. To merge a PR yourself, merge explicitly once
+  green — `gh pr merge <n> --squash --match-head-commit <sha>` — and if you watch or
+  arm one, re-read `autoMergeRequest.mergeMethod` inside the loop, because Codex can arm
+  it mid-watch. Repair while checks are still pending with `--disable-auto` then
+  `--auto --squash`; on an already-green PR, arming merges instantly.
 - **A PR's head can change under you, and `gh pr diff` will not warn you.** #2470 was
   force-pushed from a duplicate fixture change to a test-only change between one session
   reading it and another; both then described it correctly for their own snapshot and

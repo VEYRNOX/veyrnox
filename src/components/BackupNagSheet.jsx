@@ -22,7 +22,10 @@ export default function BackupNagSheet({ publicAddresses }) {
   if (isDeniabilityOrDemoActive() || !shouldShow) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 flex justify-center p-4 sm:inset-x-auto sm:bottom-6 sm:end-6">
+    // Below md the Layout bottom nav is on screen (md:hidden, ~4rem tall plus
+    // the home-indicator inset), so sit above it rather than on top of it —
+    // the TestFlight screenshot showed this card covering the nav.
+    <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex justify-center p-4 md:inset-x-auto md:bottom-6 md:end-6">
       <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-background/95 p-4 shadow-2xl backdrop-blur">
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2.5">
@@ -43,7 +46,7 @@ export default function BackupNagSheet({ publicAddresses }) {
           <button
             type="button"
             onClick={dismissForSession}
-            className="text-muted-foreground hover:text-foreground p-1"
+            className="-me-3 -mt-3 inline-flex h-11 w-11 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
             aria-label="Dismiss"
           >
             <X className="h-3.5 w-3.5" />

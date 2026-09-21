@@ -5,7 +5,7 @@
 // their own isNativePlatform() check.
 
 import { Capacitor } from '@capacitor/core';
-import { App } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
 import { Purchases, LOG_LEVEL } from '@revenuecat/purchases-capacitor';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 
@@ -348,18 +348,19 @@ export async function bindOwnReferralCode() {
 // native handler opens the OS surface; no RevenueCat call. No-op on web.
 export async function manageSubscription() {
   if (!isNative()) throw new Error('PURCHASES_NATIVE_ONLY');
+  // https, not itms-apps:// — Browser.open is SFSafariViewController on iOS and
+  // cannot handle a custom scheme. Apple's https manage-subscriptions URL hands
+  // off to the App Store app itself.
+  //
+  // This called App.openUrl() until 2026-09-20. That method does not exist on
+  // @capacitor/app (dropped after Capacitor v2; absent from the native plugin's
+  // method table), so the deep link had never once worked — the old comment
+  // here asserting it "exists on the underlying native plugin bridge" was
+  // wrong, and the same comment admitted the path was never device-verified.
   const url = Capacitor.getPlatform() === 'ios'
-    ? 'itms-apps://apps.apple.com/account/subscriptions'
+    ? 'https://apps.apple.com/account/subscriptions'
     : import.meta.env.VITE_STORE_FLAVOR === 'samsung'
       ? 'https://galaxystore.samsung.com/mypage/subscriptions'
       : 'https://play.google.com/store/account/subscriptions';
-  // @capacitor/app@8.x's public TS surface does not include `openUrl`
-  // (it exposes lifecycle events + getLaunchUrl only). The method exists on
-  // the underlying native plugin bridge; PR #1085's own runbook flags the
-  // device-verify of this deep-link as outstanding. Silence the typecheck
-  // here without changing the runtime call — if a future @capacitor/app
-  // release adds `openUrl` to the plugin type, this pragma will fail the
-  // build and prompt its removal.
-  // @ts-expect-error TS2339 — App.openUrl runtime-only in @capacitor/app@8.x
-  await App.openUrl({ url });
+  await Browser.open({ url });
 }
