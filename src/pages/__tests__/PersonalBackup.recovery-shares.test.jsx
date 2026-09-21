@@ -62,7 +62,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.unstubAllEnvs();
-  vi.doUnmock('@/wallet-core/recoveryShare');
+  vi.restoreAllMocks();
   vi.resetModules();
   toastError.mockClear();
   cleanup();
@@ -82,12 +82,11 @@ async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus', sh
     isHardwareKekEnrolled: vi.fn(async () => shardExportReady),
   }));
   if (mockBundleWrap) {
-    vi.doMock('@/wallet-core/recoveryShare', async (importOriginal) => ({
-      ...(await importOriginal()),
-      // The page test verifies orchestration; envelope cryptography is covered
-      // independently in wallet-core/recoveryShare.bundle-wrap.test.js.
-      wrapBundleWithPassphrase: vi.fn(async () => '{"test":"wrapped-bundle"}'),
-    }));
+    const recoveryShare = await import('@/wallet-core/recoveryShare');
+    // The page test verifies orchestration; envelope cryptography is covered
+    // independently in wallet-core/recoveryShare.bundle-wrap.test.js.
+    vi.spyOn(recoveryShare, 'wrapBundleWithPassphrase')
+      .mockResolvedValue('{"test":"wrapped-bundle"}');
   }
   // Tier is now consumed inside PersonalBackup — the shard tab renders the
   // export panel for any tier with Safety Plus access, otherwise an upsell.
