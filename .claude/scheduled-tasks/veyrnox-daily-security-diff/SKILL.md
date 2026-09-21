@@ -290,6 +290,29 @@ full-price charge.
   paid-feature default that resolves permissive before its provider has settled;
   an offer identifier changed in one copy of the map only.
 
+**Shared-store pages, security copy, and state the wipe cannot see (I3 / I4).**
+Added 2026-09-21 — every entry here produced a finding from an unmatched file
+that day.
+- **any `src/pages/**` file that reads or writes `base44.entities`** — find them
+  with `git grep -l 'base44.entities' -- src/pages`. These are the per-page
+  deniability gates (#2537): a read must be `enabled: !deniable` with cached rows
+  blanked, and a write must refuse first. `NewsSentimentPage.jsx` passed a regex
+  audit because the file mentioned `isDeniabilityOrDemoActive` for an unrelated
+  button; check the QUERY, not the import.
+- `src/pages/SecurityCenter.jsx` — spend limits and their copy. A limit's
+  behaviour differs by surface (Send acknowledges, WalletConnect refuses), and
+  loosening one must be step-up gated.
+- `src/components/*Paywall*`, `src/components/*Nudge*`, `src/lib/winPaywall.js` —
+  paid-feature copy is an I4 claim: it must not sell controls every tier has.
+- **any file that schedules `LocalNotifications`** — find them with
+  `git grep -l 'LocalNotifications' -- src`. A pending OS notification survives
+  a panic wipe and `ALL_RESIDUE_KEYS` cannot see it; the panic path must cancel
+  whatever these schedule.
+- `index.html`, `public/**/*.js` — the boot shell and watchdog, and how they
+  interact with `script-src` (#2595: a CSP-blocked watchdog never ran).
+- `services/**` — server-side code that runs outside Pages (the Transak relay
+  handles a partner secret). Read-only for this task, like every other entry.
+
 **Native**
 - `android/app/src/main/**`
 - `ios/App/App/**`
@@ -362,6 +385,14 @@ Cloudflare Pages server layer) and `e2e/**` + `src/**/__tests__/**`.
 *Widened again 2026-09-08*, after the **sixth** consecutive run whose findings
 came from unmatched files. Added the commerce-integrity / tier-gate block above.
 
+*Widened again 2026-09-21*, after the **seventh** consecutive run whose findings
+came from unmatched files (`diff-2026-09-21.md`: the dormancy reminder surviving
+panic wipe, WinPaywall copy, the NewsSentiment decoy read, the SecurityCenter
+spend-limit copy). Added the shared-store / copy / wipe-invisible-state block
+above. **This is the trigger the paragraph below names, and it has fired.** The
+patterns were added because each one is cheap and correct, not because they
+answer the trigger: they do not. See the note at the end of this section.
+
 **The sixth run triggered the escalation clause, and this is what it did.** The
 paragraph here used to end: *"If a sixth run produces findings from unmatched
 files, do not just add another pattern: the failure is that a list organised by
@@ -389,6 +420,17 @@ files even with the behavioural question leading triage, the reorganisation was
 not the fix either — at that point the honest conclusion is that a static
 document cannot do this job, and the next thing to try is a mechanical one (a
 changed-file classifier the run executes) rather than more prose.
+
+**It did, on 2026-09-21, and the classifier has NOT been built.** The seventh
+run's findings came from unmatched files even with the behavioural question
+leading triage. Adding that day's patterns (above) was done alongside, on the
+same "alongside, not instead of" reading the sixth run used — it is not the
+response this paragraph asks for. The open item is a script the run executes
+over `git diff --name-only` that flags egress (`fetch(`, `LocalNotifications`,
+`publishAdvisorContext`), shared-store access (`base44.entities`), credential
+floors, and deniability gates by CONTENT rather than path. Until it exists, treat
+every run's `## Scan-list maintenance` section as evidence that it is still
+needed, not as a list to keep appending.
 
 **Why the list kept lagging, structurally.** It was organised by MODULE ROLE
 (`wallet-core`, `rasp`, `sign-gate`) and by NAMED FILE. The categories that cut
