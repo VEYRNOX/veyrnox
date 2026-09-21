@@ -1,29 +1,8 @@
-// CONSOLE-1 (#179): provide a browser-safe global `Buffer` BEFORE any app/crypto
-// module loads. @solana/web3.js transitively bundles bn.js, whose module-init
-// probes `typeof window.Buffer !== 'undefined' ? window.Buffer : require('buffer').Buffer`.
-// Without a global Buffer the `require('buffer')` branch hits Vite's externalized
-// stub and logs: 'Module "buffer" has been externalized for browser compatibility.
-// Cannot access "buffer.Buffer" in client code.' whenever a SOL path loads.
-// Installing the real `buffer` polyfill on globalThis makes bn.js take the
-// global-Buffer branch and never touch the stub — the warning disappears. This
-// is the genuine browser-safe Buffer (the `buffer` npm package, already in the
-// tree via @solana/web3.js), so no signer/serializer byte output changes; web3.js
-// already serialized transactions via its own bundled copy of this same polyfill.
-import { Buffer as NodeBuffer } from 'buffer'
-if (typeof globalThis.Buffer === 'undefined') {
-  globalThis.Buffer = NodeBuffer
-}
-
-// Same class as the Buffer polyfill above. Digital Shield chunk (Keystone SDK
-// / bc-ur-registry / uuid transitively) reads bare `process` at runtime. WKWebView
-// has no `process` global, so the Send route ErrorBoundary'd on iOS with
-// `ReferenceError: Can't find variable: process` on 1.0.1(31) / (32).
-// Vite's `define: 'process.env': '{}'` covers property reads only, not
-// bare-identifier reads. Install a minimal shim before any lazy chunk can load
-// (Send/Receive/Buy chunks are all lazy — this runs before any of them).
-if (typeof globalThis.process === 'undefined') {
-  globalThis.process = { env: {}, browser: true, versions: {}, platform: 'browser' }
-}
+// Buffer/process polyfills MUST be the first import in this file -- see
+// globalPolyfills.js for why (ES import hoisting means anything written as
+// inline statements here, even above other imports in source order, actually
+// runs AFTER every import below has already been evaluated).
+import '@/lib/globalPolyfills.js'
 
 import { applyRpcEnvOverrides } from '@/wallet-core/rpcConfig.js'
 applyRpcEnvOverrides()
