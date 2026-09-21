@@ -1,9 +1,10 @@
 // WinPaywall — the recurring upsell fired by a success moment ("a WIN").
 //
 // What is pinned here, and why each one:
-//   1. tier routing — free is sold Safety Plus, Safety Plus is sold AI
-//      Security Protection, and the top tier is sold NOTHING (there is no
-//      third product; an upsell there would be a lie).
+//   1. tier routing — upsellFor() sells free Safety Plus and Safety Plus AI
+//      Security Protection, but the MODAL shows for free only (owner decision
+//      2026-09-21: a Safety Plus subscriber gets the AI offer once, as
+//      PaywallNudge). The top tier is sold NOTHING.
 //   2. it fires EVERY time, with no sticky dismissal key. That is the owner
 //      decision this component exists for, so it is the thing a future
 //      "let's not nag" edit must trip over.
@@ -65,11 +66,11 @@ describe('WinPaywall', () => {
     expect(screen.getByText('Upgrade to Safety Plus')).toBeTruthy();
   });
 
-  it('upsells AI Security Protection when already on Safety Plus', () => {
+  it('never interrupts a Safety Plus subscriber on a win — the AI offer is nudge-only', () => {
     tier = TIER.SAFETY_PLUS;
     mount();
     fire(WIN.BACKUP_CONFIRMED);
-    expect(screen.getByText('Add AI Security Protection')).toBeTruthy();
+    expect(screen.queryByTestId('win-paywall')).toBeNull();
   });
 
   it('renders nothing for the top tier — no third product to sell', () => {

@@ -424,6 +424,10 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-session-day-count',
   'veyrnox-session-last-day',
   'veyrnox-paywall-nudge-dismissed',
+  // PaywallNudge AI_NUDGE_DISMISSED_KEY (2026-09-21): the Safety Plus →
+  // AI Security Protection nudge. A stronger tell than its neighbour — it can
+  // only be written by a device that held a paid tier.
+  'veyrnox-ai-nudge-dismissed',
   'veyrnox-backup-nudge-dismissed',
   // Branch review 2026-08-15 (S-1): the sibling dismissal marker the paywall
   // sweep above missed. Writer: components/ReferralPrompt.jsx DISMISSED_KEY.
