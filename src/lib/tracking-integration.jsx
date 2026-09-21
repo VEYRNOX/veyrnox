@@ -408,7 +408,9 @@ export function cancelVerificationReminders() {
 // pending reminder and arms a fresh one 7 days out. The notification therefore
 // only lands if the user genuinely does not come back, and "when did they last
 // open it" lives in the OS's pending-notification record rather than anything
-// we persist — no new localStorage key, so no new panic-wipe residue.
+// we persist. That record IS panic-wipe residue — a pending "It's been a while
+// since you opened Veyrnox" proves prior use of a wiped install — so
+// panicWipeLocal() cancels it via cancelAllScheduledReminders() below.
 //
 // FIRE ONCE means one notification per dormancy episode, not once per install.
 // Returning re-arms it; nobody gets a 7/14/21-day chain.
@@ -433,4 +435,16 @@ export async function armDormancyReminder() {
 
 export function cancelDormancyReminder() {
   return cancelReminders(DORMANCY_REMINDER_IDS);
+}
+
+// Panic wipe: cancel EVERY reminder this module can schedule. A pending OS
+// notification outlives the wipe and the session, so it is residue that
+// ALL_RESIDUE_KEYS cannot see. Covers the unwired funding/verification ids
+// too, so wiring one later cannot reopen this.
+export function cancelAllScheduledReminders() {
+  return cancelReminders([
+    ...FUNDING_REMINDER_IDS,
+    ...VERIFICATION_REMINDER_IDS,
+    ...DORMANCY_REMINDER_IDS,
+  ]);
 }

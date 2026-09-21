@@ -1307,6 +1307,14 @@ export async function panicWipeLocal() {
     const { secureWipeAll } = await import('@/lib/secureStore.js');
     await secureWipeAll();
   } catch { /* plugin unavailable on web / tests — no-op is correct there */ }
+  // Pending OS notifications are residue too: the 7-day dormancy reminder
+  // ("It's been a while since you opened Veyrnox") is armed on every unlock and
+  // would otherwise fire on the lock screen after a wipe, proving prior use.
+  // Awaited so it is done before the wipe reports; never throws.
+  try {
+    const { cancelAllScheduledReminders } = await import('@/lib/tracking-integration.jsx');
+    await cancelAllScheduledReminders();
+  } catch { /* plugin unavailable on web / tests — no-op is correct there */ }
   // Write the next-open wipe marker AFTER the residue sweep (clearLocalAddressResidue
   // only touches ALL_RESIDUE_KEYS, which deliberately excludes WIPE_MARKER_KEY) so it
   // survives the wipe and the next app open can LOUDLY acknowledge the destruction.
