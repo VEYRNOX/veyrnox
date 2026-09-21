@@ -147,6 +147,7 @@ import { decryptVault, encryptVault, KDF_PARAMS, VAULT_VERSION, vaultKdfDiffersF
 // destroys wallets nor moves the tell onto the wallets hidden hardest.
 import { deniabilityKdfProfile, encryptDeniabilityVault, deniabilityKdfProfileWithSource } from './deniabilityKdfProfile.js';
 import { generateMnemonic, validateMnemonic } from './mnemonic.js';
+import { runChaffJob } from './wipeEpoch.js';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
@@ -382,7 +383,14 @@ function makeChaff(kdfProfile = KDF_PARAMS) {
  * wallets" (the property we must hide). Best-effort: callers should not let a
  * storage hiccup here break unlock.
  */
-export async function ensureStealthPool() {
+export function ensureStealthPool() {
+  // #2713: a chaff job — its writes are dropped if a wipe starts mid-way.
+  return runChaffJob(seedStealthPool);
+}
+
+/** @param {() => void} guard */
+async function seedStealthPool(guard) {
+  guard();
   // Codex P2 2026-08-15: provision the per-device slot-mapping salt at the
   // SAME time as chaff, so `veyrnox-stealth-slot-salt` presence tracks "has
   // a wallet" (universal) rather than "has a hidden wallet" (the property
@@ -407,11 +415,16 @@ export async function ensureStealthPool() {
   // era. Stamping the current default there (Gate 2, #2103) made the new chaff
   // the odd one out instead of the camouflage it exists to be.
   const kdfProfile = await deniabilityKdfProfile();
+  guard();
   const db = await openDb();
   try {
     for (const key of SLOT_KEYS) {
       const existing = await getKey(db, key);
-      if (existing == null) await putKey(db, key, makeChaff(kdfProfile));
+      if (existing == null) {
+        const chaff = makeChaff(kdfProfile);
+        guard();
+        await putKey(db, key, chaff);
+      }
     }
   } finally {
     db.close();
