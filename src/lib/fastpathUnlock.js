@@ -33,7 +33,7 @@
 // panic-residue-fastpath.test.js).
 
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
-import { isBiometricUnlockEnabled, setBiometricUnlockEnabled } from '@/lib/biometric';
+import { setBiometricUnlockEnabled } from '@/lib/biometric';
 
 /** Storage key mirrored in wallet-core/panic.js METADATA_RESIDUE_KEYS. */
 export const FASTPATH_ENABLED_STORAGE_KEY = 'veyrnox-fastpath-enabled';
@@ -119,17 +119,16 @@ export function migrateFastpathState() {
   if (!hasFastpathBeenExplicitlySet() && hasSeenFastpathDisclosure()) {
     safeSet(FASTPATH_ENABLED_STORAGE_KEY, OFF);
   }
-  // #2037 follow-up — repair the "Fast Unlock ON, Biometric Unlock OFF"
-  // state a user could reach before the two toggles were linked. Both
-  // preferences flip together on enable now, so a fresh install cannot
-  // land there; existing installs get flipped forward here. Pure
-  // preference flip (Shape A) — the actual password cache warms on the
-  // next successful PIN unlock via the pref-gated path in
-  // WalletProvider.unlock(). Asymmetric: fastpath OFF does NOT touch the
-  // biometric-unlock pref (they are independent user-facing features).
-  if (isFastpathEnabled() && !isBiometricUnlockEnabled()) {
-    setBiometricUnlockEnabled(true);
-  }
+  // SEC-05 (QA 2026-09-21): a "#2037 follow-up" repair used to live here —
+  // `if (isFastpathEnabled() && !isBiometricUnlockEnabled())
+  // setBiometricUnlockEnabled(true)`. It is REMOVED, deliberately. It ran on
+  // every launch, and fastpath reads ON by default, so it re-armed biometric
+  // unlock over every explicit '0' (Settings opt-out, BiometricConsent
+  // decline, duressBiometricGuard, the 2026-08-27 legacy opt-out migration)
+  // and on web — which has no platform biometric — made the Security
+  // Dashboard claim "Biometric unlock: ON — Required to unlock". The #2057
+  // linkage is kept where it belongs: enableFastpathAndBiometricUnlock().
+  // Do not reintroduce a biometric write here.
 }
 
 /**

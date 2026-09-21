@@ -15,6 +15,7 @@ import {
 import { buildSuspiciousAssetSnapshot } from "@/lib/suspiciousAssets";
 import { useRaspArtifact, TIER } from "@/rasp";
 import Spinner from "@/components/Spinner";
+import { Capacitor } from "@capacitor/core";
 import { isBiometricUnlockEnabled } from "@/lib/biometric";
 import { isPasskeyUnlockEnabled, isPasskeyRegistered } from "@/lib/passkey";
 import { loadAutoLockValue, AUTO_LOCK_OPTIONS } from "@/lib/session";
@@ -139,7 +140,9 @@ export default function SecurityDashboard() {
   const autoLockValue = loadAutoLockValue();
   const autoLockLabel = (AUTO_LOCK_OPTIONS.find((o) => o.value === autoLockValue) || {}).label || "5 min";
   const autoLockNever = autoLockValue === "never";
-  const biometricOn = isBiometricUnlockEnabled();
+  // SEC-05: the pref alone is not a protection — web has no platform biometric,
+  // so never report "ON — Required to unlock" off-device.
+  const biometricOn = Capacitor.isNativePlatform() && isBiometricUnlockEnabled();
   const passkeyOn = isPasskeyUnlockEnabled() && isPasskeyRegistered();
 
   const { data: s3 = /** @type {any} */ ({}), isError: errorS3 } = useQuery({
