@@ -128,6 +128,28 @@ If there are no commits in the last 24 hours, write a one-line "No security-rele
 > 2026-07-28. If several runs in a row carry the same maintenance note, that is
 > the signal to escalate it rather than repeat it.
 
+#### Run the changed-file classifier before anything else
+
+```bash
+node scripts/security-diff/classify.mjs <oldest-in-window>~1 origin/main
+```
+
+It reads the window's diff and flags each changed file by what its changed
+lines DO — egress, shared-store, OS-level state, deniability, gates, tier
+checks, credential floors, secrets, crypto, security claims — plus a
+`<rule> (file)` flag when a sink lives in a changed file but not in its changed
+lines, and `test-weakened` when a test gained a skip marker or lost assertions.
+Paste its table into the report under `## Classifier output`.
+
+**Every flagged file gets deep analysis**, the same as a path-index match. A
+direct flag outranks a `(file)` flag, and a `(file)` flag means "read what the
+new lines call", which is exactly how the 2026-09-21 dormancy reminder was
+missed: its diff only called `scheduleReminders()`. An unflagged file is NOT
+cleared — the triage question and the path index below still apply to it. If a
+real finding comes from a file the classifier did not flag, the fix is a rule in
+`classify.mjs` with a case in `src/__tests__/security-diff-classifier.test.js`,
+recorded in `## Scan-list maintenance` like any other gap.
+
 #### Triage every changed file with this question FIRST
 
 *Does it send data off-device, decide a credential floor, gate an action, or
@@ -421,16 +443,14 @@ not the fix either — at that point the honest conclusion is that a static
 document cannot do this job, and the next thing to try is a mechanical one (a
 changed-file classifier the run executes) rather than more prose.
 
-**It did, on 2026-09-21, and the classifier has NOT been built.** The seventh
-run's findings came from unmatched files even with the behavioural question
-leading triage. Adding that day's patterns (above) was done alongside, on the
-same "alongside, not instead of" reading the sixth run used — it is not the
-response this paragraph asks for. The open item is a script the run executes
-over `git diff --name-only` that flags egress (`fetch(`, `LocalNotifications`,
-`publishAdvisorContext`), shared-store access (`base44.entities`), credential
-floors, and deniability gates by CONTENT rather than path. Until it exists, treat
-every run's `## Scan-list maintenance` section as evidence that it is still
-needed, not as a list to keep appending.
+**It did, on 2026-09-21, and the classifier now exists** —
+`scripts/security-diff/classify.mjs`, run first in this step (see the top of
+Step 2). Its first version matched changed lines only and still missed that
+day's real regression, because the dormancy diff called an existing helper and
+never named `LocalNotifications`; the `(file)` pass exists for that case and is
+pinned by a test. It is a floor like everything else here. Keep the triage
+question and the path index; a classifier miss becomes a new rule and a test,
+not another paragraph.
 
 **Why the list kept lagging, structurally.** It was organised by MODULE ROLE
 (`wallet-core`, `rasp`, `sign-gate`) and by NAMED FILE. The categories that cut
