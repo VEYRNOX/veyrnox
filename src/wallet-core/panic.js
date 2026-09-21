@@ -108,6 +108,7 @@ import { decryptVault } from './vault.js';
 import { encryptDeniabilityVault } from './deniabilityKdfProfile.js';
 import { generateMnemonic } from './mnemonic.js';
 import { padToFixedLen, stripPad } from './multiVault.js';
+import { beginWipe } from './wipeEpoch.js';
 // BIO-05: biometric-2FA enabled tell. Imported (not hardcoded) so a rename in
 // biometric.js is caught at build time and the wipe list stays in sync.
 import { TWOFACTOR_BIOMETRIC_KEY } from '../lib/biometric.js';
@@ -727,8 +728,9 @@ export async function hasPanicVault() {
  * warns the user; documented in the page UI.
  *
  * @param {string} panicPassword
+ * @param {() => void} [beforeWrite] - #2713 chaff guard (wipeEpoch.js); throws to drop the write
  */
-export async function setPanicVault(panicPassword) {
+export async function setPanicVault(panicPassword, beforeWrite = () => {}) {
   if (typeof panicPassword !== 'string' || !PANIC_PIN_RE.test(panicPassword)) {
     throw new Error(`Panic/wipe PIN must be exactly ${PANIC_PIN_LEN} digits`);
   }
@@ -746,9 +748,11 @@ export async function setPanicVault(panicPassword) {
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
   }
+  beforeWrite();
   const db = await openDb();
   try {
     await /** @type {Promise<void>} */ (new Promise((res, rej) => {
+      beforeWrite();
       const r = store(db, 'readwrite').put(blob, PANIC_KEY);
       r.onsuccess = () => res();
       r.onerror = () => rej(r.error);
@@ -1295,6 +1299,9 @@ export async function inspectKeyMaterial() {
  * @returns {Promise<{ indexedDbKeys: string[], vaultBlobCount: number, localStorageResidue: string[], clean: boolean }>}
  */
 export async function panicWipeLocal() {
+  // #2713: invalidate and drain in-flight chaff provisioning FIRST, so no chaff
+  // write begun before this wipe can land after the erase below.
+  await beginWipe();
   await clearVaultStore();
   await deleteVaultDatabase();
   await deleteAppDataDatabase();

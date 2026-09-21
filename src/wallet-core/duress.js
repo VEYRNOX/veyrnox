@@ -140,8 +140,9 @@ export async function hasDuressVault() {
  * @param {string} decoyMnemonic - a real BIP-39 mnemonic for the decoy wallet
  * @param {string} duressPassword
  * @param {object|null} [actionPasswordRecord] - the decoy set's AP verifier record, if any
+ * @param {() => void} [beforeWrite] - #2713 chaff guard (wipeEpoch.js); throws to drop the write
  */
-export async function setDuressVault(decoyMnemonic, duressPassword, actionPasswordRecord = null) {
+export async function setDuressVault(decoyMnemonic, duressPassword, actionPasswordRecord = null, beforeWrite = () => {}) {
   const container = makeContainer(
     [{ id: newWalletId(), mnemonic: decoyMnemonic }],
     actionPasswordRecord ?? undefined,
@@ -151,9 +152,11 @@ export async function setDuressVault(decoyMnemonic, duressPassword, actionPasswo
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
   }
+  beforeWrite();
   const db = await openDb();
   try {
     await /** @type {Promise<void>} */ (new Promise((res, rej) => {
+      beforeWrite();
       const r = store(db, 'readwrite').put(blob, DECOY_KEY);
       r.onsuccess = () => res();
       r.onerror = () => rej(r.error);

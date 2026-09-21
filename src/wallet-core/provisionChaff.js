@@ -26,6 +26,7 @@
 import { generateMnemonic } from './mnemonic.js';
 import { hasDuressVault, setDuressVault } from './duress.js';
 import { hasPanicVault, setPanicVault } from './panic.js';
+import { runChaffJob } from './wipeEpoch.js';
 
 // 32 random bytes → base64. Generated and discarded; never persisted.
 // Used for the DURESS chaff, which accepts a free-form password.
@@ -66,11 +67,18 @@ function throwawayPanicPin() {
  * ('secondary') blob. Chaff matches its own slot's real shape via the identical path.
  * @returns {Promise<void>}
  */
-export async function provisionDeniabilityChaff() {
-  if (!(await hasDuressVault())) {
-    await setDuressVault(generateMnemonic(128), throwawayPassword());
-  }
-  if (!(await hasPanicVault())) {
-    await setPanicVault(throwawayPanicPin());
-  }
+export function provisionDeniabilityChaff() {
+  // #2713: a chaff job (wipeEpoch.js). The guard runs before every storage
+  // access, so a wipe that starts mid-provisioning drops the remaining writes
+  // (CHAFF_SUPERSEDED) and panicWipeLocal waits for this job before erasing.
+  return runChaffJob(async (guard) => {
+    guard();
+    if (!(await hasDuressVault())) {
+      await setDuressVault(generateMnemonic(128), throwawayPassword(), null, guard);
+    }
+    guard();
+    if (!(await hasPanicVault())) {
+      await setPanicVault(throwawayPanicPin(), guard);
+    }
+  });
 }
