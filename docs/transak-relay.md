@@ -1,9 +1,19 @@
 # Transak static-egress relay — runbook
 
-**Status: BUILT, NOT YET ACTIVE.** Host provisioned 2026-09-21. Traffic does not
-flow through it until `TRANSAK_PROXY_BASE` is set on `veyrnox-prod` (see
-[Activation](#activation)). Nothing here is verified until a production
-`auth/session` call returns 200 through the relay.
+**Status: ACTIVE on `veyrnox-prod` since 2026-09-21** (issue #2655, closed).
+Host provisioned 2026-09-21. `TRANSAK_PROXY_BASE` and `TRANSAK_PROXY_SECRET`
+are set, and production deployment `c32b2543` returns 200 with a real Transak
+session URL from `/api/buy/session`. The relay answers `401` to requests
+without the correct `x-proxy-secret`.
+
+**Not verified:**
+- widget launch and quote display on web and native
+- bounded 401 handling on the relay path
+- Transak's written allowlist confirmation
+
+**Known gaps:** no relay-side rate limit (only the Pages Function holds the
+secret), no per-request logs, and no monitoring beyond `/healthz`. Staging is
+still not relayed.
 
 ## Why this exists
 

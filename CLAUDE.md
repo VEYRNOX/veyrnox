@@ -244,8 +244,18 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
     which is what every measurement below shows. Cloudflare Pages Functions
     have no static egress IP, so a **static-egress relay** now exists for the
     two partner calls: GCP `veyrnox-wallet`, VM `transak-relay`, static IP
-    **`34.56.200.9`**, hostname `transak-relay.veyrnox.com`. It is BUILT and
-    NOT YET ACTIVE until `TRANSAK_PROXY_BASE` is set on `veyrnox-prod`.
+    **`34.56.200.9`**, hostname `transak-relay.veyrnox.com`.
+    **ACTIVE ON PROD since 2026-09-21; #2655 closed.** `TRANSAK_PROXY_BASE` and
+    `TRANSAK_PROXY_SECRET` are set on `veyrnox-prod`, and production deployment
+    `c32b2543` (Deploy Preview run 35601611589) returns
+    `200 {"url":"https://global.transak.com?apiKey=…&sessionId=…"}` from
+    `/api/buy/session`. The relay VM was observed opening the outbound Transak
+    connection during a probe, and it answers `401` to requests with no secret
+    or a wrong one. **Not verified at closure:** widget launch and quote on web
+    and native, bounded 401 handling on the relay path, and Transak's written
+    allowlist confirmation. The relay also has no rate limit of its own, no
+    per-request logs, and no monitoring beyond `/healthz` — accepted residuals,
+    recorded on #2655.
     **Runbook: `docs/transak-relay.md`** — activation, secrets, rotation,
     rollback, and the standing rule that the IP is registered with Transak and
     must never be released or moved without resubmitting it first.
