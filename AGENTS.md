@@ -478,6 +478,16 @@ default (never show wallet count/list), plain-language risk before signing.
   the stale worktree cost ~40 min of duplicate work and a 4-conflict merge).
 - Pure helpers + unit tests where logic can be extracted (the codebase pattern).
 - One moving part at a time. Don't mark anything verified without the user's on-chain txid.
+- **Always squash-merge PRs. Never `--merge` or `--rebase`.** Merge now:
+  `gh pr merge <n> --squash --match-head-commit <sha>`. Merge when green:
+  `gh pr merge <n> --auto --squash`, then read the method back with
+  `gh pr view <n> --json autoMergeRequest -q .autoMergeRequest.mergeMethod`, and repair
+  anything that isn't `SQUASH` with `--disable-auto` then `--auto --squash`. Leave a PR
+  alone if it's already armed as `SQUASH` — a Claude Code session is probably watching
+  it. The repo allows all three merge methods, so `--merge` lands silently as a
+  two-parent merge commit that can't be rewritten out of `main`. `--auto --merge` was
+  used on #2429, #2490, #2679, #2687 and #2688 (2026-09-07 → 09-21) when asked to
+  "merge all open PRs".
 
 ## Multi-agent working pattern (the "team")
 
