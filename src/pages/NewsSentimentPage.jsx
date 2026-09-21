@@ -44,13 +44,27 @@ export default function NewsSentimentPage() {
   const queryClient = useQueryClient();
   const [filterAsset, setFilterAsset] = useState("all");
 
-  const { data: saved = [] } = useQuery({ queryKey: ["news-sentiment"], queryFn: () => base44.entities.NewsSentiment.list("-created_date") });
+  // I3 / K-2: the saved rows are the REAL user's refresh history in the shared
+  // entity store. A decoy/hidden/demo session must neither read them nor
+  // render a cached copy (the query cache outlives a session flip), so the
+  // read is disabled and any cached rows are blanked. Same shape as the #2537
+  // shared-store gates and AssetCorrelationTimeline's NewsSentiment query.
+  const deniable = isDeniabilityOrDemoActive();
+  const { data: savedRaw = [] } = useQuery({
+    queryKey: ["news-sentiment"],
+    queryFn: () => base44.entities.NewsSentiment.list("-created_date"),
+    enabled: !deniable,
+  });
+  const saved = deniable ? [] : savedRaw;
 
   const allNews = saved;
   const filtered = filterAsset === "all" ? allNews : allNews.filter(n => n.asset === filterAsset);
 
   const refresh = useMutation({
     mutationFn: () => {
+      // Belt to the hidden Refresh button: never write the shared store from
+      // a deniable session, even if something else triggers the mutation.
+      if (isDeniabilityOrDemoActive()) return Promise.reject(new Error("unavailable"));
       if (!LLM_AVAILABLE) return Promise.reject(new Error("unavailable"));
       return base44.integrations.Core.InvokeLLM({
         prompt: `Analyze the current crypto market sentiment for BTC, ETH, and SOL based on today's news and on-chain data. Return a JSON array of 3 news items with fields: asset (BTC/ETH/SOL), headline (string), source (string), sentiment (very_bullish/bullish/neutral/bearish/very_bearish), score (-1 to 1), published_at (ISO), summary (1-2 sentences).`,
