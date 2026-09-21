@@ -18,9 +18,9 @@ import {
   getTierInfo,
   calculateEarnings,
   calculateDiscountCents,
+  getPlanFullPriceCents,
   TIERS,
   EXTERNAL_REWARD_URL,
-  PLAN_FULL_PRICE_CENTS,
 } from '@/lib/referral';
 import { registerCode, redeemCode, fetchStatus, fetchPaidCount, fetchEarnings } from '@/api/referralApi';
 
@@ -128,12 +128,22 @@ function ProgressBar({ paidCount }) {
 }
 
 function TierCard({ tier, isActive, isFuture }) {
+  // A11Y-07: PLAN_FULL_PRICE_CENTS has no top-level `.annual` (it's keyed by
+  // plan id) -- that produced a literal "$NaN/yr per sub" on every render.
+  // getPlanFullPriceCents already fails closed to 0 for an unconfigured plan;
+  // treat that as "no honest price available" and render no claim at all (I4)
+  // rather than a fabricated $0.00.
+  const annualPriceCents = getPlanFullPriceCents('safety_plus', 'annual');
+  const payoutCents = annualPriceCents ? calculateDiscountCents(annualPriceCents, tier.commission) : null;
   return (
     <div className={`flex items-center justify-between rounded-lg border p-3 transition-all ${
       isActive
         ? `border-primary/40 ${TIER_BG[tier.key]}`
         : isFuture
-          ? 'border-border bg-card opacity-60'
+          // A11Y-06: opacity-60 on the whole card multiplied text-muted-foreground
+          // down to ~3.17:1 (fails WCAG 1.4.3's 4.5:1). Dim the container via
+          // border/background only; text stays at full opacity.
+          ? 'border-border/60 bg-card/60'
           : 'border-border/50 bg-card/50 opacity-40'
     }`}>
       <div className="flex items-center gap-3">
@@ -149,9 +159,11 @@ function TierCard({ tier, isActive, isFuture }) {
         <span className={`text-lg font-bold ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
           {tier.commission}%
         </span>
-        <p className="text-xs text-muted-foreground">
-          ${(calculateDiscountCents(PLAN_FULL_PRICE_CENTS.annual, tier.commission) / 100).toFixed(2)}/yr per sub
-        </p>
+        {payoutCents != null && (
+          <p className="text-xs text-muted-foreground">
+            ${(payoutCents / 100).toFixed(2)}/yr per sub
+          </p>
+        )}
       </div>
     </div>
   );
@@ -414,15 +426,24 @@ export default function ReferralTracker() {
           </p>
         )}
         <ProgressBar paidCount={dPaid} />
-        {dCommission > 0 && (
-          <div className="flex items-center gap-2 text-sm">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            <span>
-              Your followers get <span className="font-semibold text-foreground">{dCommission}% off</span>
-              {' — '}you earn <span className="font-semibold text-foreground">${(calculateDiscountCents(PLAN_FULL_PRICE_CENTS.annual, dCommission) / 100).toFixed(2)}</span>/yr subscriber
-            </span>
-          </div>
-        )}
+        {dCommission > 0 && (() => {
+          // A11Y-07: same fix as TierCard -- PLAN_FULL_PRICE_CENTS has no
+          // top-level `.annual`. Resolve via getPlanFullPriceCents and render
+          // no payout claim if it's ever unavailable (I4), instead of $NaN.
+          const annualPriceCents = getPlanFullPriceCents('safety_plus', 'annual');
+          const payoutCents = annualPriceCents ? calculateDiscountCents(annualPriceCents, dCommission) : null;
+          return (
+            <div className="flex items-center gap-2 text-sm">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <span>
+                Your followers get <span className="font-semibold text-foreground">{dCommission}% off</span>
+                {payoutCents != null && (
+                  <>{' — '}you earn <span className="font-semibold text-foreground">${(payoutCents / 100).toFixed(2)}</span>/yr subscriber</>
+                )}
+              </span>
+            </div>
+          );
+        })()}
         {/* P1: one generic sentence for EVERY cause — service down, backend
             unconfigured, or a deniability session. It must not imply that
             figures are being withheld ("showing your last known figures" told a

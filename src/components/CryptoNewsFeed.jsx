@@ -18,9 +18,14 @@ function timeAgo(dateStr) {
 
 async function fetchCryptoNews() {
   const data = await fetchNews();
-  const articles = (data.articles || []).slice(0, 15);
-  if (!articles.length) throw new Error("No articles from any feed");
-  return articles;
+  // STG-08: a 200 response with zero parseable RSS items (both upstream feeds
+  // empty in the same window) is a successful-but-empty result, not a
+  // failure -- it must not throw. Throwing here made react-query report
+  // isError=true and skip the existing `news.length === 0` empty state below,
+  // so users saw "Could not load news" for a call that actually succeeded.
+  // A real fetch/HTTP failure still throws inside fetchNews() and is
+  // unaffected.
+  return (data.articles || []).slice(0, 15);
 }
 
 // rss2json returns `description` as an HTML fragment (tags + entities). Rendered
