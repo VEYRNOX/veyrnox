@@ -178,21 +178,14 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
       target: { value: 'a-nice-and-long-passphrase' },
     });
-    const btn = screen.getByRole('button', { name: /split & save 3 shares/i });
-    console.log('[diag] disabled at click:', btn.disabled,
-      '| createObjectURL native:', !vi.isMockFunction(URL.createObjectURL));
-    try {
-      fireEvent.click(btn);
-      // The wrapper is stubbed above; this test covers UI orchestration while
-      // wallet-core owns the real Argon2id + AES-GCM coverage.
-      await waitFor(
-        () => expect(screen.getByText(/all 3 recovery shares saved/i)).toBeTruthy(),
-        { timeout: 15_000 },
-      );
-      expect(exportRecoveryBundles).toHaveBeenCalledWith(TEST_PIN);
-    } finally {
-      console.log('[diag] toast.error calls:', JSON.stringify(toastError.mock.calls));
-    }
+    fireEvent.click(screen.getByRole('button', { name: /split & save 3 shares/i }));
+    // The wrapper is stubbed above; this test covers UI orchestration while
+    // wallet-core owns the real Argon2id + AES-GCM coverage.
+    await waitFor(
+      () => expect(screen.getByText(/all 3 recovery shares saved/i)).toBeTruthy(),
+      { timeout: 15_000 },
+    );
+    expect(exportRecoveryBundles).toHaveBeenCalledWith(TEST_PIN);
   });
 
   it('surfaces a fail-closed error when exportRecoveryBundles throws', async () => {
