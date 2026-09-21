@@ -171,6 +171,7 @@ describe('Content-Security-Policy — static strictness (XSS defence)', () => {
         'https://explorer-api.walletconnect.com',
         'https://registry.walletconnect.com',
         'https://images.cointelegraph.com',
+        'https://s3-images.ctmedia.io', // STG-09: CoinTelegraph's current thumbnail CDN
         'https://cdn.decrypt.co',
         'https://cloudflare-ipfs.com',
         'https://gateway.pinata.cloud',
@@ -207,13 +208,44 @@ describe('Content-Security-Policy — static strictness (XSS defence)', () => {
       for (const bad of ['*', 'https:', 'http:', 'data:', 'blob:', "'unsafe-inline'"]) {
         expect(connectSrc, `connect-src must not contain ${bad}`).not.toContain(bad);
       }
-      // Every host token must be an explicit https origin (wildcard subdomain ok).
+      // Every host token must be an explicit https (or wss, for the
+      // WalletConnect relay — see RTE-02/STG-10 below) origin, wildcard
+      // subdomain ok.
       for (const tok of connectSrc) {
         if (tok === "'self'") continue;
-        expect(tok, `connect-src token "${tok}" is not an explicit https origin`).toMatch(
-          /^https:\/\/[^*]*(\*\.)?[a-z0-9.-]+$/i,
+        expect(tok, `connect-src token "${tok}" is not an explicit https/wss origin`).toMatch(
+          /^(https|wss):\/\/[^*]*(\*\.)?[a-z0-9.-]+$/i,
         );
       }
+    });
+
+    // RTE-02/STG-10 (2026-09-21): the WalletConnect relay was never in
+    // connect-src, so pairing (session.js WalletKit.init and
+    // walletConnectAppSdk.js's UniversalConnector, both defaulting to
+    // @walletconnect/core's stock relayer) could never open its WebSocket —
+    // confirmed via `new WebSocket('wss://relay.walletconnect.org')` firing a
+    // securitypolicyviolation on the deployed build. An https:// token does
+    // NOT cover a wss:// connection under the CSP fetch-directive matching
+    // algorithm (verified empirically: an https:// entry still left the
+    // WebSocket blocked) — the source's scheme must be an exact match (or the
+    // http→https / ws→wss upgrade, never https→wss), so this needs its own
+    // wss:// entry. verify.walletconnect.org is the SDK's session-propose
+    // scam-attestation fetch (@walletconnect/core verify controller, a plain
+    // https fetch); telemetry (pulse.walletconnect.org) is deliberately
+    // absent — session.js passes Core({ telemetryEnabled: false }) instead of
+    // allowlisting it.
+    it('connect-src allowlists the WalletConnect relay + verify API, not telemetry (RTE-02/STG-10)', () => {
+      const connectSrc = d.get('connect-src') ?? d.get('default-src') ?? [];
+      expect(connectSrc, 'connect-src must allowlist the WalletConnect relay').toContain(
+        'wss://relay.walletconnect.org',
+      );
+      expect(connectSrc, 'connect-src must allowlist the WalletConnect verify API').toContain(
+        'https://verify.walletconnect.org',
+      );
+      expect(
+        connectSrc.some((t) => t.includes('pulse.walletconnect')),
+        'connect-src must NOT allowlist WalletConnect telemetry (pulse.walletconnect.org) — disable it at the SDK instead',
+      ).toBe(false);
     });
   });
 
@@ -250,7 +282,9 @@ describe('Content-Security-Policy — static strictness (XSS defence)', () => {
   //   https://api.foo.com      → scheme https + exact host (path ignored)
   function tokenMatchesHost(token, host) {
     if (token === '*' || token === 'https:') return true;
-    const m = token.match(/^https:\/\/(\*\.)?(.+)$/i);
+    // https:// and wss:// both appear in connect-src (RTE-02/STG-10: the
+    // WalletConnect relay needs its own wss:// entry — see above).
+    const m = token.match(/^(?:https|wss):\/\/(\*\.)?(.+)$/i);
     if (!m) return false; // 'self'/'none'/data:/blob: don't match a remote host
     const [, wild, base] = m;
     return wild ? host === base || host.endsWith('.' + base) : host === base;
@@ -295,7 +329,7 @@ describe('Content-Security-Policy — static strictness (XSS defence)', () => {
       const hosts = new Set();
       for (const list of lists) {
         for (const tok of list) {
-          const m = tok.match(/^https:\/\/(\*\.)?(.+)$/i);
+          const m = tok.match(/^(?:https|wss):\/\/(\*\.)?(.+)$/i);
           if (!m) continue;
           hosts.add(m[1] ? `probe.${m[2]}` : m[2]);
         }
