@@ -141,7 +141,7 @@ import { runTheftProtectionGate } from '@/lib/theftProtection';
 import { clearConsent } from '@/lib/consent';
 import { clearPendingWcUri } from '@/lib/deepLinkPairing';
 import { setLivePricesEnabled } from '@/lib/priceFeed';
-import { initCode, getPendingReferral, clearPendingReferral, hasRedeemed, markRedeemed, applyRedemption, getLocalState as getReferralState } from '@/lib/referral';
+import { initCode, getPendingReferral, clearPendingReferral, hasRedeemed, markRedeemed, applyRedemption, getLocalState as getReferralState, bumpPendingReferralAttempts, REFERRAL_REDEEM_MAX_ATTEMPTS } from '@/lib/referral';
 import { generateServerCode, redeemCode } from '@/api/referralApi';
 import { trackEvent, EVENT } from '@/api/trackEvent';
 import { recordWin, WIN } from '@/lib/winPaywall';
@@ -2124,14 +2124,29 @@ export function WalletProvider({ children }) {
         // #2640: only a confirmed redemption consumes the pending referral.
         clearPendingReferral();
       } catch (error) {
-        // A server-confirmed invalid code cannot recover on a later unlock.
-        // Network/5xx failures keep the code so the next primary unlock can
-        // retry without ever blocking access to the wallet.
-        if (error?.status === 400 || error?.status === 404) {
+        // A server-confirmed permanent rejection (any 4xx except 429 — bad
+        // format, code not found, duplicate, validation) cannot recover on a
+        // later unlock: clear it and say so. 429 (rate-limited), 5xx, and a
+        // network failure (no `status` at all — offline, timeout) are
+        // transient, so the code is kept for the next primary unlock to
+        // retry — up to REFERRAL_REDEEM_MAX_ATTEMPTS, past which retrying
+        // forever is worse than giving up honestly.
+        const status = error?.status;
+        const permanent = typeof status === 'number' && status >= 400 && status < 500 && status !== 429;
+        if (permanent) {
           clearPendingReferral();
           toast.error("Referral code couldn't be applied. Check the code and try another one.");
+          void trackEvent(EVENT.REFERRAL_REDEEM_FAILED, { reason: 'rejected' }).catch(() => {});
         } else {
-          toast.warning("Referral code will be retried when you're connected.");
+          const attempts = bumpPendingReferralAttempts();
+          if (attempts >= REFERRAL_REDEEM_MAX_ATTEMPTS) {
+            clearPendingReferral();
+            toast.warning("Referral code couldn't be applied after several tries.");
+            void trackEvent(EVENT.REFERRAL_REDEEM_FAILED, { reason: 'cap_exceeded' }).catch(() => {});
+          } else {
+            toast.warning("Referral code will be retried when you're connected.");
+            void trackEvent(EVENT.REFERRAL_REDEEM_RETRY, { reason: 'transient' }).catch(() => {});
+          }
         }
       }
     })();

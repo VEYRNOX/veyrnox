@@ -80,7 +80,13 @@ export async function redeemCode(code) {
     if (e.status === 404 || e.message?.includes('not found')) {
       throw Object.assign(new Error('Code not found'), { status: 404 });
     }
-    throw Object.assign(new Error(e.message || 'Referral error'), { status: 500 });
+    // #2640: preserve the real HTTP status instead of collapsing every
+    // failure to 500. The caller (WalletProvider's referral-redemption
+    // block) needs to tell a permanent rejection (4xx, not 429) from a
+    // transient one (429 rate-limited, 5xx, or a network failure that
+    // never reached the server at all — e.status is undefined there)
+    // so it knows whether to keep the pending code for retry.
+    throw Object.assign(new Error(e.message || 'Referral error'), { status: e.status });
   }
 }
 

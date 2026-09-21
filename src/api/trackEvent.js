@@ -111,6 +111,12 @@ export const EVENT = {
   // callsite being instrumented. Added here + in sql/telemetry-events-
   // allowlist.sql to make the audit trail real.
   DAPP_REQUEST_REJECTED: 'dapp_request_rejected',
+  // #2640: pending-referral redemption at unlock. metadata carries only an
+  // outcome enum (never the code, device id, or wallet data) — see
+  // sql/telemetry-events-allowlist.sql for the server-side allowlist entry
+  // (not yet applied; see the PR that added these for the staging rollout note).
+  REFERRAL_REDEEM_RETRY: 'referral_redeem_retry',
+  REFERRAL_REDEEM_FAILED: 'referral_redeem_failed',
 };
 
 // Set built after EVENT so TypeScript infers Set<string> with no null union.

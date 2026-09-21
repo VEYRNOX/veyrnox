@@ -184,6 +184,46 @@ describe('own-code and already-redeemed guards', () => {
   });
 });
 
+describe('#2640 pending-referral retry attempt counter', () => {
+  it('starts at 0 for a freshly-set pending code', async () => {
+    const { setPendingReferral, getPendingReferralAttempts } = await import('../referral.js');
+    setPendingReferral('VYX-AB12');
+    expect(getPendingReferralAttempts()).toBe(0);
+  });
+
+  it('bumpPendingReferralAttempts increments and returns the new count', async () => {
+    const { setPendingReferral, bumpPendingReferralAttempts, getPendingReferralAttempts } = await import('../referral.js');
+    setPendingReferral('VYX-AB12');
+    expect(bumpPendingReferralAttempts()).toBe(1);
+    expect(bumpPendingReferralAttempts()).toBe(2);
+    expect(getPendingReferralAttempts()).toBe(2);
+  });
+
+  it('clearPendingReferral resets the attempt count', async () => {
+    const { setPendingReferral, bumpPendingReferralAttempts, clearPendingReferral, getPendingReferralAttempts } = await import('../referral.js');
+    setPendingReferral('VYX-AB12');
+    bumpPendingReferralAttempts();
+    bumpPendingReferralAttempts();
+    clearPendingReferral();
+    expect(getPendingReferralAttempts()).toBe(0);
+  });
+
+  it('setPendingReferral (a new code) resets a stale attempt count', async () => {
+    const { setPendingReferral, bumpPendingReferralAttempts, getPendingReferralAttempts } = await import('../referral.js');
+    setPendingReferral('VYX-AB12');
+    bumpPendingReferralAttempts();
+    bumpPendingReferralAttempts();
+    setPendingReferral('VYX-CD34'); // a fresh code should not inherit the old attempt count
+    expect(getPendingReferralAttempts()).toBe(0);
+  });
+
+  it('REFERRAL_REDEEM_MAX_ATTEMPTS is a small positive bound', async () => {
+    const { REFERRAL_REDEEM_MAX_ATTEMPTS } = await import('../referral.js');
+    expect(REFERRAL_REDEEM_MAX_ATTEMPTS).toBeGreaterThan(0);
+    expect(REFERRAL_REDEEM_MAX_ATTEMPTS).toBeLessThanOrEqual(10);
+  });
+});
+
 describe('attribution tracking', () => {
   it('getRedeemedCode returns null when no code redeemed', async () => {
     const { getRedeemedCode } = await import('../referral.js');

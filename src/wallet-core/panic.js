@@ -322,6 +322,7 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-message-signing-enabled', // lib/messageSigning.js MESSAGE_SIGNING_KEY
   'veyrnox-referral',               // lib/referral.js STORAGE_KEY
   'veyrnox-referral-pending',       // lib/referral.js PENDING_KEY
+  'veyrnox-referral-pending-attempts', // lib/referral.js PENDING_ATTEMPTS_KEY (#2640)
   'veyrnox-remote-screen',          // pages/SendCrypto.jsx remote-screen toggle
   'veyrnox-sim-enabled',            // pages/SendCrypto.jsx tx-simulation toggle
   'dashboard-widgets',              // pages/Dashboard.jsx widget layout
