@@ -25,8 +25,13 @@ export default function BackupNagSheet({ publicAddresses }) {
     // Below md the Layout bottom nav is on screen (md:hidden, ~4rem tall plus
     // the home-indicator inset), so sit above it rather than on top of it —
     // the TestFlight screenshot showed this card covering the nav.
-    <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex justify-center p-4 md:inset-x-auto md:bottom-6 md:end-6">
-      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-background/95 p-4 shadow-2xl backdrop-blur">
+    // md and up: SecurityAdvisor's Vigil launcher button also docks bottom-6
+    // right-4 (h-14 = 3.5rem tall), so bottom-6 here sat the whole card on
+    // top of it. bottom-24 (6rem) clears Vigil's top edge with headroom, and
+    // max-w-xs (down from max-w-sm) trims the footprint over dashboard/list
+    // content behind it (RSP-02, RTE-04).
+    <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex justify-center p-4 md:inset-x-auto md:bottom-24 md:end-6">
+      <div className="w-full max-w-xs rounded-2xl border border-white/10 bg-background/95 p-4 shadow-2xl backdrop-blur">
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2.5">
             {/* Vigil asleep — encrypted backup is NOT running on this wallet
