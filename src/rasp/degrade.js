@@ -188,6 +188,18 @@ const FAIL_CLOSED = Object.freeze({
   requiresBiometric: false,
 });
 
+// Fails CLOSED: if the platform probe itself is missing or throws (a hooked or
+// stubbed runtime), treat it as native and block signing. Evaluated per call,
+// never at module load — several test harnesses mock @capacitor/core with a
+// partial factory, and a load-time call would trip their hoisting order.
+function isNativeRuntime() {
+  try {
+    return Capacitor.isNativePlatform() === true;
+  } catch {
+    return true;
+  }
+}
+
 /**
  * Map a detector condition to its response artifact.
  *
@@ -206,18 +218,6 @@ const FAIL_CLOSED = Object.freeze({
  * consumers (compose.js maps BLOCK → signerReachable:false for every send, testnet
  * included). A dead API field in a security module misleads callers, so it is gone.
  */
-// Fails CLOSED: if the platform probe itself is missing or throws (a hooked or
-// stubbed runtime), treat it as native and block signing. Evaluated per call,
-// never at module load — several test harnesses mock @capacitor/core with a
-// partial factory, and a load-time call would trip their hoisting order.
-function isNativeRuntime() {
-  try {
-    return Capacitor.isNativePlatform() === true;
-  } catch {
-    return true;
-  }
-}
-
 export function degrade(condition) {
   const spec = Object.prototype.hasOwnProperty.call(SPECS, condition) ? SPECS[condition] : FAIL_CLOSED;
   // Return a fresh artifact (and a fresh blockedActions array) so callers cannot
