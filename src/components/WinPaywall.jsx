@@ -64,7 +64,12 @@ export function upsellFor(tier) {
   return {
     id: TIER.SAFETY_PLUS,
     title: 'Upgrade to Safety Plus',
-    body: 'Safety Plus adds hardware-bound encryption, tamper detection, encrypted backups, and spend limits — so even a stolen device can’t reach your keys.',
+    // I4: name ONLY capabilities Safety Plus actually gates (SAFETY_PLUS_ROUTES
+    // in lib/safetyPlusRoutes.js). Hardware-bound encryption (KEK) and tamper
+    // detection (RASP) are on every tier, and spend limits work on Free, so
+    // selling them here sold free controls as paid. No absolute guarantee
+    // either — the independent audit is still outstanding.
+    body: 'Safety Plus adds a duress PIN that opens a decoy wallet, hidden wallets, panic wipe, and an encrypted backup you can keep off this device.',
     cta: 'See plans',
     to: '/plans',
   };

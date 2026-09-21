@@ -41,6 +41,14 @@ describe('upsellFor', () => {
   it('sells AI Security Protection to a Safety Plus subscriber', () => {
     expect(upsellFor(TIER.SAFETY_PLUS).to).toBe('/ai-security-protection');
   });
+  // I4: the Free upsell must not sell controls every tier already has. KEK
+  // and RASP are ungated, spend limits work on Free, and "a stolen device
+  // can't reach your keys" is an absolute claim with the audit outstanding.
+  it('Free upsell names only paid capabilities, and makes no absolute claim', () => {
+    const { body } = upsellFor(TIER.FREE);
+    expect(body).not.toMatch(/hardware|tamper|spend(ing)? limit|can.?t reach/i);
+    expect(body).toMatch(/duress/i);
+  });
   it('sells NOTHING to the top tier', () => {
     expect(upsellFor(TIER.AI_SECURITY_PROTECTION)).toBeNull();
   });
