@@ -3,7 +3,7 @@
 //
 // ALL_RESIDUE_KEYS is a module-private const, so no test can enumerate it —
 // coverage MUST be per-key, which is why this directory carries one dedicated
-// panic-residue-*.test.js per key group. This file pins five keys that belong in
+// panic-residue-*.test.js per key group. This file pins six keys that belong in
 // METADATA_RESIDUE_KEYS:
 //
 //   veyrnox-session-day-count         PaywallNudge.jsx SESSION_COUNT_KEY
@@ -35,6 +35,7 @@ const LOCAL_KEYS = [
   'veyrnox-session-day-count',
   'veyrnox-session-last-day',
   'veyrnox-paywall-nudge-dismissed',
+  'veyrnox-ai-nudge-dismissed',
   'veyrnox-backup-nudge-dismissed',
   'veyrnox-referral-prompt-dismissed',
 ];
@@ -47,7 +48,7 @@ describe('panic wipe — paywall/session-day + referral-prompt residue (I-3)', (
     for (const k of LOCAL_KEYS) localStorage.removeItem(k);
   });
 
-  it('inspectKeyMaterial refuses to call it clean while any of the five keys survives', async () => {
+  it('inspectKeyMaterial refuses to call it clean while any of these keys survives', async () => {
     await webKeyStore.createVault(generateMnemonic(128), REAL_PW);
     for (const k of LOCAL_KEYS) localStorage.setItem(k, '1');
 
@@ -74,7 +75,7 @@ describe('panic wipe — paywall/session-day + referral-prompt residue (I-3)', (
     }
   });
 
-  it('panicWipeLocal() clears all five keys and then reports clean', async () => {
+  it('panicWipeLocal() clears all six keys and then reports clean', async () => {
     await webKeyStore.createVault(generateMnemonic(128), REAL_PW);
     for (const k of LOCAL_KEYS) localStorage.setItem(k, '1');
 

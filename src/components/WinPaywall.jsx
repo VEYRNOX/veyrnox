@@ -11,10 +11,14 @@
 // to "tune down" without being asked — PaywallNudge is the once-only surface,
 // this one is the recurring one.
 //
-// Tier-aware, because there are two products:
-//   free        → Safety Plus       → /plans
-//   safety_plus → AI Security Protection → /ai-security-protection
-//   ai_security_protection → nothing to sell, renders nothing
+// Owner decision 2026-09-21: the recurring modal is for FREE users only. A
+// Safety Plus subscriber is already paying, so AI Security Protection reaches
+// them once, as a dismissible nudge (PaywallNudge), never on every win.
+//
+// upsellFor() is the shared catalogue of what each tier can still be sold:
+//   free        → Safety Plus       → /plans   (this modal + the nudge)
+//   safety_plus → AI Security Protection → /ai-security-protection (nudge only)
+//   ai_security_protection → nothing to sell
 //
 // I4 honesty: the AI Security upsell must NOT imply the wallet itself gets
 // more secure. The core controls (KEK, RASP, vault, threat screening) are the
@@ -49,7 +53,8 @@ import { WIN_EVENT } from '@/lib/winPaywall';
 export { WIN, recordWin } from '@/lib/winPaywall';
 
 
-// Exported for tests. Which product, if any, this tier can still be sold.
+// Which product, if any, this tier can still be sold. Also read by
+// PaywallNudge for the Safety Plus → AI Security Protection copy.
 export function upsellFor(tier) {
   if (tier === TIER.AI_SECURITY_PROTECTION) return null;
   if (tier === TIER.SAFETY_PLUS) {
@@ -80,7 +85,8 @@ export default function WinPaywall() {
   const navigate = useNavigate();
   const reduce = useReducedMotion();
   const [win, setWin] = useState(null);
-  const offer = upsellFor(currentTier);
+  // Free only — see the 2026-09-21 note above.
+  const offer = currentTier === TIER.FREE ? upsellFor(currentTier) : null;
 
   const close = useCallback(() => setWin(null), []);
   const containerRef = useModalA11y({ active: !!win, onEscape: close });

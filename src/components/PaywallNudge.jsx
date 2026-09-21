@@ -1,13 +1,20 @@
 // @ts-nocheck
 // src/components/PaywallNudge.jsx
 //
-// Soft paywall: a non-blocking upgrade nudge shown to free-tier users after
-// DAY_THRESHOLD distinct calendar days of app usage — currently 1, i.e. the
-// first unlock day (see the constant for why, and for what that costs). Never
-// shown in deniability/demo sessions (I3 — no upsell surface exists in a
-// decoy/hidden session),
-// never shown to already-subscribed users, and only shown once (dismissal
-// is sticky in localStorage — no re-prompt nagging).
+// Soft paywall: a non-blocking upgrade nudge shown after DAY_THRESHOLD
+// distinct calendar days of app usage — currently 1, i.e. the first unlock day
+// (see the constant for why, and for what that costs). Never shown in
+// deniability/demo sessions (I3 — no upsell surface exists in a decoy/hidden
+// session), and only shown once per offer (dismissal is sticky in localStorage
+// — no re-prompt nagging).
+//
+// Two offers, one per tier that still has something to buy:
+//   free        → Safety Plus            (NUDGE_DISMISSED_KEY)
+//   safety_plus → AI Security Protection (AI_NUDGE_DISMISSED_KEY)
+// Owner decision 2026-09-21: this nudge is the ONLY upsell a Safety Plus
+// subscriber sees — WinPaywall's recurring modal is free-tier only. The AI
+// offer has its own key so a free-tier dismissal from before the upgrade does
+// not silently suppress it.
 //
 // Session-day counting: incrementSessionDayCount() is called once per
 // SESSION_START (see WalletProvider.jsx) and only bumps the counter the
@@ -23,11 +30,21 @@ import { useModalA11y } from '@/lib/useModalA11y';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { trackEvent, EVENT } from '@/api/trackEvent';
 import { useTier } from '@/lib/TierProvider';
-import { isPaidTier } from '@/lib/tier';
+import { TIER } from '@/lib/tier';
+import { upsellFor } from '@/components/WinPaywall';
 
 const SESSION_COUNT_KEY = 'veyrnox-session-day-count';
 const SESSION_LAST_DAY_KEY = 'veyrnox-session-last-day';
 const NUDGE_DISMISSED_KEY = 'veyrnox-paywall-nudge-dismissed';
+// In panic.js ALL_RESIDUE_KEYS alongside the free-tier key.
+const AI_NUDGE_DISMISSED_KEY = 'veyrnox-ai-nudge-dismissed';
+
+// Which dismissal key governs the nudge for this tier; null = nothing to sell.
+function dismissKeyFor(tier) {
+  if (tier === TIER.FREE) return NUDGE_DISMISSED_KEY;
+  if (tier === TIER.SAFETY_PLUS) return AI_NUDGE_DISMISSED_KEY;
+  return null;
+}
 // 1 means the FIRST unlock day, not a return visit: incrementSessionDayCount()
 // runs on the first unlock and only once per calendar day, so `count === 1` is
 // routinely reached minutes after wallet creation (one auto-lock cycle). A
@@ -79,8 +96,9 @@ export function incrementSessionDayCount() {
 export function shouldShowPaywallNudge(currentTier) {
   try {
     if (isDeniabilityOrDemoActive()) return false;
-    if (isPaidTier(currentTier)) return false;
-    if (localStorage.getItem(NUDGE_DISMISSED_KEY)) return false;
+    const key = dismissKeyFor(currentTier);
+    if (!key) return false;
+    if (localStorage.getItem(key)) return false;
     const count = parseInt(localStorage.getItem(SESSION_COUNT_KEY) || '0', 10);
     return count >= DAY_THRESHOLD;
   } catch {
@@ -107,6 +125,11 @@ export default function PaywallNudge() {
   const navigate = useNavigate();
   const location = useLocation();
   const [visible, setVisible] = useState(false);
+  const dismissKey = dismissKeyFor(currentTier);
+  // Free keeps its own day-count copy; Safety Plus gets the AI offer.
+  const offer = currentTier === TIER.SAFETY_PLUS
+    ? upsellFor(TIER.SAFETY_PLUS)
+    : { id: TIER.SAFETY_PLUS, title: 'Upgrade to Safety Plus', body: NUDGE_BODY, cta: 'See plans', to: '/plans' };
   const containerRef = useModalA11y({ active: visible, onEscape: () => handleDismiss() });
 
   const trackedRef = useRef(false);
@@ -122,7 +145,7 @@ export default function PaywallNudge() {
       // nudge in production `public.events` from before DAY_THRESHOLD moved.
       // Renaming it would split the series and silently reset the only
       // measurement that justifies the threshold. Leave it.
-      void trackEvent(EVENT.PAYWALL_SHOWN, { trigger: 'day_3' }).catch(() => {});
+      void trackEvent(EVENT.PAYWALL_SHOWN, { trigger: 'day_3', offer: offer.id }).catch(() => {});
     }, SETTLE_MS);
     return () => clearTimeout(timer);
   }, [currentTier, location.pathname]);
@@ -137,28 +160,28 @@ export default function PaywallNudge() {
   // marker owned exclusively by primary sessions. The one-render nudge
   // itself is fine to close in decoy (setVisible is React state only).
   const handleDismiss = () => {
-    if (!isDeniabilityOrDemoActive()) {
-      try { localStorage.setItem(NUDGE_DISMISSED_KEY, '1'); } catch {
+    if (!isDeniabilityOrDemoActive() && dismissKey) {
+      try { localStorage.setItem(dismissKey, '1'); } catch {
         // Best-effort: worst case the nudge re-shows next session.
       }
     }
     setVisible(false);
     if (!isDeniabilityOrDemoActive()) {
-      void trackEvent(EVENT.PAYWALL_DISMISSED, { trigger: 'day_3' }).catch(() => {});
+      void trackEvent(EVENT.PAYWALL_DISMISSED, { trigger: 'day_3', offer: offer.id }).catch(() => {});
     }
   };
 
   const handleUpgrade = () => {
-    if (!isDeniabilityOrDemoActive()) {
-      try { localStorage.setItem(NUDGE_DISMISSED_KEY, '1'); } catch {
+    if (!isDeniabilityOrDemoActive() && dismissKey) {
+      try { localStorage.setItem(dismissKey, '1'); } catch {
         // Best-effort.
       }
     }
     setVisible(false);
     if (!isDeniabilityOrDemoActive()) {
-      void trackEvent(EVENT.PAYWALL_CONVERTED, { trigger: 'day_3' }).catch(() => {});
+      void trackEvent(EVENT.PAYWALL_CONVERTED, { trigger: 'day_3', offer: offer.id }).catch(() => {});
     }
-    navigate('/plans');
+    navigate(offer.to);
   };
 
   if (!visible) return null;
@@ -169,15 +192,15 @@ export default function PaywallNudge() {
         ref={containerRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Upgrade to Safety Plus"
+        aria-label={offer.title}
         className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xl"
       >
         <div className="flex items-start justify-between">
-          {/* Vigil, asleep: protection is NOT running on this wallet. The
-              sleeping state is the honest one for a paywall (I4) — off duty,
-              never sad, never implying cover the user has not paid for.
+          {/* Vigil, asleep: the paywall/locked-feature state (Vigil.jsx), on
+              both offers — never implying cover the user has not paid for (I4).
+              Same reasoning as WinPaywall's header note.
               Vigil self-gates on deniability/demo, so no guard here. */}
-          <h2 className="text-lg font-bold">Upgrade to Safety Plus</h2>
+          <h2 className="text-lg font-bold">{offer.title}</h2>
           <button
             onClick={handleDismiss}
             className="text-muted-foreground hover:text-foreground"
@@ -189,9 +212,9 @@ export default function PaywallNudge() {
         <div className="flex justify-center">
           <Vigil state="asleep" size={84} />
         </div>
-        <p className="text-sm text-muted-foreground">{NUDGE_BODY}</p>
+        <p className="text-sm text-muted-foreground">{offer.body}</p>
         <div className="flex gap-3">
-          <Button onClick={handleUpgrade} className="flex-1">See plans</Button>
+          <Button onClick={handleUpgrade} className="flex-1">{offer.cta}</Button>
           <Button onClick={handleDismiss} variant="outline" className="flex-1">Not now</Button>
         </div>
       </div>

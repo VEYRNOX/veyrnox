@@ -1,17 +1,25 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 
 vi.mock('@/wallet-core/deniabilitySession', () => ({
   isDeniabilityOrDemoActive: vi.fn(() => false),
+}));
+vi.mock('@/api/trackEvent', () => ({
+  trackEvent: vi.fn(() => Promise.resolve()),
+  EVENT: { PAYWALL_SHOWN: 'paywall_shown', PAYWALL_DISMISSED: 'paywall_dismissed', PAYWALL_CONVERTED: 'paywall_converted' },
 }));
 vi.mock('@/lib/TierProvider', () => ({
   useTier: vi.fn(() => ({ currentTier: 'free' })),
 }));
 
-import { shouldShowPaywallNudge, DAY_THRESHOLD, NUDGE_BODY } from '@/components/PaywallNudge';
+import PaywallNudge, { shouldShowPaywallNudge, DAY_THRESHOLD, NUDGE_BODY } from '@/components/PaywallNudge';
+import { useTier } from '@/lib/TierProvider';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 const SESSION_COUNT_KEY = 'veyrnox-session-day-count';
 const NUDGE_DISMISSED_KEY = 'veyrnox-paywall-nudge-dismissed';
+const AI_NUDGE_DISMISSED_KEY = 'veyrnox-ai-nudge-dismissed';
 
 describe('shouldShowPaywallNudge', () => {
   beforeEach(() => {
@@ -58,8 +66,22 @@ describe('shouldShowPaywallNudge', () => {
     expect(shouldShowPaywallNudge('free')).toBe(false);
   });
 
-  it('returns false when already subscribed', () => {
+  // Owner decision 2026-09-21: the nudge is how Safety Plus hears about AI
+  // Security Protection (WinPaywall is free-only), once, on its own key.
+  it('shows a Safety Plus subscriber the AI Security Protection nudge', () => {
     localStorage.setItem(SESSION_COUNT_KEY, '5');
+    expect(shouldShowPaywallNudge('safety_plus')).toBe(true);
+  });
+
+  it('a free-tier dismissal from before upgrading does not suppress the AI nudge', () => {
+    localStorage.setItem(SESSION_COUNT_KEY, '5');
+    localStorage.setItem(NUDGE_DISMISSED_KEY, '1');
+    expect(shouldShowPaywallNudge('safety_plus')).toBe(true);
+  });
+
+  it('the AI nudge is once-only on Safety Plus', () => {
+    localStorage.setItem(SESSION_COUNT_KEY, '5');
+    localStorage.setItem(AI_NUDGE_DISMISSED_KEY, '1');
     expect(shouldShowPaywallNudge('safety_plus')).toBe(false);
   });
 
@@ -82,5 +104,34 @@ describe('NUDGE_BODY', () => {
   it('names only paid capabilities, and makes no absolute claim', () => {
     expect(NUDGE_BODY).not.toMatch(/hardware|tamper|spend(ing)? limit|can.?t (access|reach)/i);
     expect(NUDGE_BODY).toMatch(/duress/i);
+  });
+});
+
+describe('PaywallNudge render', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(false);
+    vi.useFakeTimers();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  const show = async (tier) => {
+    vi.mocked(useTier).mockReturnValue({ currentTier: tier });
+    localStorage.setItem(SESSION_COUNT_KEY, '5');
+    render(<MemoryRouter initialEntries={['/']}><PaywallNudge /></MemoryRouter>);
+    await act(async () => { vi.advanceTimersByTime(3000); });
+  };
+
+  it('Safety Plus sees the AI Security Protection offer, and dismissing writes the AI key only', async () => {
+    await show('safety_plus');
+    expect(screen.getByRole('heading', { name: 'Add AI Security Protection' })).toBeTruthy();
+    act(() => { screen.getByText('Not now').click(); });
+    expect(localStorage.getItem(AI_NUDGE_DISMISSED_KEY)).toBe('1');
+    expect(localStorage.getItem(NUDGE_DISMISSED_KEY)).toBeNull();
+  });
+
+  it('free still sees the Safety Plus offer', async () => {
+    await show('free');
+    expect(screen.getByRole('heading', { name: 'Upgrade to Safety Plus' })).toBeTruthy();
   });
 });
