@@ -96,7 +96,11 @@ export async function initWalletConnect() {
     console.warn('[Veyrnox] WalletConnect disabled: VITE_WALLETCONNECT_PROJECT_ID not set.');
     return null;
   }
-  const core = new Core({ projectId: PROJECT_ID });
+  // telemetryEnabled: false — CSP connect-src does not (and should not)
+  // allowlist pulse.walletconnect.org; the SDK already treats a falsy value
+  // as off by default, but this makes the choice explicit rather than
+  // accidental (RTE-02/STG-10, 2026-09-21).
+  const core = new Core({ projectId: PROJECT_ID, telemetryEnabled: false });
   _client = await WalletKit.init({
     core,
     metadata: {
