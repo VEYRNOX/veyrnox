@@ -62,12 +62,13 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.doUnmock('@/wallet-core/recoveryShare');
   vi.resetModules();
   toastError.mockClear();
   cleanup();
 });
 
-async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus', shardExportReady = true, native = false }) {
+async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus', shardExportReady = true, native = false, mockBundleWrap = false }) {
   if (enableShards) vi.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
   vi.resetModules();
   vi.doMock('@capacitor/core', () => ({
@@ -80,6 +81,14 @@ async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus', sh
   vi.doMock('@/lib/hardwareKekStatus', () => ({
     isHardwareKekEnrolled: vi.fn(async () => shardExportReady),
   }));
+  if (mockBundleWrap) {
+    vi.doMock('@/wallet-core/recoveryShare', async (importOriginal) => ({
+      ...(await importOriginal()),
+      // The page test verifies orchestration; envelope cryptography is covered
+      // independently in wallet-core/recoveryShare.bundle-wrap.test.js.
+      wrapBundleWithPassphrase: vi.fn(async () => '{"test":"wrapped-bundle"}'),
+    }));
+  }
   // Tier is now consumed inside PersonalBackup — the shard tab renders the
   // export panel for any tier with Safety Plus access, otherwise an upsell.
   // Every existing test in this suite asserts flow-shape behaviour that
@@ -140,6 +149,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     const exportRecoveryBundles = vi.fn(async () => fakeBundles);
     const Page = await loadPage({
       enableShards: true,
+      mockBundleWrap: true,
       useWalletValue: {
         createBackup: vi.fn(),
         exportRecoveryShares: vi.fn(),
@@ -157,14 +167,14 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
       target: { value: 'a-nice-and-long-passphrase' },
     });
     fireEvent.click(screen.getByRole('button', { name: /split & save 3 shares/i }));
-    // Three Argon2id wraps contend with CI's per-file workers. Keep the
-    // assertion strict, but allow the genuine cryptographic work to finish.
+    // The wrapper is stubbed above; this test covers UI orchestration while
+    // wallet-core owns the real Argon2id + AES-GCM coverage.
     await waitFor(
       () => expect(screen.getByText(/all 3 recovery shares saved/i)).toBeTruthy(),
-      { timeout: 45_000 },
+      { timeout: 15_000 },
     );
     expect(exportRecoveryBundles).toHaveBeenCalledWith(TEST_PIN);
-  }, 60_000);
+  });
 
   it('surfaces a fail-closed error when exportRecoveryBundles throws', async () => {
     const exportRecoveryBundles = vi.fn(async () => {
