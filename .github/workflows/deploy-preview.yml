@@ -171,6 +171,10 @@ jobs:
   deploy:
     needs: [changes, build]
     runs-on: ubuntu-latest
+    # Audit 2026-09-21 H3 follow-up: production Pages deploys had no environment
+    # binding, so the Production reviewer gate never applied to them. PR
+    # previews stay on the unprotected Preview environment.
+    environment: ${{ (github.ref == 'refs/heads/main' && github.event_name != 'pull_request') && 'Production' || 'Preview' }}
     # NOTE for future editors: the fork test must be `fork != true`, NOT the
     # common `head.repo.full_name == github.repository`. On the `push: [main]`
     # trigger there is no pull_request payload, so that comparison is false and
