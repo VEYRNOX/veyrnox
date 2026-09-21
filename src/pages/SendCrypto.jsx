@@ -165,6 +165,22 @@ export function isFormAmountWellFormed(amountStr) {
   return /[1-9]/.test(s);
 }
 
+// Fiat-mode amount -> the crypto `amount` string every gate and send site reads.
+// Only a strict decimal (the SAME isFormAmountWellFormed rule crypto mode gates
+// on) is converted. Anything else is returned UNCHANGED, so canonicalAmount
+// re-normalises it with the same locale, the Continue gate rejects it, and
+// sendAmountErrorKind says 'malformed' (or 'not-positive' for "0"). The old
+// parseFloat path silently turned "1.2.3" into $1.2 and en-US "1,5" into $1
+// (QA MNY-04). Returning '' instead would read as 'missing' beside a filled field.
+export function fiatDraftToCryptoAmount(raw, locale, usdRate, decimals) {
+  const canonical = normalizeDecimalInput(raw, locale);
+  if (!isFormAmountWellFormed(canonical)) return raw;
+  const parsed = Number(canonical);
+  // toFixed then strip trailing zeros so `0.5` doesn't
+  // render as `0.500000000` downstream.
+  return (parsed / usdRate).toFixed(decimals).replace(/\.?0+$/, '');
+}
+
 // Amount field font size, by how many characters are on screen. The field is
 // deliberately oversized (a send amount is the one figure a user must not
 // misread), but at 4.5rem only ~6 monospace characters fit a 390px phone, so a
@@ -2343,9 +2359,10 @@ export default function SendCrypto() {
                   // Fiat mode: value renders `fiatDraft` (raw typed string) so
                   // decimal typing stays smooth; every keystroke also converts to
                   // canonical crypto and writes `amount`, keeping downstream
-                  // validators/gates authoritative. Empty/malformed fiat clears
-                  // `amount` so the "missing" / "malformed" messages fire on the
-                  // crypto value the same way they do in crypto mode.
+                  // validators/gates authoritative. Empty fiat clears `amount`
+                  // ("missing"); malformed fiat is passed through unchanged by
+                  // fiatDraftToCryptoAmount so "malformed" fires on it the same
+                  // way it does in crypto mode (MNY-04).
                   type="text"
                   inputMode="decimal"
                   value={amountMode === 'fiat' ? fiatDraft : amount}
@@ -2353,8 +2370,7 @@ export default function SendCrypto() {
                     const raw = e.target.value;
                     if (amountMode === 'fiat') {
                       setFiatDraft(raw);
-                      const parsed = parseFloat(normalizeDecimalInput(raw, resolveLocale()));
-                      if (raw === '' || !Number.isFinite(parsed) || !(sendUsdRate > 0)) {
+                      if (raw === '' || !(sendUsdRate > 0)) {
                         setAmount('');
                       } else {
                         // Per-family decimals — must match what the send path
@@ -2369,10 +2385,7 @@ export default function SendCrypto() {
                         else if (isErc20 && selectedAsset?.symbol) {
                           try { dec = getToken(networkKey, selectedAsset.symbol).decimals; } catch { dec = 18; }
                         } else if (activeNetwork?.decimals != null) dec = activeNetwork.decimals;
-                        const crypto = parsed / sendUsdRate;
-                        // toFixed then strip trailing zeros so `0.5` doesn't
-                        // render as `0.500000000` downstream.
-                        setAmount(crypto.toFixed(dec).replace(/\.?0+$/, ''));
+                        setAmount(fiatDraftToCryptoAmount(raw, resolveLocale(), sendUsdRate, dec));
                       }
                     } else {
                       setAmount(raw);
