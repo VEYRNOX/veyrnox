@@ -67,7 +67,8 @@ describe('H-4 — no signing secret in the client', () => {
   });
 
   it('the request routes through the Edge Function path', () => {
-    expect(screenSrc).toMatch(/functions\/v1\/tip-screen/);
+    // Audit 2026-09-21 L2: via the Pages proxy, which attaches the anon key.
+    expect(screenSrc).toMatch(/\/api\/edge\/tip-screen/);
   });
 
   it('threads the RevenueCat app user id through the proxy header path', () => {

@@ -199,7 +199,7 @@ touched.
 
 **Account (verified 2026-08-31)**
 - **Organization account** (was Personal per older CLAUDE.md; Console UI now shows "Organization account"). Account ID `6178387777449533067`, developer name "Al Jobson", app id `4975376912225200470` (`com.veyrnox.app`).
-- Signed-in user: `al.jobson1@gmail.com`.
+- Signed-in user: the Play Console owner account (see the private ops vault; not recorded here).
 - Upload keystore `veyrnox-upload.jks`, SHA-1 `97:5A:05:8E…:BA:B2:F3`. App-signing cert (Google's) SHA-256 in CLAUDE.md.
 
 **Build**

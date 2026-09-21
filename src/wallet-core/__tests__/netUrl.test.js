@@ -23,9 +23,9 @@ describe('assertSafeRpcUrl', () => {
     expect(() => assertSafeRpcUrl('https://rpc.example.com/v1')).toThrow(/not in the well-known/);
   });
 
-  it('accepts https to an unknown host when the runtime opt-in flag is set', () => {
+  it('ignores the removed runtime opt-in global (audit 2026-09-21 I8)', () => {
     globalThis.__veyrnoxAllowCustomRpc = true;
-    expect(assertSafeRpcUrl('https://rpc.example.com/v1')).toBe('https://rpc.example.com/v1');
+    expect(() => assertSafeRpcUrl('https://rpc.example.com/v1')).toThrow(/not in the well-known/);
   });
 
   it('rejects a suffix collision that spoofs a well-known provider (evilinfura.io ≠ infura.io)', () => {

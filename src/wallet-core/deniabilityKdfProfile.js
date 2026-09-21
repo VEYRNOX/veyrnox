@@ -52,6 +52,7 @@
 // signing, no key material.
 
 import { KDF_PARAMS, assertSaneKdfParams, encryptVault } from './vault.js';
+import { KEK_C_PROFILES } from './keystore/kekProfiles.js';
 
 // Same database + store as the primary vault, the duress decoy, the panic marker
 // and the stealth pool (see duress.js / panic.js / stealth.js for the rationale
@@ -142,6 +143,20 @@ async function readProfile(db, key) {
   } catch {
     return null;
   }
+  // Audit 2026-09-21 M5: "sane" is a range; the era must be a profile this app
+  // actually SHIPPED. A pool entry an attacker can write (IndexedDB is not
+  // integrity-protected) could otherwise vote in a still-in-range but
+  // deliberately weak profile and have the repair path re-encrypt the real
+  // vault under it. Off-list entries do not vote.
+  const k = /** @type {any} */ (kdf);
+  const shipped = KEK_C_PROFILES.some(
+    (p) =>
+      k.parallelism === p.parallelism &&
+      k.iterations === p.iterations &&
+      k.memorySize === p.memorySize &&
+      k.hashLength === p.hashLength,
+  );
+  if (!shipped) return null;
   return /** @type {Record<string, unknown>} */ (kdf);
 }
 

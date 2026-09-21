@@ -33,6 +33,7 @@
 
 import { argon2id } from 'hash-wasm';
 import { KDF_PARAMS } from './vault.js';
+import { KEK_C_PROFILES } from './keystore/kekProfiles.js';
 import { SHARE_SIZE, isValidShareShape } from './shamir.js';
 import {
   ENABLE_PERSONAL_BACKUP_SHARDS,
@@ -128,17 +129,42 @@ function envelopeAad(shareIndex, type = ENVELOPE_TYPE) {
   );
 }
 
-async function deriveRecoveryKey(passphrase, salt) {
+/**
+ * Audit 2026-09-21 L10: an envelope's stamped `kdf` is accepted only when it is
+ * byte-for-byte one of the profiles this app has ever SHIPPED (the same list
+ * the vault KEK uses), and that profile — not the current default — drives the
+ * derivation. Exact-match-against-current meant every KDF_PARAMS bump turned
+ * existing recovery files into RECOVERY_SHARE_MALFORMED; matching against the
+ * shipped list keeps them importable without opening a caller-controlled
+ * memorySize (pre-auth resource exhaustion) — anything off-list still fails.
+ * @param {any} obj
+ * @returns {{parallelism:number, iterations:number, memorySize:number, hashLength:number}}
+ */
+function stampedKdf(obj) {
+  const k = obj && obj.kdf;
+  if (!k || typeof k !== 'object') throw new Error(RECOVERY_SHARE_MALFORMED);
+  const hit = KEK_C_PROFILES.find(
+    (p) =>
+      k.parallelism === p.parallelism &&
+      k.iterations === p.iterations &&
+      k.memorySize === p.memorySize &&
+      k.hashLength === p.hashLength,
+  );
+  if (!hit) throw new Error(RECOVERY_SHARE_MALFORMED);
+  return hit;
+}
+
+async function deriveRecoveryKey(passphrase, salt, kdf = KDF_PARAMS) {
   const pw = enc.encode(passphrase.normalize('NFKC'));
   try {
     const raw = /** @type {Uint8Array} */ (
       await argon2id({
         password: pw,
         salt,
-        parallelism: KDF_PARAMS.parallelism,
-        iterations: KDF_PARAMS.iterations,
-        memorySize: KDF_PARAMS.memorySize,
-        hashLength: KDF_PARAMS.hashLength,
+        parallelism: kdf.parallelism,
+        iterations: kdf.iterations,
+        memorySize: kdf.memorySize,
+        hashLength: kdf.hashLength,
         outputType: 'binary',
       })
     );
@@ -322,20 +348,7 @@ export async function unwrapShareWithPassphrase(envelope, passphrase) {
   if (!Number.isInteger(obj.shareIndex) || obj.shareIndex < 1 || obj.shareIndex > 255) {
     throw new Error(RECOVERY_SHARE_MALFORMED);
   }
-  // Only accept the exact KDF params we produced. An import path that
-  // trusted attacker-controlled kdf values would be a pre-authentication
-  // resource-exhaustion vector (see vault.js:70-84 for the equivalent
-  // reasoning on backup envelopes). No migration surface today; if params
-  // ever change, bump the envelope version instead.
-  if (
-    !obj.kdf ||
-    obj.kdf.parallelism !== KDF_PARAMS.parallelism ||
-    obj.kdf.iterations !== KDF_PARAMS.iterations ||
-    obj.kdf.memorySize !== KDF_PARAMS.memorySize ||
-    obj.kdf.hashLength !== KDF_PARAMS.hashLength
-  ) {
-    throw new Error(RECOVERY_SHARE_MALFORMED);
-  }
+  const kdf = stampedKdf(obj);
 
   const salt = fromB64(obj.salt);
   const iv = fromB64(obj.iv);
@@ -345,7 +358,7 @@ export async function unwrapShareWithPassphrase(envelope, passphrase) {
   // AES-GCM ct = plaintext + 16-byte tag → 88 + 16 = 104 bytes exactly.
   if (ct.length !== SHARE_SIZE + 16) throw new Error(RECOVERY_SHARE_MALFORMED);
 
-  const key = await deriveRecoveryKey(passphrase, salt);
+  const key = await deriveRecoveryKey(passphrase, salt, kdf);
   const aad = envelopeAad(obj.shareIndex);
   let pt;
   try {
@@ -397,15 +410,7 @@ export async function unwrapBundleWithPassphrase(envelope, passphrase) {
   if (!Number.isInteger(obj.shareIndex) || obj.shareIndex < 1 || obj.shareIndex > 255) {
     throw new Error(RECOVERY_SHARE_MALFORMED);
   }
-  if (
-    !obj.kdf ||
-    obj.kdf.parallelism !== KDF_PARAMS.parallelism ||
-    obj.kdf.iterations !== KDF_PARAMS.iterations ||
-    obj.kdf.memorySize !== KDF_PARAMS.memorySize ||
-    obj.kdf.hashLength !== KDF_PARAMS.hashLength
-  ) {
-    throw new Error(RECOVERY_SHARE_MALFORMED);
-  }
+  const kdf = stampedKdf(obj);
 
   const salt = fromB64(obj.salt);
   const iv = fromB64(obj.iv);
@@ -414,7 +419,7 @@ export async function unwrapBundleWithPassphrase(envelope, passphrase) {
   if (iv.length !== 12) throw new Error(RECOVERY_SHARE_MALFORMED);
   if (ct.length <= 16) throw new Error(RECOVERY_SHARE_MALFORMED);
 
-  const key = await deriveRecoveryKey(passphrase, salt);
+  const key = await deriveRecoveryKey(passphrase, salt, kdf);
   const aad = envelopeAad(obj.shareIndex, ENVELOPE_TYPE_BUNDLE);
   let pt;
   try {

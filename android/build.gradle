@@ -5,7 +5,12 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://developer.huawei.com/repo/' }
+        maven {
+            url 'https://developer.huawei.com/repo/'
+            // Audit 2026-09-21 L12: only Huawei's own groups may resolve from this
+            // mirror — dependency-confusion guard for everything else.
+            content { includeGroupByRegex 'com\.huawei.*' }
+        }
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:8.13.0'
@@ -26,7 +31,12 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://developer.huawei.com/repo/' }
+        maven {
+            url 'https://developer.huawei.com/repo/'
+            // Audit 2026-09-21 L12: only Huawei's own groups may resolve from this
+            // mirror — dependency-confusion guard for everything else.
+            content { includeGroupByRegex 'com\.huawei.*' }
+        }
     }
 }
 

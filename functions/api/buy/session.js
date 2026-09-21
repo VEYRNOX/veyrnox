@@ -80,6 +80,19 @@ export function upstreamUrlFor(directUrl, env) {
   return directUrl;
 }
 
+const EVM_ADDRESS = /^0x[0-9a-fA-F]{40}$/;
+const ADDRESS_SHAPE = {
+  ethereum: EVM_ADDRESS,
+  polygon: EVM_ADDRESS,
+  arbitrum: EVM_ADDRESS,
+  optimism: EVM_ADDRESS,
+  avaxcchain: EVM_ADDRESS,
+  bsc: EVM_ADDRESS,
+  // bech32 (bc1…) or legacy base58 (1…/3…)
+  mainnet: /^(bc1[02-9ac-hj-np-z]{6,87}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/,
+  solana: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
+};
+
 function err(status, message) {
   const e = new Error(message);
   e.status = status;
@@ -250,6 +263,10 @@ export async function onRequestPost(context) {
 
   const row = SUPPORTED_ASSETS.get(`${asset}:${network}`);
   if (!row) err(400, 'Unsupported asset/network');
+  // Audit 2026-09-21 L7: the length check above accepts any 10–128 char string.
+  // Transak forwards walletAddress verbatim, so a wrong-chain or garbage
+  // address becomes an irrecoverable delivery. Pin the shape per network.
+  if (!ADDRESS_SHAPE[row.network].test(address)) err(400, 'Invalid address');
 
   const product = productsAvailed === 'SELL' ? 'SELL' : 'BUY';
 

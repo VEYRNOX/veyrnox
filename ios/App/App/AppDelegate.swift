@@ -80,7 +80,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         window?.makeKeyAndVisible()
     }
 
+    // Audit 2026-09-21 M8: iOS snapshots the window for the app switcher when
+    // the app resigns active. Balances, addresses or a revealed phrase would
+    // otherwise persist in that snapshot. Cover the window with an opaque
+    // view until the app is active again. Android has FLAG_SECURE for this.
+    private var privacyCover: UIView?
+
     func applicationWillResignActive(_ application: UIApplication) {
+        guard let window = window, privacyCover == nil else { return }
+        let cover = UIView(frame: window.bounds)
+        cover.backgroundColor = UIColor(red: 0.02, green: 0.024, blue: 0.031, alpha: 1)
+        cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        window.addSubview(cover)
+        privacyCover = cover
     }
 
     func applicationDidEnterBackground(_ application: UIApplication) {
@@ -90,6 +102,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
+        privacyCover?.removeFromSuperview()
+        privacyCover = nil
     }
 
     func applicationWillTerminate(_ application: UIApplication) {

@@ -20,7 +20,7 @@ import { Contract, Interface, Wallet, parseUnits, formatUnits, isAddress } from 
 import { getProvider } from './provider.js';
 import { getNetwork } from './networks.js';
 import { getToken, ERC20_ABI } from './tokens.js';
-import { evmFeeOverrides } from './fees.js';
+import { resolveEvmFeeOverrides } from './fees.js';
 import { verifyLiveChainId, applyEstimatedGasLimit } from './preflight.js';
 import { assertDecimalAmount } from '../amount.js';
 
@@ -111,7 +111,7 @@ export async function sendToken({ networkKey, privateKey, symbol, to, amount, fe
     );
   }
   const overrides = await applyEstimatedGasLimit(
-    provider, { from: wallet.address, to: t.address, data }, evmFeeOverrides(fee),
+    provider, { from: wallet.address, to: t.address, data }, await resolveEvmFeeOverrides(provider, networkKey, fee),
   );
 
   // VULN-19 propagation to ERC-20 (2026-08-16 round 4): mirror the native-ETH

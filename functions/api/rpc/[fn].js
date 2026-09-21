@@ -149,6 +149,10 @@ export async function onRequestPost(context) {
       'apikey': supabaseKey,
       'Authorization': `Bearer ${supabaseKey}`,
       'Prefer': 'return=representation',
+      // Audit 2026-09-21 L1: the SQL per-IP limiters read
+      // request.headers->>'x-forwarded-for'. Without this they saw Cloudflare's
+      // egress address for every caller and throttled everyone as one user.
+      'X-Forwarded-For': request.headers.get('CF-Connecting-IP') || '',
     },
     body,
   });

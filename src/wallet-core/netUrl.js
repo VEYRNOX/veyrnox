@@ -14,12 +14,14 @@
 // Policy:
 //   - `https://` to a well-known RPC/indexer host (see WELL_KNOWN_RPC_HOSTS).
 //   - `https://` to ANY other host ONLY when the operator has explicitly opted
-//     in via VITE_ALLOW_CUSTOM_RPC=1 at build time or the runtime override
-//     `globalThis.__veyrnoxAllowCustomRpc === true` (settable by a
-//     future consent-gated NetworkManager flow). Fails closed otherwise —
+//     in via VITE_ALLOW_CUSTOM_RPC=1 at build time. Fails closed otherwise —
 //     codex P2 2026-08-15: a compromised override/config path could
 //     otherwise redirect balance and history traffic to an arbitrary TLS
-//     endpoint. Cert pinning remains a TARGET-only follow-up.
+//     endpoint. Audit 2026-09-21 I8 removed the former runtime override
+//     (`globalThis.__veyrnoxAllowCustomRpc`): any script that reaches the
+//     page — an XSS, a hostile WebView injection — could have set it, which
+//     made the allowlist advisory. Cert pinning remains a TARGET-only
+//     follow-up.
 //   - `http://` ONLY to loopback, so an operator can point at a local node
 //     (http://localhost / 127.0.0.1 / [::1]).
 //   - no embedded credentials; no other schemes.
@@ -55,10 +57,6 @@ function customRpcAllowed() {
   try {
     if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ALLOW_CUSTOM_RPC === '1') return true;
   } catch { /* import.meta not available in some test contexts */ }
-  // Runtime opt-in (future consent-gated UI toggle).
-  try {
-    if (typeof globalThis !== 'undefined' && globalThis.__veyrnoxAllowCustomRpc === true) return true;
-  } catch { /* no globalThis */ }
   return false;
 }
 
@@ -104,7 +102,7 @@ export function assertSafeRpcUrl(url) {
   if (isWellKnownRpcHost(host)) return trimmed;
   if (customRpcAllowed()) return trimmed;
   throw new Error(
-    `RPC host "${host}" is not in the well-known provider list. To use a custom RPC, set VITE_ALLOW_CUSTOM_RPC=1 at build time or set globalThis.__veyrnoxAllowCustomRpc = true at runtime.`,
+    `RPC host "${host}" is not in the well-known provider list. To use a custom RPC, build with VITE_ALLOW_CUSTOM_RPC=1.`,
   );
 }
 

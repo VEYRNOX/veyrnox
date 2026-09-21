@@ -28,11 +28,12 @@
 //   - reject events without a resolvable referrer code;
 //   - be rate-limited independently of this function.
 //
-// TODO(H-1): implement the RC webhook Edge Function and REVIEW this file
-// again once it lands. If the webhook handler is co-located here in a future
-// change, add x-webhook-signature verification (HMAC over the raw body) BEFORE
-// the anon-key check below — the signature check is what actually gates the
-// setter; the anon-key check only proves possession of a public key.
+// The RC webhook Edge Function exists (supabase/functions/rc-webhook): it
+// verifies the shared Authorization secret with a timing-safe compare BEFORE
+// touching the payload, ignores non-PRODUCTION environments, and calls
+// set_referral_rc_user with the service role. This file only READS the result.
+// (Comment rewritten 2026-09-21, audit I3 — it previously said the webhook
+// was still a TODO.)
 //
 // Until the webhook is deployed, rc_user_id stays NULL on every row and
 // check_first_referral_bonus() returns NULL, so this function short-circuits

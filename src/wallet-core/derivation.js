@@ -10,7 +10,7 @@
 // strings, not cryptographic addresses — funds sent to them are unrecoverable.
 //
 // Here addresses are derived from actual public keys via audited libraries:
-//   - EVM chains: ethers v6 HDNodeWallet (secp256k1).
+//   - EVM chains: @scure/bip32 secp256k1 + ethers computeAddress (EIP-55).
 //   - Solana:     ed25519 SLIP-0010 derivation via @scure/ed25519 path.
 //   - Others (BTC/Cosmos/Tron): noted as STUBS to implement with the
 //     correct address encoding per chain — DO NOT ship placeholder encoders.
@@ -20,7 +20,7 @@
 // validated against published BIP-44 / chain test vectors before use.
 
 import { HDKey } from '@scure/bip32';
-import { HDNodeWallet, Mnemonic, computeAddress } from 'ethers';
+import { computeAddress } from 'ethers';
 import { bytesToHex } from '@noble/hashes/utils';
 import { mnemonicToSeed } from './mnemonic.js';
 
@@ -43,10 +43,21 @@ export const COIN_TYPES = {
  */
 export function deriveEvmAccount(mnemonic, accountIndex = 0, passphrase = '') {
   const path = `m/44'/60'/0'/0/${accountIndex}`;
-  // ethers handles BIP-39 -> BIP-32 -> secp256k1 -> EIP-55 address correctly.
-  const mn = Mnemonic.fromPhrase(mnemonic, passphrase || null);
-  const node = HDNodeWallet.fromMnemonic(mn, path);
-  return { address: node.address, privateKey: node.privateKey, path };
+  // Audit 2026-09-21 M7: was ethers HDNodeWallet.fromMnemonic, which keeps the
+  // seed, master key and every intermediate node alive inside immutable ethers
+  // objects with no way to wipe them. deriveSecp256k1AtPath zeroes the seed and
+  // master key on every exit; only the leaf bytes survive, and they are wiped
+  // here once the hex string the caller signs with exists.
+  const { privateKey, publicKey } = deriveSecp256k1AtPath(mnemonic, path, passphrase);
+  try {
+    return {
+      address: computeAddress('0x' + bytesToHex(publicKey)),
+      privateKey: '0x' + bytesToHex(privateKey),
+      path,
+    };
+  } finally {
+    privateKey.fill(0);
+  }
 }
 
 /**

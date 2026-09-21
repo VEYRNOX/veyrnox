@@ -933,10 +933,12 @@ export default function SendCrypto() {
   // so BTC/SOL recipients simply aren't screened here.
   const knownAddresses = useMemo(() => {
     const out = [];
+    // Audit 2026-09-21 L8: only addresses the user has SENT to count as known.
+    // An inbound counterparty (from_address / a receive row's address) is what
+    // an address-poisoner controls; treating it as "known" would turn S4's
+    // exact-match short-circuit into a self-whitelisting of the poisoner.
     for (const tx of history) {
-      if (tx.to_address) out.push({ address: tx.to_address, label: tx.type === "send" ? "an address you've paid before" : "a counterparty in your history", date: tx.created_date });
-      if (tx.from_address) out.push({ address: tx.from_address, label: "a counterparty in your history", date: tx.created_date });
-      if (tx.address) out.push({ address: tx.address, label: "a counterparty in your history", date: tx.created_date });
+      if (tx.type === "send" && tx.to_address) out.push({ address: tx.to_address, label: "an address you've paid before", date: tx.created_date });
     }
     for (const c of addressBook) out.push({ address: c.address, label: c.name ? `your saved contact "${c.name}"` : "a saved contact" });
     for (const w of whitelist) out.push({ address: w.address, label: "a whitelisted address" });

@@ -101,6 +101,21 @@ describe('recoveryShare — behaviour under flag stubbed on', () => {
     ).rejects.toThrow(mod.RECOVERY_SHARE_UNWRAP_FAILED);
   }, 60_000);
 
+  it('a SHIPPED legacy kdf profile is accepted for derivation (audit 2026-09-21 L10)', async () => {
+    // AAD does not cover kdf, so restamping a legacy shipped profile reaches the
+    // derivation (and then fails the tag: wrong key) instead of being rejected as
+    // MALFORMED up front. Before L10 any non-current profile was MALFORMED.
+    const obj = JSON.parse(envelope);
+    obj.kdf = { parallelism: 1, iterations: 3, memorySize: 65536, hashLength: 32 };
+    await expect(mod.unwrapShareWithPassphrase(obj, passphrase)).rejects.toThrow(mod.RECOVERY_SHARE_UNWRAP_FAILED);
+  }, 60_000);
+
+  it('an off-list kdf profile is MALFORMED (no caller-chosen memorySize)', async () => {
+    const obj = JSON.parse(envelope);
+    obj.kdf = { parallelism: 1, iterations: 3, memorySize: 4194304, hashLength: 32 };
+    await expect(mod.unwrapShareWithPassphrase(obj, passphrase)).rejects.toThrow(mod.RECOVERY_SHARE_MALFORMED);
+  });
+
   it('malformed JSON fails with RECOVERY_SHARE_MALFORMED, not a raw JSON error', async () => {
     await expect(
       mod.unwrapShareWithPassphrase('{not json', passphrase),

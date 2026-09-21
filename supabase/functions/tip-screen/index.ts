@@ -196,6 +196,36 @@ function buildUpstreamBody(input: Record<string, unknown>, requestId: string) {
   return out;
 }
 
+// Audit 2026-09-21 L2: per-IP smoothing bound, same shape as rc-webhook. Not a
+// security control — the anon key is public — but it stops one caller from
+// burning the TIP quota for everyone. Per-worker state; that is fine for a
+// bound. The Pages proxy forwards the real client IP in X-Forwarded-For.
+const RATE_LIMIT_MAX = 60;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const rateBucket = new Map<string, { count: number; resetAt: number }>();
+
+function rateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateBucket.get(ip);
+  if (!entry || entry.resetAt < now) {
+    rateBucket.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count += 1;
+  return true;
+}
+
+function clientIp(req: Request): string {
+  const raw =
+    req.headers.get('cf-connecting-ip') ??
+    req.headers.get('x-real-ip') ??
+    req.headers.get('x-forwarded-for');
+  if (!raw) return 'unknown';
+  const first = raw.split(',')[0]?.trim();
+  return first || 'unknown';
+}
+
 serve(async (req: Request) => {
   const origin = req.headers.get('origin');
   const originOk = !origin || allowedOrigins().has(origin);
@@ -208,6 +238,7 @@ serve(async (req: Request) => {
   }
   if (!originOk) return json({ error: 'origin_not_allowed' }, 403, origin);
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, origin);
+  if (!rateLimit(clientIp(req))) return json({ error: 'rate_limited' }, 429, origin);
 
   // The Supabase gateway validates the JWT BEFORE this code runs (we deploy
   // WITHOUT --no-verify-jwt). If execution reaches here the caller already

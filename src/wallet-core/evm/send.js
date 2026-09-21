@@ -10,7 +10,7 @@
 import { Wallet, parseEther, isAddress } from 'ethers';
 import { getProvider } from './provider.js';
 import { getNetwork } from './networks.js';
-import { evmFeeOverrides } from './fees.js';
+import { resolveEvmFeeOverrides } from './fees.js';
 import { verifyLiveChainId, applyEstimatedGasLimit } from './preflight.js';
 import { assertDecimalAmount } from '../amount.js';
 
@@ -41,7 +41,7 @@ export async function signAndBroadcast({ networkKey, privateKey, to, amountEth, 
   // override ethers auto-fills them.
   assertDecimalAmount(amountEth, 18); // family-consistent strict validation (ETH = 18 dp)
   const value = parseEther(String(amountEth));
-  const overrides = evmFeeOverrides(fee);
+  const overrides = await resolveEvmFeeOverrides(provider, networkKey, fee);
   // Estimate the gas LIMIT per chain (+20% headroom) — a tier's hinted 21000 is an
   // L1 simple-transfer assumption that L2s reject (see preflight.js).
   await applyEstimatedGasLimit(provider, { from: wallet.address, to, value }, overrides);

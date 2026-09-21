@@ -46,8 +46,12 @@ function getClient() {
 
   if (!supabaseUrl || !anonKey || !tipConfigured) return null;
 
+  // Audit 2026-09-21 L2: route via the app's /api/edge/tip-screen proxy (same
+  // path tip-chat already takes) so the per-IP limiter and origin gate on the
+  // Edge Function see the real client, and the anon key is attached server-side.
+  const edgeBase = import.meta.env.VITE_EDGE_BASE || '';
   _client = createTipClient({
-    proxyUrl: `${String(supabaseUrl).replace(/\/$/, '')}/functions/v1/tip-screen`,
+    proxyUrl: `${edgeBase}/api/edge/tip-screen`,
     anonKey,
     getRcUserId,
   });

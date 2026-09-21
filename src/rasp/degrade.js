@@ -35,6 +35,7 @@
 // re-confirm after the checkbox ack before the signer is reachable. The copy
 // does NOT mention "biometric" — the sentence must not promise a specific gate.
 
+import { Capacitor } from '@capacitor/core';
 import { CONDITION, TIER } from './conditions.js';
 
 // The sensitive non-sign paths that the strongest tiers also refuse at entry
@@ -121,10 +122,20 @@ const SPECS = Object.freeze({
     //
     // G4 (2026-07-14): same seed-reveal / export / import block as ROOTED.
     // When integrity can't be confirmed, fail closed on key-material access (I4).
+    //
+    // Audit 2026-09-21 M9: on a NATIVE build the probe is always present, so
+    // "unavailable" means the plugin call itself failed — exactly what a
+    // Frida/LSPosed hook that suppresses RaspIntegrity produces. Signing is
+    // therefore blocked there too; a hooked runtime must not downgrade BLOCK to
+    // WARN by making the probe throw. Web keeps WARN semantics: no probe can
+    // exist, and the hardware-KEK native gate (HardwareKekPlugin isBlockTier)
+    // does not apply.
     tier: TIER.WARN,
     sentence:
       "We couldn't confirm this device's integrity just now — continue with extra caution.",
-    blockedActions: ['seed-reveal', 'export', 'import'],
+    blockedActions: Capacitor.isNativePlatform()
+      ? ['seed-reveal', 'export', 'import', 'sign']
+      : ['seed-reveal', 'export', 'import'],
     requiresBiometric: true,
   },
   [CONDITION.EMULATOR]: {

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    DEBUG-ONLY overlay of src/main/res/xml/network_security_config.xml.
+
+    `vite dev` and the emulator host alias need cleartext to localhost /
+    10.0.2.2 during development. The main config (release) carries no such
+    carve-out (audit 2026-09-21 L13), so a shipped APK can never be pointed at
+    a loopback host over plain HTTP by a future RPC-override feature.
+
+    Certificate pinning stays HONEST-DISABLED here exactly as in main; see that
+    file for the activation steps.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

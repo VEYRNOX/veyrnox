@@ -12,29 +12,21 @@
 // Payload shape (per docs.transak.com/features/webhooks):
 //   { eventID: 'ORDER_COMPLETED', createdAt: '...', webhookData: <object|JWT> }
 //
-// SIGNATURE VERIFICATION — three modes (round 10 audit concern):
-// Round 9 assumed Transak's signing scheme is raw-hex HMAC-SHA256 in a bare
-// `X-Transak-Signature` header. docs.transak.com does not spell this out, so
-// if Transak actually sends `sha256=<hex>`, base64, JWT, or Ed25519, every
-// legitimate webhook 401s. Gate verification behind env.TRANSAK_WEBHOOK_VERIFY_MODE:
-//   - "off"    — log-only, no crypto, return 200. The pre-round-9 behaviour;
-//                no longer the default (see DEFAULT_MODE below).
-//   - "warn"   (DEFAULT) — attempt HMAC verify; on mismatch log a WARN with 8-char
+// SIGNATURE VERIFICATION — three modes, selected by env.TRANSAK_WEBHOOK_VERIFY_MODE:
+//   - "strict" (DEFAULT since audit 2026-09-21 L6) — HMAC verify; on mismatch
+//                or missing header return 401. If TRANSAK_WEBHOOK_SECRET is
+//                unset in this mode the endpoint returns 503: nothing can be
+//                verified, so nothing is accepted (Transak retries; a deploy
+//                without the secret is a deployment fault, not a reason to
+//                accept unauthenticated order-state updates).
+//   - "warn"   — attempt HMAC verify; on mismatch log a WARN with 8-char
 //                PREFIXES of the received header and the computed HMAC (never
 //                the full digests — see logSigPrefix) and STILL return 200.
-//                Use to confirm the scheme against real Transak traffic before
-//                enforcing.
-//   - "strict" — attempt HMAC verify; on mismatch return 401. Enable only
-//                after `warn` telemetry confirms the scheme.
-// If TRANSAK_WEBHOOK_SECRET is unset, we fall back to log-only regardless of
-// mode (do NOT 500 — that would drop all legitimate webhooks the moment the
-// secret rotates or is missing on a fresh deploy).
+//                Diagnostic only. With no secret it degrades to `off`.
+//   - "off"    — log-only, no crypto, return 200. Explicit opt-out.
 // Mode is logged server-side with `ref` for operator triage — never echoed
 // on the response, since an unauthenticated attacker POSTing would otherwise
 // learn whether webhook verification is disabled and invite forgery.
-//
-// TODO: once real Transak traffic is captured in `warn` mode with matching
-// signatures, flip TRANSAK_WEBHOOK_VERIFY_MODE=strict on Cloudflare Pages.
 
 // Cap the request body. This endpoint is UNAUTHENTICATED by design — Transak
 // signs but we do not yet enforce that signature (see the mode switch below) —
@@ -154,23 +146,11 @@ function jsonResponse(status, body, extraHeaders) {
 
 const VALID_MODES = new Set(['off', 'warn', 'strict']);
 
-// Default is `warn`, not `off`.
-//
-// `off` was chosen when the mode switch was added so that a wrong guess at
-// Transak's signing scheme could not 401 legitimate traffic. `warn` cannot do
-// that either — it computes the HMAC, logs a prefix comparison, and returns 200
-// regardless — while `off` computes nothing and so can never produce the
-// evidence the flip to `strict` is waiting on. A default that generates no
-// evidence for a step gated on evidence is a step that never happens; this one
-// sat at `off` from the day it was written.
-//
-// An unset TRANSAK_WEBHOOK_SECRET still degrades to `off` on its own (see
-// onRequestPost), so a fresh deploy or a mid-rotation gap is unaffected.
-//
-// The remaining flip to `strict` IS a behaviour change and stays an explicit
-// env decision: set TRANSAK_WEBHOOK_VERIFY_MODE=strict once warn logs show
-// header and computed prefixes agreeing on real Transak traffic.
-const DEFAULT_MODE = 'warn';
+// Audit 2026-09-21 L6: default is `strict`. It sat at `warn` (before that
+// `off`) waiting for "evidence" that never arrived, which meant an order-state
+// webhook that nobody signed was acknowledged with 200. `warn` and `off`
+// remain as explicit, logged opt-outs for scheme debugging.
+const DEFAULT_MODE = 'strict';
 
 function resolveMode(env) {
   const rawRaw = (env && env.TRANSAK_WEBHOOK_VERIFY_MODE) || '';
@@ -187,8 +167,13 @@ export async function onRequestPost({ request, env }) {
   const ref = reqId();
   const secret = env && env.TRANSAK_WEBHOOK_SECRET;
   let mode = resolveMode(env);
-  // No secret → cannot verify anything. Degrade to log-only rather than 500,
-  // so a missing/rotating secret doesn't drop every legitimate webhook.
+  // Audit 2026-09-21 L6: no secret means nothing can be verified. In strict
+  // mode that is a deployment fault, so fail closed (Transak retries) rather
+  // than silently accepting unauthenticated order-state webhooks.
+  if (!secret && mode === 'strict') {
+    console.error(`[buy/webhook] ref=${ref} config_error=missing_secret mode=strict`);
+    return jsonResponse(503, { ok: false, error: 'webhook_not_configured' });
+  }
   if (!secret && mode !== 'off') {
     console.warn(`[buy/webhook] ref=${ref} config_warn=missing_secret mode=${mode}→off`);
     mode = 'off';
