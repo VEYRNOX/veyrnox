@@ -138,7 +138,7 @@ function envelopeAad(shareIndex, type = ENVELOPE_TYPE) {
  * shipped list keeps them importable without opening a caller-controlled
  * memorySize (pre-auth resource exhaustion) — anything off-list still fails.
  * @param {any} obj
- * @returns {{parallelism:number, iterations:number, memorySize:number, hashLength:number}}
+ * @returns {any}
  */
 function stampedKdf(obj) {
   const k = obj && obj.kdf;
@@ -154,6 +154,7 @@ function stampedKdf(obj) {
   return hit;
 }
 
+/** @param {string} passphrase @param {Uint8Array} salt @param {any} [kdf] */
 async function deriveRecoveryKey(passphrase, salt, kdf = KDF_PARAMS) {
   const pw = enc.encode(passphrase.normalize('NFKC'));
   try {

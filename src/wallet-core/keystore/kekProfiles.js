@@ -77,9 +77,9 @@ function zero(u8) {
  * @param {Uint8Array} args.H            hardware factor (consumed; zeroed on exit)
  * @param {string} args.password
  * @param {Uint8Array} args.saltBytes    decoded kekSalt
- * @param {{kekWrap:object, kekKdf?:object}} args.blob
- * @param {(pw:string, salt:Uint8Array, params:object)=>Promise<Uint8Array>} [args.deriveC]  test seam
- * @param {(kek:Uint8Array)=>Promise<Uint8Array|null>} [args.readCache]  optional DEK cache probe
+ * @param {{kekWrap:any, kekKdf?:object}} args.blob
+ * @param {(pw:string, salt:Uint8Array, params?:any)=>Promise<Uint8Array>} [args.deriveC]  test seam
+ * @param {((kek:Uint8Array)=>Promise<Uint8Array|null>)|null} [args.readCache]  optional DEK cache probe
  *        (native fast path); a hit under this candidate KEK skips unwrapDek. A cache
  *        entry is bound to its KEK, so a wrong-profile KEK misses and falls through.
  * @returns {Promise<{kek:Uint8Array, dek:Uint8Array, profile:object, usedFallback:boolean}>}
@@ -99,7 +99,7 @@ export async function unwrapDekWithProfiles({ H, password, saltBytes, blob, deri
         let dek = readCache ? await readCache(kek) : null;
         if (!dek) dek = await unwrapDek(kek, blob.kekWrap);
         return { kek, dek, profile, usedFallback: !stamped && i > 0 };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         zero(kek);
         const generic = err && err.message === KEK_ERR.UNWRAP_FAILED && !err.code;
         if (!generic) throw err;

@@ -9,7 +9,7 @@ buildscript {
             url 'https://developer.huawei.com/repo/'
             // Audit 2026-09-21 L12: only Huawei's own groups may resolve from this
             // mirror — dependency-confusion guard for everything else.
-            content { includeGroupByRegex 'com\.huawei.*' }
+            content { includeGroupByRegex 'com\\.huawei.*' }
         }
     }
     dependencies {
@@ -35,7 +35,7 @@ allprojects {
             url 'https://developer.huawei.com/repo/'
             // Audit 2026-09-21 L12: only Huawei's own groups may resolve from this
             // mirror — dependency-confusion guard for everything else.
-            content { includeGroupByRegex 'com\.huawei.*' }
+            content { includeGroupByRegex 'com\\.huawei.*' }
         }
     }
 }

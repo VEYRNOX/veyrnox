@@ -65,7 +65,8 @@ const selectorOf = (data) =>
  * cannot decode → { isApprove:true, decoded:false } so the caller fails closed.
  */
 export function classifyApprove(data) {
-  const kind = APPROVAL_KINDS[selectorOf(data)];
+  const sel = selectorOf(data);
+  const kind = sel ? APPROVAL_KINDS[sel] : undefined;
   if (!kind) return { isApprove: false, decoded: false };
   try {
     const parsed = iface.parseTransaction({ data });
