@@ -51,23 +51,36 @@ vi.mock('@/components/backup/RestoreFromFile', () => ({
   default: () => <div data-testid="restore-from-file-stub" />,
 }));
 
+// The export click always performs a fresh, fail-closed RASP probe. Keep the
+// page-orchestration suite deterministic; the probe's allow/block behaviour
+// is covered by PersonalBackup.freshRasp.test.jsx.
+vi.mock('@/lib/getFreshLocalRaspArtifact', () => ({
+  getFreshLocalRaspArtifact: vi.fn(async () => ({
+    tier: 'ALLOW', sentence: null, blockedActions: [], requiresBiometric: false,
+  })),
+}));
+
 const toastError = vi.fn();
 vi.mock('@/lib/toast', () => ({ toast: { error: (...a) => toastError(...a), success: vi.fn(), warning: vi.fn() } }));
 
 // createObjectURL / anchor click stubs so the web save path runs in jsdom
 beforeEach(() => {
-  if (!URL.createObjectURL) URL.createObjectURL = vi.fn(() => 'blob:stub');
-  if (!URL.revokeObjectURL) URL.revokeObjectURL = vi.fn();
+  // jsdom's provided implementation can reject the Blob used by saveShareFile.
+  // Always stub the download URLs, even when the environment provides them.
+  URL.createObjectURL = vi.fn(() => 'blob:stub');
+  URL.revokeObjectURL = vi.fn();
   try { localStorage.clear(); } catch { /* shimmed */ }
 });
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+  vi.doUnmock('@/wallet-core/recoveryShare');
   vi.resetModules();
   toastError.mockClear();
   cleanup();
 });
 
-async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus', shardExportReady = true, native = false }) {
+async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus', shardExportReady = true, native = false, mockBundleWrap = false }) {
   if (enableShards) vi.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
   vi.resetModules();
   vi.doMock('@capacitor/core', () => ({
@@ -80,6 +93,14 @@ async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus', sh
   vi.doMock('@/lib/hardwareKekStatus', () => ({
     isHardwareKekEnrolled: vi.fn(async () => shardExportReady),
   }));
+  if (mockBundleWrap) {
+    // The page test verifies orchestration; envelope cryptography is covered
+    // independently in wallet-core/recoveryShare.bundle-wrap.test.js.
+    vi.doMock('@/wallet-core/recoveryShare', async (importOriginal) => ({
+      ...(await importOriginal()),
+      wrapBundleWithPassphrase: vi.fn(async () => '{"test":"wrapped-bundle"}'),
+    }));
+  }
   // Tier is now consumed inside PersonalBackup — the shard tab renders the
   // export panel for any tier with Safety Plus access, otherwise an upsell.
   // Every existing test in this suite asserts flow-shape behaviour that
@@ -140,6 +161,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     const exportRecoveryBundles = vi.fn(async () => fakeBundles);
     const Page = await loadPage({
       enableShards: true,
+      mockBundleWrap: true,
       useWalletValue: {
         createBackup: vi.fn(),
         exportRecoveryShares: vi.fn(),
@@ -157,14 +179,14 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
       target: { value: 'a-nice-and-long-passphrase' },
     });
     fireEvent.click(screen.getByRole('button', { name: /split & save 3 shares/i }));
-    // Argon2id wrap × 3 shares is ~seconds; use the same 15s waitFor +
-    // 30s test timeout as the "encrypts ALL 3 shares" case below.
+    // The wrapper is stubbed above; this test covers UI orchestration while
+    // wallet-core owns the real Argon2id + AES-GCM coverage.
     await waitFor(
       () => expect(screen.getByText(/all 3 recovery shares saved/i)).toBeTruthy(),
       { timeout: 15_000 },
     );
     expect(exportRecoveryBundles).toHaveBeenCalledWith(TEST_PIN);
-  }, 30_000);
+  });
 
   it('surfaces a fail-closed error when exportRecoveryBundles throws', async () => {
     const exportRecoveryBundles = vi.fn(async () => {
