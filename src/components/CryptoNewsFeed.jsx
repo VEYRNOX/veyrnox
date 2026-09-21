@@ -181,7 +181,7 @@ export default function CryptoNewsFeed() {
           {/* 2026-07-14 audit MEDIUM (same class): only render the Retry link when
               egress is actually allowed; refetch() bypasses enabled. */}
           {egressAllowed && (
-            <button onClick={() => refetch()} className="text-primary text-xs underline">Retry</button>
+            <button onClick={() => refetch()} className="text-primary text-xs underline inline-flex items-center justify-center min-h-[44px] min-w-[44px]">Retry</button>
           )}
         </div>
       ) : news.length === 0 ? (

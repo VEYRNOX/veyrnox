@@ -428,11 +428,15 @@ export default function Layout() {
                 <p className="text-xs text-muted-foreground tracking-widest uppercase">{t('nav.wallet_tagline')}</p>
               </div>
             )}
-            {!collapsed && <NotificationBell unseenCount={unseenCount} onOpen={openNotifications} className="h-8 w-8" />}
-            <HelpMenu triggerClassName="p-1 hover:bg-secondary" />
+            {/* RSP-03: these three sidebar header buttons must be >=44x44 CSS px
+                tap targets, same as the mobile header (~line 605-624). min-h/
+                min-w (rather than replacing h-9/w-9) so a smaller intrinsic size
+                is clamped up without fighting the base component's own sizing. */}
+            {!collapsed && <NotificationBell unseenCount={unseenCount} onOpen={openNotifications} className="min-h-[44px] min-w-[44px]" />}
+            <HelpMenu triggerClassName="p-1 hover:bg-secondary inline-flex items-center justify-center min-h-[44px] min-w-[44px]" />
             <button
               onClick={() => setCollapsed(c => !c)}
-              className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+              className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center min-h-[44px] min-w-[44px]"
               title={collapsed ? t('nav.sidebar_expand') : t('nav.sidebar_collapse')}
             >
               {/* Icons mirror under dir="rtl" — the chevron points "forward" to
@@ -488,7 +492,7 @@ export default function Layout() {
                         to={item.path}
                         title={collapsed ? item.label : undefined}
                         aria-current={active ? "page" : undefined}
-                        className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] transition-colors duration-150 group ${collapsed ? 'justify-center' : ''} ${
+                        className={`flex items-center gap-2.5 px-3 py-1.5 min-h-[44px] rounded-lg text-[13px] transition-colors duration-150 group ${collapsed ? 'justify-center' : ''} ${
                           active
                             ? "bg-primary text-primary-foreground font-semibold shadow-sm"
                             : "text-foreground/80 hover:text-foreground hover:bg-secondary"
