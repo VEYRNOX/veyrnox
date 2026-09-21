@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "@/lib/toast";
 import { formatDistanceToNow } from "date-fns";
 import { sumSentTodayUSD, hasEnabledSpendLimit } from "@/lib/txLimits";
-import { isTheftProtectionEnabled } from "@/lib/theftProtection";
+import { isTheftProtectionEnabled, getTheftProtectionSupport, runTheftProtectionGate, theftProtectionMessage } from "@/lib/theftProtection";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 import { getSessionToken, ensureSessionToken } from "@/lib/sessionRevocation";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
@@ -52,6 +52,27 @@ export default function SecurityCenter() {
     requireTwoFactor(() => revokeSession.mutate(id), { title });
   };
   const deniable = isDecoy || isHidden;
+  // Step-up for any change that can LOOSEN a spend limit (disable, delete,
+  // edit). Theft Protection's send-side check only fires when a limit blocks,
+  // so an ungated loosen let someone holding an unlocked phone raise or remove
+  // the cap and then send with no biometric. When Theft Protection is on, its
+  // own biometric gate runs first (it fails closed); the configured second
+  // factor, if any, runs after. Creating a limit only tightens, so it stays
+  // ungated. runTheftProtectionGate no-ops in decoy/hidden (K-2). A device
+  // that cannot run the biometric at all skips it (#2515 escape hatch, same
+  // rule as TheftProtectionSettings' off switch) — it enforces nothing there.
+  const guardLoosening = async (run, title) => {
+    if (isTheftProtectionEnabled()) {
+      try {
+        const { supported } = await getTheftProtectionSupport();
+        if (supported) await runTheftProtectionGate({ isPrimary: !deniable });
+      } catch (err) {
+        toast.error(theftProtectionMessage(err));
+        return;
+      }
+    }
+    requireTwoFactor(run, { title });
+  };
   // window.confirm broke out of the near-black UI with an OS dialog while every
   // other destructive confirmation in this surface uses the app's own Dialog.
   // Deleting a limit is destructive and was a single unconfirmed click, while
@@ -367,7 +388,10 @@ export default function SecurityCenter() {
                 </div>
                 <Switch
                   checked={l.enabled}
-                  onCheckedChange={(v) => toggleLimit.mutate({ id: l.id, enabled: v })}
+                  onCheckedChange={(v) => {
+                    const run = () => toggleLimit.mutate({ id: l.id, enabled: v });
+                    if (v) run(); else void guardLoosening(run, "Turn off spending limit");
+                  }}
                 />
                 <Button variant="ghost" size="icon" aria-label={`Edit ${l.currency} limit`} onClick={() => openEditLimit(l)}>
                   <Pencil className="h-4 w-4" />
@@ -427,7 +451,7 @@ export default function SecurityCenter() {
                 <Input id="security-tx-limit" type="text" inputMode="decimal" value={perTxLimit} onChange={e => setPerTxLimit(e.target.value)} placeholder="500" className="ps-7" />
               </div>
             </div>
-            <Button className="w-full" onClick={() => addLimit.mutate()} disabled={addLimit.isPending || (!dailyLimit && !perTxLimit)}>
+            <Button className="w-full" onClick={() => (editingId ? void guardLoosening(() => addLimit.mutate(), "Change spending limit") : addLimit.mutate())} disabled={addLimit.isPending || (!dailyLimit && !perTxLimit)}>
               {editingId ? "Save Changes" : "Save Limit"}
             </Button>
           </div>
@@ -457,7 +481,7 @@ export default function SecurityCenter() {
                 onClick={() => {
                   const id = pendingDeleteLimit?.id;
                   setPendingDeleteLimit(null);
-                  if (id) deleteLimit.mutate(id);
+                  if (id) void guardLoosening(() => deleteLimit.mutate(id), "Delete spending limit");
                 }}
               >
                 <Trash2 className="h-4 w-4" /> Delete

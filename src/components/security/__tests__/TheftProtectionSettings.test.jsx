@@ -6,7 +6,9 @@
 //   - Enable runs getTheftProtectionSupport first; unsupported → nothing persisted,
 //     switch stays off, a reason is shown.
 //   - Supported (iOS Face ID available, Android biometric available) → persisted.
-//   - Disable is never gated and never probes.
+//   - Disable on a device that CANNOT run the gate is never gated (#2515 escape
+//     hatch). Disable on a supported device needs the Theft Protection
+//     biometric — otherwise an unlocked-phone thief switches it off and sends.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
@@ -114,6 +116,33 @@ describe('TheftProtectionSettings — enable is capability-gated (#2515)', () =>
     fireEvent.click(toggle());
     await waitFor(() => expect(localStorage.getItem(THEFT_PROTECTION_KEY)).toBeNull());
     expect(probeMock).not.toHaveBeenCalled();
+  });
+
+  it('disable on a supported device is refused when the biometric fails', async () => {
+    localStorage.setItem(THEFT_PROTECTION_KEY, '1');
+    probeMock.mockResolvedValue({ isAvailable: true, biometryType: 'faceId' });
+    const { getFreshRaspArtifact } = await import('@/rasp');
+    getFreshRaspArtifact.mockResolvedValue({ tier: 'allow' });
+    const { verifyBiometric2fa } = await import('@/lib/biometric');
+    verifyBiometric2fa.mockRejectedValue(new Error('cancelled'));
+    render(<TheftProtectionSettings />);
+    fireEvent.click(toggle());
+    await waitFor(() => expect(screen.getByTestId('theft-protection-unsupported')).toBeTruthy());
+    expect(localStorage.getItem(THEFT_PROTECTION_KEY)).toBe('1');
+    expect(toggle().getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('disable on a supported device proceeds once the biometric passes', async () => {
+    localStorage.setItem(THEFT_PROTECTION_KEY, '1');
+    probeMock.mockResolvedValue({ isAvailable: true, biometryType: 'faceId' });
+    const { getFreshRaspArtifact } = await import('@/rasp');
+    getFreshRaspArtifact.mockResolvedValue({ tier: 'allow' });
+    const { verifyBiometric2fa } = await import('@/lib/biometric');
+    verifyBiometric2fa.mockResolvedValue(true);
+    render(<TheftProtectionSettings />);
+    fireEvent.click(toggle());
+    await waitFor(() => expect(localStorage.getItem(THEFT_PROTECTION_KEY)).toBeNull());
+    expect(verifyBiometric2fa).toHaveBeenCalled();
   });
 });
 

@@ -23,7 +23,10 @@ import {
   isTheftProtectionEnabled,
   setTheftProtectionEnabled,
   getTheftProtectionSupport,
+  runTheftProtectionGate,
+  theftProtectionMessage,
 } from '@/lib/theftProtection';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 /**
  * Default per-transaction cap (USD) seeded when Theft Protection is switched on
@@ -87,6 +90,23 @@ export default function TheftProtectionSettings() {
           setNote(UNSUPPORTED_COPY[reason] ?? UNSUPPORTED_COPY['no-biometric']);
           return;
         }
+      } finally {
+        setChecking(false);
+      }
+    } else if (isTheftProtectionEnabled()) {
+      // Turning it OFF needs the same biometric it enforces — otherwise someone
+      // holding an unlocked phone switches it off here and sends freely. Fails
+      // closed; a silent no-op in decoy/demo, where the setter is a no-op too.
+      // EXCEPT on a device that cannot run the gate at all: #2515's escape
+      // hatch — a device that can never pass the biometric must still be able
+      // to switch the feature off, and the gate enforces nothing there anyway.
+      setChecking(true);
+      try {
+        const { supported } = await getTheftProtectionSupport();
+        if (supported) await runTheftProtectionGate({ isPrimary: !isDeniabilityOrDemoActive() });
+      } catch (err) {
+        setNote(theftProtectionMessage(err));
+        return;
       } finally {
         setChecking(false);
       }
