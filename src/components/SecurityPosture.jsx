@@ -214,7 +214,7 @@ export default function SecurityPosture({ state: stateOverride } = {}) {
               type="button"
               onClick={handleDismiss}
               aria-label="Dismiss security posture card"
-              className="text-muted-foreground hover:text-foreground shrink-0"
+              className="text-muted-foreground hover:text-foreground shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px]"
               data-testid="posture-dismiss"
             >
               <X className="h-4 w-4" />

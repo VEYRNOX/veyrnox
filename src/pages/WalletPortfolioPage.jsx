@@ -794,14 +794,15 @@ export default function WalletPortfolioPage() {
     const visibleIds = w.enabledAssets || [];
     return (
       <div key={w.id} className="rounded-2xl border border-border bg-card overflow-hidden">
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => switchWallet(w.id)}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); switchWallet(w.id); } }}
-          className="w-full text-start flex items-center justify-between gap-2 px-4 py-3 border-b border-border hover:bg-secondary/40 active:bg-secondary/60 transition-colors cursor-pointer"
-        >
-          <div className="min-w-0">
+        {/* Row action (switch wallet) and the options trigger are SIBLING
+            controls, not nested -- a real <button> inside a role="button" div
+            is an a11y violation (axe "nested-interactive"). See A11Y-02. */}
+        <div className="w-full flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
+          <button
+            type="button"
+            onClick={() => switchWallet(w.id)}
+            className="min-w-0 flex-1 text-start hover:bg-secondary/40 active:bg-secondary/60 transition-colors rounded-lg"
+          >
             <div className="flex items-center gap-1.5">
               {isActive && <Star className="h-3 w-3 text-primary fill-primary shrink-0" />}
               <p className="text-sm font-semibold truncate">{w.name}</p>
@@ -814,9 +815,9 @@ export default function WalletPortfolioPage() {
               {fmtFiat(data.total)}
               {data.indeterminate && <span className="text-caution"> · {t("portfolio.walletCard.partial")}</span>}
             </p>
-          </div>
+          </button>
           {canManage && (
-            <div className="relative" onClick={(e) => e.stopPropagation()}>
+            <div className="relative">
               <button
                 type="button"
                 aria-label={t("portfolio.walletCard.optionsAriaLabel", { name: w.name })}
