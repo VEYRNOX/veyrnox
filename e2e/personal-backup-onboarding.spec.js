@@ -38,12 +38,15 @@ async function freshLocalBuild(page) {
   await page.goto(`${BASE}/?demo=0`);
 }
 
-async function enterPin(page, pin) {
+// submitLabel matches the screen's visible submit text (ONB-02/A11Y-01 fix
+// made the accessible name track it): "Continue" at create/confirm, "Unlock"
+// on the post-reload unlock screen.
+async function enterPin(page, pin, submitLabel = 'Continue') {
   const pad = page.getByRole('group', { name: /PIN entry/i });
   for (const digit of pin) {
     await pad.getByRole('button', { name: digit, exact: true }).click();
   }
-  await pad.getByRole('button', { name: 'Submit PIN' }).click();
+  await pad.getByRole('button', { name: submitLabel }).click();
 }
 
 test.describe('Personal Backup — onboarding with owner PIN 30081977', () => {
@@ -79,7 +82,7 @@ test.describe('Personal Backup — onboarding with owner PIN 30081977', () => {
     // Reload proves the vault persisted and the SAME PIN unlocks it.
     await page.reload();
     await expect(page.getByRole('group', { name: /PIN entry/i })).toBeVisible();
-    await enterPin(page, PIN);
+    await enterPin(page, PIN, 'Unlock');
     // #1783 (cac2e0b6) clears stored consent during wallet creation, so this
     // first post-creation entry meets the one-time telemetry screen before the
     // dashboard. freshLocalBuild()'s pre-seed of veyrnox-telemetry-consent

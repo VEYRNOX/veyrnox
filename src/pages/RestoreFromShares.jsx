@@ -100,6 +100,47 @@ function readFileText(file) {
   });
 }
 
+// Hoisted to module scope (ONB-03): defining this inside RestoreFromShares gave
+// it a new component identity on every parent re-render (every keystroke, since
+// each one calls setShareA/setShareB), which unmounted and remounted the whole
+// subtree — discarding the uncontrolled <details open> state and DOM focus after
+// exactly one typed character. A stable module-scope identity fixes both.
+const ShareInput = ({ label, value, setValue, fileRef, which, pickInto }) => (
+  <div className="space-y-2">
+    <label className="block text-xs uppercase tracking-wide text-muted-foreground">{label}</label>
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:bg-secondary/40"
+      >
+        <Upload className="h-4 w-4" /> Pick file
+      </button>
+      {value && (
+        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+          <FileText className="h-3.5 w-3.5" /> bundle loaded ({value.length} chars)
+        </span>
+      )}
+    </div>
+    <input
+      ref={fileRef}
+      type="file"
+      accept=".json,application/json,text/plain"
+      className="hidden"
+      onChange={(e) => pickInto(which, e.target.files?.[0])}
+    />
+    <details className="text-xs text-muted-foreground">
+      <summary className="cursor-pointer">Or paste JSON</summary>
+      <textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder='{"v":1,"shareIndex":...,"shareBytes":"...","vault":{...}}'
+        className="mt-2 w-full h-28 p-2 rounded-lg border border-border bg-background font-mono text-xs"
+      />
+    </details>
+  </div>
+);
+
 export default function RestoreFromShares() {
   const navigate = useNavigate();
   const { restoreFromRecoveryBundles, vaultExists } = useWallet();
@@ -258,42 +299,6 @@ export default function RestoreFromShares() {
     }
   }, [newPassphrase, newPassphraseConfirm, newPin, newPinConfirm, vaultPresent, shareA, shareB, envelopeA, envelopeB, passphraseA, passphraseB, restoreFromRecoveryBundles, navigate]);
 
-  const ShareInput = ({ label, value, setValue, fileRef, which }) => (
-    <div className="space-y-2">
-      <label className="block text-xs uppercase tracking-wide text-muted-foreground">{label}</label>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:bg-secondary/40"
-        >
-          <Upload className="h-4 w-4" /> Pick file
-        </button>
-        {value && (
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <FileText className="h-3.5 w-3.5" /> bundle loaded ({value.length} chars)
-          </span>
-        )}
-      </div>
-      <input
-        ref={fileRef}
-        type="file"
-        accept=".json,application/json,text/plain"
-        className="hidden"
-        onChange={(e) => pickInto(which, e.target.files?.[0])}
-      />
-      <details className="text-xs text-muted-foreground">
-        <summary className="cursor-pointer">Or paste JSON</summary>
-        <textarea
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder='{"v":1,"shareIndex":...,"shareBytes":"...","vault":{...}}'
-          className="mt-2 w-full h-28 p-2 rounded-lg border border-border bg-background font-mono text-xs"
-        />
-      </details>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-background p-4 space-y-4">
       <button type="button" onClick={() => navigate("/")} className={BACK_CHIP}>
@@ -314,7 +319,7 @@ export default function RestoreFromShares() {
 
       {phase === "input" && (
         <div className="space-y-4">
-          <ShareInput label="Share 1" value={shareA} setValue={setShareA} fileRef={fileRefA} which="A" />
+          <ShareInput label="Share 1" value={shareA} setValue={setShareA} fileRef={fileRefA} which="A" pickInto={pickInto} />
           {envelopeA && (
             <PasswordInput
               value={passphraseA}
@@ -323,7 +328,7 @@ export default function RestoreFromShares() {
               autoComplete="current-password"
             />
           )}
-          <ShareInput label="Share 2" value={shareB} setValue={setShareB} fileRef={fileRefB} which="B" />
+          <ShareInput label="Share 2" value={shareB} setValue={setShareB} fileRef={fileRefB} which="B" pickInto={pickInto} />
           {envelopeB && (
             <PasswordInput
               value={passphraseB}

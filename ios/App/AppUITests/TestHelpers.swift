@@ -55,8 +55,11 @@ extension XCTestCase {
         }
     }
 
-    /// Tap the PinPad submit button. Label varies by context.
-    func submitPin(app: XCUIApplication, label: String = "Submit PIN") {
+    /// Tap the PinPad submit button. Its accessible name tracks the visible
+    /// submitLabel (ONB-02/A11Y-01 fix), so it varies by context — default is
+    /// "Continue" (create/confirm); pass e.g. "Unlock" or "Next"/"Confirm" for
+    /// other screens.
+    func submitPin(app: XCUIApplication, label: String = "Continue") {
         let submit = app.buttons[label]
         XCTAssertTrue(
             submit.waitForExistence(timeout: 3),

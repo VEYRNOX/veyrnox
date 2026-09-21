@@ -52,12 +52,15 @@ async function freshLocalBuild(page) {
   await page.goto(`${BASE}/?demo=0`);
 }
 
-async function enterPin(page, pin) {
+// submitLabel matches the screen's visible submit text (ONB-02/A11Y-01 fix
+// made the accessible name track it): "Continue" at create/confirm, "Unlock"
+// on the post-restore unlock screen.
+async function enterPin(page, pin, submitLabel = 'Continue') {
   const pad = page.getByRole('group', { name: /PIN entry/i });
   for (const digit of pin) {
     await pad.getByRole('button', { name: digit, exact: true }).click();
   }
-  await pad.getByRole('button', { name: 'Submit PIN' }).click();
+  await pad.getByRole('button', { name: submitLabel }).click();
 }
 
 async function onboard(page) {
@@ -217,7 +220,7 @@ test.describe('Personal Backup — UI round-trip with PIN 30081977', () => {
     await expect(page.getByRole('group', { name: /PIN entry/i })).toBeVisible({
       timeout: 15_000,
     });
-    await enterPin(page, PIN);
+    await enterPin(page, PIN, 'Unlock');
     await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({
       timeout: 30_000,
     });

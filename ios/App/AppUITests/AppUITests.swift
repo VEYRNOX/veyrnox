@@ -108,8 +108,7 @@ final class AppUITests: XCTestCase {
         snap(app: app, name: "create-03-pin-pad")
 
         // 3. PIN pad: 8 digits, then tap the submit button. PinPad's submit
-        //    aria-label is "Submit PIN"; the visible text is the scheme's
-        //    submitLabel (defaults to "Continue"). Match either.
+        //    aria-label tracks its visible submitLabel (defaults to "Continue").
         // Must satisfy PinSetup's strength guard: sequential patterns such as
         // 24681024 are intentionally rejected before the confirmation step.
         let pin = "19283746"
@@ -278,7 +277,7 @@ final class AppUITests: XCTestCase {
         }
     }
 
-    /// Press "Submit PIN" and confirm the flow actually moved, re-pressing if it
+    /// Press the PIN submit control and confirm the flow actually moved, re-pressing if it
     /// did not. Same failure and same remedy as tapButtonUntilAdvanced: on a
     /// cold WKWebView the press succeeds at the AX layer while WebKit swallows
     /// the click, so the only honest confirmation is an observable state change.
@@ -689,9 +688,11 @@ final class AppUITests: XCTestCase {
         }
     }
 
-    /// PinPad always exposes the explicit submit control as `Submit PIN`.
+    /// PinSetup's create/confirm PinPad always submits with the default
+    /// submitLabel "Continue" (ONB-02/A11Y-01 fix: the submit control's
+    /// accessible name tracks its visible label, both stages included).
     private func submitPin(app: XCUIApplication, stage: String) {
-        let submit = app.buttons["Submit PIN"]
+        let submit = app.buttons["Continue"]
         XCTAssertTrue(
             submit.waitForExistence(timeout: 5),
             "PIN \(stage): submit button never appeared."

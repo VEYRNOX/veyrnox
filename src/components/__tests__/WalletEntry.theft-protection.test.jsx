@@ -64,13 +64,13 @@ function makeCtx(overrides = {}) {
 }
 
 async function waitForIdlePad() {
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Submit PIN' })).toBeTruthy());
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Unlock' })).toBeTruthy());
   await waitFor(() => expect(screen.getByRole('button', { name: '1' })).not.toBeDisabled());
 }
 
 function enterPin(pin = '13572468') {
   for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
-  fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Unlock' }));
 }
 
 beforeEach(() => {

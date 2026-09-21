@@ -197,11 +197,11 @@ describe('WalletEntry — hardware-KEK enrollment gate after restore', () => {
     await waitFor(() => expect(screen.getByTestId(GATE_TESTID)).toBeTruthy());
 
     // The "Enable Hardware Protection" affordance is the PinPad submit (its visible
-    // label); its accessible name is the stable "Submit PIN".
+    // label); its accessible name now tracks it too (ONB-02/A11Y-01 fix).
     expect(screen.getByText(/enable hardware protection/i)).toBeTruthy();
     // Enter the PIN (needed for enrollKek) then submit to enable hardware protection.
     for (const d of '13572468') fireEvent.click(screen.getByRole('button', { name: d }));
-    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Enable Hardware Protection' }));
 
     // Real enroll path was exercised with the typed PIN + bound hardware factor.
     await waitFor(() => expect(keyStoreStub.enrollKek).toHaveBeenCalled());
@@ -244,7 +244,7 @@ describe('WalletEntry — hardware-KEK enrollment gate after restore', () => {
 
     await waitFor(() => expect(screen.getByTestId(GATE_TESTID)).toBeTruthy());
     for (const d of '13572468') fireEvent.click(screen.getByRole('button', { name: d }));
-    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Enable Hardware Protection' }));
 
     await waitFor(() => expect(screen.getByRole('button', { name: /continue with pin protection/i })).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: /continue with pin protection/i }));

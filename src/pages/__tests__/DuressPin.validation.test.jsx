@@ -87,14 +87,16 @@ async function renderSettled() {
 }
 
 // Drive the two-step PinPad: enter `pin` on step 1, then `confirm` on step 2.
+// The submit button's accessible name tracks its visible submitLabel
+// (ONB-02/A11Y-01 fix) — "Continue" on step 1, "Save emergency PIN" on step 2.
 async function enterPins(pin, confirm = pin) {
   for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
   await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' })); // → confirm step
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' })); // → confirm step
   });
   for (const d of confirm) fireEvent.click(screen.getByRole('button', { name: d }));
   await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' })); // → handleSave
+    fireEvent.click(screen.getByRole('button', { name: 'Save emergency PIN' })); // → handleSave
   });
 }
 

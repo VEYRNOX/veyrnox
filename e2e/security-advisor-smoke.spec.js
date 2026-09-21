@@ -25,7 +25,7 @@ async function enterPin(page, pin) {
   for (const digit of pin) {
     await pad.getByRole('button', { name: digit, exact: true }).click();
   }
-  await pad.getByRole('button', { name: 'Submit PIN' }).click();
+  await pad.getByRole('button', { name: 'Continue' }).click();
 }
 
 async function createWallet(page) {

@@ -84,13 +84,14 @@ function fillExportForm() {
     target: { value: 'a-very-strong-backup-password' }, // 28 chars, over the 16 floor
   });
   const digits = '12345678';
-  // PinPad's submit button carries aria-label="Submit PIN" always (Fix A) — its
-  // visible text ("Next"/"Confirm") is NOT the accessible name (RestoreFromFile
-  // .test.jsx's submitPinPad() uses the same query).
+  // PinPad's submit button's accessible name tracks its visible submitLabel
+  // (ONB-02/A11Y-01 fix) — "Next" on the choose step, "Confirm" on the
+  // confirm step (RestoreFromFile.test.jsx's submitPinPad() drives the same
+  // choose→confirm shape with the same two labels).
   for (const d of digits) fireEvent.click(screen.getByRole('button', { name: d }));
-  fireEvent.click(screen.getByRole('button', { name: /submit pin/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^next$/i }));
   for (const d of digits) fireEvent.click(screen.getByRole('button', { name: d }));
-  fireEvent.click(screen.getByRole('button', { name: /submit pin/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^confirm$/i }));
 }
 
 describe('PersonalBackup ExportTab — fresh-at-confirm RASP probe (L-6)', () => {

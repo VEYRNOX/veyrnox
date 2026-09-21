@@ -50,11 +50,11 @@ function makeCtx(overrides = {}) {
 
 async function enterPin(pin = '13572468') {
   for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
-  fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Unlock' }));
 }
 
 async function waitForPinPad() {
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Submit PIN' })).toBeTruthy());
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Unlock' })).toBeTruthy());
 }
 
 beforeEach(() => {

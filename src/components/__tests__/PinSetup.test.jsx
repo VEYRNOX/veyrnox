@@ -29,12 +29,14 @@ import PinSetup from '@/components/PinSetup';
 
 // Type a numeric PIN into the currently-mounted PinPad, then click Submit.
 // PinPad renders digit buttons with visible text "0"-"9" (tabIndex=-1, no
-// aria-label) and a submit button aria-labelled "Submit PIN".
+// aria-label) and a submit button whose accessible name tracks its visible
+// submitLabel (ONB-02/A11Y-01 fix) — PinSetup never overrides it, so it's
+// always the default "Continue" on both the create and confirm steps.
 function typePin(pin) {
   for (const d of pin) {
     fireEvent.click(screen.getByRole('button', { name: d }));
   }
-  fireEvent.click(screen.getByRole('button', { name: /submit pin/i }));
+  fireEvent.click(screen.getByRole('button', { name: /continue/i }));
 }
 
 afterEach(() => { cleanup(); });

@@ -60,11 +60,11 @@ function makeCtx(overrides = {}) {
 
 async function enterPin(pin = '13572468') {
   for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
-  fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Unlock' }));
 }
 
 async function waitForPinPad() {
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Submit PIN' })).toBeTruthy());
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Unlock' })).toBeTruthy());
 }
 
 beforeEach(() => {
@@ -101,7 +101,7 @@ describe('WalletEntry — hardware-KEK errors are exempt from the wrong-PIN wipe
 
     await waitFor(() => expect(ctx.unlock).toHaveBeenCalled());
     // Still on the unlock screen (not routed away).
-    expect(screen.getByRole('button', { name: 'Submit PIN' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Unlock' })).toBeTruthy();
     expect(screen.queryByText(/Restore from your seed phrase/i)).toBeNull();
     // Counter never touched.
     expect(localStorage.getItem(PIN_ATTEMPTS_KEY)).toBeNull();
@@ -119,7 +119,7 @@ describe('WalletEntry — hardware-KEK errors are exempt from the wrong-PIN wipe
 
     await waitFor(() => expect(ctx.unlock).toHaveBeenCalled());
     // Still on the unlock screen (not routed to seed recovery).
-    expect(screen.getByRole('button', { name: 'Submit PIN' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Unlock' })).toBeTruthy();
     expect(screen.queryByText(/Restore from your seed phrase/i)).toBeNull();
     // Counter never touched → a repeated cancel cannot reach the panic wipe.
     expect(localStorage.getItem(PIN_ATTEMPTS_KEY)).toBeNull();

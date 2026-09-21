@@ -26,8 +26,8 @@
 //     WelcomeHero single "Get Started" CTA — WelcomeHero is now dead code kept
 //     for reference, per the Slice D1 commit message).
 //   * "Choose an 8-digit PIN" + PinPad  — WalletEntry.jsx pin-create, step 1 (unified).
-//   * "Submit PIN" (PinPad's aria-label — NOT its visible "Continue" text; ARIA
-//     accessible-name resolution prefers aria-label) — components/security/PinPad.jsx.
+//   * "Continue" — PinPad's submit control; its accessible name now tracks the
+//     visible label (submitLabel), fixed ONB-02/A11Y-01 — components/security/PinPad.jsx.
 //   * "Confirm your PIN" — WalletEntry.jsx pin-create, step 2 (unified).
 //   * "PINs didn't match. Choose again." — WalletEntry.jsx (stays on confirm).
 //   * "Exploring — view only" + "Create or import" CTA — WalletEntry.jsx ExploreShell
@@ -66,7 +66,7 @@ async function enterPin(page, pin) {
   for (const digit of pin) {
     await pad.getByRole('button', { name: digit, exact: true }).click();
   }
-  await pad.getByRole('button', { name: 'Submit PIN' }).click();
+  await pad.getByRole('button', { name: 'Continue' }).click();
 }
 
 // Phase 1 (unified PIN cohort): entry-tiles pick → choose PIN → confirm → choose

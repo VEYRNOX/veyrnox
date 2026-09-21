@@ -92,7 +92,9 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(setDigits).toBeLessThan(setSubmit);
     expect(setSubmit).toBeLessThan(confirmDigits);
     expect(confirmDigits).toBeLessThan(confirmSubmit);
-    expect(swift).toContain('app.buttons["Submit PIN"]');
+    // ONB-02/A11Y-01 fix: the submit control's accessible name now tracks its
+    // visible label — "Continue" for PinSetup's create/confirm stages.
+    expect(swift).toContain('app.buttons["Continue"]');
   });
 
   // #2543: setPinCeremony short-circuits to a fresh ceremony when PinSetup
@@ -152,12 +154,15 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     // device profile provisioned with a lock screen, or a `--test`
     // instrumentation lane that sets one — restore the two assertions
     // to this file the same commit that adds the second matrix.
+    // ONB-02/A11Y-01 fix: the submit button's accessible/visible text is now
+    // the same "Continue" — the accessible-name mismatch this Robo script's
+    // own description already (wrongly) claimed not to have.
     expect(clicks).toEqual([
       { text: 'New wallet' },
       ...[...pin].map(text => ({ text })),
-      { text: 'Submit PIN' },
+      { text: 'Continue' },
       ...[...pin].map(text => ({ text })),
-      { text: 'Submit PIN' },
+      { text: 'Continue' },
     ]);
     expect(roboScript.every(({ visionText }) => visionText == null)).toBe(true);
     expect(roboScript.some(({ eventType }) => eventType === 'VIEW_TEXT_CHANGED')).toBe(false);

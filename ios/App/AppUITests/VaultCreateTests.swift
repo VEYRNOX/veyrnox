@@ -66,9 +66,10 @@ final class VaultCreateTests: XCTestCase {
         // Enter only 4 digits (need 8)
         enterPin(app: app, digits: "1234")
 
-        // Submit PIN button should exist but not advance
+        // Submit button ("Continue" — the create-flow submitLabel) should exist
+        // but not advance
         // (PinPad enables submit only at full length)
-        let submit = app.buttons["Submit PIN"]
+        let submit = app.buttons["Continue"]
         if submit.exists {
             submit.tap()
             // Should still be on PIN entry — "Choose an 8-digit PIN" still visible

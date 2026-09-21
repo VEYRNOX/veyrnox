@@ -28,7 +28,7 @@ final class UnlockTests: XCTestCase {
 
         // Unlock with correct PIN
         enterPin(app: app2, digits: TestPin.standard)
-        submitPin(app: app2)
+        submitPin(app: app2, label: "Unlock")
 
         // Should reach wallet
         let walletLoaded = app2.staticTexts["ETH"].waitForExistence(timeout: 15)
@@ -54,7 +54,7 @@ final class UnlockTests: XCTestCase {
         XCTAssertTrue(pinHeading.waitForExistence(timeout: 10))
 
         enterPin(app: app2, digits: TestPin.alternate)
-        submitPin(app: app2)
+        submitPin(app: app2, label: "Unlock")
 
         // Should still be on unlock screen (error shown, not wallet)
         // The PIN heading or an error message should remain visible

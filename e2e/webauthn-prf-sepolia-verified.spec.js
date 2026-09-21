@@ -39,15 +39,15 @@ const SEND_AMOUNT = '0.00002';
 
 // Enter an 8-digit PIN via PinPad's on-screen digit buttons, then submit. Scoped to
 // a PinPad's own "PIN entry" group so it never collides with same-named buttons
-// elsewhere on the page. "Submit PIN" is the button's aria-label — NOT its visible
-// text ("Continue"/"Unlock"/"Verify" depending on context); ARIA accessible-name
-// resolution prefers aria-label over visible text content.
-async function enterPin(page, pin, groupName = /PIN entry/i) {
+// elsewhere on the page. The submit button's accessible name now tracks its
+// visible text (ONB-02/A11Y-01 fix) — "Continue"/"Unlock"/"Verify" depending on
+// context — so submitLabel must be passed explicitly where it isn't "Continue".
+async function enterPin(page, pin, groupName = /PIN entry/i, submitLabel = 'Continue') {
   const pad = page.getByRole('group', { name: groupName });
   for (const digit of pin) {
     await pad.getByRole('button', { name: digit, exact: true }).click();
   }
-  await pad.getByRole('button', { name: 'Submit PIN' }).click();
+  await pad.getByRole('button', { name: submitLabel }).click();
 }
 
 // ── Verify txid is confirmed on Sepolia via RPC ──────────────────────────────
@@ -205,7 +205,7 @@ test.describe('Web Phase 1 KEK — Sepolia Txid Verification', () => {
     const unlockPad = page.getByRole('group', { name: /PIN entry/i });
     if (await unlockPad.isVisible({ timeout: 3000 }).catch(() => false)) {
       console.log('✓ Unlock screen detected, unlocking...');
-      await enterPin(page, TEST_PIN);
+      await enterPin(page, TEST_PIN, /PIN entry/i, 'Unlock');
       console.log('✓ Wallet unlocked with PIN');
       await page.waitForTimeout(2000);
     }
@@ -243,7 +243,7 @@ test.describe('Web Phase 1 KEK — Sepolia Txid Verification', () => {
     // own "8-digit PIN" aria-label distinct from onboarding/unlock's "PIN entry").
     const stepUpPad = page.getByRole('group', { name: /8-digit PIN/i });
     if (await stepUpPad.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await enterPin(page, TEST_PIN, /8-digit PIN/i);
+      await enterPin(page, TEST_PIN, /8-digit PIN/i, 'Verify');
       const authBtn = page.getByRole('button', { name: /Verify|Unlock|Authorise|Confirm/i });
       if (await authBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
         await authBtn.click();
