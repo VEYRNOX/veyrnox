@@ -216,11 +216,17 @@ function rateLimit(ip: string): boolean {
   return true;
 }
 
+// Order matters: the wallet reaches this function through the Cloudflare Pages
+// proxy (functions/api/edge/[fn].js), so cf-connecting-ip is the proxy's egress
+// address shared by every user. The proxy forwards the real client in
+// X-Forwarded-For (audit 2026-09-21 L1), so that is the key. A direct caller
+// can spoof the header, but this is a smoothing bound, not a security control,
+// and the alternative was one 60/min bucket for the entire user base.
 function clientIp(req: Request): string {
   const raw =
+    req.headers.get('x-forwarded-for') ??
     req.headers.get('cf-connecting-ip') ??
-    req.headers.get('x-real-ip') ??
-    req.headers.get('x-forwarded-for');
+    req.headers.get('x-real-ip');
   if (!raw) return 'unknown';
   const first = raw.split(',')[0]?.trim();
   return first || 'unknown';
