@@ -194,6 +194,19 @@ function json(body: unknown, status: number, origin: string | null): Response {
   });
 }
 
+// Failure classes are logged safely: timeout (abort), network error, and
+// non-404 upstream status — a status number only, never headers, body,
+// secrets, tokens, or the caller-supplied customer id. Matches the
+// unreadable-body log pattern added in #2665. Every failure still returns
+// false/null -> 403 (I4); nothing here is cached except the 404 case below.
+function logEntitlementFailure(step: string, err: unknown): void {
+  if (err instanceof Error && err.name === 'AbortError') {
+    console.error(`[tip-chat] entitlement lookup: ${step} timed out after ${REVENUECAT_TIMEOUT_MS}ms`);
+  } else {
+    console.error(`[tip-chat] entitlement lookup: ${step} network error`);
+  }
+}
+
 // The entitlement lookup runs against RevenueCat API **v2**, not v1.
 //
 // It was written against v1 and could never have returned true, for two
@@ -218,19 +231,41 @@ function json(body: unknown, status: number, origin: string | null): Response {
 // v2 needs the project id, which v1 did not, hence REVENUECAT_PROJECT_ID.
 // Absent config denies (I4) rather than admitting everyone — so set the secret
 // BEFORE deploying this to an environment that gates real subscribers.
-async function resolveEntitlementId(secret: string, signal: AbortSignal): Promise<string | null> {
+//
+// #2676: this call used to share ONE AbortController (and its
+// REVENUECAT_TIMEOUT_MS budget) with the active_entitlements lookup in
+// hasRequiredEntitlement below. On a cold isolate the pair plus TLS setup
+// could intermittently exceed the shared budget, denying a paying subscriber
+// with nothing in the log to explain why. Each RevenueCat round trip now
+// owns its own AbortController and its own full REVENUECAT_TIMEOUT_MS, so a
+// slow one can no longer starve the other's budget.
+async function resolveEntitlementId(secret: string): Promise<string | null> {
   if (resolvedEntitlementId) return resolvedEntitlementId;
   const projectId = Deno.env.get('REVENUECAT_PROJECT_ID') ?? '';
   if (!projectId) return null;
-  // v2 identifies entitlements by an opaque id (`entl...`), while this file —
-  // and the store configuration, and the paywall — speak the lookup_key. The
-  // list is short and the mapping is stable, so resolve it once rather than
-  // pinning an opaque id in config where it could drift silently.
-  const resp = await fetch(`${REVENUECAT_API_BASE}/projects/${encodeURIComponent(projectId)}/entitlements`, {
-    headers: { 'Authorization': `Bearer ${secret}` },
-    signal,
-  });
-  if (!resp.ok) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REVENUECAT_TIMEOUT_MS);
+  let resp: Response;
+  try {
+    // v2 identifies entitlements by an opaque id (`entl...`), while this file —
+    // and the store configuration, and the paywall — speak the lookup_key. The
+    // list is short and the mapping is stable, so resolve it once rather than
+    // pinning an opaque id in config where it could drift silently.
+    resp = await fetch(`${REVENUECAT_API_BASE}/projects/${encodeURIComponent(projectId)}/entitlements`, {
+      headers: { 'Authorization': `Bearer ${secret}` },
+      signal: controller.signal,
+    });
+  } catch (err) {
+    logEntitlementFailure('resolveEntitlementId', err);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!resp.ok) {
+    // Silent before #2676: every non-2xx here denied with nothing logged.
+    console.error(`[tip-chat] entitlement lookup: resolveEntitlementId upstream status ${resp.status}`);
+    return null;
+  }
   const body = await resp.json().catch(() => null) as Record<string, unknown> | null;
   const items = Array.isArray(body?.items) ? body.items as Record<string, unknown>[] : [];
   const match = items.find((i) => i && i.lookup_key === REQUIRED_ENTITLEMENT);
@@ -251,22 +286,33 @@ async function hasRequiredEntitlement(appUserId: string): Promise<boolean> {
   const projectId = Deno.env.get('REVENUECAT_PROJECT_ID') ?? '';
   if (!projectId) return false;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REVENUECAT_TIMEOUT_MS);
   try {
-    const entitlementId = await resolveEntitlementId(secret, controller.signal);
+    const entitlementId = await resolveEntitlementId(secret);
     // A failure to resolve is a configuration or outage problem, not a verdict
     // about this caller, so it is never cached.
     if (!entitlementId) return false;
 
-    const resp = await fetch(
-      `${REVENUECAT_API_BASE}/projects/${encodeURIComponent(projectId)}`
-      + `/customers/${encodeURIComponent(appUserId)}/active_entitlements`,
-      {
-        headers: { 'Authorization': `Bearer ${secret}` },
-        signal: controller.signal,
-      },
-    );
+    // Own controller, own full REVENUECAT_TIMEOUT_MS budget — see #2676 note
+    // on resolveEntitlementId above. This call no longer shares a budget (or
+    // an AbortController) with the one above it.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REVENUECAT_TIMEOUT_MS);
+    let resp: Response;
+    try {
+      resp = await fetch(
+        `${REVENUECAT_API_BASE}/projects/${encodeURIComponent(projectId)}`
+        + `/customers/${encodeURIComponent(appUserId)}/active_entitlements`,
+        {
+          headers: { 'Authorization': `Bearer ${secret}` },
+          signal: controller.signal,
+        },
+      );
+    } catch (err) {
+      logEntitlementFailure('active_entitlements', err);
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
     if (!resp.ok) {
       // ONLY a 404 is a verdict about this customer: RevenueCat has never seen
       // the id. Every other status is a fact about US, and filing it in a
@@ -282,6 +328,11 @@ async function hasRequiredEntitlement(appUserId: string): Promise<boolean> {
       // A 5xx was already excluded for exactly this reason; this widens the
       // rule to the rest of the statuses that are not about the customer.
       if (resp.status === 404) rememberEntitlement(appUserId, false);
+      else {
+        // Silent before #2676: every non-404 failure here denied with nothing
+        // logged, which is the same defect resolveEntitlementId had above.
+        console.error(`[tip-chat] entitlement lookup: active_entitlements upstream status ${resp.status}`);
+      }
       return false;
     }
     // Read as text and parse here, rather than `resp.json().catch(() => null)`.
@@ -329,8 +380,6 @@ async function hasRequiredEntitlement(appUserId: string): Promise<boolean> {
     return ok;
   } catch {
     return false;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
