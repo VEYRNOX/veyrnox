@@ -965,11 +965,16 @@ export function WalletProvider({ children }) {
   // clear so an already-cleared vault can't block the (more important) local wipe.
   const panicWipe = useCallback(async () => {
     try { await keyStore.clearVault(); } catch { /* may already be gone */ }
+    // Turn the biometric one-tap preference off BEFORE the local sweep (SEC-04).
+    // setBiometricUnlockEnabled(false) WRITES '0' (an explicit opt-out, never a
+    // remove). Called after panicWipeLocal() it re-created
+    // 'veyrnox-biometric-unlock', a key in ALL_RESIDUE_KEYS, so the wipe's own
+    // inspector reported clean:false. Called first, the sweep removes it.
+    setBiometricUnlockEnabled(false);
     const residual = await panicWipeLocal();
     sessionUnlockSecretRef.current = null;
-    // Also destroy the biometric one-tap cache + preference: it holds a copy of
-    // the vault password, so a wipe must take it too.
-    setBiometricUnlockEnabled(false);
+    // Also destroy the biometric one-tap cache: it holds a copy of the vault
+    // password, so a wipe must take it too.
     try { await clearUnlockSecret(); } catch { /* best-effort */ }
     // Multi-wallet metadata (names/backup-flags/asset prefs/active pointer) is
     // non-secret, but a wipe should leave no residue tying the device to the
@@ -1000,9 +1005,9 @@ export function WalletProvider({ children }) {
   // so a flaky sub-clear can't strand a defenseless-but-"ready" wallet behind it.
   const discardIncompleteWallet = useCallback(async () => {
     try { await keyStore.clearVault(); } catch { /* native branch; may already be gone */ }
+    setBiometricUnlockEnabled(false); // before the sweep, or it re-creates the key (SEC-04; see panicWipe)
     try { await panicWipeLocal(); } catch { /* best-effort */ }
     sessionUnlockSecretRef.current = null;
-    setBiometricUnlockEnabled(false);
     try { await clearUnlockSecret(); } catch { /* best-effort */ }
     clearAllWalletMeta();
     clearAllPortfolios();

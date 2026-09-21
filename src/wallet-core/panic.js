@@ -551,6 +551,12 @@ const SESSION_RESIDUE_KEYS = Object.freeze([
   // (lib/backupNag.js). Same C-1 class as the two lines above — tell is
   // presence, not value.
   'veyrnox-backup-nag-session-skip',
+  // SEC-04 (QA 2026-09-21): lib/backNavigation.js CURRENT_ROUTE_KEY /
+  // PREVIOUS_ROUTE_KEY. The back-button memory holds the last two routes
+  // visited, e.g. '/duress-pin' and '/stealth-wallets'. That is the same tell as
+  // veyrnox-recent-pages. They survived the wipe, and the inspector could not see them.
+  'veyrnox-nav-current',
+  'veyrnox-nav-previous',
 ]);
 
 // Clear every sessionStorage residue key. Guarded for non-browser/test envs.
