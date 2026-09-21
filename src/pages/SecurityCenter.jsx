@@ -37,6 +37,15 @@ function getDeviceInfo() {
   return { browser, device_name: `${device} · ${browser}` };
 }
 
+// I4: say what a limit actually does, per surface. This read "It is a check,
+// not a cap — it never blocks a transaction you approve", which is true only
+// for in-app Send (sendGate.js lets you acknowledge a breach). A WalletConnect
+// request over a limit is refused outright (WalletConnectProvider.jsx,
+// WC_SEND_LIMIT_EXCEEDED) unless Theft Protection is on, and then its biometric
+// check replaces the acknowledgement on both surfaces.
+export const SPEND_LIMIT_EMPTY_DESCRIPTION =
+  "In Send, a transaction over a limit needs an extra confirmation — a Face ID or fingerprint check if Theft Protection is on. Requests from connected apps (WalletConnect) over a limit are refused unless Theft Protection is on.";
+
 export default function SecurityCenter() {
   const queryClient = useQueryClient();
   // I2/I3: decoy/hidden sessions must make zero backend calls and write no
@@ -348,7 +357,7 @@ export default function SecurityCenter() {
             <EmptyState
               kind="generic"
               title="No limits configured"
-              description="A spend limit makes a transaction above it ask for a second confirmation. It is a check, not a cap — it never blocks a transaction you approve."
+              description={SPEND_LIMIT_EMPTY_DESCRIPTION}
               action={
                 <Button size="sm" onClick={openCreateLimit}>
                   <Plus className="h-3.5 w-3.5 me-1" /> Add a limit
