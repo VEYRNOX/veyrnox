@@ -98,6 +98,20 @@ describe('static-egress relay routing (issue #2655)', () => {
       .toBe('https://relay.example/transak/session/staging');
   });
 
+  it('refuses a relay base that is not plain https (secrets would travel in the clear)', () => {
+    for (const bad of ['http://relay.example', 'relay.example', 'ftp://relay.example',
+      'https://user:pw@relay.example', 'not a url']) {
+      expect(() => upstreamUrlFor(SESSION, { TRANSAK_PROXY_BASE: bad })).toThrow(/relay misconfigured/);
+    }
+  });
+
+  it('fails the session request closed on an http relay, sending nothing', async () => {
+    const e = await thrown(() =>
+      onRequestPost(ctx(VALID, { env: { ...ENV, TRANSAK_PROXY_BASE: 'http://relay.example' } })));
+    expect(e.status).toBe(503);
+    expect(fetch.mock.calls.some(([u]) => String(u).startsWith('http://'))).toBe(false);
+  });
+
   it('falls back to the direct URL for an endpoint it does not recognise', () => {
     // Fail OPEN to Transak rather than silently routing an unknown call.
     const other = 'https://api.transak.com/api/v2/currencies/crypto-currencies';

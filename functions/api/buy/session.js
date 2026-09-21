@@ -72,6 +72,17 @@ const SUPPORTED_ASSETS = new Map([
 export function upstreamUrlFor(directUrl, env) {
   const base = (env.TRANSAK_PROXY_BASE || '').replace(/\/+$/, '');
   if (!base) return directUrl;
+  // The relay receives `api-secret` and `x-proxy-secret` on every call, so a
+  // base that is not plain https would put both on the wire in the clear (or,
+  // with userinfo, somewhere unintended). Fail CLOSED on a misconfigured relay
+  // rather than falling back to Transak directly: the direct path is not on
+  // the IP allowlist, so a silent fallback would only disguise the misconfig
+  // as a Transak outage.
+  let parsed;
+  try { parsed = new URL(base); } catch { parsed = null; }
+  if (!parsed || parsed.protocol !== 'https:' || parsed.username || parsed.password) {
+    err(503, 'Transak relay misconfigured');
+  }
   const environment = env.TRANSAK_ENVIRONMENT === 'PRODUCTION' ? 'production' : 'staging';
   // Match on the endpoint we own, never on caller input. An unrecognised URL
   // falls back to calling Transak directly rather than silently dropping it.

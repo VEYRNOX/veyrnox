@@ -92,6 +92,8 @@ Functions bake env at deploy time, so setting them alone changes nothing:
 ```bash
 npx -y wrangler@4 pages secret put TRANSAK_PROXY_BASE --project-name veyrnox-prod
 # value: https://transak-relay.veyrnox.com
+# must be plain https (no http, no user:pw@) — anything else makes every
+# Buy session fail 503 "Transak relay misconfigured" rather than send secrets
 npx -y wrangler@4 pages secret put TRANSAK_PROXY_SECRET --project-name veyrnox-prod
 # value: contents of ~/.veyrnox/transak-proxy-secret
 ```
