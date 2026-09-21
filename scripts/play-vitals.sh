@@ -2,7 +2,8 @@
 #
 # Android Vitals crash/ANR watch — the Play half of the pre-submission telemetry
 # gate (see CLAUDE.md, "Play — Android Vitals watch"). Queries the Play Developer
-# Reporting API for daily crash and ANR rate.
+# Reporting API for daily crash and ANR rate, and for the error issues (the
+# crash/ANR clusters Play Console lists, with cause and location).
 #
 # This is COMPLEMENTARY to the Pre-launch report, not a substitute: Pre-launch is
 # one Robo crawl across ~10 devices, Vitals is every real install over time. A
@@ -86,28 +87,38 @@ status=0
 # Ask the API how fresh each metric set is, rather than guessing a window.
 # DAILY freshness runs roughly two days behind; requesting anything newer is a
 # hard 400, which is what broke the previous version.
-report() {
-  local set_name="$1" metric="$2"
+# Prints Y-M-D, or ERROR:<detail> / NONE.
+daily_end() {
   local fresh
-  fresh=$(curl -sS "${AUTH[@]}" "$BASE/$set_name") || { echo "  ERROR: freshness request failed"; status=2; return; }
-  local end
-  end=$(printf '%s' "$fresh" | jq -r '
+  fresh=$(curl -sS "${AUTH[@]}" "$BASE/$1") || { echo "ERROR:freshness request failed"; return; }
+  printf '%s' "$fresh" | jq -r '
     if .error then "ERROR:\(.error.status // .error.code) \(.error.message)"
     else ([.freshnessInfo.freshnesses[]? | select(.aggregationPeriod=="DAILY") | .latestEndTime] | first
           | if . == null then "NONE" else "\(.year)-\(.month)-\(.day)" end)
-    end')
+    end'
+}
+
+# Y M D, $DAYS before the given Y-M-D.
+window_start() {
+  python3 -c "
+import datetime,sys
+y,m,d=map(int,sys.argv[1].split('-'))
+e=datetime.date(y,m,d)-datetime.timedelta(days=int(sys.argv[2]))
+print(f'{e.year} {e.month} {e.day}')" "$1" "$DAYS"
+}
+
+report() {
+  local set_name="$1" metric="$2"
+  local end
+  end=$(daily_end "$set_name")
   case "$end" in
     ERROR:*) echo "  ERROR reading freshness: ${end#ERROR:}"; status=2; return ;;
     NONE)    echo "  ERROR: API reports no DAILY freshness for $set_name"; status=2; return ;;
   esac
   local ey em ed
   IFS=- read -r ey em ed <<<"$end"
-  local start_epoch sy sm sd
-  start_epoch=$(python3 -c "
-import datetime,sys
-e=datetime.date(int('$ey'),int('$em'),int('$ed'))-datetime.timedelta(days=int('$DAYS'))
-print(f'{e.year} {e.month} {e.day}')")
-  read -r sy sm sd <<<"$start_epoch"
+  local sy sm sd
+  read -r sy sm sd <<<"$(window_start "$end")"
 
   local body resp
   body=$(jq -nc --argjson sy "$sy" --argjson sm "$sm" --argjson sd "$sd" \
@@ -140,9 +151,54 @@ print(f'{e.year} {e.month} {e.day}')")
     "users=\([.metrics[]? | select(.metric=="distinctUsers") | .decimalValue.value] | first // "n/a")"'
 }
 
+# Play Console → Android vitals → Crashes and ANRs, as clusters with a cause
+# and location. Rates above say HOW OFTEN; this says WHAT. Same three outcomes.
+# errorIssues:search takes its interval as query params and rejects
+# America/Los_Angeles ("Unsupported timezone") — UTC is accepted. An empty
+# result is a bare {} with no errorIssues key.
+issues() {
+  local end
+  end=$(daily_end errorCountMetricSet)
+  case "$end" in
+    ERROR:*) echo "  ERROR reading freshness: ${end#ERROR:}"; status=2; return ;;
+    NONE)    echo "  ERROR: API reports no DAILY freshness for errorCountMetricSet"; status=2; return ;;
+  esac
+  local ey em ed sy sm sd
+  IFS=- read -r ey em ed <<<"$end"
+  read -r sy sm sd <<<"$(window_start "$end")"
+  local q="pageSize=50"
+  q+="&interval.startTime.year=$sy&interval.startTime.month=$sm&interval.startTime.day=$sd&interval.startTime.timeZone.id=UTC"
+  q+="&interval.endTime.year=$ey&interval.endTime.month=$em&interval.endTime.day=$ed&interval.endTime.timeZone.id=UTC"
+  local resp
+  resp=$(curl -sS "${AUTH[@]}" "$BASE/errorIssues:search?$q") || {
+    echo "  ERROR: issues request failed"; status=2; return; }
+  if printf '%s' "$resp" | jq -e '.error' >/dev/null 2>&1; then
+    echo "  ERROR: $(printf '%s' "$resp" | jq -r '"\(.error.status // .error.code): \(.error.message)"' | head -3)"
+    status=2; return
+  fi
+  local n
+  n=$(printf '%s' "$resp" | jq '[.errorIssues[]?] | length')
+  echo "  window: $sy-$sm-$sd .. $end (UTC), $DAYS days requested"
+  if [ "$n" = "0" ]; then
+    echo "  EMPTY — query succeeded, zero issues. NOT a pass, for the same"
+    echo "  reason as the rates: no qualifying installs looks identical."
+    return
+  fi
+  echo "  DATA — $n issue(s), most reports first:"
+  printf '%s' "$resp" | jq -r '.errorIssues | sort_by(-((.errorReportCount // "0") | tonumber)) | .[] |
+    "    \(.type // "?")  reports=\(.errorReportCount // "n/a")  users=\(.distinctUsers // "n/a")  " +
+    "versions=\(.firstAppVersion.versionCode // "?")..\(.lastAppVersion.versionCode // "?")\n" +
+    "      \(.cause // "no cause")\n      at \(.location // "no location")"'
+  if printf '%s' "$resp" | jq -e '.nextPageToken' >/dev/null 2>&1; then
+    echo "  (more than 50 issues — only the first page is shown)"
+  fi
+}
+
 echo "=== Package: $PACKAGE ==="
 echo "=== Crash rate ==="
 report crashRateMetricSet crashRate
 echo "=== ANR rate ==="
 report anrRateMetricSet anrRate
+echo "=== Error issues (crash + ANR clusters) ==="
+issues
 exit "$status"
