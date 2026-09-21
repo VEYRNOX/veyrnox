@@ -85,8 +85,11 @@ function StatCard({ icon: Icon, label, value, sub, tone, path }) {
       className={`block h-full min-w-0 rounded-xl border bg-card p-4 transition-colors hover:bg-secondary/40 ${toneCls}`}
     >
       <div className="mb-2 flex items-start gap-2 text-muted-foreground">
-        <Icon className="h-4 w-4" />
-        <span className="min-w-0 text-xs font-medium leading-snug break-words">{label}</span>
+        <Icon className="h-4 w-4 shrink-0" />
+        {/* Two lines reserved (2 × leading-snug) so every value starts at the
+            same height whether or not its label wraps — at 390px "Suspicious
+            assets" wraps and "Addresses" does not (TestFlight "Align table"). */}
+        <span className="min-h-[2.75em] min-w-0 text-xs font-medium leading-snug break-words">{label}</span>
       </div>
       <p className={`break-words text-2xl font-bold ${tone === "high" ? "text-destructive" : tone === "medium" ? "text-caution" : ""}`}>{value}</p>
       <p className="mt-0.5 text-xs leading-snug text-muted-foreground break-words">{sub}</p>
