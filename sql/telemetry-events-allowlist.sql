@@ -1,3 +1,6 @@
+-- SUPERSEDED for track_event's body: sql/track-event-ip-rate-limit.sql is the
+-- current definition (IP rate limit, search_path = public, extensions, pg_temp).
+-- Re-running THIS file would drop both. Edit the allowlist there, not here.
 -- Expand track_event() allowlist with funnel/diagnostic events.
 -- Run AFTER api-security-hardening.sql.
 --
