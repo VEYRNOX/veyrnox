@@ -118,11 +118,15 @@ BEGIN
     -- Security / diagnostics
     'crypto_diagnostics', 'tamper_signal', 'security_modal_shown',
     'kek_unwrap_failed',
-    -- dApp
-    'dapp_connect_start', 'dapp_connect_result',
+    -- dApp. dapp_request_rejected is emitted by src/api/trackEvent.js and was
+    -- in sql/telemetry-events-allowlist.sql, but this file's rewrite dropped
+    -- it, so both live projects rejected it with P0003 (found 2026-09-21).
+    'dapp_connect_start', 'dapp_connect_result', 'dapp_request_rejected',
     -- Growth / paywall (PR #1340)
     'referral_code_applied', 'paywall_shown',
-    'paywall_dismissed', 'paywall_converted'
+    'paywall_dismissed', 'paywall_converted',
+    -- #2640: pending-referral redemption retry/failure at unlock.
+    'referral_redeem_retry', 'referral_redeem_failed'
   ) THEN
     RAISE EXCEPTION 'Unknown event' USING errcode = 'P0003';
   END IF;
