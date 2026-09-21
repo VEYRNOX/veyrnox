@@ -13,19 +13,22 @@
 -- Verify with: SELECT current_setting('request.jwt.claims', true) is unused;
 -- instead call /api/rpc/get_referral_tier from the deployed site and confirm 200.
 --
--- Apply via the Supabase SQL editor or MCP execute_sql on prod, then staging.
+-- Applied to PROD 2026-09-21 (Supabase migration security_audit_2026_09_21_revoke_anon_rpcs).
+-- NOT applied to staging: preview Pages deploys (ENVIRONMENT=preview) fall back
+-- to the anon key, so revoking there breaks every PR preview until the preview
+-- environment also carries SUPABASE_SERVICE_ROLE_KEY.
 -- Never on yrqzwqywxfesmbvhzjgj (veyrnox.ai).
 
 BEGIN;
 
-REVOKE EXECUTE ON FUNCTION public.generate_referral_code()            FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.get_referral_count(text)            FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.get_referral_earnings(text)         FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.get_referral_paid_count(text)       FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.get_referral_tier(text)             FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.increment_referral(text)            FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.register_referral_code(text, text)  FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.track_event(text, jsonb)            FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.generate_referral_code(uuid)                FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_referral_count(text)                    FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_referral_earnings(text)                 FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_referral_paid_count(text)               FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_referral_tier(text)                     FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.increment_referral(text, uuid)              FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.register_referral_code(text, uuid)          FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.track_event(uuid, text, jsonb)              FROM anon, authenticated;
 
 -- service_role retains EXECUTE (it is the proxy's identity).
 COMMIT;
