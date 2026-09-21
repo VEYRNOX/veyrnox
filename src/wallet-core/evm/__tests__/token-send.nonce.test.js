@@ -27,6 +27,7 @@ vi.mock('../preflight.js', () => ({
 
 vi.mock('../fees.js', () => ({
   evmFeeOverrides: () => ({ maxFeePerGas: 1n, maxPriorityFeePerGas: 1n }),
+  resolveEvmFeeOverrides: async () => ({ maxFeePerGas: 1n, maxPriorityFeePerGas: 1n }),
 }));
 
 vi.mock('../tokens.js', () => ({

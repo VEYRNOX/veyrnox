@@ -15,7 +15,7 @@ describe('resolveEvmFeeOverrides', () => {
   it('passes sane EIP-1559 fees through', async () => {
     const out = await resolveEvmFeeOverrides(
       provider({ maxFeePerGas: 30n * GWEI, maxPriorityFeePerGas: 2n * GWEI, gasPrice: null }),
-      'mainnet', 'medium',
+      'mainnet', null,
     );
     expect(out.maxFeePerGas).toBe(30n * GWEI);
     expect(out.maxPriorityFeePerGas).toBe(2n * GWEI);
@@ -24,14 +24,14 @@ describe('resolveEvmFeeOverrides', () => {
   it('clamps absurd RPC suggestions to the network cap', async () => {
     const out = await resolveEvmFeeOverrides(
       provider({ maxFeePerGas: 10_000n * GWEI, maxPriorityFeePerGas: 5_000n * GWEI, gasPrice: null }),
-      'mainnet', 'medium',
+      'mainnet', null,
     );
     expect(out.maxFeePerGas).toBeLessThanOrEqual(cap);
     expect(out.maxPriorityFeePerGas).toBeLessThanOrEqual(MAX_TIP_WEI);
   });
 
   it('returns {} when the RPC gives nothing usable', async () => {
-    const out = await resolveEvmFeeOverrides(provider({ maxFeePerGas: null, maxPriorityFeePerGas: null, gasPrice: null }), 'mainnet', 'medium');
+    const out = await resolveEvmFeeOverrides(provider({ maxFeePerGas: null, maxPriorityFeePerGas: null, gasPrice: null }), 'mainnet', null);
     expect(out).toEqual({});
   });
 });
