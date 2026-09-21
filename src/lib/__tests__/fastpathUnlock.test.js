@@ -222,15 +222,37 @@ describe('fastpathUnlock — linked biometric-unlock enablement (#2037 follow-up
     expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBeNull();
   });
 
-  it('migration: pre-follow-up state (fastpath ON + biometric OFF) is repaired', () => {
-    // The buggy state existing users may be in — Fast Unlock explicitly on
-    // but Biometric Unlock never enabled. Migration flips biometric-unlock
-    // ON so the next PIN unlock warms the password cache.
+  // SEC-05 (QA 2026-09-21). This block used to pin the opposite: "fastpath ON
+  // + biometric OFF is repaired" by flipping biometric-unlock to '1'. That
+  // repair ran at module init on EVERY launch, so it could not tell a
+  // pre-linkage install from a user (or duressBiometricGuard, or the
+  // BiometricConsent decline) that wrote an explicit '0' — and fastpath
+  // reads ON by default, so every opt-out was silently reverted on the next
+  // launch, and on web (no platform biometric) the dashboard then reported
+  // "Biometric unlock: ON — Required to unlock". The explicit '0' is the
+  // contract biometric.js documents (setBiometricUnlockEnabled). The #2057
+  // linkage itself survives: enabling Fast Unlock still enables both via
+  // enableFastpathAndBiometricUnlock() (pinned above).
+  it('migration: an explicit biometric "0" survives with fastpath ON (SEC-05)', () => {
     localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
     localStorage.setItem(FASTPATH_DISCLOSURE_SEEN_KEY, '1');
-    expect(isBiometricUnlockEnabled()).toBe(false);
+    localStorage.setItem(BIOMETRIC_PREF_KEY, '0');
     migrateFastpathState();
-    expect(isBiometricUnlockEnabled()).toBe(true);
+    expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBe('0');
+    expect(isBiometricUnlockEnabled()).toBe(false);
+  });
+
+  it('migration: an explicit biometric "0" survives fastpath default-on across launches (SEC-05)', () => {
+    localStorage.setItem(BIOMETRIC_PREF_KEY, '0');
+    migrateFastpathState();
+    migrateFastpathState(); // runs at module init, i.e. every launch
+    expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBe('0');
+  });
+
+  it('migration: web fresh install (nothing stored) does not arm biometric-unlock (SEC-05)', () => {
+    migrateFastpathState();
+    expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBeNull();
+    expect(isBiometricUnlockEnabled()).toBe(false);
   });
 
   it('migration: default-on (key absent) + disclosure seen does NOT touch biometric-unlock', () => {
