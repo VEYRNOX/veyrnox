@@ -707,6 +707,13 @@ export async function _handleSendTransaction(
     );
   }
 
+  // Audit 2026-09-21 M4: `to` must be a literal address. An absent `to` makes
+  // ethers build a CREATE tx whose initcode can forward value anywhere; a name
+  // makes the RPC pick the recipient. The modal shows the raw string either way.
+  if (!ethers.isAddress(txParams.to)) {
+    throw new Error('WC_SEND_INVALID_TO: eth_sendTransaction requires a literal recipient address');
+  }
+
   const hash = await withPrivateKey(0, async (pk) => {
     const provider = getProvider(net.key);
     // VULN-19 guard: verify the RPC endpoint is actually on the expected chain.

@@ -9,6 +9,7 @@
 
 import { Capacitor } from '@capacitor/core';
 import { encryptVault, decryptVault, vaultNeedsRekey, deriveKekC, encryptVaultWithDek, encryptVaultWithDekV3, decryptVaultWithDek, VAULT_VERSION_V3, AAD_V3_MIGRATION_ENABLED } from '../vault.js';
+import { unwrapDekWithProfiles, kekKdfStamp } from './kekProfiles.js';
 import { saveVault, loadVault, hasVault, clearVault } from '../evm/vaultStore.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt } from './kek.js';
 import {
@@ -359,13 +360,7 @@ export const webKeyStore = {
     // the recovered DEK are wiped on EVERY path — including when unwrapDek throws (wrong
     // PIN/device). None may linger in the JS heap until GC (I4), mirroring unlock().
     try {
-      C = await deriveKekC(password, saltBytes);
-      kek = await combineKek(H, C);
-      // combineKek zeroes H/C internally; wipe again at the call site so the guarantee
-      // survives any refactor of combineKek (defense in depth, I4).
-      H.fill(0);
-      C.fill(0);
-      dek = await unwrapDek(kek, blob.kekWrap); // throws on wrong PIN/device — fail-closed
+      ({ kek, dek } = await unwrapDekWithProfiles({ H, password, saltBytes, blob }));
       // I-1: destructure `v` from encryptVaultWithDek and propagate it into the
       // saved blob. encryptVaultWithDek() seals GCM AAD over {v, kdf}; if the
       // header `v` on the persisted blob does not match the `v` used to seal
@@ -533,15 +528,16 @@ export const webKeyStore = {
       // key that wraps the DEK nor the key that decrypts the seed may linger in the
       // JS heap until GC (I4).
       try {
-        C = await deriveKekC(password, saltBytes);
-        kek = await combineKek(H, C);
-        // H-NEW-4: combineKek zeroes H/C internally; wipe again at the call site so
-        // the guarantee survives any refactor of combineKek (defense in depth, I4).
-        H.fill(0);
-        C.fill(0);
-        dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
+        // Audit 2026-09-21 H1: profile-aware unwrap (see kek.js). Stamps the
+        // profile that worked on a legacy blob so the next unlock derives once.
+        const unwrapped = await unwrapDekWithProfiles({ H, password, saltBytes, blob });
+        kek = unwrapped.kek;
+        dek = unwrapped.dek;
         // Seed CT was encrypted with the DEK (not the PIN), so PIN rotation doesn't change it.
         const plaintext = await decryptVaultWithDek(blob, dek);
+        if (unwrapped.usedFallback) {
+          try { await saveVault({ ...blob, kekKdf: unwrapped.profile }); } catch { /* best-effort */ }
+        }
         // AAD v:3 migration (#1111): silently reseal a v:2 kek-dek blob
         // under the v:3 AAD. See native.js:_unlockInner for the sibling
         // hook + rationale. Web has no `hardwareKekVersion` — coerce
@@ -646,7 +642,7 @@ export const webKeyStore = {
       // fails GCM auth. Benign today (both v:2), fatal if VAULT_VERSION bumps.
       // Mirrors native.js (PR #1079).
       const { v: newV, iv, ct } = await encryptVaultWithDek(secret, dek);
-      await saveVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
+      await saveVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt, kekKdf: kekKdfStamp() });
     } finally {
       // H-NEW-4 / F-01: wipe H, C, the derived KEK and the DEK on every path (I4).
       if (H && H.fill) H.fill(0);
@@ -686,11 +682,7 @@ export const webKeyStore = {
     try {
       saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → KEK_ERR.MALFORMED_VAULT
       H = await getHF();
-      C = await deriveKekC(password, saltBytes);
-      kek = await combineKek(H, C);
-      H.fill(0);
-      C.fill(0);
-      dek = await unwrapDek(kek, blob.kekWrap);
+      ({ kek, dek } = await unwrapDekWithProfiles({ H, password, saltBytes, blob }));
       secret = await decryptVaultWithDek(blob, dek);
     } finally {
       // H-2 (issue #721): H is acquired inside the try; if deriveKekC throws before
@@ -758,13 +750,7 @@ export const webKeyStore = {
       // wiped on EVERY path — including when deriveKekC/combineKek/unwrapDek/wrapDek/
       // saveVault throws. None of these may linger in the JS heap until GC (I4).
       try {
-        oldC = await deriveKekC(currentPassword, oldSaltBytes);
-        oldKek = await combineKek(H, oldC);
-        // H-NEW-4: wipe the first-combine factors at the call site (defense in depth
-        // over combineKek's own in-place zeroing). H2 still holds the copy for below.
-        H.fill(0);
-        oldC.fill(0);
-        dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
+        ({ kek: oldKek, dek } = await unwrapDekWithProfiles({ H, password: currentPassword, saltBytes: oldSaltBytes, blob }));
         // Re-wrap the SAME DEK under a new KEK derived from the new PIN + fresh salt.
         newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
         const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
@@ -795,6 +781,7 @@ export const webKeyStore = {
           kekWrap: newKekWrap,
           kekSalt: newKekSalt,
           hardwareKekVersion: blob.hardwareKekVersion ?? null,
+          kekKdf: kekKdfStamp(),
         };
         const writeV3 = blob.v === VAULT_VERSION_V3 || AAD_V3_MIGRATION_ENABLED;
         if (writeV3) {
@@ -807,7 +794,7 @@ export const webKeyStore = {
             if (typeof seed === 'string') seed = null;
           }
         } else {
-          await saveVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt });
+          await saveVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, kekKdf: kekKdfStamp() });
         }
       } finally {
         // F-06 (audit, I4): H is captured before the try block (needed to make the
@@ -889,11 +876,7 @@ export const webKeyStore = {
     try {
       saltBytes = decodeKekSalt(blob.kekSalt);
       H = await getHF();
-      C = await deriveKekC(password, saltBytes);
-      kek = await combineKek(H, C);
-      if (H && H.fill) H.fill(0);
-      if (C) C.fill(0);
-      dek = await unwrapDek(kek, blob.kekWrap);
+      ({ kek, dek } = await unwrapDekWithProfiles({ H, password, saltBytes, blob }));
       return splitDekForPersonalBackup(dek);
     } finally {
       if (H && H.fill) H.fill(0);
@@ -946,7 +929,7 @@ export const webKeyStore = {
       if (newC) newC.fill(0);
 
       const newKekWrap = await wrapDek(newKek, dek);
-      const newBinding = { kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: null };
+      const newBinding = { kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: null, kekKdf: kekKdfStamp() };
       const writeV3 = blob.v === VAULT_VERSION_V3 || AAD_V3_MIGRATION_ENABLED;
       if (writeV3) {
         const sealed = await encryptVaultWithDekV3(seed, dek, newBinding);

@@ -25,6 +25,9 @@ export function s3FreshSpenderApproval(unsignedTx, activeSetLocalState, _chainDa
   const a = classifyApprove(unsignedTx?.data);
 
   if (!a.isApprove) return { level: LEVEL.OK, evidence: { reason: 'Not an approval.' } };
+  if (a.decoded && a.revoke) {
+    return { level: LEVEL.OK, evidence: { reason: 'This revokes an approval; nothing is granted.' } };
+  }
   if (!a.decoded) {
     return {
       level: LEVEL.INDETERMINATE,

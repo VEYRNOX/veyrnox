@@ -49,8 +49,10 @@ describe('web.js sensitive-buffer zeroing — H-NEW-4', () => {
   describe('unlock()', () => {
     const body = methodBody(code, 'unlock');
 
-    it('calls combineKek (sanity)', () => {
-      expect(calls(body, 'combineKek')).toBeGreaterThan(0);
+    // Audit 2026-09-21 H1: unlock combines through unwrapDekWithProfiles
+    // (kekProfiles.js), which owns the H/C wipe for every candidate profile.
+    it('calls combineKek via unwrapDekWithProfiles (sanity)', () => {
+      expect(calls(body, 'combineKek') + calls(body, 'unwrapDekWithProfiles')).toBeGreaterThan(0);
     });
     it('zeroes H after use', () => expect(zeroed(body, 'H')).toBe(true));
     it('zeroes C after use', () => expect(zeroed(body, 'C')).toBe(true));
@@ -72,8 +74,9 @@ describe('web.js sensitive-buffer zeroing — H-NEW-4', () => {
   describe('changePassword()', () => {
     const body = methodBody(code, 'changePassword');
 
-    it('calls combineKek twice (old + new KEK)', () => {
-      expect(calls(body, 'combineKek')).toBe(2);
+    it('combines twice (old KEK via unwrapDekWithProfiles + new KEK via combineKek)', () => {
+      expect(calls(body, 'unwrapDekWithProfiles')).toBe(1);
+      expect(calls(body, 'combineKek')).toBe(1);
     });
     it('zeroes H after the first combineKek', () =>
       expect(zeroed(body, 'H')).toBe(true));
