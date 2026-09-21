@@ -96,6 +96,10 @@ export async function onRequestPost(context) {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${supabaseKey}`,
     'apikey': supabaseKey,
+    // Audit 2026-09-21 L1: the edge functions' per-IP limiters read
+    // x-forwarded-for; without this they saw Cloudflare's egress address for
+    // every caller and one shared bucket throttled everyone.
+    'X-Forwarded-For': request.headers.get('CF-Connecting-IP') || '',
   };
   const rcUserId = safeRcUserId(request.headers.get('X-Rc-User-Id'));
   if (rcUserId) headers['X-Rc-User-Id'] = rcUserId;

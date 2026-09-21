@@ -22,12 +22,14 @@
 //
 // ─── AUTH POSTURE, HONESTLY ─────────────────────────────────────────────────
 //
-// TIP's /api/v1/chat is unauthenticated at the protocol level — no HMAC. The
-// endpoint enforces a per-device-ID quota (30 turns / 24h) via a KV counter,
-// and returns 402 Payment Required past that. So this proxy does not need to
-// hold TIP credentials; it just forwards. The Supabase anon-key check below is
-// the same gate `tip-screen` describes: it stops unkeyed drive-by traffic,
-// nothing more (there is no user account, so "authentication" is a misnomer).
+// TIP's /api/v1/chat REQUIRES the HMAC scheme (veyrnox-tip PR #48): this
+// function holds TIP_API_KEY + TIP_SIGNING_SECRET and signs every forward as
+// `ts.POST.pathname.body` (see the signing helpers near the bottom). Upstream
+// also enforces a per-device-ID quota (30 turns / 24h) and returns 402 past
+// it. Callers must present an entitled RevenueCat app_user_id in
+// X-Rc-User-Id; the anon-key presence check below only stops unkeyed
+// drive-by traffic. (Header rewritten 2026-09-21: it previously said "no HMAC",
+// which had been false since PR #48 — audit I3.)
 //
 // ─── STREAMING ──────────────────────────────────────────────────────────────
 //
@@ -437,10 +439,13 @@ serve(async (req) => {
     // check (signed RC-webhook token) lands. Fail closed (I4).
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('shape');
-    if (typeof parsed.device_id === 'string' && parsed.device_id.startsWith('vault:')) {
-      parsed.device_id = parsed.device_id.slice('vault:'.length);
-      raw = JSON.stringify(parsed);
-    }
+    // Audit 2026-09-21 L4: the caller does not get to pick device_id at all.
+    // Entitlement was proven for rcUserId above, so the upstream per-device cap
+    // is keyed on that identity — a client cannot rotate ids to reset its quota
+    // or borrow another device's. The old code only stripped a 'vault:'
+    // prefix and forwarded whatever remained.
+    parsed.device_id = `rc:${rcUserId}`;
+    raw = JSON.stringify(parsed);
     if (!Array.isArray(parsed.messages) || parsed.messages.length === 0) {
       return json({ error: 'messages_required' }, 400, origin);
     }

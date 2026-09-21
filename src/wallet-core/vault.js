@@ -743,12 +743,20 @@ export async function decryptVaultWithDek(vault, dek) {
  * @param {Uint8Array} salt  32-byte random salt (kekSalt stored alongside the blob)
  * @returns {Promise<Uint8Array>} 32-byte C factor
  */
-export async function deriveKekC(password, salt) {
+export async function deriveKekC(password, salt, params = KDF_PARAMS) {
   // Reverted the #1989 worker-route (was: runArgon2idBinary) — that path broke
   // wallet CREATE on iOS: the very first KEK-C derivation on a fresh install
   // failed inside the worker/hash-wasm bootstrap, teardown ran, banner showed
   // "Wallet setup couldn't finish securely". In-thread argon2id is the pre-#1989
   // shape and known-good. Keeps the trailing setTimeout(0) yield.
+  //
+  // Audit 2026-09-21 H1: C was ALWAYS derived at the live KDF_PARAMS, but a
+  // kek-dek blob recorded no C profile. Every profile change (2026-06-01,
+  // 06-28, 07-05, 08-24) silently changed C for every KEK vault enrolled
+  // before it — a correct PIN then unwrapped nothing and counted toward the
+  // panic wipe. The params are now explicit: callers pass the blob's stamped
+  // `kekKdf`, or walk KEK_C_PROFILES (see kek.js unwrapDekWithProfiles).
+  const p = assertSaneKdfParams(params);
   const { argon2id: _argon2id } = await import('hash-wasm');
   const pw = enc.encode(password.normalize('NFKC'));
   let raw;
@@ -756,10 +764,10 @@ export async function deriveKekC(password, salt) {
     raw = await _argon2id({
       password: pw,
       salt,
-      parallelism: KDF_PARAMS.parallelism,
-      iterations: KDF_PARAMS.iterations,
-      memorySize: KDF_PARAMS.memorySize,
-      hashLength: KDF_PARAMS.hashLength,
+      parallelism: p.parallelism,
+      iterations: p.iterations,
+      memorySize: p.memorySize,
+      hashLength: p.hashLength,
       outputType: 'binary',
     });
   } finally {

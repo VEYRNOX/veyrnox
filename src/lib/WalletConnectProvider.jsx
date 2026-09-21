@@ -707,6 +707,13 @@ export async function _handleSendTransaction(
     );
   }
 
+  // Audit 2026-09-21 M4: `to` must be a literal address. An absent `to` makes
+  // ethers build a CREATE tx whose initcode can forward value anywhere; a name
+  // makes the RPC pick the recipient. The modal shows the raw string either way.
+  if (!ethers.isAddress(txParams.to)) {
+    throw new Error('WC_SEND_INVALID_TO: eth_sendTransaction requires a literal recipient address');
+  }
+
   const hash = await withPrivateKey(0, async (pk) => {
     const provider = getProvider(net.key);
     // VULN-19 guard: verify the RPC endpoint is actually on the expected chain.
@@ -848,7 +855,7 @@ export function WalletConnectProvider({ children }) {
     const out = [];
     for (const tx of corpusHistory) {
       if (tx.to_address) out.push({ address: tx.to_address, label: tx.type === 'send' ? "an address you've paid before" : 'a counterparty in your history', date: tx.created_date });
-      if (tx.from_address) out.push({ address: tx.from_address, label: 'a counterparty in your history', date: tx.created_date });
+      // Audit 2026-09-21 L8: inbound counterparties are never "known" — see SendCrypto.jsx.
       if (tx.address) out.push({ address: tx.address, label: 'a counterparty in your history', date: tx.created_date });
     }
     for (const c of addressBook) out.push({ address: c.address, label: c.name ? `your saved contact "${c.name}"` : 'a saved contact' });
@@ -1029,6 +1036,13 @@ export function WalletConnectProvider({ children }) {
     if (!evmAddress) throw new Error('No wallet address — unlock first');
     const proposal = pendingProposals.find((p) => p.id === proposalId);
     if (!proposal) throw new Error('Proposal not found');
+    // Audit 2026-09-21 L9: WalletKit attaches Reown Verify's attestation of the
+    // dApp origin. metadata.url is self-declared; verifyContext is not. A
+    // flagged scam or a domain that failed verification never gets a session.
+    const verified = proposal.verifyContext?.verified;
+    if (verified && (verified.isScam === true || verified.validation === 'INVALID')) {
+      throw new Error(`WC_SESSION_REFUSED_VERIFY: dApp origin ${verified.isScam ? 'flagged as scam' : 'failed verification'}`);
+    }
     // Extract requested chains (CAIP-2, e.g. "eip155:1") from required + optional
     // namespaces and parse to integer chain IDs. session.js:approveSession filters
     // these against SUPPORTED_CHAIN_IDS, so unsupported chains drop out there.

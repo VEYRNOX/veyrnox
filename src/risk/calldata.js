@@ -10,50 +10,88 @@
 
 import { Interface, MaxUint256 } from 'ethers';
 
+// Every calldata shape that grants a third party the right to move this
+// wallet's assets. Audit 2026-09-21 H2: only approve(address,uint256) was
+// recognised, so a bounded approve, increaseAllowance, setApprovalForAll or
+// Permit2 approve reached the WalletConnect modal as an opaque selector with
+// "Value: 0" — which is the exact shape a drainer sends.
 const iface = new Interface([
   'function approve(address spender, uint256 value)',
+  'function increaseAllowance(address spender, uint256 addedValue)',
+  'function setApprovalForAll(address operator, bool approved)',
+  // Permit2 (0x000000000022D473030F116dDEE9F6B43aC78BA3) direct approve.
+  'function approve(address token, address spender, uint160 amount, uint48 expiration)',
 ]);
 
 // The 4-byte selector for approve(address,uint256).
 export const APPROVE_SELECTOR = '0x095ea7b3';
+export const INCREASE_ALLOWANCE_SELECTOR = '0x39509351';
+export const SET_APPROVAL_FOR_ALL_SELECTOR = '0xa22cb465';
+export const PERMIT2_APPROVE_SELECTOR = '0x87517c45';
+
+const APPROVAL_KINDS = Object.freeze({
+  [APPROVE_SELECTOR]: 'approve',
+  [INCREASE_ALLOWANCE_SELECTOR]: 'increaseAllowance',
+  [SET_APPROVAL_FOR_ALL_SELECTOR]: 'setApprovalForAll',
+  [PERMIT2_APPROVE_SELECTOR]: 'permit2Approve',
+});
 
 // At or above half of 2^256 is, for any real token supply, effectively infinite
 // — the canonical "unlimited approval" pattern (MaxUint256 and 2^256-1). Matches
 // wallet-core/evm/calldata.js so the two modules agree on the threshold.
 export const UNLIMITED_THRESHOLD = MaxUint256 / 2n;
+// Permit2 amounts are uint160; half of 2^160 is the same "effectively infinite" bar.
+const UINT160_UNLIMITED_THRESHOLD = (1n << 160n) / 2n;
 
 const selectorOf = (data) =>
   typeof data === 'string' && data.length >= 10 ? data.slice(0, 10).toLowerCase() : null;
 
 /**
- * Classify an unsigned tx's calldata as it relates to ERC-20 approve.
+ * Classify an unsigned tx's calldata as it relates to asset approvals.
  *
  * @param {string} data  hex calldata ('0x' for none)
  * @returns {{
- *   isApprove: boolean,   // selector is approve(address,uint256)
+ *   isApprove: boolean,   // selector is one of the approval shapes above
  *   decoded: boolean,     // args parsed cleanly (only meaningful when isApprove)
- *   spender?: string,     // checksummed spender when decoded
- *   value?: bigint,       // approved amount when decoded
- *   unlimited?: boolean,  // value >= UNLIMITED_THRESHOLD when decoded
+ *   kind?: 'approve'|'increaseAllowance'|'setApprovalForAll'|'permit2Approve',
+ *   spender?: string,     // checksummed spender / operator when decoded
+ *   token?: string,       // Permit2 only: the token being approved
+ *   value?: bigint,       // approved amount when decoded (MaxUint256 for setApprovalForAll(true))
+ *   unlimited?: boolean,  // value at or above the unlimited threshold, or operator grant
+ *   revoke?: boolean,     // approve(x, 0) / setApprovalForAll(x, false)
  * }}
  *
- * A non-approve selector → { isApprove:false }. An approve selector whose bytes
+ * A non-approval selector → { isApprove:false }. An approval selector whose bytes
  * cannot decode → { isApprove:true, decoded:false } so the caller fails closed.
  */
 export function classifyApprove(data) {
-  if (selectorOf(data) !== APPROVE_SELECTOR) return { isApprove: false, decoded: false };
+  const sel = selectorOf(data);
+  const kind = sel ? APPROVAL_KINDS[sel] : undefined;
+  if (!kind) return { isApprove: false, decoded: false };
   try {
     const parsed = iface.parseTransaction({ data });
-    if (!parsed || parsed.name !== 'approve') return { isApprove: true, decoded: false };
-    const [spender, value] = parsed.args;
-    return {
-      isApprove: true,
-      decoded: true,
-      spender,
-      value,
-      unlimited: value >= UNLIMITED_THRESHOLD,
-    };
+    if (!parsed) return { isApprove: true, decoded: false, kind };
+    switch (kind) {
+      case 'approve':
+      case 'increaseAllowance': {
+        const [spender, value] = parsed.args;
+        return { isApprove: true, decoded: true, kind, spender, value,
+          unlimited: value >= UNLIMITED_THRESHOLD, revoke: kind === 'approve' && value === 0n };
+      }
+      case 'setApprovalForAll': {
+        const [operator, approved] = parsed.args;
+        return { isApprove: true, decoded: true, kind, spender: operator,
+          value: approved ? MaxUint256 : 0n, unlimited: Boolean(approved), revoke: !approved };
+      }
+      case 'permit2Approve': {
+        const [token, spender, amount] = parsed.args;
+        return { isApprove: true, decoded: true, kind, token, spender, value: amount,
+          unlimited: amount >= UINT160_UNLIMITED_THRESHOLD, revoke: amount === 0n };
+      }
+      default:
+        return { isApprove: true, decoded: false, kind };
+    }
   } catch {
-    return { isApprove: true, decoded: false };
+    return { isApprove: true, decoded: false, kind };
   }
 }

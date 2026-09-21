@@ -90,7 +90,7 @@ function corsHeaders(request, env) {
   // caches key on origin.
   const headers = {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Rc-User-Id',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin',
   };

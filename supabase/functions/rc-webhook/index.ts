@@ -138,6 +138,7 @@ function json(body: unknown, status: number): Response {
 // Exported for tests.
 export interface RcEvent {
   type?: string;
+  environment?: string; // 'PRODUCTION' | 'SANDBOX'
   app_user_id?: string;
   subscriber_attributes?: Record<string, { value?: string }>;
 }
@@ -210,6 +211,14 @@ export async function handle(req: Request, deps?: {
     // Log presence-only, never the payload.
     console.log(`ignored event_type=${type ?? 'none'}`);
     return json({ ok: true, reason: 'ignored' }, 200);
+  }
+
+  // Audit 2026-09-21 M2: a sandbox / TestFlight purchase must never bind an
+  // app_user_id to a referral code. RevenueCat stamps every event with
+  // environment PRODUCTION or SANDBOX; anything but PRODUCTION is ignored.
+  if (event?.environment !== 'PRODUCTION') {
+    console.log(`ignored environment=${event?.environment ?? 'none'}`);
+    return json({ ok: true, reason: 'not_production' }, 200);
   }
 
   const rcUserId = event?.app_user_id;

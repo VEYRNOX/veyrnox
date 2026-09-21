@@ -11,6 +11,7 @@ import { REQUEST_TYPES } from '@/wallet-core/evm/walletconnect/router.js';
 // ceiling enforced at send time are one value (H-7).
 import { resolveWcWorstCaseFeeWei } from '@/wallet-core/evm/walletconnect/fee.js';
 import { describeWcTokenTransfer } from '@/wallet-core/evm/walletconnect/tokenTransfer.js';
+import { classifyApprove } from '@/risk/calldata.js';
 import { checkDappDomain } from '@/risk/knownBadDapps.js';
 import { useTier } from '@/lib/TierProvider';
 import { hasAdvisorOnlineAccess } from '@/lib/tier';
@@ -452,6 +453,30 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
                   </span>
                 </div>
               )}
+              {(() => {
+                // Audit 2026-09-21 H2: decode every approval shape so the user
+                // sees WHO may move WHAT, not a 4-byte selector.
+                const approval = classifyApprove(reqParams[0]?.data);
+                if (!approval.isApprove) return null;
+                const amountText = !approval.decoded
+                  ? t('wc.request_approval.approval_undecodable', 'could not be read')
+                  : approval.revoke
+                    ? t('wc.request_approval.approval_revoke', 'revokes access')
+                    : approval.unlimited
+                      ? t('wc.request_approval.approval_unlimited', 'UNLIMITED')
+                      : approval.value.toString();
+                return (
+                  <div className={styles.txRow} data-testid="wc-approval">
+                    <span>{t('wc.request_approval.approval_row_label', 'Approval')}</span>
+                    <span className={styles.mono}>
+                      {approval.kind}
+                      {approval.decoded ? ` → ${approval.spender}` : ''}
+                      {' · '}
+                      {amountText}
+                    </span>
+                  </div>
+                );
+              })()}
               {reqParams[0]?.data && reqParams[0].data !== '0x' && (
                 <div className={styles.txRow}>
                   <span>{t('wc.request_approval.data_row_label')}</span>

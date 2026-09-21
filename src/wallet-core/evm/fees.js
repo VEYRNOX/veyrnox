@@ -204,6 +204,41 @@ export function evmFeeOverrides(fee) {
  * @returns {Promise<{ chain, symbol, decimals, networkName, baseFeePerGasWei,
  *   suggestedTipWei, gasLimit, tiers }>}
  */
+/**
+ * Fee overrides for a hot-wallet send. With a user-selected `fee` this is
+ * evmFeeOverrides(fee) unchanged. Without one (the user never opened the Fee
+ * sheet — the default flow) the RPC's suggestion is used, CLAMPED to the
+ * per-chain MAX_BASE_FEE_GWEI ceiling and MAX_TIP_WEI, instead of being signed
+ * verbatim. Audit 2026-09-21 M3: a rogue or MITM'd RPC that withheld
+ * baseFeePerGas pushed ethers into legacy mode with eth_gasPrice used as-is —
+ * gasPrice × gasLimit was paid to the block producer with no cap. The
+ * WalletConnect and hardware paths already clamped; this one did not.
+ *
+ * Legacy (non-1559) chains get a clamped gasPrice; 1559 chains get clamped
+ * maxFeePerGas / maxPriorityFeePerGas. If the RPC returns nothing usable the
+ * overrides stay empty and ethers' own population applies (unchanged
+ * behaviour, but now only when the RPC gave no number to clamp).
+ *
+ * @param {import('ethers').Provider} provider
+ * @param {string} networkKey
+ * @param {object|undefined} fee  user-selected tier from FeeSelector, if any
+ * @returns {Promise<Record<string, bigint>>}
+ */
+export async function resolveEvmFeeOverrides(provider, networkKey, fee) {
+  if (fee) return evmFeeOverrides(fee);
+  const feeData = await provider.getFeeData();
+  const capWei = (MAX_BASE_FEE_GWEI[networkKey] ?? 5_000n) * 1_000_000_000n;
+  const clamp = (v) => (v > capWei ? capWei : v);
+  if (feeData.maxFeePerGas != null) {
+    const maxFeePerGas = clamp(feeData.maxFeePerGas);
+    const rawTip = feeData.maxPriorityFeePerGas ?? 0n;
+    const tip = rawTip > MAX_TIP_WEI ? MAX_TIP_WEI : rawTip;
+    return { maxFeePerGas, maxPriorityFeePerGas: tip > maxFeePerGas ? maxFeePerGas : tip };
+  }
+  if (feeData.gasPrice != null) return { gasPrice: clamp(feeData.gasPrice) };
+  return {};
+}
+
 export async function estimateEvmFeeTiers({ networkKey, from, to, value, data, gasLimit }) {
   const provider = getProvider(networkKey);
   const info = getNetworkInfo(networkKey);

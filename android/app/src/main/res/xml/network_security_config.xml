@@ -27,10 +27,9 @@
     Vault seed / wallet-core signing never touch these hosts.
 -->
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">10.0.2.2</domain>
-    </domain-config>
+    <!-- Audit 2026-09-21 L13: the localhost / 10.0.2.2 cleartext carve-out for
+         `vite dev` lives in src/debug/res/xml/network_security_config.xml, so a
+         release APK inherits the platform default (cleartext blocked). -->
 
     <!--
     <domain-config>

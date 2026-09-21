@@ -323,7 +323,7 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
     // #1091: eth_sendTransaction now requires `from` to match evmAddress
     // (default useWallet mock returns 0xabc). Fail closed (I4) if absent/mismatch.
     const WALLET_ADDR = '0xabc0000000000000000000000000000000000000';
-    const txParams = [{ from: WALLET_ADDR, to: '0xrecipient', value: '0x0', data: '0x' }];
+    const txParams = [{ from: WALLET_ADDR, to: '0x000000000000000000000000000000000000dEaD' /* M4: must be a literal address */, value: '0x0', data: '0x' }];
 
     it('A — calls presignGate before withPrivateKey when gate allows', async () => {
       const { _handleSendTransaction } = await import('../WalletConnectProvider.jsx');

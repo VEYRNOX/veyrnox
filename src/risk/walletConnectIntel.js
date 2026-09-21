@@ -19,6 +19,7 @@ import { buildReviewContributor } from '@/risk/reviewContributor.js';
 const WC_TX_RISK_SIGNAL_IMPORTS = [
   () => import('@/risk/score'),
   () => import('@/risk/signals/s2-unlimited-approval'),
+  () => import('@/risk/signals/s3-fresh-spender-approval'),
   () => import('@/risk/signals/s4-address-poisoning'),
   () => import('@/risk/signals/s9-tip-threat'),
   () => import('@/risk/fromWalletConnect'),
@@ -102,6 +103,7 @@ export async function buildWcTransactionIntelligence({
     const [
       { score },
       { s2UnlimitedApproval },
+      { s3FreshSpenderApproval },
       { s4AddressPoisoning },
       { s9TipThreat },
       { buildRiskInputsFromWcRequest },
@@ -142,6 +144,9 @@ export async function buildWcTransactionIntelligence({
       riskInputs.chainData,
       [
         { id: 'S2', fn: s2UnlimitedApproval },
+        // Audit 2026-09-21 H2: a bounded approval to a spender this wallet has
+        // never trusted is the drainer's shape; S3 was scored on Send but not here.
+        { id: 'S3', fn: s3FreshSpenderApproval },
         { id: 'S4', fn: s4AddressPoisoning },
         { id: 'S9', fn: s9TipThreat },
       ],

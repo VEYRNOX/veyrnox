@@ -5,11 +5,8 @@ import { onRequestPost, onRequest, computeTransakSignature } from '../webhook.js
 
 const SECRET = 'test-transak-secret';
 // Strict-mode env — used by the round-9 HMAC verification tests. Once real
-// Transak traffic is captured in `warn` mode with matching signatures, flip
-// TRANSAK_WEBHOOK_VERIFY_MODE=strict on Cloudflare Pages.
+// Audit 2026-09-21 L6: `strict` is the default; `warn`/`off` are explicit opt-outs.
 const ENV_STRICT = { TRANSAK_WEBHOOK_SECRET: SECRET, TRANSAK_WEBHOOK_VERIFY_MODE: 'strict' };
-// `off` is now an EXPLICIT opt-out — the default moved to `warn` so the
-// evidence the flip to `strict` waits on actually accumulates.
 const ENV_OFF = { TRANSAK_WEBHOOK_SECRET: SECRET, TRANSAK_WEBHOOK_VERIFY_MODE: 'off' };
 const ENV_WARN = { TRANSAK_WEBHOOK_SECRET: SECRET, TRANSAK_WEBHOOK_VERIFY_MODE: 'warn' };
 
@@ -116,14 +113,12 @@ describe('buy/webhook', () => {
       expect(res.status).toBe(401);
     });
 
-    it('falls back to log-only (no 500) when TRANSAK_WEBHOOK_SECRET is unset even in strict mode', async () => {
-      // Round-10: reverts round-9 fail-closed-with-500 behaviour so a missing/
-      // rotating secret does not drop every legitimate webhook.
+    it('fails closed (503) when TRANSAK_WEBHOOK_SECRET is unset in strict mode (audit 2026-09-21 L6)', async () => {
       const request = await signedReq('POST', { eventID: 'ORDER_COMPLETED' });
       const res = await onRequestPost({ request, env: { TRANSAK_WEBHOOK_VERIFY_MODE: 'strict' } });
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(503);
       expect(res.headers.get('X-Verify-Mode')).toBeNull();
-      expect(console.warn).toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalled();
     });
   });
 
@@ -142,24 +137,25 @@ describe('buy/webhook', () => {
       expect(line).toContain('mode=off');
     });
 
-    it('no secret at all still degrades to off (no 500)', async () => {
-      // The secret, not the mode, is what makes verification impossible. With
-      // no secret the default `warn` must still fall back to off rather than
-      // 500 — a rotating or unset secret must never drop a webhook.
+    it('no secret in warn mode still degrades to off (no 500)', async () => {
       const request = unsignedReq('POST', { eventID: 'ORDER_CREATED' });
-      const res = await onRequestPost({ request, env: {} });
+      const res = await onRequestPost({ request, env: { TRANSAK_WEBHOOK_VERIFY_MODE: 'warn' } });
       expect(res.status).toBe(200);
       expect(res.headers.get('X-Verify-Mode')).toBeNull();
       const logLine = console.log.mock.calls[0][0];
       expect(logLine).toContain('mode=off');
     });
+
+    it('no secret and no mode (default strict) fails closed with 503', async () => {
+      const request = unsignedReq('POST', { eventID: 'ORDER_CREATED' });
+      const res = await onRequestPost({ request, env: {} });
+      expect(res.status).toBe(503);
+    });
   });
 
   describe('default mode', () => {
-    it('unset TRANSAK_WEBHOOK_VERIFY_MODE with a secret present defaults to warn', async () => {
-      // Regression pin for the default move. An unsigned request must be
-      // VERIFIED (and fail) rather than waved through uncomputed — and must
-      // still ack 200, which is the whole reason warn is safe as a default.
+    it('unset TRANSAK_WEBHOOK_VERIFY_MODE with a secret present defaults to strict', async () => {
+      // Audit 2026-09-21 L6: an unsigned request is rejected by default.
       const request = unsignedReq('POST', {
         eventID: 'ORDER_CREATED',
         webhookData: { id: 'default-1' },
@@ -168,26 +164,27 @@ describe('buy/webhook', () => {
         request,
         env: { TRANSAK_WEBHOOK_SECRET: SECRET },
       });
-      expect(res.status).toBe(200);
-      const warnLine = console.warn.mock.calls[0][0];
-      expect(warnLine).toContain('verify_warn');
-      expect(warnLine).toContain('reason=missing_signature');
-      const logLine = console.log.mock.calls[0][0];
-      expect(logLine).toContain('mode=warn');
+      expect(res.status).toBe(401);
     });
 
-    it('invalid mode value (e.g. "true") warns once and resolves to warn', async () => {
+    it('unset mode with a secret and a VALID signature is accepted', async () => {
+      const request = await signedReq('POST', { eventID: 'ORDER_CREATED', webhookData: { id: 'default-2' } });
+      const res = await onRequestPost({ request, env: { TRANSAK_WEBHOOK_SECRET: SECRET } });
+      expect(res.status).toBe(200);
+      const logLine = console.log.mock.calls[0][0];
+      expect(logLine).toContain('mode=strict');
+    });
+
+    it('invalid mode value (e.g. "true") warns once and resolves to strict', async () => {
       const request = unsignedReq('POST', { eventID: 'ORDER_CREATED' });
       const res = await onRequestPost({
         request,
         env: { TRANSAK_WEBHOOK_SECRET: SECRET, TRANSAK_WEBHOOK_VERIFY_MODE: 'true' },
       });
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(401);
       const warnLine = console.warn.mock.calls[0][0];
       expect(warnLine).toContain('invalid TRANSAK_WEBHOOK_VERIFY_MODE=true');
-      expect(warnLine).toContain('falling back to warn');
-      const logLine = console.log.mock.calls[0][0];
-      expect(logLine).toContain('mode=warn');
+      expect(warnLine).toContain('falling back to strict');
     });
   });
 

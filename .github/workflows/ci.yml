@@ -539,6 +539,7 @@ jobs:
 
   android-release:
     runs-on: ubuntu-latest
+    environment: Production
     # Build production artifacts on main as before, or explicitly for a manual
     # release build. Firebase uses the isolated job below; it never consumes the
     # production AAB or its Play app-signing certificate expectation.
@@ -573,7 +574,10 @@ jobs:
           if [ "${{ inputs.build_staging_release }}" = "true" ]; then
             npm run build:staging
           else
-            npm run build
+            # Audit 2026-09-21 L13: store/device builds ran plain `build`, so
+            # VITE_RELEASE=1 (obfuscator + release-only guards) never applied to
+            # the shipped AAB while Pages production used build:release.
+            npm run build:release
           fi
       - name: Sync Capacitor
         run: npx cap sync android
@@ -632,18 +636,20 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleGoogleRelease \
-            -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
+            -PRELEASE_CERT_SHA256="$RELEASE_CERT_SHA256"
         working-directory: android
         env:
+          RELEASE_CERT_SHA256: ${{ secrets.RELEASE_CERT_SHA256 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
       - name: Build release AAB (Play upload artifact)
         run: |
           ./gradlew bundleGoogleRelease \
-            -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
+            -PRELEASE_CERT_SHA256="$RELEASE_CERT_SHA256"
         working-directory: android
         env:
+          RELEASE_CERT_SHA256: ${{ secrets.RELEASE_CERT_SHA256 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
@@ -681,6 +687,7 @@ jobs:
 
   samsung-release:
     runs-on: ubuntu-latest
+    environment: Production
     if: >-
       (github.ref == 'refs/heads/main' && github.event_name != 'pull_request')
       || (github.event_name == 'workflow_dispatch'
@@ -748,9 +755,10 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleSamsungRelease \
-            -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
+            -PRELEASE_CERT_SHA256="$RELEASE_CERT_SHA256"
         working-directory: android
         env:
+          RELEASE_CERT_SHA256: ${{ secrets.RELEASE_CERT_SHA256 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
@@ -824,7 +832,10 @@ jobs:
           if [ "${{ inputs.build_staging_release }}" = "true" ]; then
             npm run build:staging
           else
-            npm run build
+            # Audit 2026-09-21 L13: store/device builds ran plain `build`, so
+            # VITE_RELEASE=1 (obfuscator + release-only guards) never applied to
+            # the shipped AAB while Pages production used build:release.
+            npm run build:release
           fi
       - name: Sync Capacitor
         run: npx cap sync android
@@ -931,6 +942,7 @@ jobs:
   # mainnet-flag-gate, staging-gate), so the rename cannot block a PR.
   publish-to-play-internal:
     runs-on: ubuntu-latest
+    environment: Production
     needs: [android-release, target-sha-guard]
     # Same trigger scope as android-release: main pushes only, never PRs.
     # AND the opt-in variable must be set — otherwise skip cleanly.

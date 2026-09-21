@@ -35,6 +35,7 @@
 // re-confirm after the checkbox ack before the signer is reachable. The copy
 // does NOT mention "biometric" — the sentence must not promise a specific gate.
 
+import { Capacitor } from '@capacitor/core';
 import { CONDITION, TIER } from './conditions.js';
 
 // The sensitive non-sign paths that the strongest tiers also refuse at entry
@@ -121,9 +122,19 @@ const SPECS = Object.freeze({
     //
     // G4 (2026-07-14): same seed-reveal / export / import block as ROOTED.
     // When integrity can't be confirmed, fail closed on key-material access (I4).
+    //
+    // Audit 2026-09-21 M9: on a NATIVE build the probe is always present, so
+    // "unavailable" means the plugin call itself failed — exactly what a
+    // Frida/LSPosed hook that suppresses RaspIntegrity produces. Signing is
+    // therefore blocked there too; a hooked runtime must not downgrade BLOCK to
+    // WARN by making the probe throw. Web keeps WARN semantics: no probe can
+    // exist, and the hardware-KEK native gate (HardwareKekPlugin isBlockTier)
+    // does not apply.
     tier: TIER.WARN,
     sentence:
       "We couldn't confirm this device's integrity just now — continue with extra caution.",
+    // 'sign' is appended at call time in degrade() (see isNativeRuntime) so
+    // this table stays pure data and module load touches no platform API.
     blockedActions: ['seed-reveal', 'export', 'import'],
     requiresBiometric: true,
   },
@@ -177,6 +188,18 @@ const FAIL_CLOSED = Object.freeze({
   requiresBiometric: false,
 });
 
+// Fails CLOSED: if the platform probe itself is missing or throws (a hooked or
+// stubbed runtime), treat it as native and block signing. Evaluated per call,
+// never at module load — several test harnesses mock @capacitor/core with a
+// partial factory, and a load-time call would trip their hoisting order.
+function isNativeRuntime() {
+  try {
+    return Capacitor.isNativePlatform() === true;
+  } catch {
+    return true;
+  }
+}
+
 /**
  * Map a detector condition to its response artifact.
  *
@@ -199,10 +222,12 @@ export function degrade(condition) {
   const spec = Object.prototype.hasOwnProperty.call(SPECS, condition) ? SPECS[condition] : FAIL_CLOSED;
   // Return a fresh artifact (and a fresh blockedActions array) so callers cannot
   // mutate the shared spec table.
+  const blockedActions = [...spec.blockedActions];
+  if (condition === CONDITION.INTEGRITY_UNAVAILABLE && isNativeRuntime()) blockedActions.push('sign');
   return {
     tier: spec.tier,
     sentence: spec.sentence,
-    blockedActions: [...spec.blockedActions],
+    blockedActions,
     requiresBiometric: spec.requiresBiometric,
   };
 }

@@ -80,6 +80,7 @@ import { getCachedBiometry } from '@/lib/biometricProbe.js';
 import { App } from '@capacitor/app';
 import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, encryptVaultWithDekV3, decryptVaultWithDek, VAULT_VERSION_V3, AAD_V3_MIGRATION_ENABLED, KDF_PROFILE_V2_MIGRATION_ENABLED, vaultNeedsKdfMigration } from '../vault.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
+import { unwrapDekWithProfiles, kekKdfStamp } from './kekProfiles.js';
 import { wrapDekForCache, unwrapDekFromCache, DEK_CACHE_STORAGE_KEY } from './dekCache.js';
 // Fast-path DEK cache primitives — kept exported for tests + potential
 // migration tooling. NOT imported on the hot path any more (2026-08-28,
@@ -771,22 +772,27 @@ async function _unlockInner(password, opts = {}) {
       // Silent-fastpath refactor (2026-08-28): populate no longer needs H —
       // the DEK is stored as raw bytes under a biometric-gated Keystore key.
       // See populateFastpathBestEffort below.
-      C = await deriveKekC(password, saltBytes);
-      kek = await combineKek(H, C);
-      // combineKek zeroes H/C internally; wipe again at the call site so the guarantee
-      // survives any refactor of combineKek (defense in depth, I4).
-      if (H && H.fill) H.fill(0);
+      //
+      // Audit 2026-09-21 H1: C is derived at the blob's stamped `kekKdf`, or,
+      // for an unstamped legacy blob, at each historical profile in turn. The
+      // helper zeroes H and C on every path. The fast-path DEK cache (Personal
+      // Backup §4.1) is probed per candidate KEK before unwrapDek: a hit skips
+      // the AES-GCM unwrap, a miss/stale/tampered/KEK-mismatch falls through.
+      // Does NOT skip a biometric prompt (H was already fetched above).
+      const unwrapped = await unwrapDekWithProfiles({ H, password, saltBytes, blob, readCache: tryReadDekCache });
+      kek = unwrapped.kek;
+      dek = unwrapped.dek;
       if (C) C.fill(0);
-      // Fast-path DEK cache read (Personal Backup §4.1): try the cache first;
-      // on miss/stale/tampered/KEK-mismatch, fall through to the primary
-      // unwrap. Silent on failure — see tryReadDekCache. Does NOT skip a
-      // biometric prompt (H was already fetched above); the win is skipping
-      // the AES-GCM unwrapDek call (small pre-Shamir, load-bearing later).
-      dek = await tryReadDekCache(kek);
-      if (!dek) {
-        dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
-      }
       const plaintext = await decryptVaultWithDek(blob, dek);
+      // Stamp the profile that worked so the next unlock (and the next profile
+      // change) derives C once. Header-only write: kekKdf is outside the GCM AAD.
+      if (unwrapped.usedFallback) {
+        try {
+          await safeWriteVault({ ...blob, kekKdf: unwrapped.profile });
+        } catch {
+          // Best-effort; the vault still opens via the fallback next time.
+        }
+      }
       // Populate the cache after a successful primary decrypt so subsequent
       // unlocks skip unwrapDek. Best-effort — kek and dek are still live
       // here (finally zeros them AFTER return runs).
@@ -1135,11 +1141,7 @@ export const nativeKeyStore = {
         H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, oldSaltBytes));
         // New side: the re-enrolled vault is always v3 — bind the new H to the new salt.
         H2 = await getHardwareFactorWithLockoutFallback(getHF, { kekSalt: newSaltBytes.slice() });
-        oldC = await deriveKekC(password, oldSaltBytes);
-        oldKek = await combineKek(H, oldC);
-        if (H && H.fill) H.fill(0);
-        if (oldC) oldC.fill(0);
-        dek = await unwrapDek(oldKek, blob.kekWrap); // throws on wrong PIN/device — fail-closed
+        ({ kek: oldKek, dek } = await unwrapDekWithProfiles({ H, password, saltBytes: oldSaltBytes, blob }));
         newC = await deriveKekC(password, newSaltBytes);
         newKek = await combineKek(H2, newC);
         if (H2 && H2.fill) H2.fill(0);
@@ -1155,7 +1157,7 @@ export const nativeKeyStore = {
         // the tag and lock the vault permanently (Codex [P1], 2026-08-09).
         // The seed CT must be re-sealed against the new binding under the
         // SAME DEK.
-        const newBinding = { kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 };
+        const newBinding = { kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3, kekKdf: kekKdfStamp() };
         const writeV3 = blob.v === VAULT_VERSION_V3 || AAD_V3_MIGRATION_ENABLED;
         if (writeV3) {
           let seed;
@@ -1265,11 +1267,7 @@ export const nativeKeyStore = {
         // upgradeKekToV3 for the v2→v3 migration path. 2026-07-14 audit LOW: stale
         // "(v2)" wording corrected — v2 is the inert-binding branch, not salt-bound.
         H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
-        C = await deriveKekC(password, saltBytes);
-        kek = await combineKek(H, C);
-        if (H && H.fill) H.fill(0);
-        if (C) C.fill(0);
-        dek = await unwrapDek(kek, blob.kekWrap); // throws on wrong PIN/device — fail-closed
+        ({ kek, dek } = await unwrapDekWithProfiles({ H, password, saltBytes, blob }));
         const { v: newV, iv, ct } = await encryptVaultWithDek(secret, dek);
         // Preserve kek-dek format: same kekWrap/kekSalt, only content ct/iv/v change.
         await safeWriteVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek' });
@@ -1442,11 +1440,7 @@ export const nativeKeyStore = {
             try {
               saltBytes = decodeKekSalt(innerBlob.kekSalt);
               H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(innerBlob, saltBytes));
-              C = await deriveKekC(password, saltBytes);
-              kek = await combineKek(H, C);
-              if (H && H.fill) H.fill(0);
-              if (C) C.fill(0);
-              dek = await unwrapDek(kek, innerBlob.kekWrap);
+              ({ kek, dek } = await unwrapDekWithProfiles({ H, password, saltBytes, blob: innerBlob }));
               return await decryptVaultWithDek(innerBlob, dek);
             } finally {
               if (saltBytes && saltBytes.fill) saltBytes.fill(0);
@@ -1588,11 +1582,7 @@ export const nativeKeyStore = {
       try {
         saltBytes = decodeKekSalt(blob.kekSalt);
         H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
-        C = await deriveKekC(password, saltBytes);
-        kek = await combineKek(H, C);
-        if (H && H.fill) H.fill(0);
-        if (C) C.fill(0);
-        dek = await unwrapDek(kek, blob.kekWrap);
+        ({ kek, dek } = await unwrapDekWithProfiles({ H, password, saltBytes, blob }));
         // splitDekForPersonalBackup does its own defensive copy and its own
         // round-trip verification. It throws PERSONAL_BACKUP_ROUND_TRIP_FAILED
         // on a self-check mismatch — do not swallow that; the caller must see
@@ -1685,7 +1675,7 @@ export const nativeKeyStore = {
         if (newC) newC.fill(0);
 
         const newKekWrap = await wrapDek(newKek, dek);
-        const newBinding = { kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 };
+        const newBinding = { kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3, kekKdf: kekKdfStamp() };
         // v:3 forces reseal of blob.ct with new AAD binding, same as
         // changePassword. Pre-v3 blobs can accept a header-only rewrite.
         const writeV3 = blob.v === VAULT_VERSION_V3 || AAD_V3_MIGRATION_ENABLED;
@@ -1776,11 +1766,7 @@ export const nativeKeyStore = {
           newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
           H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, oldSaltBytes));
           H2 = await getHardwareFactorWithLockoutFallback(getHF, { kekSalt: newSaltBytes.slice() });
-          oldC = await deriveKekC(currentPassword, oldSaltBytes);
-          oldKek = await combineKek(H, oldC);
-          if (H && H.fill) H.fill(0);
-          if (oldC) oldC.fill(0);
-          dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
+          ({ kek: oldKek, dek } = await unwrapDekWithProfiles({ H, password: currentPassword, saltBytes: oldSaltBytes, blob }));
           newC = await deriveKekC(newPassword, newSaltBytes);
           newKek = await combineKek(H2, newC);
           if (H2 && H2.fill) H2.fill(0);
@@ -1791,7 +1777,7 @@ export const nativeKeyStore = {
           // the vault (Codex [P1], 2026-08-09). Reseal the seed CT under
           // the new binding with the SAME DEK. See upgradeKekToV3 above
           // for the sibling site.
-          const newBinding = { kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 };
+          const newBinding = { kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3, kekKdf: kekKdfStamp() };
           const writeV3 = blob.v === VAULT_VERSION_V3 || AAD_V3_MIGRATION_ENABLED;
           if (writeV3) {
             let seed;
@@ -1898,7 +1884,7 @@ export const nativeKeyStore = {
           const tierEntry = opts && opts.hardwareKekTier
             ? { hardwareKekTier: opts.hardwareKekTier }
             : {};
-          await safeWriteVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt, hardwareKekVersion: 3, ...tierEntry });
+          await safeWriteVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt, hardwareKekVersion: 3, kekKdf: kekKdfStamp(), ...tierEntry });
           // Fast-path DEK cache: enrollment mints a BRAND-NEW DEK (randomDek
           // above), so any pre-existing cache blob is stale by definition.
           // This was the one DEK-rotating write path that did not clear it
@@ -1971,11 +1957,7 @@ export const nativeKeyStore = {
       try {
         saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
         H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
-        C = await deriveKekC(password, saltBytes);
-        kek = await combineKek(H, C);
-        if (H && H.fill) H.fill(0);
-        if (C) C.fill(0);
-        dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
+        ({ kek, dek } = await unwrapDekWithProfiles({ H, password, saltBytes, blob }));
         const secret = await decryptVaultWithDek(blob, dek);
         const bareBlob = await encryptVault(secret, password);
         await safeWriteVault(bareBlob);
