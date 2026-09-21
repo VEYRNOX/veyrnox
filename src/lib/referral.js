@@ -2,6 +2,12 @@ import { registerCode } from '@/api/referralApi';
 
 const STORAGE_KEY = 'veyrnox-referral';
 const PENDING_KEY = 'veyrnox-referral-pending';
+// #2640: attempt counter for the pending code above. A code that can never
+// redeem (mistyped, revoked, rate-limited-forever) must not retry on every
+// primary unlock indefinitely — bumped once per transient failure, reset
+// whenever the pending code itself is (re)written or cleared.
+const PENDING_ATTEMPTS_KEY = 'veyrnox-referral-pending-attempts';
+export const REFERRAL_REDEEM_MAX_ATTEMPTS = 5;
 
 export const EXTERNAL_REWARD_URL =
   import.meta.env.VITE_REFERRAL_REWARD_URL ||
@@ -155,6 +161,7 @@ export function hasRedeemed() {
 
 export function setPendingReferral(code) {
   localStorage.setItem(PENDING_KEY, code);
+  localStorage.removeItem(PENDING_ATTEMPTS_KEY); // fresh code, fresh attempts
 }
 
 export function getPendingReferral() {
@@ -163,6 +170,20 @@ export function getPendingReferral() {
 
 export function clearPendingReferral() {
   localStorage.removeItem(PENDING_KEY);
+  localStorage.removeItem(PENDING_ATTEMPTS_KEY);
+}
+
+// #2640: one attempt is spent per primary unlock that fails transiently
+// (network/5xx/429). Returns the new count so the caller can compare against
+// REFERRAL_REDEEM_MAX_ATTEMPTS.
+export function bumpPendingReferralAttempts() {
+  const n = (Number(localStorage.getItem(PENDING_ATTEMPTS_KEY)) || 0) + 1;
+  localStorage.setItem(PENDING_ATTEMPTS_KEY, String(n));
+  return n;
+}
+
+export function getPendingReferralAttempts() {
+  return Number(localStorage.getItem(PENDING_ATTEMPTS_KEY)) || 0;
 }
 
 export function getRedeemedCode() {

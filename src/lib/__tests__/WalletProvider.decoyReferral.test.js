@@ -34,7 +34,7 @@ const src = readFileSync(resolve(here, '../WalletProvider.jsx'), 'utf8');
 // Isolate the pending-referral block: from the getPendingReferral() read to the
 // end of the IIFE that wraps it.
 const startIdx = src.indexOf('const pending = getPendingReferral();');
-const block = src.slice(Math.max(0, startIdx - 400), startIdx + 1600);
+const block = src.slice(Math.max(0, startIdx - 400), startIdx + 2600);
 
 describe('M-3 — a decoy/hidden unlock must not touch real referral state', () => {
   it('the pending-referral block still exists', () => {
@@ -67,9 +67,30 @@ describe('M-3 — a decoy/hidden unlock must not touch real referral state', () 
     expect(clearAfterSuccessIdx).toBeGreaterThan(markIdx);
   });
 
-  it('retains transient failures but clears authoritative invalid codes (#2640)', () => {
-    expect(block).toMatch(/error\?\.status\s*===\s*400\s*\|\|\s*error\?\.status\s*===\s*404/);
+  it('clears a permanent 4xx (never 429) with an honest message (#2640)', () => {
+    // Any 4xx except 429 is a server-confirmed rejection — bad format, code
+    // not found, duplicate, validation — and cannot recover on retry.
+    expect(block).toMatch(/status\s*>=\s*400\s*&&\s*status\s*<\s*500\s*&&\s*status\s*!==\s*429/);
+    expect(block).toContain("Referral code couldn't be applied. Check the code and try another one.");
+  });
+
+  it('keeps a transient failure (429/5xx/network) for retry, bounded by an attempt cap (#2640)', () => {
     expect(block).toContain("Referral code will be retried when you're connected.");
+    expect(block).toContain('bumpPendingReferralAttempts()');
+    expect(block).toMatch(/attempts\s*>=\s*REFERRAL_REDEEM_MAX_ATTEMPTS/);
+    expect(block).toContain("Referral code couldn't be applied after several tries.");
+  });
+
+  it('the retry cap clears the pending code once exhausted, not before', () => {
+    const capIdx = block.search(/attempts\s*>=\s*REFERRAL_REDEEM_MAX_ATTEMPTS/);
+    const clearAfterCapIdx = block.indexOf('clearPendingReferral();', capIdx);
+    const retryMsgIdx = block.indexOf("Referral code will be retried when you're connected.");
+    expect(capIdx).toBeGreaterThan(-1);
+    // clearPendingReferral() must appear inside the cap-exceeded branch...
+    expect(clearAfterCapIdx).toBeGreaterThan(capIdx);
+    // ...and strictly BEFORE the still-retrying message, i.e. in the `if`
+    // branch of the cap check rather than the `else`.
+    expect(clearAfterCapIdx).toBeLessThan(retryMsgIdx);
   });
 
   it('the guard also precedes every other referral mutator in the block', () => {

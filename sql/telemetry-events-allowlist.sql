@@ -61,7 +61,14 @@ BEGIN
     'dapp_request_rejected',
     -- Growth / paywall (PR #1340)
     'referral_code_applied', 'paywall_shown',
-    'paywall_dismissed', 'paywall_converted'
+    'paywall_dismissed', 'paywall_converted',
+    -- #2640: pending-referral redemption retry/failure at unlock. Added in the
+    -- same commit as the client ALLOWED_EVENTS entries in src/api/trackEvent.js.
+    -- NOT YET APPLIED to staging/prod as of this commit — until this migration
+    -- runs, track_event() rejects these two with 'Unknown event' (P0003), and
+    -- trackEvent()'s catch swallows that silently (best-effort, matches every
+    -- other call site), so referral redemption is unaffected either way.
+    'referral_redeem_retry', 'referral_redeem_failed'
   ) THEN
     RAISE EXCEPTION 'Unknown event' USING errcode = 'P0003';
   END IF;
