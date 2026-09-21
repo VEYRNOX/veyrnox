@@ -1,14 +1,28 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from "react";
-import { Eye, EyeOff, AlertTriangle, Shield, Printer, KeyRound } from "lucide-react";
+import { Eye, EyeOff, AlertTriangle, Shield, Printer, KeyRound, Wallet } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
-import CoinLogo from "@/components/CoinLogo";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/lib/WalletProvider";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import { toast } from "@/lib/toast";
+
+const PRINT_ID = "veyrnox-seed-print-container";
+const STYLE_ID = "veyrnox-seed-print-styles";
+
+// SEC-02: the web print path puts the FULL mnemonic into the document, plus a
+// global @media print rule that hides everything else. Both must go the moment
+// they are no longer needed — afterprint, Clear, wallet change, and unmount
+// (which is also Lock and panic: WalletGate unmounts every wallet page). Left
+// behind, the phrase outlived Clear/navigation/Lock and any later Ctrl+P on any
+// page printed it.
+function removeSeedPrintArtifacts() {
+  document.getElementById(PRINT_ID)?.remove();
+  document.getElementById(STYLE_ID)?.remove();
+  window.removeEventListener("afterprint", removeSeedPrintArtifacts);
+}
 
 export default function WalletSeedQR() {
   const { wallets, confirmWalletBackup } = useWallet();
@@ -39,11 +53,13 @@ export default function WalletSeedQR() {
     setShowSeed(false);
     setPrinted(false);
     setPrintPending(false);
+    removeSeedPrintArtifacts();
   }, [selectedWalletId]);
 
   useEffect(() => {
     return () => {
       setMnemonic(null);
+      removeSeedPrintArtifacts();
     };
   }, []);
 
@@ -63,7 +79,6 @@ export default function WalletSeedQR() {
       } else {
         // Web path: inject a hidden print container into THIS document so the user
         // stays on the page. @media print hides everything except the container.
-        const PRINT_ID = "veyrnox-seed-print-container";
         let container = document.getElementById(PRINT_ID);
         if (!container) {
           container = document.createElement("div");
@@ -77,10 +92,6 @@ export default function WalletSeedQR() {
         h2.textContent = `${selectedWalletName} — Recovery Backup`;
         container.appendChild(h2);
 
-        const meta = document.createElement("p");
-        meta.textContent = `${selectedWallet?.currency || ""} · ${selectedWallet?.address?.slice(0, 16) || ""}...`;
-        container.appendChild(meta);
-
         const seedDiv = document.createElement("div");
         seedDiv.className = "seed";
         seedDiv.textContent = mnemonic;
@@ -91,7 +102,6 @@ export default function WalletSeedQR() {
         warn1.textContent = "KEEP THIS DOCUMENT SECURE. NEVER SHARE WITH ANYONE.";
         container.appendChild(warn1);
 
-        const STYLE_ID = "veyrnox-seed-print-styles";
         if (!document.getElementById(STYLE_ID)) {
           const style = document.createElement("style");
           style.id = STYLE_ID;
@@ -113,6 +123,7 @@ export default function WalletSeedQR() {
           document.head.appendChild(style);
         }
 
+        window.addEventListener("afterprint", removeSeedPrintArtifacts);
         window.print();
       }
 
@@ -126,6 +137,7 @@ export default function WalletSeedQR() {
   };
 
   const handleClear = () => {
+    removeSeedPrintArtifacts();
     setMnemonic(null);
     mnemonicRef.current = null;
     setShowSeed(false);
@@ -163,8 +175,8 @@ export default function WalletSeedQR() {
             {wallets.map(w => (
               <SelectItem key={w.id} value={w.id}>
                 <span className="flex items-center gap-2">
-                  <CoinLogo symbol={w.currency} size={18} />
-                  {w.name} ({w.currency})
+                  <Wallet className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  {w.name}
                 </span>
               </SelectItem>
             ))}
@@ -253,7 +265,6 @@ export default function WalletSeedQR() {
 
           <p className="text-xs text-muted-foreground">
             Write these words down in order and store them securely offline.
-            {selectedWallet && <span className="font-mono"> {selectedWallet.currency} · {selectedWallet.address?.slice(0, 20)}…</span>}
           </p>
 
           {Capacitor.isNativePlatform() && (
