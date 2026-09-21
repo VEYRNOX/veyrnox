@@ -251,9 +251,14 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
     must never be released or moved without resubmitting it first.
     The paragraph below is the pre-confirmation diagnosis, kept as the record
     of how it was reached.
-    **Current partner state (2026-09-19): prod Buy is DOWN, and it is account
-    provisioning on Transak's side — not credentials, not our code.** Proven by
-    elimination over one session; do not re-diagnose it into the stack:
+    **SUPERSEDED — pre-confirmation diagnosis (2026-09-19). This heading used
+    to read "Current partner state", which made it look live after the root
+    cause above replaced it.** It concluded *"prod Buy is DOWN, and it is
+    account provisioning on Transak's side — not credentials, not our code."*
+    Two of those three held: not credentials, not our code. The third did not
+    — the cause was the blank Backend IPs field on **our own** checklist
+    submission, not provisioning on Transak's side. The elimination below is
+    still sound evidence; only the attribution was wrong:
     - `POST api.transak.com/partners/api/v2/refresh-token` **succeeds** and
       mints an access token — with the NEWLY ROTATED secret.
     - `POST api-gateway.transak.com/api/v2/auth/session` returns
@@ -275,7 +280,10 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
     commit in that window touches a header, body field or endpoint of this call
     — verified by diffing `functions/api/buy/session.js` against the launch
     commit. Whatever changed is in the account's state at Transak. Awaiting
-    their support answer. Supersedes the 2026-08-23 note describing
+    their support answer. *(Answered 2026-09-21 — the root cause above. The
+    window claim still holds: the next change to this call's body was
+    `a011e1b6` on 2026-09-19, after the outage began.)* Supersedes the
+    2026-08-23 note describing
     `errorCode 1002` and pending widget enablement — same class of problem, a
     different error string, and no longer what the gateway returns.
   - **RevenueCat** offer identifiers (`APPLE_OFFER_IDS`, Play offer tags),
