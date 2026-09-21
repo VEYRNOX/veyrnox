@@ -124,7 +124,10 @@ beforeEach(() => { try { localStorage.clear(); } catch { /* jsdom */ } });
     // used a data-testid selector the PinPad has never exposed
     // (src/components/security/PinPad.jsx uses aria-label, not data-testid),
     // so the fallback was ALWAYS taken. Drive the real PinPad DOM instead.
-    const submit = screen.getByRole('button', { name: /^Submit PIN$/ });
+    // ONB-02/A11Y-01 fix: the submit button's accessible name tracks its
+    // visible submitLabel — "Enable hardware protection" for this enroll pad
+    // (settings.hardware_kek.enroll.cta).
+    const submit = screen.getByRole('button', { name: /^Enable hardware protection$/ });
     // Digit buttons render as <button>N</button> with no aria-label — text is
     // the accessible name. Pick "1" and press 8 times to satisfy the length.
     const digitOne = screen.getByRole('button', { name: '1', exact: true });

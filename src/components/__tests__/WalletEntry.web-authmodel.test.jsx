@@ -97,12 +97,12 @@ describe('WalletEntry — web joins the PIN cohort (parity with native, lockout 
     expect(screen.queryByRole('progressbar', { name: /wallet setup progress/i })).toBeNull();
 
     enterPinPad(document, WEB_PIN.split(''));
-    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     // Confirm step: same PIN again.
     await waitFor(() => expect(screen.getByText(/confirm your pin/i)).toBeTruthy());
     enterPinPad(document, WEB_PIN.split(''));
-    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     // finishPinSetup ran. On web (now unified), the cohort marker MUST be 'pin' —
     // the separate 'password' cohort that caused the lockout no longer exists.
@@ -126,11 +126,11 @@ describe('WalletEntry — web joins the PIN cohort (parity with native, lockout 
 
     await waitFor(() => expect(screen.getByText(/choose an 8-digit pin/i)).toBeTruthy());
     enterPinPad(document, WEB_PIN.split(''));
-    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() => expect(screen.getByText(/confirm your pin/i)).toBeTruthy());
     enterPinPad(document, WEB_PIN.split(''));
-    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     // Phase 2 (choose screen): the "New wallet" tile pick auto-fires creation —
     // no second "Create Wallet" button click needed (Slice D1 chosenPath hint).

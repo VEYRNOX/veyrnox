@@ -14,8 +14,8 @@
 // The credential surface is the real product UI: the backup PASSWORD is a
 // PasswordInput text field (queried by placeholder), and every PIN — the backup
 // PIN and the fresh device PIN — is entered through the numeric PinPad keypad
-// (digit buttons + an explicit "Submit PIN", exactly as on device). Driving those
-// components the way a user/AT actually does is what these tests verify.
+// (digit buttons + an explicit submit control, exactly as on device). Driving
+// those components the way a user/AT actually does is what these tests verify.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
@@ -85,12 +85,15 @@ async function loadFile(container) {
 }
 
 // Enter a PIN into the numeric PinPad: click each digit button, then (optionally)
-// the explicit "Submit PIN" control (PinPad completion is always explicit).
+// the explicit submit control (PinPad completion is always explicit). The
+// submit button's accessible name tracks its visible submitLabel
+// (ONB-02/A11Y-01 fix) — the set-device-PIN keypad uses "Next" on the choose
+// step and "Confirm" on the confirm step (src/components/backup/RestoreFromFile.jsx).
 function typePinDigits(pin) {
   for (const digit of pin) fireEvent.click(screen.getByRole('button', { name: digit }));
 }
-function submitPinPad() {
-  fireEvent.click(screen.getByRole('button', { name: /submit pin/i }));
+function submitPinPad(label) {
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${label}$`, 'i') }));
 }
 
 // The set-device-PIN phase is a choose → confirm keypad flow; a matching pair
@@ -98,10 +101,10 @@ function submitPinPad() {
 async function setDevicePinViaPad(pin) {
   await screen.findByText(/choose a device pin/i);
   typePinDigits(pin);
-  submitPinPad();
+  submitPinPad('Next');
   await screen.findByText(/confirm device pin/i);
   typePinDigits(pin);
-  submitPinPad();
+  submitPinPad('Confirm');
   fireEvent.click(await screen.findByRole('button', { name: /save & restore/i }));
 }
 
@@ -258,10 +261,10 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     // Choose one PIN, then confirm a DIFFERENT one — the keypad is choose→confirm.
     await screen.findByText(/choose a device pin/i);
     typePinDigits('87654321');
-    submitPinPad();
+    submitPinPad('Next');
     await screen.findByText(/confirm device pin/i);
     typePinDigits('12345678');
-    submitPinPad();
+    submitPinPad('Confirm');
 
     // The mismatch message appears and the flow resets — no save is offered and
     // no crypto ran (fail closed).

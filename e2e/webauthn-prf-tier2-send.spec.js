@@ -62,14 +62,14 @@ async function freshLocalBuild(page) {
 
 // Helper: enter an 8-digit PIN via PinPad's on-screen digit buttons, then submit.
 // Scoped to the PinPad's own group so it never collides with same-named buttons
-// elsewhere on the page. "Submit PIN" is the button's aria-label — NOT its visible
-// "Continue" text; ARIA accessible-name resolution prefers aria-label.
+// elsewhere on the page. The submit button's accessible name tracks its visible
+// label (ONB-02/A11Y-01 fix) — "Continue" at this create/confirm step.
 async function enterPin(page, digits) {
   const pad = page.getByRole('group', { name: /PIN entry/i });
   for (const d of digits) {
     await pad.getByRole('button', { name: d, exact: true }).click();
   }
-  await pad.getByRole('button', { name: 'Submit PIN' }).click();
+  await pad.getByRole('button', { name: 'Continue' }).click();
 }
 
 test.describe('WebAuthn PRF Tier 2 — CDP Virtual Authenticator + Sepolia Send', () => {

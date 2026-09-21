@@ -32,13 +32,15 @@ final class BackupTests: XCTestCase {
             passwordField.typeText("TestBackupPassword123!")
         }
 
-        // Enter 12-digit backup PIN
+        // Enter 12-digit backup PIN — PersonalBackup's choose/confirm PinPad
+        // submitLabel is "Next" then "Confirm" (src/pages/PersonalBackup.jsx),
+        // not the create/confirm-flow default "Continue".
         enterPin(app: app, digits: TestPin.backupPin)
-        submitPin(app: app)
+        submitPin(app: app, label: "Next")
 
         // Confirm PIN
         enterPin(app: app, digits: TestPin.backupPin)
-        submitPin(app: app)
+        submitPin(app: app, label: "Confirm")
 
         // Tap save
         let saveBtn = app.buttons["Save backup"]

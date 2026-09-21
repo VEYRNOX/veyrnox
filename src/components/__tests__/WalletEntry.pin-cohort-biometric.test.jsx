@@ -88,9 +88,9 @@ async function enterPin(pin = '13572468') {
   // Wait until Submit reports the full-length value before pressing it — the
   // reducer only completes on submit if value.length === length.
   await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'Submit PIN' })).not.toBeDisabled(),
+    expect(screen.getByRole('button', { name: 'Unlock' })).not.toBeDisabled(),
   );
-  await user.click(screen.getByRole('button', { name: 'Submit PIN' }));
+  await user.click(screen.getByRole('button', { name: 'Unlock' }));
 }
 
 async function waitForPinPad(ctx) {
@@ -104,7 +104,7 @@ async function waitForPinPad(ctx) {
     await waitFor(() => expect(ctx.unlockWithBiometric).toHaveBeenCalled());
   }
   await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'Submit PIN' })).not.toBeDisabled(),
+    expect(screen.getByRole('button', { name: 'Unlock' })).not.toBeDisabled(),
   );
 }
 

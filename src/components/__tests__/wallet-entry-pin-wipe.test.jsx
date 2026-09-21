@@ -9,7 +9,7 @@
 //
 // We mock useWallet so `unlock` is a controllable spy and `panicWipe` is a spy we
 // assert on (we NEVER run the real wipe in a test). We drive the real PinPad UI:
-// type 8 digits, click "Submit PIN". We assert STRUCTURE — panicWipe call count and
+// type 8 digits, click "Unlock". We assert STRUCTURE — panicWipe call count and
 // its { confirmed: true } guard, plus the interpolated remaining-count in the
 // warning (load-bearing) — not prose copy.
 
@@ -67,15 +67,15 @@ function makeCtx(overrides = {}) {
   };
 }
 
-// Drive the PinPad: type 8 digits, then click "Submit PIN".
+// Drive the PinPad: type 8 digits, then click "Unlock".
 async function enterPin(pin = '13572468') {
   stepPastAnyLockout();
   for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
-  fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Unlock' }));
 }
 
 async function waitForPinPad() {
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Submit PIN' })).toBeTruthy());
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Unlock' })).toBeTruthy());
 }
 
 beforeEach(() => {

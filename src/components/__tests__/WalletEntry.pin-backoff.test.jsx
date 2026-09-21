@@ -64,11 +64,11 @@ function makeCtx(overrides = {}) {
 
 function enterPin(pin = '13572468') {
   for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
-  fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Unlock' }));
 }
 
 async function waitForPinPad() {
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Submit PIN' })).toBeTruthy());
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Unlock' })).toBeTruthy());
 }
 
 const wrongPin = () => vi.fn(async () => { throw new Error('GCM decrypt failed'); });
@@ -96,7 +96,7 @@ describe('WalletEntry — the PIN timed backoff is enforced (M-7)', () => {
     // The lockout must gate the SUBMISSION, not merely decorate the error: the
     // KDF is never spent and the counter does not move.
     enterPin();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit PIN' })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Unlock' })).toBeTruthy());
     expect(ctx.unlock).toHaveBeenCalledTimes(1);
     expect(localStorage.getItem(PIN_ATTEMPTS_KEY)).toBe('7');
   });

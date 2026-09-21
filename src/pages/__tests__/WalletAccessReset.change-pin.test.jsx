@@ -40,11 +40,15 @@ function makeCtx(overrides = {}) {
 
 // Both the change-credential card and the recovery card mount a PinPad, so
 // digit buttons collide — always scope to a card. `scope` is a `within(...)`.
-function typePin(scope, digits) {
+// The submit button's accessible name tracks its visible submitLabel
+// (ONB-02/A11Y-01 fix) — "Continue" for current/new steps and the
+// recovery card, "Change PIN" for the change-credential card's confirm step
+// (src/pages/WalletAccessReset.jsx).
+function typePin(scope, digits, label = 'Continue') {
   for (const d of digits) {
     fireEvent.click(scope.getByRole('button', { name: d }));
   }
-  fireEvent.click(scope.getByRole('button', { name: 'Submit PIN' }));
+  fireEvent.click(scope.getByRole('button', { name: label }));
 }
 const changeCard = () => within(screen.getByTestId('change-credential-card'));
 const recoverCard = () => within(screen.getByTestId('recover-card'));
@@ -83,7 +87,7 @@ describe('WalletAccessReset — PIN cohort renders a PIN pad, not a password box
     await waitFor(() => expect(changeCard().getByText(/confirm your new pin/i)).toBeTruthy());
 
     // Step 3: confirm new PIN → Change PIN.
-    typePin(changeCard(), NEW_PIN);
+    typePin(changeCard(), NEW_PIN, 'Change PIN');
     await waitFor(() => expect(ctx.changePassword).toHaveBeenCalledWith(CUR_PIN, NEW_PIN));
   });
 
@@ -112,7 +116,7 @@ describe('WalletAccessReset — PIN cohort renders a PIN pad, not a password box
     typePin(changeCard(), NEW_PIN);
     await waitFor(() => expect(changeCard().getByText(/confirm your new pin/i)).toBeTruthy());
 
-    typePin(changeCard(), '50918273'); // valid-strength but different → mismatch
+    typePin(changeCard(), '50918273', 'Change PIN'); // valid-strength but different → mismatch
     await waitFor(() => expect(changeCard().getByText(/didn't match/i)).toBeTruthy());
     expect(changeCard().getByText(/choose a new 8-digit pin/i)).toBeTruthy();
     expect(ctx.changePassword).not.toHaveBeenCalled();
@@ -128,7 +132,7 @@ describe('WalletAccessReset — PIN cohort renders a PIN pad, not a password box
     fireEvent.change(card.getByPlaceholderText(/word1 word2 word3/i), { target: { value: seed } });
     expect(card.getByText(/set a new 8-digit pin/i)).toBeTruthy();
 
-    typePin(recoverCard(), NEW_PIN);
+    typePin(recoverCard(), NEW_PIN, 'Recover');
     await waitFor(() => expect(ctx.importWallet).toHaveBeenCalledWith(seed, NEW_PIN));
   });
 });
@@ -141,7 +145,9 @@ describe('WalletAccessReset — legacy password cohort still gets the password b
 
     expect(screen.getByText('Change vault password')).toBeTruthy();
     expect(screen.getByPlaceholderText(/current vault password/i)).toBeTruthy();
-    // No PIN pad in the password cohort.
-    expect(screen.queryByRole('button', { name: 'Submit PIN' })).toBeNull();
+    // No PIN pad in the password cohort. "Submit PIN" is no longer a fixed
+    // accessible name anywhere (ONB-02/A11Y-01 fix), so assert on the digit
+    // button instead — a real regression guard rather than an always-true check.
+    expect(screen.queryByRole('button', { name: '1', exact: true })).toBeNull();
   });
 });

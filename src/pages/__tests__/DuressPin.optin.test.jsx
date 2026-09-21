@@ -99,17 +99,19 @@ async function renderSettled() {
 }
 
 // Drive the two-step PinPad flow. onComplete fires only on explicit submit
-// (never auto-submits at N digits — deniability §7). The submit button always
-// carries aria-label="Submit PIN" regardless of the submitLabel prop.
+// (never auto-submits at N digits — deniability §7). The submit button's
+// accessible name tracks its visible submitLabel (ONB-02/A11Y-01 fix) —
+// "Continue" (duress.setup_pin_continue) on step 1, "Save emergency PIN"
+// (duress.setup_pin_save) on step 2.
 // An explicit act() flush between steps is required: without it the outer act()
 // batches all state updates together so `pin` never accumulates between digit clicks.
 async function enterBothPins(pin = '24681357') {
   for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
   await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' })); // step 1 → confirm step
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' })); // step 1 → confirm step
   });
   for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
-  fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' })); // step 2 → handleSave
+  fireEvent.click(screen.getByRole('button', { name: 'Save emergency PIN' })); // step 2 → handleSave
 }
 
 beforeEach(() => {

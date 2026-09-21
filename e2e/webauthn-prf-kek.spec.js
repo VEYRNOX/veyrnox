@@ -381,10 +381,10 @@ test.describe('Web KEK PRF — UI unlock path', () => {
     // on the numeric PinPad unlock surface (WalletEntry.jsx unlock branch), never
     // the legacy password Input. Scope to the PinPad's own "PIN entry" group so its
     // digit buttons never collide with same-named buttons elsewhere on the page.
-    // The submit button's aria-label is "Submit PIN" (NOT its visible "Unlock" text;
-    // ARIA accessible-name resolution prefers aria-label), and PinPad never
-    // auto-submits on the last digit (a deliberate anti-length-oracle choice — see
-    // PinPad.jsx), so the digits and the submit are two distinct steps.
+    // The submit button's accessible name tracks its visible "Unlock" label
+    // (ONB-02/A11Y-01 fix), and PinPad never auto-submits on the last digit (a
+    // deliberate anti-length-oracle choice — see PinPad.jsx), so the digits
+    // and the submit are two distinct steps.
     const pad = page.getByRole('group', { name: /PIN entry/i });
     await expect(pad.getByRole('button', { name: '1', exact: true })).toBeVisible({ timeout: 20000 });
     return {
@@ -395,7 +395,7 @@ test.describe('Web KEK PRF — UI unlock path', () => {
       },
       press: async (key) => {
         if (key === 'Enter') {
-          await pad.getByRole('button', { name: 'Submit PIN' }).click();
+          await pad.getByRole('button', { name: 'Unlock' }).click();
         }
       },
     };
@@ -489,10 +489,10 @@ test.describe('Web KEK PRF — UI unlock path', () => {
     // The enrollment section only renders after webPrfAvailable resolves (async
     // isPrfSupported() check inside a useEffect). Wait for the unique enrollment
     // instruction text — when it's visible, the PinPad is also in the DOM.
-    // NOTE: the numeric PinPad's submit button has aria-label="Submit PIN"
-    // (hardcoded, anti-deniability) — NOT aria-label={submitLabel}. Scope all
-    // interactions to the enrollment section div to avoid colliding with other
-    // PinPads on the settings page.
+    // NOTE: the numeric PinPad's submit button's accessible name now tracks
+    // its visible submitLabel (ONB-02/A11Y-01 fix) — "Enable hardware
+    // protection" here. Scope all interactions to the enrollment section div
+    // to avoid colliding with other PinPads on the settings page.
     const enrollSection = page.locator('div').filter({
       has: page.getByText('Enter your 8-digit PIN to enable hardware protection'),
     }).last();
@@ -505,9 +505,9 @@ test.describe('Web KEK PRF — UI unlock path', () => {
       await pad.getByRole('button', { name: digit, exact: true }).click();
     }
 
-    // Submit — aria-label is hardcoded "Submit PIN" in numeric PinPad (anti-deniability).
-    // This triggers enrollKek() + navigator.credentials.create() (CDP auto-approves).
-    await pad.getByRole('button', { name: 'Submit PIN' }).click();
+    // Submit — this triggers enrollKek() + navigator.credentials.create() (CDP
+    // auto-approves).
+    await pad.getByRole('button', { name: 'Enable hardware protection' }).click();
 
     // The "WebAuthn Protected" badge is the EARNED signal that enrollment succeeded.
     await expect(page.getByText('WebAuthn Protected')).toBeVisible({ timeout: 30000 });

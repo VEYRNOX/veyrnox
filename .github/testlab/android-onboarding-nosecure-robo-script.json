@@ -31,7 +31,7 @@
     "eventType": "VIEW_CLICKED",
     "elementDescriptors": [
       {
-        "text": "Submit PIN"
+        "text": "Continue"
       }
     ]
   },
@@ -53,7 +53,7 @@
     "eventType": "VIEW_CLICKED",
     "elementDescriptors": [
       {
-        "text": "Submit PIN"
+        "text": "Continue"
       }
     ]
   },

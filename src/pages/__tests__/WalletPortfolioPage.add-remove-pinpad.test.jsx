@@ -60,12 +60,12 @@ function makeCtx(overrides = {}) {
 
 // Radix Dialog portals its content to document.body, so query there, not the
 // render container. A numeric PinPad exposes digit buttons + a submit control
-// whose accessible name is the hardcoded aria-label "Submit PIN" (the visible
-// submitLabel is cosmetic). A password surface is an <input type="password">.
+// whose accessible name now tracks its visible submitLabel (ONB-02/A11Y-01
+// fix), which differs per dialog (AddWalletDialog vs RemoveDialog) — so this
+// detector keys off the digit button alone, which no password surface renders.
+// A password surface is an <input type="password">.
 const body = () => within(document.body);
-const hasPinPad = () =>
-  !!body().queryByRole('button', { name: 'Submit PIN' }) &&
-  !!body().queryByRole('button', { name: '1' });
+const hasPinPad = () => !!body().queryByRole('button', { name: '1' });
 const passwordInputs = () =>
   document.body.querySelectorAll('input[type="password"]');
 
@@ -105,9 +105,9 @@ describe('RemoveDialog — credential surface follows the auth cohort', () => {
     render(<RemoveDialog wallet={wallet} canRemove onClose={vi.fn()} />);
 
     expect(hasPinPad()).toBe(true);
-    // Visible submit text is the cosmetic submitLabel, even though its accessible
-    // name stays "Submit PIN".
-    expect(body().getByRole('button', { name: 'Submit PIN' }).textContent).toContain('Remove wallet');
+    // Accessible name now tracks the visible submitLabel (ONB-02/A11Y-01 fix) —
+    // both should read "Remove wallet" (portfolio.remove.button).
+    expect(body().getByRole('button', { name: 'Remove wallet' }).textContent).toContain('Remove wallet');
     expect(passwordInputs().length).toBe(0);
     expect(screen.getByText('Vault PIN')).toBeTruthy();
   });

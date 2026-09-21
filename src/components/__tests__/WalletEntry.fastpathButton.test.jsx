@@ -76,7 +76,7 @@ function makeCtx(overrides = {}) {
 }
 
 async function waitForPinPad() {
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Submit PIN' })).toBeTruthy());
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Unlock' })).toBeTruthy());
 }
 
 const FASTPATH_BUTTON_TESTID = 'fastpath-unlock-button';
@@ -220,6 +220,6 @@ describe('WalletEntry — fast-path biometric button visibility matrix', () => {
     });
     await waitFor(() => expect(ctx.unlockBiometricOnly).toHaveBeenCalled());
     // The PIN pad remains available so the user can complete unlock the normal way.
-    expect(screen.getByRole('button', { name: 'Submit PIN' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Unlock' })).toBeTruthy();
   });
 });

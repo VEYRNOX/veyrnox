@@ -117,12 +117,14 @@ describe('PIN pad — boundary logic (buffer cap + explicit submit + numeric-onl
 
 describe('PIN pad — rendered submit control is length-agnostic (no digit-count oracle)', () => {
   it('renders an always-present Submit control', () => {
-    expect(html({ value: '' })).toContain('aria-label="Submit PIN"');
+    // Default submitLabel is "Continue" — see the ONB-02/A11Y-01 test below for
+    // why the accessible name must track it instead of a fixed string.
+    expect(html({ value: '' })).toContain('aria-label="Continue"');
   });
 
   // Isolate the submit button's own tag so the className substring "disabled:opacity-40"
   // (a Tailwind class, not the boolean attribute) can't be mistaken for a disabled attr.
-  const submitTag = (out) => out.slice(out.indexOf('aria-label="Submit PIN"')).match(/^[^>]*>/)[0];
+  const submitTag = (out) => out.slice(out.indexOf('aria-label="Continue"')).match(/^[^>]*>/)[0];
 
   it('the Submit control is NOT disabled by digit count — enabled at 0, 6 and 8 digits alike', () => {
     // A "enable at N digits" rule would re-introduce the exact length oracle Fix A
@@ -134,6 +136,19 @@ describe('PIN pad — rendered submit control is length-agnostic (no digit-count
 
   it('Submit is disabled only when the whole pad is disabled (not by length)', () => {
     expect(submitTag(html({ value: '123456', disabled: true }))).toMatch(/\sdisabled(=|\s|>)/);
+  });
+});
+
+// ONB-02 / A11Y-01 (WCAG 2.5.3 Label in Name) — the numeric-mode submit
+// button's accessible name must track submitLabel, the visible text, instead
+// of a fixed "Submit PIN" string that ignored it (every PIN screen showed
+// "Continue"/"Unlock"/etc. on screen but announced "Submit PIN" to AT/voice
+// control, and a query by the visible label could never find the button).
+describe('PIN pad — submit control accessible name matches its visible label (ONB-02 / A11Y-01)', () => {
+  it('aria-label equals submitLabel for the default and a custom label alike', () => {
+    expect(html({ value: '' })).toContain('aria-label="Continue"');
+    expect(html({ value: '', submitLabel: 'Unlock' })).toContain('aria-label="Unlock"');
+    expect(html({ value: '', submitLabel: 'Unlock' })).not.toContain('aria-label="Submit PIN"');
   });
 });
 
