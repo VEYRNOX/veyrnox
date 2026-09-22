@@ -135,3 +135,20 @@ describe('PaywallNudge render', () => {
     expect(screen.getByRole('heading', { name: 'Upgrade to Safety Plus' })).toBeTruthy();
   });
 });
+
+// Seed restore fired the WIN modal (owl) and then this nudge (owl) 2.5s later
+// on the dashboard: two upsells back to back. One upsell per app session.
+describe('after a WIN modal this session', () => {
+  it('the nudge stands down, and says nothing about "a few days"', async () => {
+    // Last in the file: the win flag is process state and would leak forward.
+    const { recordWin, WIN } = await import('@/lib/winPaywall');
+    const mod = { shouldShowPaywallNudge, NUDGE_BODY };
+    vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(false);
+    localStorage.clear();
+    localStorage.setItem(SESSION_COUNT_KEY, '1');
+    expect(mod.shouldShowPaywallNudge('free')).toBe(true);
+    recordWin(WIN.WALLET_IMPORTED);
+    expect(mod.shouldShowPaywallNudge('free')).toBe(false);
+    expect(mod.NUDGE_BODY).not.toMatch(/few days/i);
+  });
+});

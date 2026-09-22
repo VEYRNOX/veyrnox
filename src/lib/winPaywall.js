@@ -24,8 +24,18 @@ export const WIN = Object.freeze({
   FIRST_INBOUND: 'win_first_inbound',
 });
 
+// In-memory only (no residue key): set once a win has fired in this app
+// process. PaywallNudge reads it so a user who just saw the WIN modal (e.g. on
+// seed restore) does not get a second upsell stacked straight after it, nor
+// again on a lock/unlock minutes later. A cold restart resets it.
+let winFired = false;
+export function winFiredThisSession() {
+  return winFired;
+}
+
 export function recordWin(trigger) {
   if (isDeniabilityOrDemoActive()) return;
+  winFired = true;
   try {
     window.dispatchEvent(new CustomEvent(WIN_EVENT, { detail: { trigger } }));
   } catch {
