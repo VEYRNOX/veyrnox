@@ -36,6 +36,35 @@ const APPROVAL_KINDS = Object.freeze({
   [PERMIT2_APPROVE_SELECTOR]: 'permit2Approve',
 });
 
+// Red-team fuzz 2026-09-22 (#2739): the shapes above are the ones we can decode
+// and prove bounded/unlimited. Two more grant unlimited spend but hide it from a
+// flat, single-level classifier, so before this they returned { isApprove:false }
+// and S2/S3 answered OK ("Not an approval") -- a green confirm screen for a drain:
+//   - multicall wrappers: an approve() nested inside multicall([...]). Routers
+//     and aggregators use these legitimately; a drainer wraps an unlimited
+//     approve in one.
+//   - EIP-2612 / DAI permit() submitted as calldata: grants allowance with no
+//     on-chain approve().
+// We do NOT decode the inner calls (that would mean walking arbitrary nested
+// calldata, breaking the pure/no-network contract). Recognising the family is
+// enough: report it as an undecodable approval so the signals fail closed
+// (INDETERMINATE, I4) instead of green-lighting it. Signature-based permit via
+// eth_signTypedData is a separate surface (fromWalletConnect), out of scope here.
+export const MULTICALL_SELECTOR = '0xac9650d8'; // multicall(bytes[])
+export const MULTICALL_DEADLINE_SELECTOR = '0x5ae401dc'; // multicall(uint256,bytes[])
+export const MULTICALL_PREVBLOCK_SELECTOR = '0x1f0464d1'; // multicall(bytes32,bytes[])
+export const PERMIT_SELECTOR = '0xd505accf'; // EIP-2612 permit(...)
+export const DAI_PERMIT_SELECTOR = '0x8fcbaf0c'; // DAI-style permit(...)
+
+// Approval-family / wrapper selectors we refuse to prove bounded -> fail closed.
+const OPAQUE_APPROVAL_KINDS = Object.freeze({
+  [MULTICALL_SELECTOR]: 'wrappedCall',
+  [MULTICALL_DEADLINE_SELECTOR]: 'wrappedCall',
+  [MULTICALL_PREVBLOCK_SELECTOR]: 'wrappedCall',
+  [PERMIT_SELECTOR]: 'permit',
+  [DAI_PERMIT_SELECTOR]: 'permit',
+});
+
 // At or above half of 2^256 is, for any real token supply, effectively infinite
 // — the canonical "unlimited approval" pattern (MaxUint256 and 2^256-1). Matches
 // wallet-core/evm/calldata.js so the two modules agree on the threshold.
@@ -67,7 +96,13 @@ const selectorOf = (data) =>
 export function classifyApprove(data) {
   const sel = selectorOf(data);
   const kind = sel ? APPROVAL_KINDS[sel] : undefined;
-  if (!kind) return { isApprove: false, decoded: false };
+  if (!kind) {
+    // Approval-family / wrapper selector we can't prove bounded: report an
+    // undecodable approval so S2/S3 fail closed (INDETERMINATE) rather than OK.
+    const opaque = sel ? OPAQUE_APPROVAL_KINDS[sel] : undefined;
+    if (opaque) return { isApprove: true, decoded: false, kind: opaque };
+    return { isApprove: false, decoded: false };
+  }
   try {
     const parsed = iface.parseTransaction({ data });
     if (!parsed) return { isApprove: true, decoded: false, kind };
