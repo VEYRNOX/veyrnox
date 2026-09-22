@@ -194,6 +194,16 @@ export function fiatDraftToCryptoAmount(raw, locale, usdRate, decimals) {
 // — whose specificity (0,3,1) beats any font-size utility (0,1,0), so a plain
 // `text-7xl` here computes to 18px and silently does nothing. Do not drop the
 // `!` without also re-scoping that rule.
+// Fiat amount display: a "$" that stays put while the user types (the
+// placeholder "$0.00" used to be the only "$", gone on the first keystroke).
+// The draft itself never holds the "$" — stripFiatPrefix removes it on input.
+export function fiatDisplay(draft) {
+  return draft ? `$${draft}` : '';
+}
+export function stripFiatPrefix(raw) {
+  return String(raw ?? '').replace(/^\s*\$\s*/, '');
+}
+
 export function amountFontSizeClass(displayValue) {
   const len = String(displayValue ?? '').length;
   if (len > 16) return '!text-2xl';
@@ -2367,9 +2377,10 @@ export default function SendCrypto() {
                   // way it does in crypto mode (MNY-04).
                   type="text"
                   inputMode="decimal"
-                  value={amountMode === 'fiat' ? fiatDraft : amount}
+                  // Fiat mode keeps a fixed "$" in the value (fiatDisplay).
+                  value={amountMode === 'fiat' ? fiatDisplay(fiatDraft) : amount}
                   onChange={e => {
-                    const raw = e.target.value;
+                    const raw = amountMode === 'fiat' ? stripFiatPrefix(e.target.value) : e.target.value;
                     if (amountMode === 'fiat') {
                       setFiatDraft(raw);
                       if (raw === '' || !(sendUsdRate > 0)) {
@@ -2395,7 +2406,7 @@ export default function SendCrypto() {
                   }}
                   onBlur={() => setAmountTouched(true)}
                   placeholder={amountMode === 'fiat' ? tw("send.amount.fiat_placeholder") : tw("send.amount.placeholder")}
-                  className={`mt-1.5 mono-value ${amountFontSizeClass(amountMode === 'fiat' ? fiatDraft : amount)} font-bold h-auto py-3`}
+                  className={`mt-1.5 mono-value ${amountFontSizeClass(amountMode === 'fiat' ? fiatDisplay(fiatDraft) : amount)} font-bold h-auto py-3`}
                   aria-invalid={amountInvalid || undefined}
                   aria-describedby={amountInvalid ? "send-amount-error" : undefined}
                 />

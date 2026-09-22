@@ -32,6 +32,7 @@ import { trackEvent, EVENT } from '@/api/trackEvent';
 import { useTier } from '@/lib/TierProvider';
 import { TIER } from '@/lib/tier';
 import { upsellFor } from '@/components/WinPaywall';
+import { winFiredThisSession } from '@/lib/winPaywall';
 
 const SESSION_COUNT_KEY = 'veyrnox-session-day-count';
 const SESSION_LAST_DAY_KEY = 'veyrnox-session-last-day';
@@ -73,8 +74,10 @@ export const DAY_THRESHOLD = 1;
 // can't access your keys": KEK and RASP are on every tier, spend limits work on
 // Free, and the closing line was an absolute guarantee with the independent
 // audit outstanding. Same fix as WinPaywall's Free upsell; keep the two aligned.
+// No "you've been using Veyrnox for a few days" preface: at DAY_THRESHOLD = 1
+// this fires on the first unlock day, often minutes after onboarding.
 export const NUDGE_BODY =
-  'You’ve been using Veyrnox for a few days. Safety Plus adds a duress PIN that opens a decoy wallet, hidden wallets, panic wipe, and an encrypted backup you can keep off this device.';
+  'Safety Plus adds a duress PIN that opens a decoy wallet, hidden wallets, panic wipe, and an encrypted backup you can keep off this device.';
 
 // Called once per SESSION_START. No-op in deniability/demo (I3 — must not
 // write any state that could distinguish a real session from a decoy one).
@@ -96,6 +99,8 @@ export function incrementSessionDayCount() {
 export function shouldShowPaywallNudge(currentTier) {
   try {
     if (isDeniabilityOrDemoActive()) return false;
+    // One upsell per app session: the WIN modal already sold this session.
+    if (winFiredThisSession()) return false;
     const key = dismissKeyFor(currentTier);
     if (!key) return false;
     if (localStorage.getItem(key)) return false;
@@ -139,6 +144,8 @@ export default function PaywallNudge() {
     if (!shouldShowPaywallNudge(currentTier)) return;
     const timer = setTimeout(() => {
       if (trackedRef.current) return;
+      // A win can land inside the settle window; re-check before showing.
+      if (!shouldShowPaywallNudge(currentTier)) return;
       trackedRef.current = true;
       setVisible(true);
       // 'day_3' is a STABLE SERIES KEY, not a description — it names this
