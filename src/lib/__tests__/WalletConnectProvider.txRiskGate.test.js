@@ -61,6 +61,13 @@ vi.mock('@/wallet-core/evm/provider.js', () => ({
     getCode: vi.fn(async () => '0x'),
   })),
 }));
+// #2741: the WC intelligence path scores S7 (calldata/contract-code mismatch),
+// which reads recipientCode from simulateEvmTransaction. These tests send to a
+// plain EOA, so stub an empty-code recipient — otherwise the unmocked simulate
+// leaves recipientCode undefined and S7 fails closed to CAUTION.
+vi.mock('@/wallet-core/evm/simulate.js', () => ({
+  simulateEvmTransaction: vi.fn(async () => ({ recipientCode: '0x' })),
+}));
 
 vi.mock('@/wallet-core/evm/networks.js', () => ({
   getNetworkByChainId: vi.fn(() => ({ key: 'sepolia', chainId: 11155111, symbol: 'ETH' })),

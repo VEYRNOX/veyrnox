@@ -21,6 +21,7 @@ const WC_TX_RISK_SIGNAL_IMPORTS = [
   () => import('@/risk/signals/s2-unlimited-approval'),
   () => import('@/risk/signals/s3-fresh-spender-approval'),
   () => import('@/risk/signals/s4-address-poisoning'),
+  () => import('@/risk/signals/s7-calldata-mismatch'),
   () => import('@/risk/signals/s9-tip-threat'),
   () => import('@/risk/fromWalletConnect'),
   () => import('@/wallet-core/evm/simulate.js'),
@@ -105,6 +106,7 @@ export async function buildWcTransactionIntelligence({
       { s2UnlimitedApproval },
       { s3FreshSpenderApproval },
       { s4AddressPoisoning },
+      { s7CalldataMismatch },
       { s9TipThreat },
       { buildRiskInputsFromWcRequest },
       { simulateEvmTransaction },
@@ -148,6 +150,12 @@ export async function buildWcTransactionIntelligence({
         // never trusted is the drainer's shape; S3 was scored on Send but not here.
         { id: 'S3', fn: s3FreshSpenderApproval },
         { id: 'S4', fn: s4AddressPoisoning },
+        // Pen test 2026-09-22 (#2741): S7 (calldata/contract-code mismatch) was
+        // fetched (recipientCode above) but omitted from this array, so a value
+        // send into a contract reached the modal with no caution. Same fail-silent
+        // shape as #2740 (calldata.js). recipientCode is already threaded into
+        // chainData; S7 reads it. Fail-closed: undefined code -> INDETERMINATE.
+        { id: 'S7', fn: s7CalldataMismatch },
         { id: 'S9', fn: s9TipThreat },
       ],
     );

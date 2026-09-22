@@ -181,8 +181,12 @@ describe('buildWcTransactionIntelligence', () => {
         raw: null,
       });
 
+      // #2741: the simulate mock returns a contract recipient, so this must carry
+      // calldata to stay S7-clean (calldata + contract -> OK). A bare value send
+      // into a contract is now correctly S7 CAUTION (see walletConnectIntel.s7.test.js).
+      // A plain ERC-20 transfer selector is not an approval, so S2 stays OK too.
       const intel = await buildWcTransactionIntelligence({
-        txParams: { from: WALLET_ADDR, to: TOKEN, value: '0x1', data: '0x' },
+        txParams: { from: WALLET_ADDR, to: TOKEN, value: '0x0', data: '0xa9059cbb' + '0'.repeat(128) },
         caip2ChainId: 'eip155:11155111',
         evmAddress: WALLET_ADDR,
         remoteScreenEnabled: true,
