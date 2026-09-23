@@ -112,7 +112,15 @@ architecture or security-critical code (wallet-core, signing, KEK, RASP).
 - Required contexts (union of ruleset `17946638` and classic protection):
   `verify`, `unit-tests`, `Release-cert guard rejects wrong fingerprints`,
   `mainnet-flag-gate`, `staging-gate`. Re-derive with `gh api` before relying on this.
-  There is no code-scanning gate. `strict` is false.
+  There is no code-scanning gate.
+- **`strict` is TRUE — a branch behind `main` cannot merge.** The two sources
+  disagree and only one governs: classic protection says `strict: false`, but
+  ruleset `17946638` says `strict_required_status_checks_policy: true`. This
+  file said "strict is false" until 2026-09-23, which is the classic value and
+  the wrong one. A PR that was green and mergeable becomes `mergeStateStatus:
+  BEHIND` the moment anything else lands, and the fix is
+  `gh pr update-branch <n>` (a merge from base, not an amendment — it does not
+  violate the never-push-to-an-open-PR-branch rule), NOT `--admin`.
 - **Needing `--admin` means the config regressed.** Diagnose it, don't habituate.
   Green but not merging? Check `mergeStateStatus`.
 - **Codex arms `--auto --merge` (merge commit) on every open PR when asked.** Merge

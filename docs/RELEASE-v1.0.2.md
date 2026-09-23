@@ -242,9 +242,14 @@ updated for 1.0.1 either, and they are not updated here. Translating them is a
 separate pass through the existing machine-translation convention described in
 `store-metadata/README.md`.
 
-`store-metadata/_schema.json` has **no `play.releaseNotes` key**, so Play's
-"What's new" has no home in this repo and is console-only until the schema gains
-one.
+**Correction (2026-09-23):** earlier drafts of this file said
+`store-metadata/_schema.json` has no `play.releaseNotes` key. It does —
+`play` carries `shortDescription`, `fullDescription` and `releaseNotes`, and
+`scripts/play-release-notes.mjs --check` validates all 44 locales against the
+500-char cap. The claim was carried forward from the 2026-09-19 draft without
+being re-checked. What is true is narrower: the notes for **this** release were
+typed into the console by hand rather than generated from the repo, because
+`ci.yml`'s upload step is deliberately not wired to send them.
 
 ## Play release record — 56 submitted and withdrawn, 57 live
 
@@ -372,6 +377,52 @@ A second gate sits earlier in the same path: CI's `android-release` and
 environment, which requires a human approval before the AAB is even built. Both
 approvals were given by the owner for the 57 build. Worth knowing because the
 run sits silently in `waiting` until someone acts, and it looks like a stall.
+
+## After publishing — 2026-09-23 evening
+
+Two changes landed on `main` after 57 went live. **Neither is in the shipped
+build**; both need a new versionCode or an OTA bundle to reach users.
+
+- **`ae50bfef` — the Buy flow no longer relocks the wallet** (#2756). Opening
+  Transak backgrounds the Capacitor WebView, which fired the appStateChange
+  lock hook; with the relock grace defaulting to 0 the wallet locked the
+  instant checkout opened and the user returned mid-purchase to an 8-digit PIN.
+  The hand-off now runs inside `withLockSuppressed`, the mechanism the Face ID
+  sheet, file picker and passkey enrolment already used and that Buy never
+  called. **How the widget opens is unchanged**, so Transak's Mandatory
+  Security checklist does not need resubmitting.
+
+  Owner ruling, recorded as a trade and not as a win: the three existing uses
+  of `withLockSuppressed` each cover ~2 seconds, while a Transak session runs
+  for minutes. The wallet now stays unlocked behind an external browser for
+  that whole time, including if the device is put down or handed over. The
+  window is bounded twice — `browserFinished`, and a hard 15-minute ceiling —
+  because suppression that never ends is a wallet that never locks, which is
+  strictly worse than the prompt it replaced.
+
+- **`fcf167c7` — store copy corrected** (#2757). `store-metadata/en.json` did
+  not describe either live listing (1269 Apple / 1663 Play chars in the repo
+  against ~4000 live), so `scripts/upload-store-listings.mjs` would have
+  replaced both listings with the shorter text. Two claims were false on both
+  stores: "BUY CRYPTO IN-APP / directly from the app" (the flow leaves the app
+  by design) and "An on-device security assistant" (the Advisor posts to
+  `tip-chat`). Theft Protection was absent from both listings and is now
+  described, along with five shipped v1.0/v1.0.1 features the long copy had
+  dropped — RASP, address poisoning and look-alike warnings, spam-token
+  filtering, WalletConnect session expiry and step-up re-auth, and BIP-39.
+
+  The corresponding **Play Console change is staged, not submitted**, and the
+  Apple half cannot be applied at all until a 1.0.2 version record exists —
+  the App Store description is version-scoped.
+
+### Merge-gate correction found the same evening
+
+`CLAUDE.md` recorded `strict` as false. Classic protection does say that, but
+ruleset `17946638` — the one that governs — sets
+`strict_required_status_checks_policy: true`. #2757 was green and refused to
+merge with `mergeStateStatus: BEHIND` as soon as #2756 landed ahead of it.
+Resolved with `gh pr update-branch`, not `--admin`. `CLAUDE.md` is corrected in
+the same change as this entry.
 
 ## Outstanding before Apple submission
 
