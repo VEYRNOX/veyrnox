@@ -55,8 +55,17 @@ platform :android do
     )
   end
 
-  # No production lane — CLAUDE.md submission hold + no Play Pre-launch report
-  # has ever been generated (see #1960 accepted-residual).
+  # No production lane, and the reason is no longer the one this comment used to
+  # give. The Pre-launch report was waived 2026-09-04 (#1960) and the Firebase
+  # Test Lab Robo substitute 2026-09-10; the sole Play gate is now the owner's
+  # stock-device golden-path walkthrough (CLAUDE.md, pre-submission checklist
+  # row 3). The blocker is permissions: the service account used here can open
+  # an edit and stage a production release, but edits:validate and edits:commit
+  # return 403 PERMISSION_DENIED because it holds upload and testing rights, not
+  # "Release to production". 1.0.2 (versionCode 56) was therefore submitted
+  # through the Play Console on 2026-09-22 — see docs/RELEASE-v1.0.2.md. Adding
+  # a lane here needs that grant first, and the grant is an owner decision:
+  # production is currently a console-only gate by accident, not by design.
 
   desc "Assemble the huawei-flavor release AAB (HMS build, no GMS/Play Integrity)"
   lane :build_huawei do
