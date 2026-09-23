@@ -1,8 +1,23 @@
 # Veyrnox 1.0.1 — Google Play Console Submission State
 
-Owner: Al Jobson. Last updated: 2026-09-08.
+Owner: Al Jobson. Last updated: 2026-09-23.
 
-**SUBMITTED for review — 2026-09-08 (14 changes queued in Publishing overview, quick checks passed, Submit clicked).** Managed publishing = ON — on approval, changes stage until owner presses Publish.
+**OUTCOME: APPROVED AND PUBLISHED, THEN SUPERSEDED.** The 2026-09-08
+submission was approved and published: Play production carried
+**versionCode 48 (1.0.1)**, released 2026-09-12 06:43. It served users until
+2026-09-23, when **versionCode 57 (1.0.2)** replaced it outright at a 100%
+rollout — at 100% the previous release is replaced rather than kept serving a
+remainder, so 48 is no longer on the production track at all.
+
+This header previously read "SUBMITTED for review — 2026-09-08 … on approval,
+changes stage until owner presses Publish", and still said so on 2026-09-23.
+The record below is accurate for what was submitted; only the outcome was
+missing.
+
+**Note for anyone reading this as the Play playbook:** the live production
+versionCode was 48, not 49. 49 reached Closed testing (`alpha`) only. That
+distinction went unrecorded for eleven days and caused a wrong reading in the
+1.0.2 train — see `docs/RELEASE-v1.0.2.md`.
 
 **Cross-reference — Apple 1.0.1 status (unrelated to Play, but the fiat on-ramp story is shared):** Apple rejected the same-day iOS 1.0.1 submission twice on 2026-09-08. Rejection 1 was on the AI Security Protection promoted-IAP images (2.3.2 metadata) — resolved by disabling both promoted purchases and deleting the images. Rejection 2 was Guideline 2.1 → 3.1.5(iii) asking for cryptocurrency-exchange licensing evidence on the Buy → Transak flow — a Path B reply (third-party partnership with Transak Ltd, FCA FRN 928910) has been sent to Apple, with §3a documenting the in-app UK geo-suppression (`isUkBuyBlocked()`, s.21 FSMA 2000). Full record in `RELEASE-v1.0.1-APPLE-SUBMISSION.md` under "Rejection cycle (2026-09-08)". Play reviewers have not (to date) asked for equivalent licensing evidence on the same Buy flow — if that changes, the same reply applies verbatim, and the UK geo-suppression is device-side so it fires on Android identically.
 

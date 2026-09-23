@@ -1,8 +1,24 @@
 # Veyrnox 1.0.1 — Apple App Store Submission State
 
-Owner: Al Jobson. Last updated: 2026-09-08 (session-rebuilt after prior scratchpad was lost).
+Owner: Al Jobson. Last updated: 2026-09-23.
 
-**REJECTED TWICE, REPLIED — 2026-09-08.** Timeline below in the Rejection cycle section. Currently awaiting Apple's response to the ASC reply. On approval, owner presses Release (releaseType MANUAL) — phased release then ramps over 7 days.
+**OUTCOME: APPROVED AND SHIPPED.** 1.0.1 build 59 is live on the App Store
+(`appStoreState: READY_FOR_SALE`), uploaded 2026-09-11 from review submission
+`3ca728bd` (submitted 2026-09-11T19:07Z, `COMPLETE`). Provenance: read from App
+Store Connect on 2026-09-19 and recorded in `docs/RELEASE-v1.0.2.md`; this file
+was not amended at the time.
+
+This header previously read "REJECTED TWICE, REPLIED — 2026-09-08 … currently
+awaiting Apple's response", and still said so on 2026-09-23 — twelve days after
+Apple approved the resubmission. The rejection cycle below is accurate history
+and is kept; only the outcome was missing. Per `CLAUDE.md`, "submitted" has an
+outcome and it gets recorded in the session that learns it — that did not
+happen here, and this entry is the repair.
+
+**Current train:** Apple is still on 1.0.1. There is no 1.0.2 version record;
+every Apple row in `docs/RELEASE-v1.0.2.md` under "Outstanding before Apple
+submission" still stands. Play has since moved to 1.0.2 (versionCode 57, live
+2026-09-23 at 100%), so the two stores are deliberately out of step.
 
 ---
 
