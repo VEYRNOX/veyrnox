@@ -22,7 +22,25 @@ vi.mock('@capacitor/core', () => ({
   Capacitor: { isNativePlatform: () => platformMock() !== 'web', getPlatform: () => platformMock() },
 }));
 vi.mock('@/lib/biometricProbe', () => ({ getCachedBiometry: (...a) => probeMock(...a) }));
-vi.mock('@/lib/biometric', () => ({ verifyBiometric2fa: vi.fn() }));
+// The component now renders the spend-limit field, which uses useActionGuard
+// for the second factor on a LOOSENING change. That pulls WalletProvider ->
+// panic.js into the graph, and panic.js reads TWOFACTOR_BIOMETRIC_KEY from
+// this module, so the mock has to carry it (and is2faBiometricEnabled, which
+// useActionGuard itself reads) or the suite fails to load at import time.
+vi.mock('@/lib/biometric', () => ({
+  verifyBiometric2fa: vi.fn(),
+  is2faBiometricEnabled: vi.fn(() => false),
+  TWOFACTOR_BIOMETRIC_KEY: 'veyrnox-2fa-biometric',
+}));
+// useActionGuard calls useWallet(), which throws outside a WalletProvider.
+// These specs render the component bare and are about the enable/disable
+// capability gate, not the 2FA modal, so stub the hook. `twoFactorMock` is
+// exposed so the spend-limit specs can assert the second factor was demanded
+// on a loosening edit and NOT demanded on a tightening one.
+const { twoFactorMock } = vi.hoisted(() => ({ twoFactorMock: vi.fn((run) => run()) }));
+vi.mock('@/components/security/useActionGuard', () => ({
+  useActionGuard: () => ({ requireTwoFactor: twoFactorMock, gateModal: null }),
+}));
 vi.mock('@/rasp', () => ({
   getFreshRaspArtifact: vi.fn(),
   TIER: Object.freeze({ ALLOW: 'allow', WARN: 'warn-before-sign', BLOCK: 'block-signing' }),
@@ -32,12 +50,13 @@ vi.mock('@/wallet-core/deniabilitySession', () => ({ isDeniabilityOrDemoActive: 
 
 // The entity layer behind the seeded starter cap (#2515 follow-up). Mocked so
 // the test asserts WHAT was written, not that IndexedDB happened to work.
-const { limitListMock, limitCreateMock } = vi.hoisted(() => ({
+const { limitListMock, limitCreateMock, limitUpdateMock } = vi.hoisted(() => ({
   limitListMock: vi.fn(async () => []),
   limitCreateMock: vi.fn(async (r) => r),
+  limitUpdateMock: vi.fn(async (_id, r) => r),
 }));
 vi.mock('@/api/base44Client', () => ({
-  base44: { entities: { TransactionLimit: { list: (...a) => limitListMock(...a), create: (...a) => limitCreateMock(...a) } } },
+  base44: { entities: { TransactionLimit: { list: (...a) => limitListMock(...a), create: (...a) => limitCreateMock(...a), update: (...a) => limitUpdateMock(...a) } } },
 }));
 
 import { THEFT_PROTECTION_KEY } from '@/lib/theftProtection';
@@ -51,6 +70,8 @@ beforeEach(() => {
   probeMock.mockReset().mockResolvedValue(null);
   limitListMock.mockReset().mockResolvedValue([]);
   limitCreateMock.mockReset().mockImplementation(async (r) => r);
+  limitUpdateMock.mockReset().mockImplementation(async (_id, r) => r);
+  twoFactorMock.mockReset().mockImplementation((run) => run());
   deniableMock.mockReset().mockReturnValue(false);
 });
 afterEach(() => { cleanup(); });
@@ -214,5 +235,99 @@ describe('TheftProtectionSettings — default spend limit', () => {
     expect(localStorage.getItem(THEFT_PROTECTION_KEY)).toBeNull();
     expect(limitCreateMock).not.toHaveBeenCalled();
     expect(limitListMock).not.toHaveBeenCalled();
+  });
+});
+
+// ── Spend-limit field ───────────────────────────────────────────────────────
+//
+// The cap that decides when Theft Protection challenges a send was only
+// editable in Security Center → Spend Limits, a different screen behind a tab.
+// It is now editable here too, on the same TransactionLimit row.
+//
+// The security-relevant part is the loosening split, mirroring
+// SecurityCenter.guardLoosening: RAISING the cap lets more value through
+// without a biometric, so it must demand the second factor; LOWERING it only
+// tightens and must not. Without that split this field would be a way to raise
+// the cap from an unlocked phone and then send freely.
+
+const limitInput = () => screen.getByTestId('theft-protection-limit-input');
+const limitSave = () => screen.getByTestId('theft-protection-limit-save');
+
+async function renderEnabledWithLimit(row) {
+  localStorage.setItem(THEFT_PROTECTION_KEY, '1');
+  limitListMock.mockResolvedValue(row ? [row] : []);
+  render(<TheftProtectionSettings />);
+  await waitFor(() => expect(limitInput()).toBeTruthy());
+  return limitInput();
+}
+
+describe('TheftProtectionSettings — spend-limit field', () => {
+  it('is hidden until Theft Protection is on', () => {
+    render(<TheftProtectionSettings />);
+    expect(screen.queryByTestId('theft-protection-limit-input')).toBeNull();
+  });
+
+  it('shows the existing cap', async () => {
+    const input = await renderEnabledWithLimit({ id: 'l1', currency: 'ALL', enabled: true, per_transaction_limit: 500 });
+    await waitFor(() => expect(input.value).toBe('500'));
+  });
+
+  it('LOWERING the cap is not gated by the second factor', async () => {
+    const input = await renderEnabledWithLimit({ id: 'l1', currency: 'ALL', enabled: true, per_transaction_limit: 500 });
+    await waitFor(() => expect(input.value).toBe('500'));
+    fireEvent.change(input, { target: { value: '100' } });
+    fireEvent.click(limitSave());
+    await waitFor(() => expect(limitUpdateMock).toHaveBeenCalledWith('l1', expect.objectContaining({ per_transaction_limit: 100 })));
+    expect(twoFactorMock).not.toHaveBeenCalled();
+  });
+
+  it('RAISING the cap demands the second factor before writing', async () => {
+    twoFactorMock.mockImplementation(() => {}); // user has not satisfied it yet
+    const input = await renderEnabledWithLimit({ id: 'l1', currency: 'ALL', enabled: true, per_transaction_limit: 500 });
+    await waitFor(() => expect(input.value).toBe('500'));
+    fireEvent.change(input, { target: { value: '5000' } });
+    fireEvent.click(limitSave());
+    await waitFor(() => expect(twoFactorMock).toHaveBeenCalled());
+    expect(limitUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it('RAISING writes once the second factor is satisfied', async () => {
+    const input = await renderEnabledWithLimit({ id: 'l1', currency: 'ALL', enabled: true, per_transaction_limit: 500 });
+    await waitFor(() => expect(input.value).toBe('500'));
+    fireEvent.change(input, { target: { value: '5000' } });
+    fireEvent.click(limitSave());
+    await waitFor(() => expect(limitUpdateMock).toHaveBeenCalledWith('l1', expect.objectContaining({ per_transaction_limit: 5000 })));
+  });
+
+  it('setting a cap where there was none only tightens, so it is ungated', async () => {
+    const input = await renderEnabledWithLimit(null);
+    fireEvent.change(input, { target: { value: '250' } });
+    fireEvent.click(limitSave());
+    await waitFor(() => expect(limitCreateMock).toHaveBeenCalledWith(expect.objectContaining({ currency: 'ALL', per_transaction_limit: 250, enabled: true })));
+    expect(twoFactorMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects junk without writing', async () => {
+    const input = await renderEnabledWithLimit({ id: 'l1', currency: 'ALL', enabled: true, per_transaction_limit: 500 });
+    for (const bad of ['', 'abc', '0', '-5']) {
+      fireEvent.change(input, { target: { value: bad } });
+      fireEvent.click(limitSave());
+      await waitFor(() => expect(screen.getByTestId('theft-protection-limit-note').textContent).toBeTruthy());
+      expect(limitUpdateMock).not.toHaveBeenCalled();
+      expect(twoFactorMock).not.toHaveBeenCalled();
+    }
+  });
+
+  it('picks the SMALLEST enabled ALL cap — the one that actually fires first', async () => {
+    const input = await renderEnabledWithLimit(null);
+    void input;
+    cleanup();
+    localStorage.setItem(THEFT_PROTECTION_KEY, '1');
+    limitListMock.mockResolvedValue([
+      { id: 'big', currency: 'ALL', enabled: true, per_transaction_limit: 9000 },
+      { id: 'small', currency: 'ALL', enabled: true, per_transaction_limit: 300 },
+    ]);
+    render(<TheftProtectionSettings />);
+    await waitFor(() => expect(limitInput().value).toBe('300'));
   });
 });
