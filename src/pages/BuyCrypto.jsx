@@ -39,6 +39,18 @@ import { useAdvisorSnapshot } from '@/lib/useAdvisorSnapshot';
 // are centralised (drift here fails CLOSED — a missed domain silently drops
 // TRANSAK_ORDER_SUCCESSFUL / TRANSAK_WIDGET_CLOSE and the widget never closes).
 
+// Hard ceiling on the lock-suppression window opened for the Transak hand-off
+// (see handleBuy). Long enough that a first-time KYC + 3DS run does not hit it,
+// short enough that a dropped browserFinished event cannot leave the wallet
+// unlocked indefinitely.
+//
+// ponytail: fixed bound, not an activity-aware one. A session genuinely longer
+// than this relocks and the user re-enters their PIN once on return — the
+// pre-fix behaviour, which is the correct thing to fall back to. If real orders
+// are seen exceeding it, extend the bound or drive it from Transak's own
+// order-status events rather than removing it.
+const BUY_LOCK_SUPPRESS_MAX_MS = 15 * 60 * 1000;
+
 const TRANSAK_NETWORK_MAP = {
   ETH:   'ethereum',
   MATIC: 'polygon',
@@ -58,7 +70,7 @@ export default function BuyCrypto() {
   const { t } = useTranslation('wallet');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { accounts, btcAccount, solAccount } = useWallet();
+  const { accounts, btcAccount, solAccount, withLockSuppressed } = useWallet();
 
   const preselected = searchParams.get('asset');
   const [selectedAsset, setSelectedAsset] = useState(
@@ -107,10 +119,72 @@ export default function BuyCrypto() {
       // src/lib/featureClassification.js:98. Return trip is handled by
       // the existing /buy/return universal link (DeepLinkHandler.jsx).
       if (Capacitor.isNativePlatform()) {
-        const listener = await Browser.addListener('browserFinished', () => {
-          listener.remove();
-        });
-        await Browser.open({ url });
+        // Owner ruling 2026-09-23: the Buy flow must not be interrupted — no
+        // PIN, no Face ID. Opening the system browser backgrounds the Capacitor
+        // WebView, which fires the appStateChange lock hook; the relock grace
+        // defaults to 0 (lib/relockGrace.js), so the wallet locked the moment
+        // Transak opened and the user returned mid-purchase to a PIN prompt.
+        //
+        // withLockSuppressed is the existing mechanism for a deliberate OS
+        // hand-off that backgrounds us — the Face ID sheet (WalletProvider),
+        // the file picker (RestoreFromFile) and passkey enrolment
+        // (PasskeySetup) all use it. Buy simply never did.
+        //
+        // SECURITY NOTE, stated rather than buried: those three uses each cover
+        // a ~2s interaction. A Transak session is minutes (card entry, KYC,
+        // 3DS), so the wallet stays unlocked behind an external browser for
+        // that whole time, including if the device is put down or handed over.
+        // That is a real reduction in protection and it is deliberate.
+        //
+        // I4: the window MUST close. Suppression that never ends is a wallet
+        // that never locks, which is strictly worse than the prompt it
+        // replaced. It is bounded twice — by browserFinished, and by a hard
+        // timeout for when that event never arrives (app killed, event
+        // dropped, listener registration rejected).
+        let endSuppression;
+        const handOff = new Promise((resolve) => { endSuppression = resolve; });
+
+        let settled = false;
+        let listener = null;
+        let timer = null;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          try { if (timer != null) clearTimeout(timer); } catch { /* ignore */ }
+          try { listener?.remove(); } catch { /* ignore */ }
+          endSuppression();
+        };
+
+        try {
+          timer = setTimeout(finish, BUY_LOCK_SUPPRESS_MAX_MS);
+        } catch {
+          // I4: no timer means no bound — refuse to open the window at all
+          // rather than open one that cannot be closed.
+          finish();
+        }
+
+        // NOT awaited: the suppression window has to outlive this handler,
+        // which returns as soon as the browser is open so the spinner clears.
+        // handOff never rejects, so the catch is belt-and-braces against a
+        // throwing suppression wrapper rather than an expected path.
+        void Promise.resolve(withLockSuppressed(() => handOff)).catch(() => {});
+
+        Browser.addListener('browserFinished', finish).then(
+          (l) => {
+            listener = l;
+            // Raced: browserFinished already fired (or the bound elapsed)
+            // before registration resolved. Drop the listener immediately.
+            if (settled) { try { l.remove(); } catch { /* ignore */ } }
+          },
+          finish,
+        );
+
+        try {
+          await Browser.open({ url });
+        } catch (openErr) {
+          finish();
+          throw openErr;
+        }
       } else {
         setWidgetUrl(url);
       }
