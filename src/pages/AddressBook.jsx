@@ -138,7 +138,7 @@ export default function AddressBook() {
 
       <div className="relative">
         <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input aria-label="Search contacts" placeholder="Search contacts..." className="ps-9" value={search} onChange={e => setSearch(e.target.value)} />
+        <Input aria-label="Search contacts" placeholder="Search contacts..." className="ps-9" maxLength={64} value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       <PageState
@@ -208,6 +208,8 @@ export default function AddressBook() {
                 id="contact-address"
                 className={`mt-1.5 font-mono text-xs ${showAddressError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                 placeholder="0x..."
+                // Boundary cap: longest valid is a 90-char bech32m BTC address.
+                maxLength={128}
                 value={form.address}
                 onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
                 aria-invalid={showAddressError}

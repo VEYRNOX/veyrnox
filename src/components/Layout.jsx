@@ -420,31 +420,48 @@ export default function Layout() {
 
         {/* Logo + Search */}
         <div className="flex flex-col border-b border-border">
-          <div className="flex items-center gap-3 px-4 py-4">
-            <VeyrnoxLogo size={34} className="shrink-0" />
-            {!collapsed && (
-              <div className="flex-1 min-w-0">
-                <VeyrnoxWordmark className="text-sm" />
-                <p className="text-xs text-muted-foreground tracking-widest uppercase">{t('nav.wallet_tagline')}</p>
-              </div>
-            )}
-            {/* RSP-03: these three sidebar header buttons must be >=44x44 CSS px
-                tap targets, same as the mobile header (~line 605-624). min-h/
-                min-w (rather than replacing h-9/w-9) so a smaller intrinsic size
-                is clamped up without fighting the base component's own sizing. */}
-            {!collapsed && <NotificationBell unseenCount={unseenCount} onOpen={openNotifications} className="min-h-[44px] min-w-[44px]" />}
-            <HelpMenu triggerClassName="p-1 hover:bg-secondary inline-flex items-center justify-center min-h-[44px] min-w-[44px]" />
-            <button
-              onClick={() => setCollapsed(c => !c)}
-              className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center min-h-[44px] min-w-[44px]"
-              title={collapsed ? t('nav.sidebar_expand') : t('nav.sidebar_collapse')}
-            >
-              {/* Icons mirror under dir="rtl" — the chevron points "forward" to
-                  expand and "backward" to collapse, both in reading direction. */}
-              {collapsed
-                ? <ChevronRight className="h-4 w-4 rtl:-scale-x-100" />
-                : <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" />}
-            </button>
+          {/* Brand and controls are DELIBERATELY on separate rows.
+              #2702 raised the three header controls to 44x44 for RSP-03 tap
+              targets, which is right, but left them sharing one row with the
+              logo and wordmark inside a 240px (md:w-60) sidebar:
+                34 logo + 3x44 buttons + 4x12 gaps = 214px of fixed content
+              against 208px of usable width (240 - px-4 either side). The
+              wordmark is flex-1 min-w-0, so it collapsed to zero and the
+              buttons drew straight over "VEYRNOX / WALLET". Collapsed
+              (md:w-16 = 64px, 32px usable) two 44px buttons escaped the aside
+              entirely and floated over the page content, covering "Back".
+              Keeping the 44px targets and giving them their own row fixes both
+              without trading away the accessibility fix. Collapsed uses px-2 so
+              a single 44px control still fits inside 64px. */}
+          <div className={`flex flex-col gap-2 py-4 ${collapsed ? 'px-2' : 'px-4'}`}>
+            <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
+              <VeyrnoxLogo size={34} className="shrink-0" />
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <VeyrnoxWordmark className="text-sm" />
+                  <p className="text-xs text-muted-foreground tracking-widest uppercase">{t('nav.wallet_tagline')}</p>
+                </div>
+              )}
+            </div>
+            {/* RSP-03: these sidebar header buttons must be >=44x44 CSS px tap
+                targets, same as the mobile header (~line 605-624). min-h/min-w
+                (rather than replacing h-9/w-9) so a smaller intrinsic size is
+                clamped up without fighting the base component's own sizing. */}
+            <div className={`flex items-center gap-1 ${collapsed ? 'flex-col' : 'justify-end'}`}>
+              {!collapsed && <NotificationBell unseenCount={unseenCount} onOpen={openNotifications} className="min-h-[44px] min-w-[44px]" />}
+              <HelpMenu triggerClassName="p-1 rounded-lg hover:bg-secondary inline-flex items-center justify-center min-h-[44px] min-w-[44px]" />
+              <button
+                onClick={() => setCollapsed(c => !c)}
+                className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center min-h-[44px] min-w-[44px]"
+                title={collapsed ? t('nav.sidebar_expand') : t('nav.sidebar_collapse')}
+              >
+                {/* Icons mirror under dir="rtl" — the chevron points "forward" to
+                    expand and "backward" to collapse, both in reading direction. */}
+                {collapsed
+                  ? <ChevronRight className="h-4 w-4 rtl:-scale-x-100" />
+                  : <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" />}
+              </button>
+            </div>
           </div>
           {!collapsed && (
             <button
