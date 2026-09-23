@@ -45,6 +45,40 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<!-- UIScene lifecycle (#2747). iOS/iPadOS 27 hard-traps an app linked
+	     against the iOS 27 SDK that has not adopted the scene lifecycle:
+	     __UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption raises
+	     EXC_BREAKPOINT at first scene creation. That killed 1.0.2 build 6 at
+	     review (Guideline 2.1(a), iPad15,3 / "iPhone OS 27.0 (24A437)").
+
+	     UIApplicationSupportsMultipleScenes stays FALSE deliberately: a second
+	     window would mean a second WebView over the same vault, with two bridges
+	     and two copies of unlocked state. Do not flip it without redesigning
+	     session ownership.
+
+	     The window, the RASP pre-WebView BLOCK screen and the app-switcher
+	     privacy cover all live in SceneDelegate — AppDelegate has no window
+	     under this lifecycle, so anything reaching through `window` there is a
+	     silent no-op. See ios/App/App/SceneDelegate.swift. -->
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>armv7</string>

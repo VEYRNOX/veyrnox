@@ -33,6 +33,7 @@
 		BBCCDD211FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD201FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift */; };
 		BBCCDD231FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD221FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m */; };
 		BBCCDD411FED79650016851F /* VeyrnoxOta.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD401FED79650016851F /* VeyrnoxOta.swift */; };
+		BBCCDD5B1FED79650016851F /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD5A1FED79650016851F /* SceneDelegate.swift */; };
 		BBCCDD431FED79650016851F /* VeyrnoxOtaPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD421FED79650016851F /* VeyrnoxOtaPluginBridge.m */; };
 		BBCCDD311FED79650016851F /* AppAttestPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD301FED79650016851F /* AppAttestPlugin.m */; };
 		BBCCDD341FED79650016851F /* AppAttestPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD331FED79650016851F /* AppAttestPluginBridge.m */; };
@@ -81,6 +82,7 @@
 		BBCCDD201FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VeyrnoxSpeechRecognitionPlugin.swift; sourceTree = "<group>"; };
 		BBCCDD221FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VeyrnoxSpeechRecognitionPluginBridge.m; sourceTree = "<group>"; };
 		BBCCDD401FED79650016851F /* VeyrnoxOta.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VeyrnoxOta.swift; sourceTree = "<group>"; };
+		BBCCDD5A1FED79650016851F /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		BBCCDD421FED79650016851F /* VeyrnoxOtaPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VeyrnoxOtaPluginBridge.m; sourceTree = "<group>"; };
 		BBCCDD301FED79650016851F /* AppAttestPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppAttestPlugin.m; sourceTree = "<group>"; };
 		BBCCDD321FED79650016851F /* AppAttestPlugin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppAttestPlugin.h; sourceTree = "<group>"; };
@@ -151,6 +153,7 @@
 				BBCCDD201FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift */,
 				BBCCDD221FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m */,
 				BBCCDD401FED79650016851F /* VeyrnoxOta.swift */,
+				BBCCDD5A1FED79650016851F /* SceneDelegate.swift */,
 				BBCCDD421FED79650016851F /* VeyrnoxOtaPluginBridge.m */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -341,6 +344,7 @@
 				BBCCDD211FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift in Sources */,
 				BBCCDD231FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m in Sources */,
 				BBCCDD411FED79650016851F /* VeyrnoxOta.swift in Sources */,
+				BBCCDD5B1FED79650016851F /* SceneDelegate.swift in Sources */,
 				BBCCDD431FED79650016851F /* VeyrnoxOtaPluginBridge.m in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 			);

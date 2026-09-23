@@ -7,15 +7,22 @@ import WebKit
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
-    var window: UIWindow?
+    // BLOCK-tier RASP verdict, computed pre-bridge at launch (below) and
+    // enforced by SceneDelegate.scene(_:willConnectTo:).
+    //
+    // Under the UIScene lifecycle (adopted for #2747) AppDelegate has no window,
+    // so the block screen cannot be installed from here — assigning a root view
+    // controller through it is a silent no-op and the scene would load the
+    // Capacitor WebView anyway, i.e. fail OPEN. The verdict is computed here, at the
+    // earliest possible moment and still before the bridge exists, and carried
+    // to the scene which owns the window. Enforcement lives in SceneDelegate.
+    static private(set) var raspBlocked = false
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Pre-WebView RASP gate: run BLOCK-tier checks (hookedProcess = dyld scan)
-        // before the Capacitor bridge initialises. If detection fires, replace
-        // rootViewController with a native block screen so the WebView never loads
-        // and there is no Capacitor bridge for an attacker to hook at this point.
-        if RaspIntegrityPlugin.earlyCheck() {
-            showNativeBlockScreen()
+        // before the Capacitor bridge initialises.
+        AppDelegate.raspBlocked = RaspIntegrityPlugin.earlyCheck()
+        if AppDelegate.raspBlocked {
             return true
         }
 
@@ -59,51 +66,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return true
     }
 
-    private func showNativeBlockScreen() {
-        let vc = UIViewController()
-        vc.view.backgroundColor = UIColor(red: 0.02, green: 0.024, blue: 0.031, alpha: 1)
-        let label = UILabel()
-        label.text = "Security Alert\n\nThis device has been modified in a way that cannot be verified as safe. Veyrnox cannot start."
-        label.textColor = .white
-        label.numberOfLines = 0
-        label.textAlignment = .center
-        label.font = UIFont.systemFont(ofSize: 16, weight: .regular)
-        label.translatesAutoresizingMaskIntoConstraints = false
-        vc.view.addSubview(label)
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: vc.view.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: vc.view.centerYAnchor),
-            label.leadingAnchor.constraint(equalTo: vc.view.leadingAnchor, constant: 32),
-            label.trailingAnchor.constraint(equalTo: vc.view.trailingAnchor, constant: -32),
-        ])
-        window?.rootViewController = vc
-        window?.makeKeyAndVisible()
-    }
-
-    // Audit 2026-09-21 M8: iOS snapshots the window for the app switcher when
-    // the app resigns active. Balances, addresses or a revealed phrase would
-    // otherwise persist in that snapshot. Cover the window with an opaque
-    // view until the app is active again. Android has FLAG_SECURE for this.
-    private var privacyCover: UIView?
-
-    func applicationWillResignActive(_ application: UIApplication) {
-        guard let window = window, privacyCover == nil else { return }
-        let cover = UIView(frame: window.bounds)
-        cover.backgroundColor = UIColor(red: 0.02, green: 0.024, blue: 0.031, alpha: 1)
-        cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        window.addSubview(cover)
-        privacyCover = cover
-    }
-
-    func applicationDidEnterBackground(_ application: UIApplication) {
-    }
-
-    func applicationWillEnterForeground(_ application: UIApplication) {
-    }
-
-    func applicationDidBecomeActive(_ application: UIApplication) {
-        privacyCover?.removeFromSuperview()
-        privacyCover = nil
+    // UIScene lifecycle (#2747). One scene role only; the app declares
+    // UIApplicationSupportsMultipleScenes = false in Info.plist because two
+    // windows would mean two WebViews over one vault.
+    func application(_ application: UIApplication,
+                     configurationForConnecting connectingSceneSession: UISceneSession,
+                     options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        return UISceneConfiguration(name: "Default Configuration",
+                                    sessionRole: connectingSceneSession.role)
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
@@ -116,9 +86,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // set (veyrnox://wc, https://veyrnox.com/wc, https://veyrnox.com/buy/return)
     // via extractWcUri + isVeyrnoxPairingUrl. This adds the native chokepoint
     // BEFORE the JS layer runs — a defence-in-depth position mirroring the
-    // WalletConnect + buy-return allowlist. Rejected URLs return `false` so
-    // the OS treats them as "app cannot handle" rather than opening a
-    // silently-ignored request.
+    // WalletConnect + buy-return allowlist. Rejected URLs are dropped.
+    //
+    // Under the UIScene lifecycle UIKit no longer calls
+    // application(_:open:options:) or application(_:continue:) — the equivalents
+    // arrive on SceneDelegate. The allowlist stays here as the single source of
+    // truth and SceneDelegate calls AppDelegate.isAllowedDeepLink before
+    // forwarding anything into Capacitor.
     private static let allowedSchemes: Set<String> = ["veyrnox", "https"]
     private static let allowedUniversalHosts: Set<String> = ["veyrnox.com"]
     // "/r" forwards referral share links (/r/VYX-XXXXXX, #2527). JS still
@@ -126,7 +100,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // Omitting it made the OS hand /r/* to the app and the app refuse it (#2540).
     private static let allowedUniversalPaths: [String] = ["/wc", "/wc/", "/buy/return", "/r"]
 
-    private static func isAllowedDeepLink(_ url: URL) -> Bool {
+    static func isAllowedDeepLink(_ url: URL) -> Bool {
         guard let scheme = url.scheme?.lowercased(), allowedSchemes.contains(scheme) else {
             return false
         }
@@ -145,20 +119,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         let path = url.path
         return AppDelegate.allowedUniversalPaths.contains { path == $0 || path.hasPrefix($0 + "?") || path.hasPrefix($0 + "/") }
-    }
-
-    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        guard AppDelegate.isAllowedDeepLink(url) else { return false }
-        return ApplicationDelegateProxy.shared.application(app, open: url, options: options)
-    }
-
-    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        // Universal links arrive as an NSUserActivity carrying the .webpageURL.
-        // Only forward when the URL passes the same allowlist as open(url).
-        if userActivity.activityType == NSUserActivityTypeBrowsingWeb {
-            guard let url = userActivity.webpageURL, AppDelegate.isAllowedDeepLink(url) else { return false }
-        }
-        return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
 }

@@ -326,9 +326,84 @@ describe('Pre-WebView native gate — iOS AppDelegate wiring', () => {
     expect(earlyIdx).toBeLessThan(returnIdx);
   });
 
-  it('AppDelegate replaces rootViewController on BLOCK to prevent bridge load', () => {
-    expect(appDelegate).toContain('rootViewController');
-    expect(appDelegate).toContain('showNativeBlockScreen');
+  it('AppDelegate carries the BLOCK verdict to the scene', () => {
+    // Under the UIScene lifecycle (#2747) AppDelegate has no window, so it
+    // cannot install the block screen itself. It must store the verdict.
+    expect(appDelegate).toContain('AppDelegate.raspBlocked = RaspIntegrityPlugin.earlyCheck()');
+    expect(appDelegate).toContain('static private(set) var raspBlocked');
+  });
+
+  it('AppDelegate does NOT try to block through its own window (fail-open trap)', () => {
+    // `AppDelegate.window` is nil once a scene manifest exists. Setting
+    // window?.rootViewController here is a silent no-op: the scene would then
+    // load the Capacitor WebView anyway and a detected hooked process would
+    // reach the wallet. Enforcement belongs in SceneDelegate.
+    expect(appDelegate).not.toContain('window?.rootViewController');
+    expect(appDelegate).not.toContain('var window: UIWindow?');
+  });
+});
+
+// ── 7b. Scene lifecycle — where the BLOCK is actually enforced ───────────────
+//
+// 1.0.2 build 6 was rejected under Guideline 2.1(a): iPadOS 27 raises
+// EXC_BREAKPOINT from __UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption
+// at first scene creation for an iOS 27 SDK build with no scene manifest. The
+// manifest is therefore load-bearing for launching at all, and the scene
+// delegate is load-bearing for the RASP gate and the privacy cover.
+
+const sceneDelegate = readFileSync(
+  resolve(root, 'ios/App/App/SceneDelegate.swift'),
+  'utf8',
+);
+const iosInfoPlist = readFileSync(
+  resolve(root, 'ios/App/App/Info.plist'),
+  'utf8',
+);
+
+describe('UIScene adoption — launch, and the gate that rides on it', () => {
+  it('Info.plist declares a scene manifest pointing at SceneDelegate', () => {
+    expect(iosInfoPlist).toContain('UIApplicationSceneManifest');
+    expect(iosInfoPlist).toContain('$(PRODUCT_MODULE_NAME).SceneDelegate');
+    expect(iosInfoPlist).toContain('UIWindowSceneSessionRoleApplication');
+  });
+
+  it('multiple scenes stay disabled — two WebViews over one vault', () => {
+    const m = iosInfoPlist.match(
+      /<key>UIApplicationSupportsMultipleScenes<\/key>\s*<(true|false)\/>/,
+    );
+    expect(m).not.toBeNull();
+    expect(m[1]).toBe('false');
+  });
+
+  it('SceneDelegate blocks on the RASP verdict before Capacitor sees the scene', () => {
+    expect(sceneDelegate).toContain('AppDelegate.raspBlocked');
+    expect(sceneDelegate).toContain('showNativeBlockScreen');
+    expect(sceneDelegate).toContain('rootViewController');
+    // The guard must return before the scene is handed to the Capacitor proxy,
+    // otherwise the bridge is created and the block screen is cosmetic.
+    const fnStart = sceneDelegate.indexOf('willConnectTo session');
+    expect(fnStart).toBeGreaterThan(-1);
+    const proxyIdx = sceneDelegate.indexOf('SceneDelegateProxy.shared.scene', fnStart);
+    const blockIdx = sceneDelegate.indexOf('showNativeBlockScreen(in: scene)', fnStart);
+    const returnIdx = sceneDelegate.indexOf('return', blockIdx);
+    expect(blockIdx).toBeGreaterThan(-1);
+    expect(blockIdx).toBeLessThan(proxyIdx);
+    expect(returnIdx).toBeLessThan(proxyIdx);
+  });
+
+  it('SceneDelegate keeps the app-switcher privacy cover (audit M8)', () => {
+    expect(sceneDelegate).toContain('sceneWillResignActive');
+    expect(sceneDelegate).toContain('sceneDidBecomeActive');
+    expect(sceneDelegate).toContain('privacyCover');
+  });
+
+  it('SceneDelegate filters deep links through the AppDelegate allowlist', () => {
+    // Scenes replace application(_:open:) / application(_:continue:); without
+    // this the WalletConnect, referral and buy-return links stop arriving, and
+    // without the allowlist the native chokepoint is gone.
+    expect(sceneDelegate).toContain('openURLContexts');
+    expect(sceneDelegate).toContain('AppDelegate.isAllowedDeepLink');
+    expect(sceneDelegate).toContain('scene(scene, continue: userActivity)');
   });
 });
 
