@@ -2178,6 +2178,14 @@ export default function SendCrypto() {
           <div className="flex gap-2 mt-1.5">
             <Input
               id="send-recipient"
+              // Boundary length cap. The longest thing this field legitimately
+              // holds is a bech32m BTC address (90 by BIP-173) or an ENS/SNS
+              // name; 128 clears both with room and stops a multi-KB paste ever
+              // reaching resolveENS or the validators. Not a security control
+              // on its own — toBaseUnits and the address validators remain
+              // authoritative — this is the "validate length at every boundary"
+              // rule applied where the untrusted string enters.
+              maxLength={128}
               value={ensName || toAddress}
               onChange={e => { const v = e.target.value; if (v.endsWith(".eth") || v.endsWith(".sol")) { setEnsName(v); setToAddress(""); setEnsResolved(null); } else { setEnsName(""); setToAddress(v); setEnsResolved(null); } }}
               onBlur={e => { setAddressTouched(true); resolveENS(e.target.value); }}
@@ -2377,6 +2385,15 @@ export default function SendCrypto() {
                   // way it does in crypto mode (MNY-04).
                   type="text"
                   inputMode="decimal"
+                  // Boundary length cap. A legitimate amount is short: the
+                  // widest real case is 18-decimal wei precision plus an
+                  // integer part, well inside 32. Deliberately generous enough
+                  // that it never truncates something a user meant to type, and
+                  // small enough that a multi-KB paste cannot reach
+                  // fiatDraftToCryptoAmount or toBaseUnits. The authoritative
+                  // rejection stays `isFormAmountWellFormed` + `toBaseUnits`;
+                  // this only bounds what enters (matches the "+1" fiat prefix).
+                  maxLength={33}
                   // Fiat mode keeps a fixed "$" in the value (fiatDisplay).
                   value={amountMode === 'fiat' ? fiatDisplay(fiatDraft) : amount}
                   onChange={e => {

@@ -567,6 +567,13 @@ export default function WalletAccessReset() {
           <textarea
             id="reset-seed-phrase"
             aria-label="Recovery seed phrase"
+            // Boundary length cap. The longest valid input is a 24-word BIP-39
+            // phrase; the longest English wordlist entry is 8 characters, so
+            // 24*(8+1) = 216 is the true ceiling. 512 leaves room for extra
+            // whitespace and non-English wordlists while still bounding what
+            // reaches the BIP-39 validator. Word/checksum validation remains
+            // authoritative — this only stops an unbounded paste.
+            maxLength={512}
             value={recPhrase}
             onChange={(e) => setRecPhrase(e.target.value)}
             rows={3}
@@ -607,6 +614,12 @@ export default function WalletAccessReset() {
           <PasswordInput
             id="reset-vault-password"
             className="mt-1.5"
+            // Boundary length cap. Argon2id accepts any length, and a long
+            // passphrase is exactly what this field should encourage, so the
+            // cap is deliberately high — 256 is far past any real passphrase
+            // while stopping a multi-MB paste from being fed to a 96 MiB
+            // memory-hard KDF. MIN_PW remains the security-relevant bound.
+            maxLength={256}
             value={recPw}
             onChange={(e) => setRecPw(e.target.value)}
             placeholder={`Encrypts your seed on this device — at least ${MIN_PW} characters`}

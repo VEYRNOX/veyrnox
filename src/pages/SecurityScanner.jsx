@@ -117,6 +117,11 @@ export default function SecurityScanner() {
             <textarea
               className="w-full h-24 text-xs font-mono p-2 rounded-lg bg-secondary border border-border resize-none focus:outline-none focus:ring-1 focus:ring-ring"
               placeholder="0xa9059cbb… (transfer) or 0x095ea7b3… (approve)"
+              // Boundary cap. Real calldata is hex and can be long (batched
+              // multicall), so this is deliberately generous; it only stops an
+              // unbounded paste reaching the decoder. The decoder still
+              // rejects anything malformed.
+              maxLength={16384}
               value={calldata}
               onChange={(e) => setCalldata(e.target.value)}
             />
@@ -124,11 +129,11 @@ export default function SecurityScanner() {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Token symbol (optional)</label>
-              <Input aria-label="Token symbol" value={tokenSymbol} onChange={(e) => setTokenSymbol(e.target.value)} placeholder="USDC" className="text-xs" />
+              <Input aria-label="Token symbol" maxLength={16} value={tokenSymbol} onChange={(e) => setTokenSymbol(e.target.value)} placeholder="USDC" className="text-xs" />
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Token decimals</label>
-              <Input aria-label="Token decimals" value={decimals} onChange={(e) => setDecimals(e.target.value)} placeholder="18" inputMode="numeric" className="text-xs" />
+              <Input aria-label="Token decimals" maxLength={2} value={decimals} onChange={(e) => setDecimals(e.target.value)} placeholder="18" inputMode="numeric" className="text-xs" />
             </div>
           </div>
           <Button className="w-full" onClick={handleScan} disabled={!calldata.trim()}>

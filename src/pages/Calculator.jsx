@@ -194,6 +194,9 @@ export default function Calculator() {
               <Input
                 type="text"
                 inputMode="decimal"
+                // Boundary cap: 18-decimal precision plus an integer part
+                // fits well inside 32. Converter maths stays authoritative.
+                maxLength={32}
                 value={cryptoAmount}
                 onChange={e => handleCryptoChange(e.target.value)}
                 placeholder="0.00"
@@ -256,6 +259,7 @@ export default function Calculator() {
               <Input
                 type="text"
                 inputMode="decimal"
+                maxLength={32}
                 value={fiatAmount}
                 onChange={e => handleFiatChange(e.target.value)}
                 placeholder="0.00"
