@@ -1,16 +1,23 @@
 # Veyrnox 1.0.2 — release notes and submission state
 
-Owner: Al Jobson. Last updated: 2026-09-22.
+Owner: Al Jobson. Last updated: 2026-09-23.
 
-**PLAY: SUBMITTED FOR REVIEW 2026-09-22. APPLE: NOT SUBMITTED.** Play production
-carries versionCode 56 as a 20% staged rollout, sent for review and awaiting
-Google's outcome — see "Play submission record" below. Apple has no 1.0.2
-version record yet; every row in "Outstanding before Apple submission" still
-stands. Every status tag below follows `CLAUDE.md`: BUILT (in code, tests
-green), TARGET, PLANNED, HONEST-DISABLED. Still not **verified** in this
-release: no on-chain txid and no independent audit. The owner's stock-device
-golden-path walkthrough was done on versionCode 56 and is owner-reported, not
-instrumented.
+**PLAY: LIVE 2026-09-23 — versionCode 57 at 100%. APPLE: NOT SUBMITTED.**
+Google approved versionCode 57 and the owner published it the same day; it is
+in front of the entire Play install base. **versionCode 56 never shipped** — it
+was submitted on 2026-09-22, then withdrawn from review on 2026-09-23 and
+replaced, because it predated fixes that reach Android. The full sequence is in
+"Play release record" below, and it is recorded rather than smoothed over,
+because a reader who sees only "1.0.2 shipped" would reasonably assume 56 was
+what shipped.
+
+Apple has no 1.0.2 version record yet; every row in "Outstanding before Apple
+submission" still stands. Every status tag below follows `CLAUDE.md`: BUILT (in
+code, tests green), TARGET, PLANNED, HONEST-DISABLED. Still not **verified** in
+this release: no on-chain txid and no independent audit. The owner's
+stock-device golden-path walkthrough was done on versionCode 57 and is
+owner-reported, not instrumented. Android Vitals has returned EMPTY on every
+read to date, so there is no crash telemetry behind this release.
 
 ---
 
@@ -19,17 +26,18 @@ instrumented.
 | | 1.0.1 (live) | 1.0.2 (this train) |
 |---|---|---|
 | Apple `MARKETING_VERSION` | 1.0.1 | 1.0.2 |
-| Apple `CURRENT_PROJECT_VERSION` | 59 (live) | 6 |
+| Apple `CURRENT_PROJECT_VERSION` | 59 (live) | 8 |
 | Play `versionName` | 1.0.1 | 1.0.2 |
-| Play `versionCode` | 48 (production) | 56 |
+| Play `versionCode` | 48 (was production) | **57 (live)** |
 
 Pinned by `src/__tests__/staging-mobile-release.test.js` — mutation-checked
-2026-09-19 (reverting any one value turns the pin red). The 1.0.2 column was
-50 / 62 when this file was written on 2026-09-19. Since then: Play took six
-further bumps (50→56, per `android/app/build.gradle` commit history). Apple's
-62 was NOT incremented — the counter was restarted at 1 for the 1.0.2 train and
-is now at 6 (see "Apple build numbers restart per train" below). The pin tracks
-the repo, so read the pin, not this table, if they disagree.
+2026-09-19 (reverting any one value turns the pin red; re-checked on the 56→57
+bump in #2754). The 1.0.2 column was 50 / 62 when this file was written on
+2026-09-19. Since then: Play took seven further bumps (50→57, per
+`android/app/build.gradle` commit history). Apple's 62 was NOT incremented —
+the counter was restarted at 1 for the 1.0.2 train and is now at 8 (see "Apple
+build numbers restart per train" below). This table has gone stale twice now;
+the pin tracks the repo, so read the pin, not this table, if they disagree.
 
 Apple build numbers restart per train, so 1.0.2's build 6 is not behind 1.0.1's
 build 59. Play's live production versionCode is **48**, not 49 — read from the
@@ -238,25 +246,66 @@ separate pass through the existing machine-translation convention described in
 "What's new" has no home in this repo and is console-only until the schema gains
 one.
 
-## Play submission record — 2026-09-22
+## Play release record — 56 submitted and withdrawn, 57 live
 
-Submitted to Google Play production review on 2026-09-22. Read back from the
-Play Developer API after submission, not from the console UI alone:
+Two production submissions happened in two days. Only the second shipped.
+
+### Final state, read from the Play Developer API on 2026-09-23
+
+Read back after publishing, not from the console UI alone:
 
 ```
-release: 1.0.2       codes ['56']  status inProgress  userFraction 0.2
-release: 48 (1.0.1)  codes ['48']  status completed
+production  1.0.2  codes ['57']  status completed  userFraction None
+internal    1.0.2  codes ['57']  status completed
+alpha       1.0.1  codes ['49']  status completed
 ```
 
-- **Promotion only.** versionCode 56 was already uploaded to the `internal`
-  track (sha256 `6d8859cf54fcb985ef494e56b2044aab269488e4ca09f28ada82db480bc4cb97`).
-  Nothing was rebuilt for this submission.
-- **Staged rollout 20%.** 48 stays `completed` and serves the remaining 80%.
-  Play reported 2 of 11 installs targeted, which is the only independent
-  confirmation that 20% took.
-- **Managed publishing is ON.** Google's approval does not put this live; a
-  human presses Publish. Submitted is not approved, and approved is not live.
-- **Outcome: not yet known.** Fill this line in when review returns.
+`status completed` with no `userFraction` is what 100% looks like. The public
+listing returned HTTP 200 in GB at the same time, and the console moved "Last
+published" from September 22 to September 23.
+
+**48 is gone from the production track.** Under a staged rollout the previous
+release stays `completed` and serves the remainder; at 100% it is replaced
+outright. So there is no release underneath 57 to fall back to, and no rollout
+percentage to dial down — reversing means a new versionCode and another review.
+
+### Timeline
+
+| When | What |
+|---|---|
+| 2026-09-22 | **56 submitted** to production review, 20% staged. Promotion only — 56 was already on `internal` (sha256 `6d8859cf…`), nothing rebuilt. |
+| 2026-09-22 | Quick checks passed; Google review began. |
+| 2026-09-23 | #2751 and #2753 merged. Both change shared `src/`, so both reach Android; 56 predates them. |
+| 2026-09-23 | **56 withdrawn** from review (#2754 bumped `versionCode` to 57). Its draft was discarded; 56's versionCode is permanently consumed and can never be re-uploaded. |
+| 2026-09-23 | 57 built by CI from `a4559997` and uploaded to `internal`. |
+| 2026-09-23 | Owner walked the golden path on 57 from Internal on a stock device. |
+| 2026-09-23 | **57 submitted** at 100%, approved by Google the same day, and published by the owner. |
+
+### Why 56 was replaced rather than left to ship
+
+56 predated two merges that change shared `src/` and therefore reach Android:
+
+- **#2751** — sidebar overflow and input boundary caps. (The UIScene half of
+  that PR fixes an iOS 1.0.2 build 6 launch crash and is iOS-only; the `src/`
+  half is not.)
+- **#2753** — adjustable Theft Protection spend limit, and removal of the
+  user-facing "Built" badge.
+
+Withdrawing cost 56 its place in the review queue and burned its versionCode.
+That was accepted deliberately: shipping a build known to be missing fixes, to
+100% of users, is the worse trade.
+
+### Rollout: 20% → 100%, and what that gave up
+
+56 was staged at 20% on the reasoning that Vitals is empty and the owner
+walkthrough was the only evidence, so a halt lever was worth having. 57 was
+submitted at **100%** at the owner's direction. The trade is stated plainly
+rather than implied: at 100% there is no halt lever, no staged ramp, and no
+previous release serving the remainder.
+
+**Managed publishing is ON**, and it did its job here — Google's approval parked
+the release in "ready to publish" and a human pressed Publish. Submitted is not
+approved, and approved is not live.
 
 ### Release notes as actually submitted
 
@@ -286,21 +335,28 @@ The 44 sibling locales are untouched and still read "Initial release." Play's
 "What's new" still has no home in `store-metadata/_schema.json`; these notes
 were entered in the console by hand.
 
-### Evidence, and what it is not
+### Evidence behind the live release, and what it is not
 
-- **Android Vitals re-read 2026-09-22: still EMPTY.** Crash rate, ANR rate and
-  error issues all return zero rows for 2026-08-24 → 2026-09-22 via
+- **The owner's stock-device walkthrough on versionCode 57 is the entire
+  evidence base.** Owner-reported, not instrumented. It is what the 100%
+  rollout rests on.
+- **Android Vitals: EMPTY on every read — 2026-09-19, 2026-09-22, 2026-09-23.**
+  Crash rate, ANR rate and error issues all return zero rows via
   `scripts/play-vitals.sh`. That is unmeasured, not clean, and it contributed
-  no signal to this decision. This is the second consecutive empty read.
-- **The owner's stock-device walkthrough on versionCode 56 is the entire
-  evidence base**, which is why the rollout is staged at 20% rather than 100%.
-- Play raised one warning on 56: download size 35.3 MB, up 9.06 MB on the
-  previous release. Informational, not blocking.
+  no signal to any decision in this release. With 57 now in front of the whole
+  install base, Vitals starting to return rows is the first real signal
+  available; an empty read tomorrow still means unmeasured.
+- Play raised one warning on 57: download size 35.3 MB, up 9.08 MB on the
+  previous release. Informational, not blocking. (The same warning on 56 read
+  9.06 MB.)
+- Play also raised three advisory recommendations against this train, none of
+  them review blockers: edge-to-edge (#2749, two of the three) and R8
+  optimization (#2750). #2749 records that `MainActivity` already calls
+  `EdgeToEdge.enable()` and Play flags it anyway, which falsifies the claim in
+  that call's own code comment.
 - A store-listing change (app name → "Veyrnox: Self-Custody Wallet") published
-  during this session. It was approved and sitting in "ready to publish" before
-  the release was staged, and it was **not** part of this review submission —
-  Play keeps the two queues separate. Who or what pressed Publish was not
-  established.
+  on 2026-09-22, separately from either release submission — Play keeps the two
+  queues apart. Who or what pressed Publish was not established.
 
 ### Why this went through the console
 
@@ -311,23 +367,33 @@ edit and stage a production release over the API, but `edits:validate` and
 rights, not "Release to production". Granting that scope, or keeping production
 a deliberate console-only gate, is an owner decision that has not been made.
 
+A second gate sits earlier in the same path: CI's `android-release` and
+`publish-to-play-internal` jobs both run under the `Production` GitHub
+environment, which requires a human approval before the AAB is even built. Both
+approvals were given by the owner for the 57 build. Worth knowing because the
+run sits silently in `waiting` until someone acts, and it looks like a stall.
+
 ## Outstanding before Apple submission
 
-Play is done (submitted, see "Play submission record" above); every item below
-is Apple-only unless noted.
+Play is done — **shipped and live at 100%**, see "Play release record" above;
+every item below is Apple-only unless noted.
 
 1. **The pre-submission checklist in `CLAUDE.md` applies in full.** It was not
    retired after the 1.0.1 submission; it is the standard for the next
    submission of any build to either store.
 2. **Owner stock-device walkthrough (row 3) is the sole automated-gate
-   substitute.** *(Play: done on versionCode 56, 2026-09-22, owner-reported.)* Play Pre-launch report was waived 2026-09-04 (#1960) and the
+   substitute.** *(Play: done on versionCode 56 on 2026-09-22 and again on
+   versionCode 57 on 2026-09-23, both owner-reported. The 56 attestation was
+   NOT carried over to 57 — 57 is a different binary, so it was walked on its
+   own.)* Play Pre-launch report was waived 2026-09-04 (#1960) and the
    Firebase Test Lab Robo substitute was waived 2026-09-10 as accepted residual.
    FTL runs are advisory only.
 
-   **Android Vitals: EMPTY on both reads.** 2026-09-19 covered 2026-07-01 →
-   2026-09-18; 2026-09-22 covered 2026-08-24 → 2026-09-22 (see "Evidence, and
-   what it is not" above). Every Reporting API metric set — crash rate, ANR
-   rate, error counts, error issues — returned zero rows both times. That is
+   **Android Vitals: EMPTY on all three reads.** 2026-09-19 covered 2026-07-01
+   → 2026-09-18; 2026-09-22 and 2026-09-23 covered 2026-08-24 → 2026-09-22/23
+   (see "Evidence behind the live release" above). Every Reporting API metric
+   set — crash rate, ANR rate, error counts, error issues — returned zero rows
+   every time. That is
    not a clean bill of health; Vitals fills only from installs that opted into
    Usage & diagnostics, and Play suppresses below-threshold metrics. So Vitals
    has contributed **no signal** to any 1.0.2 decision, and row 3 remains the
