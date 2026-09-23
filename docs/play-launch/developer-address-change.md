@@ -1,9 +1,39 @@
 # Changing the Veyrnox developer address on Google Play
 
-Owner: Al Jobson. Written 2026-09-23.
+Owner: Al Jobson. Written 2026-09-23, **corrected the same day after doing it.**
 
-**The address cannot be changed in Play Console.** That is the whole reason this
-file exists. Play Console's *Developer account → About you → Organization
+## Done 2026-09-23 — and it took one click, not a four-step chain
+
+The address is now `SUITE RA01, 195-197 WOOD STREET, LONDON - E17 3NU`,
+confirmed in Play Console's Organization details.
+
+**Check this first, before anything below.** Google Payments Center →
+Settings → Payments profile → scroll to ORGANIZATION ADDRESS → **"Change
+address"**. If Dun & Bradstreet has already been updated, that link opens a
+*Confirm your D-U-N-S info* screen showing the old and new addresses side by
+side, and one **Confirm** adopts the D&B record across every Google service
+that reads the payments profile — invoices, tax documents, and the developer
+profile Play renders.
+
+That is exactly what happened here. D&B had already been updated; Google was
+holding the change pending confirmation. The rest of this file describes the
+path for when that is *not* the case.
+
+Two mistakes worth recording, because both cost time:
+
+- **There is no pencil icon next to ORGANIZATION ADDRESS.** The edit affordance
+  is a "Change address" text link *below* the address block. Reading the field
+  header and concluding it is read-only is wrong — scroll.
+- **The Android developer verification deadline is not a reason to defer.**
+  Verification for this account completed 2026-07-13 (both package names
+  registered, Package names tab). The Sep 30 notice in the console is a general
+  announcement, not an outstanding action.
+
+---
+
+## If D&B has NOT been updated
+
+**The address still cannot be typed directly into Play Console.** Play Console's *Developer account → About you → Organization
 details* renders the address read-only and states its source:
 
 > Your organization name, address, and D-U-N-S number are taken from the Google
@@ -65,18 +95,16 @@ Account owner        : support@veyrnox.com
 Website (verified)   : https://veyrnox.com/
 ```
 
-## Timing risk — read before starting
+## Timing risk — smaller than it looks
 
-Play Console is showing a notice dated 2026-09-08:
+Developer verification reads this identity record (*Android developer
+verification → Identity*: "Your legal name and address are taken from your Play
+Console developer account"), so the two are linked.
 
-> Ensure your apps are registered for Android developer verification by
-> **Sep 30, 2026**
-
-Developer verification checks the organization identity record. Putting that
-record mid-change across three systems in the week before the deadline risks
-pushing verification into review, which is a worse outcome than a stale address
-on a listing. Either complete the chain well before the deadline, or start it
-after verification has cleared.
+But verification for this account **already completed on 2026-07-13** — both
+`com.veyrnox.app` and `veyrnox.app` show Registered. The Sep 30 notice is the
+general announcement to all developers, not a pending action here. Confirming a
+D&B-sourced address change did not disturb it.
 
 ## What the stale address currently affects
 
