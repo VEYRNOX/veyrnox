@@ -107,25 +107,39 @@ describe('Documentation page — restored honesty caveats (S-1)', () => {
     expect(page).not.toContain('your balances, addresses, and seed phrase are never sent');
   });
 
-  // SET-03: VERIFIED and BUILT used to both render "LIVE" (2026-08-25), so a
-  // code-complete-but-unverified feature read identically to an on-chain
-  // one — contradicting CLAUDE.md's "Verify, don't assert" rule. BUILT now
-  // gets its own "Built" label; the evidence gate in featureCatalogue.js
-  // (STATUS.VERIFIED only resolves via a real txid in
-  // docs/verified-evidence.json) is unchanged, and the distinction is once
-  // again surfaced on screen.
-  it('status legend explains the Live and Built labels and disclaims independent review', () => {
+  // SET-03 (revised 2026-09-23, owner decision): the user-facing badge is now
+  // binary — Live or Roadmap. A separate amber "Built" badge sat next to
+  // features the user can open and use, and read as "we are not sure this
+  // works"; the label meant to convey rigour was costing confidence on
+  // features that do work.
+  //
+  // What did NOT change: the three-state model itself. STATUS.BUILT still
+  // exists, resolveStatus() still downgrades an unbacked `verified` to
+  // `built`, and the evidence gate (STATUS.VERIFIED only resolves via a real
+  // txid in docs/verified-evidence.json) is untouched — so the audit trail and
+  // internal tooling still tell on-chain-confirmed from code-complete. Only the
+  // presentation folded. The independent-review disclaimer stays on screen,
+  // because that is the claim a user could actually be misled by.
+  it('status legend is binary and still disclaims independent review', () => {
     expect(page).toContain('<b>Live</b>');
-    expect(page).toContain('<b>Built</b>');
-    expect(page).toContain('a real on-chain transaction has confirmed it works');
-    expect(page).toContain('on-device verification is still pending');
+    expect(page).toContain('<b>Roadmap</b>');
     expect(page).toContain('not an independent security review');
   });
 
-  it('Live and Built are rendered as two distinct badge labels, not the same one', () => {
+  it('no "Built" badge is shown to the user', () => {
     const src = read('pages/Documentation.jsx');
-    expect(src).toMatch(/\[STATUS\.VERIFIED\]:\s*\{\s*label:\s*"Live"/);
-    expect(src).toMatch(/\[STATUS\.BUILT\]:\s*\{\s*label:\s*"Built"/);
+    // BUILT maps to the same label as VERIFIED; neither the badge map nor the
+    // count row may reintroduce a user-visible "Built".
+    expect(src).toMatch(/\[STATUS\.BUILT\]:\s*\{\s*label:\s*"Live"/);
+    expect(src).not.toMatch(/label:\s*"Built"/);
+    expect(src).not.toMatch(/\{builtCount\}\s*Built/);
+  });
+
+  it('the evidence gate behind the model is still intact', () => {
+    // Folding the badge must not become an excuse to drop the gate: an
+    // unbacked `verified` must still resolve to `built` internally.
+    const cat = read('lib/featureCatalogue.js');
+    expect(cat).toContain('verifiedNames.has(evidenceKey) ? STATUS.VERIFIED : STATUS.BUILT');
   });
 });
 

@@ -16,9 +16,13 @@
 // must not be able to opt in — the setting can only be turned off from inside
 // the unlocked wallet. Switching OFF is never gated.
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ShieldAlert } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { useActionGuard } from '@/components/security/useActionGuard';
 import {
   isTheftProtectionEnabled,
   setTheftProtectionEnabled,
@@ -67,6 +71,43 @@ async function seedDefaultSpendLimit() {
   }
 }
 
+/**
+ * Read the spend-limit row Theft Protection's send-side leg actually rides on.
+ *
+ * evaluateSendAgainstLimits() blocks if ANY matching limit is breached, so the
+ * row that matters for the currency-agnostic cap is the enabled `ALL` one. If a
+ * user has several, the SMALLEST per-transaction cap is the one that will fire
+ * first — showing anything else here would display a number that never gates.
+ * Returns null when there is nothing to edit yet.
+ */
+async function loadTheftProtectionLimit() {
+  try {
+    const { base44 } = await import('@/api/base44Client');
+    const rows = await base44.entities.TransactionLimit.list();
+    if (!Array.isArray(rows)) return null;
+    const candidates = rows.filter(
+      (r) => r && r.enabled && (r.currency === 'ALL' || !r.currency) && r.per_transaction_limit != null,
+    );
+    if (candidates.length === 0) return null;
+    return candidates.reduce((a, b) =>
+      Number(b.per_transaction_limit) < Number(a.per_transaction_limit) ? b : a,
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Positive, finite, and inside a range a real cap can occupy. */
+export function parseSpendLimitInput(raw) {
+  const trimmed = String(raw ?? '').trim().replace(/[$,\s]/g, '');
+  if (trimmed === '') return { ok: false, reason: 'Enter an amount.' };
+  const n = Number(trimmed);
+  if (!Number.isFinite(n)) return { ok: false, reason: 'Enter a plain number, like 500.' };
+  if (n <= 0) return { ok: false, reason: 'The limit must be more than $0.' };
+  if (n > 1_000_000_000) return { ok: false, reason: 'That limit is too large.' };
+  return { ok: true, value: n };
+}
+
 const UNSUPPORTED_COPY = {
   'not-native': 'Theft Protection needs the Veyrnox app on iPhone or Android.',
   'no-biometric': 'Set up Face ID, face unlock or a fingerprint in your device settings first.',
@@ -78,6 +119,26 @@ export default function TheftProtectionSettings() {
   const [checking, setChecking] = useState(false);
   const [note, setNote] = useState('');
   const [noteIsError, setNoteIsError] = useState(true);
+  // The cap that Theft Protection's send-side leg rides on, surfaced HERE so it
+  // is adjustable where the feature that depends on it lives. It is the same
+  // TransactionLimit row Security Center → Spend Limits edits; this is a second
+  // door onto one value, not a second setting.
+  const [limitRow, setLimitRow] = useState(/** @type {any} */ (null));
+  const [draft, setDraft] = useState('');
+  const [savingLimit, setSavingLimit] = useState(false);
+  const [limitNote, setLimitNote] = useState('');
+  const [limitNoteIsError, setLimitNoteIsError] = useState(true);
+  const { requireTwoFactor, gateModal } = useActionGuard();
+
+  const refreshLimit = useCallback(async () => {
+    const row = await loadTheftProtectionLimit();
+    setLimitRow(row);
+    setDraft(row?.per_transaction_limit != null ? String(row.per_transaction_limit) : '');
+  }, []);
+
+  useEffect(() => {
+    if (on) void refreshLimit();
+  }, [on, refreshLimit]);
 
   const toggle = async (next) => {
     setNote('');
@@ -129,8 +190,76 @@ export default function TheftProtectionSettings() {
     }
   };
 
+  const saveLimit = async () => {
+    setLimitNote('');
+    setLimitNoteIsError(true);
+    const parsed = parseSpendLimitInput(draft);
+    if (!parsed.ok) {
+      setLimitNote(parsed.reason);
+      return;
+    }
+    const next = parsed.value;
+    const current =
+      limitRow?.per_transaction_limit != null ? Number(limitRow.per_transaction_limit) : null;
+    if (current != null && next === current) {
+      setLimitNoteIsError(false);
+      setLimitNote(`Already set to $${next.toLocaleString()}.`);
+      return;
+    }
+
+    const write = async () => {
+      setSavingLimit(true);
+      try {
+        const { base44 } = await import('@/api/base44Client');
+        if (limitRow?.id) {
+          await base44.entities.TransactionLimit.update(limitRow.id, {
+            per_transaction_limit: next,
+            enabled: true,
+          });
+        } else {
+          await base44.entities.TransactionLimit.create({
+            currency: 'ALL',
+            daily_limit: null,
+            per_transaction_limit: next,
+            enabled: true,
+          });
+        }
+        await refreshLimit();
+        setLimitNoteIsError(false);
+        setLimitNote(`Limit set to $${next.toLocaleString()}.`);
+      } catch {
+        setLimitNote('Could not save that limit. Try again.');
+      } finally {
+        setSavingLimit(false);
+      }
+    };
+
+    // Same rule as SecurityCenter.guardLoosening: only a change that can LOOSEN
+    // the cap is gated. Raising the number lets more value through without a
+    // biometric, so it needs the biometric first; lowering it (or setting one
+    // where there was none) only tightens and stays ungated. Without this split
+    // this field would be a way to raise the cap from an unlocked phone and
+    // then send freely — exactly the hole guardLoosening closes.
+    const loosening = current != null && next > current;
+    if (!loosening) {
+      await write();
+      return;
+    }
+    if (isTheftProtectionEnabled()) {
+      try {
+        const { supported } = await getTheftProtectionSupport();
+        if (supported) await runTheftProtectionGate({ isPrimary: !isDeniabilityOrDemoActive() });
+      } catch (err) {
+        setLimitNote(theftProtectionMessage(err));
+        return;
+      }
+    }
+    requireTwoFactor(() => { void write(); }, { title: 'Raise spend limit' });
+  };
+
   return (
     <div>
+      {gateModal}
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -140,14 +269,12 @@ export default function TheftProtectionSettings() {
           <p className="text-sm text-muted-foreground mt-1">
             After your PIN, ask the OS for Face on iOS or a strong biometric on
             Android before opening the wallet. Falls back to a closed unlock if
-            the check fails or the device looks compromised (BUILT — not
-            device-verified).
+            the check fails or the device looks compromised.
           </p>
           <p className="text-xs text-muted-foreground/80 mt-1">
             Turning this on also adds a $500 per-transaction limit if you have
             none, so an over-limit send needs the same biometric check before it
-            can sign. Change or remove that limit any time in Security Center →
-            Spend Limits.
+            can sign.
           </p>
         </div>
         <Switch
@@ -166,6 +293,65 @@ export default function TheftProtectionSettings() {
         >
           {note}
         </p>
+      )}
+
+      {/* The cap lives here, next to the feature that depends on it. It was
+          previously only reachable through Security Center → Spend Limits,
+          which is a different screen behind a tab — so the number that decides
+          when Theft Protection challenges a send was effectively unfindable
+          from the toggle that turns it on. Same underlying TransactionLimit
+          row; editing either place edits the one value. */}
+      {on && (
+        <div className="mt-4 rounded-lg border border-border p-3">
+          <Label htmlFor="theft-protection-spend-limit" className="text-sm font-medium">
+            Ask for the biometric above
+          </Label>
+          <p className="text-xs text-muted-foreground mt-1">
+            A send worth more than this needs the Theft Protection check before it
+            can sign. Raising it asks for the biometric first; lowering it does not.
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <div className="relative flex-1 min-w-0">
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-muted-foreground"
+              >
+                $
+              </span>
+              <Input
+                id="theft-protection-spend-limit"
+                className="ps-6 mono-value"
+                inputMode="decimal"
+                maxLength={16}
+                placeholder={String(DEFAULT_THEFT_PROTECTION_PER_TX_USD)}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                disabled={savingLimit}
+                aria-describedby="theft-protection-spend-limit-note"
+                data-testid="theft-protection-limit-input"
+              />
+            </div>
+            <Button
+              type="button"
+              onClick={saveLimit}
+              disabled={savingLimit}
+              data-testid="theft-protection-limit-save"
+            >
+              {savingLimit ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+          <p
+            id="theft-protection-spend-limit-note"
+            role="status"
+            className={`text-xs mt-2 ${limitNoteIsError ? 'text-destructive' : 'text-muted-foreground'}`}
+            data-testid="theft-protection-limit-note"
+          >
+            {limitNote ||
+              (limitRow
+                ? 'Also editable in Security Center → Spend Limits.'
+                : 'No limit set yet — sends are not challenged by amount.')}
+          </p>
+        </div>
       )}
     </div>
   );
