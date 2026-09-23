@@ -1,12 +1,16 @@
 # Veyrnox 1.0.2 — release notes and submission state
 
-Owner: Al Jobson. Last updated: 2026-09-19.
+Owner: Al Jobson. Last updated: 2026-09-22.
 
-**NOT SUBMITTED.** This file is written at the point the version numbers were
-bumped. Nothing here has been archived, uploaded, or reviewed. Every status tag
-below follows `CLAUDE.md`: BUILT (in code, tests green), TARGET, PLANNED,
-HONEST-DISABLED. Nothing in this release is **verified** — no on-chain txid, no
-real-device walkthrough of the 1.0.2 build, no independent audit.
+**PLAY: SUBMITTED FOR REVIEW 2026-09-22. APPLE: NOT SUBMITTED.** Play production
+carries versionCode 56 as a 20% staged rollout, sent for review and awaiting
+Google's outcome — see "Play submission record" below. Apple has no 1.0.2
+version record yet; every Apple row in "Outstanding before submission" still
+stands. Every status tag below follows `CLAUDE.md`: BUILT (in code, tests
+green), TARGET, PLANNED, HONEST-DISABLED. Still not **verified** in this
+release: no on-chain txid and no independent audit. The owner's stock-device
+golden-path walkthrough was done on versionCode 56 and is owner-reported, not
+instrumented.
 
 ---
 
@@ -15,12 +19,20 @@ real-device walkthrough of the 1.0.2 build, no independent audit.
 | | 1.0.1 (live) | 1.0.2 (this train) |
 |---|---|---|
 | Apple `MARKETING_VERSION` | 1.0.1 | 1.0.2 |
-| Apple `CURRENT_PROJECT_VERSION` | 59 (live) / 61 (repo) | 62 |
+| Apple `CURRENT_PROJECT_VERSION` | 59 (live) | 6 |
 | Play `versionName` | 1.0.1 | 1.0.2 |
-| Play `versionCode` | 49 | 50 |
+| Play `versionCode` | 48 (production) | 56 |
 
 Pinned by `src/__tests__/staging-mobile-release.test.js` — mutation-checked
-2026-09-19 (reverting any one value turns the pin red).
+2026-09-19 (reverting any one value turns the pin red). The 1.0.2 column was
+50 / 62 when this file was written on 2026-09-19; five further builds followed,
+and the pin tracks the repo, so read the pin, not this table, if they disagree.
+
+Apple build numbers restart per train, so 1.0.2's build 6 is not behind 1.0.1's
+build 59. Play's live production versionCode is **48**, not 49 — read from the
+Play Developer API on 2026-09-22. 49 reached the `alpha` track only, which is
+what the 2026-09-19 draft of this file could not distinguish from a public page
+read.
 
 ## Baseline — what 1.0.1 actually is
 
@@ -223,17 +235,90 @@ separate pass through the existing machine-translation convention described in
 "What's new" has no home in this repo and is console-only until the schema gains
 one.
 
+## Play submission record — 2026-09-22
+
+Submitted to Google Play production review on 2026-09-22. Read back from the
+Play Developer API after submission, not from the console UI alone:
+
+```
+release: 1.0.2       codes ['56']  status inProgress  userFraction 0.2
+release: 48 (1.0.1)  codes ['48']  status completed
+```
+
+- **Promotion only.** versionCode 56 was already uploaded to the `internal`
+  track (sha256 `6d8859cf54fcb985ef494e56b2044aab269488e4ca09f28ada82db480bc4cb97`).
+  Nothing was rebuilt for this submission.
+- **Staged rollout 20%.** 48 stays `completed` and serves the remaining 80%.
+  Play reported 2 of 11 installs targeted, which is the only independent
+  confirmation that 20% took.
+- **Managed publishing is ON.** Google's approval does not put this live; a
+  human presses Publish. Submitted is not approved, and approved is not live.
+- **Outcome: not yet known.** Fill this line in when review returns.
+
+### Release notes as actually submitted
+
+The English notes were written for Apple at 1084 characters. **Play caps
+`releaseNotes` at 500**, so the submitted Play text is a 486-character rewrite,
+not the Apple copy:
+
+> Theft Protection (optional)
+> An extra biometric check on unlock, on a send over your spend limit, and to
+> loosen or turn off that limit. Android accepts any strong biometric; no API
+> can require face alone, so we do not claim it does.
+>
+> Clearer approvals
+> A WalletConnect spend approval now names the token, the spender and whether
+> the amount is unlimited.
+>
+> Also: referral codes survive install, Redeem Code and Manage Subscription
+> open, and the send screen says a transfer cannot be undone.
+
+Two deliberate cuts. The iOS referral instructions ("Copy code & get it on the
+App Store") are gone: Android captures the code through Play Install Referrer
+with no user steps, and naming another app store inside a Play listing is a
+policy risk. The Android biometric asymmetry is kept in full, because dropping
+it for length would have turned an honest limitation into an implied claim.
+
+The 44 sibling locales are untouched and still read "Initial release." Play's
+"What's new" still has no home in `store-metadata/_schema.json`; these notes
+were entered in the console by hand.
+
+### Evidence, and what it is not
+
+- **Android Vitals re-read 2026-09-22: still EMPTY.** Crash rate, ANR rate and
+  error issues all return zero rows for 2026-08-24 → 2026-09-22 via
+  `scripts/play-vitals.sh`. That is unmeasured, not clean, and it contributed
+  no signal to this decision. This is the second consecutive empty read.
+- **The owner's stock-device walkthrough on versionCode 56 is the entire
+  evidence base**, which is why the rollout is staged at 20% rather than 100%.
+- Play raised one warning on 56: download size 35.3 MB, up 9.06 MB on the
+  previous release. Informational, not blocking.
+- A store-listing change (app name → "Veyrnox: Self-Custody Wallet") published
+  during this session. It was approved and sitting in "ready to publish" before
+  the release was staged, and it was **not** part of this review submission —
+  Play keeps the two queues separate. Who or what pressed Publish was not
+  established.
+
+### Why this went through the console
+
+`android/fastlane/Fastfile` has no production lane. The service account
+`github-actions-testlab@veyrnox-wallet.iam.gserviceaccount.com` can open an
+edit and stage a production release over the API, but `edits:validate` and
+`edits:commit` return `403 PERMISSION_DENIED` — it holds upload and testing
+rights, not "Release to production". Granting that scope, or keeping production
+a deliberate console-only gate, is an owner decision that has not been made.
+
 ## Outstanding before submission
 
 1. **The pre-submission checklist in `CLAUDE.md` applies in full.** It was not
    retired after the 1.0.1 submission; it is the standard for the next
    submission of any build to either store.
 2. **Owner stock-device walkthrough (row 5) is the sole automated-gate
-   substitute.** Play Pre-launch report was waived 2026-09-04 (#1960) and the
+   substitute.** *(Play: done on versionCode 56, 2026-09-22, owner-reported.)* Play Pre-launch report was waived 2026-09-04 (#1960) and the
    Firebase Test Lab Robo substitute was waived 2026-09-10 as accepted residual.
    FTL runs are advisory only.
 
-   **Android Vitals read 2026-09-19: EMPTY.** Every Reporting API metric set —
+   **Android Vitals read 2026-09-19 and again 2026-09-22: EMPTY both times.** Every Reporting API metric set —
    crash rate, ANR rate, error counts, error issues — returns zero rows for
    2026-07-01 → 2026-09-18. That is not a clean bill of health; Vitals fills only
    from installs that opted into Usage & diagnostics, and Play suppresses
