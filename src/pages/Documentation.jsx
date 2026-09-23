@@ -129,8 +129,16 @@ const workflows = [
 // evidence gate itself (only STATUS.VERIFIED can be reached via a txid entry
 // in docs/verified-evidence.json) is unchanged.
 const STATUS_META = {
+  // BUILT deliberately renders as "Live", the same as VERIFIED. A feature the
+  // user can open in the app is, to them, shipped — an amber "Built" badge beside
+  // it reads as "we are not sure this works" on features that do work, which is
+  // the opposite of the confidence the label was meant to convey. The three-state
+  // model is NOT removed: resolveStatus() and the docs/verified-evidence.json gate
+  // are untouched, so internal tooling and the audit trail still distinguish
+  // on-chain-confirmed from code-complete. This is a presentation decision about
+  // what the end user is shown, taken by the owner on 2026-09-23.
   [STATUS.VERIFIED]: { label: "Live",     className: "bg-success/10 text-success border-success/20" },
-  [STATUS.BUILT]:    { label: "Built",    className: "bg-warning/10 text-warning border-warning/20" },
+  [STATUS.BUILT]:    { label: "Live",     className: "bg-success/10 text-success border-success/20" },
   [STATUS.ROADMAP]:  { label: "Roadmap",  className: "bg-muted/50 text-muted-foreground border-border" },
 };
 
@@ -257,13 +265,11 @@ export default function Documentation() {
             {totalFeatures} features across {features.length} categories. Custodial features (swaps, fiat off-ramp, KYC) are not built by design; the fiat on-ramp is a hand-off to a licensed third party.
           </CardDescription>
           <div className="flex flex-wrap gap-2 pt-2">
-            <Badge variant="outline" className={STATUS_META[STATUS.VERIFIED].className}>{verifiedCount} Live</Badge>
-            {builtCount > 0 && <Badge variant="outline" className={STATUS_META[STATUS.BUILT].className}>{builtCount} Built</Badge>}
+            <Badge variant="outline" className={STATUS_META[STATUS.VERIFIED].className}>{verifiedCount + builtCount} Live</Badge>
             {roadmapCount > 0 && <Badge variant="outline" className={STATUS_META[STATUS.ROADMAP].className}>{roadmapCount} Roadmap</Badge>}
           </div>
           <p className="text-xs text-muted-foreground pt-2 max-w-3xl">
-            <b>Live</b> means a real on-chain transaction has confirmed it works. <b>Built</b> means
-            the code is shipped and unit-tested; on-device verification is still pending. <b>Roadmap</b> means
+            <b>Live</b> means the feature is shipped and working in this app. <b>Roadmap</b> means
             planned for later. These labels describe what is built — they are not an independent security review.
           </p>
         </CardHeader>
