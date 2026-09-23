@@ -5,7 +5,7 @@ Owner: Al Jobson. Last updated: 2026-09-22.
 **PLAY: SUBMITTED FOR REVIEW 2026-09-22. APPLE: NOT SUBMITTED.** Play production
 carries versionCode 56 as a 20% staged rollout, sent for review and awaiting
 Google's outcome — see "Play submission record" below. Apple has no 1.0.2
-version record yet; every Apple row in "Outstanding before submission" still
+version record yet; every row in "Outstanding before Apple submission" still
 stands. Every status tag below follows `CLAUDE.md`: BUILT (in code, tests
 green), TARGET, PLANNED, HONEST-DISABLED. Still not **verified** in this
 release: no on-chain txid and no independent audit. The owner's stock-device
@@ -25,8 +25,11 @@ instrumented.
 
 Pinned by `src/__tests__/staging-mobile-release.test.js` — mutation-checked
 2026-09-19 (reverting any one value turns the pin red). The 1.0.2 column was
-50 / 62 when this file was written on 2026-09-19; five further builds followed,
-and the pin tracks the repo, so read the pin, not this table, if they disagree.
+50 / 62 when this file was written on 2026-09-19. Since then: Play took six
+further bumps (50→56, per `android/app/build.gradle` commit history). Apple's
+62 was NOT incremented — the counter was restarted at 1 for the 1.0.2 train and
+is now at 6 (see "Apple build numbers restart per train" below). The pin tracks
+the repo, so read the pin, not this table, if they disagree.
 
 Apple build numbers restart per train, so 1.0.2's build 6 is not behind 1.0.1's
 build 59. Play's live production versionCode is **48**, not 49 — read from the
@@ -308,24 +311,29 @@ edit and stage a production release over the API, but `edits:validate` and
 rights, not "Release to production". Granting that scope, or keeping production
 a deliberate console-only gate, is an owner decision that has not been made.
 
-## Outstanding before submission
+## Outstanding before Apple submission
+
+Play is done (submitted, see "Play submission record" above); every item below
+is Apple-only unless noted.
 
 1. **The pre-submission checklist in `CLAUDE.md` applies in full.** It was not
    retired after the 1.0.1 submission; it is the standard for the next
    submission of any build to either store.
-2. **Owner stock-device walkthrough (row 5) is the sole automated-gate
+2. **Owner stock-device walkthrough (row 3) is the sole automated-gate
    substitute.** *(Play: done on versionCode 56, 2026-09-22, owner-reported.)* Play Pre-launch report was waived 2026-09-04 (#1960) and the
    Firebase Test Lab Robo substitute was waived 2026-09-10 as accepted residual.
    FTL runs are advisory only.
 
-   **Android Vitals read 2026-09-19 and again 2026-09-22: EMPTY both times.** Every Reporting API metric set —
-   crash rate, ANR rate, error counts, error issues — returns zero rows for
-   2026-07-01 → 2026-09-18. That is not a clean bill of health; Vitals fills only
-   from installs that opted into Usage & diagnostics, and Play suppresses
-   below-threshold metrics. So Vitals contributes **no signal** to the 1.0.2
-   decision, and row 5 remains the only real evidence. Re-run
-   `PLAY_VITALS_ACCOUNT=<sa> scripts/play-vitals.sh` before submitting; if it is
-   still empty, say so rather than recording a pass.
+   **Android Vitals: EMPTY on both reads.** 2026-09-19 covered 2026-07-01 →
+   2026-09-18; 2026-09-22 covered 2026-08-24 → 2026-09-22 (see "Evidence, and
+   what it is not" above). Every Reporting API metric set — crash rate, ANR
+   rate, error counts, error issues — returned zero rows both times. That is
+   not a clean bill of health; Vitals fills only from installs that opted into
+   Usage & diagnostics, and Play suppresses below-threshold metrics. So Vitals
+   has contributed **no signal** to any 1.0.2 decision, and row 3 remains the
+   only real evidence. Re-run `PLAY_VITALS_ACCOUNT=<sa> scripts/play-vitals.sh`
+   before any future submission; if it is still empty, say so rather than
+   recording a pass.
 3. **iOS: rebuild the webview payload before archiving.** `npm run build && npx
    cap sync ios`. `ios/App/App/public` is gitignored, so whatever a previous
    local run left there is what Xcode packages.
