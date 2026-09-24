@@ -70,7 +70,7 @@ export default function BuyCrypto() {
   const { t } = useTranslation('wallet');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { accounts, btcAccount, solAccount, withLockSuppressed } = useWallet();
+  const { accounts, btcAccount, solAccount, withBuyLockSuppressed, lock } = useWallet();
 
   const preselected = searchParams.get('asset');
   const [selectedAsset, setSelectedAsset] = useState(
@@ -80,6 +80,12 @@ export default function BuyCrypto() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const iframeRef = useRef(null);
+  const finishBuyRef = useRef(null);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; finishBuyRef.current?.(); };
+  }, []);
 
   // Codex P1 2026-08-15: previously gated only on deniability/demo. On a build
   // where VITE_BUY_ENABLED !== 'true' the entry tiles are dead-code-eliminated
@@ -108,6 +114,7 @@ export default function BuyCrypto() {
         network: TRANSAK_NETWORK_MAP[selectedAsset],
         address,
       });
+      if (!mountedRef.current) return;
       // Native (Capacitor): open Transak in SFSafariViewController /
       // Chrome Custom Tabs. The in-app iframe path hits Transak's
       // T-INF-103 WAF rule on mobile because the Capacitor WebView origin
@@ -125,22 +132,12 @@ export default function BuyCrypto() {
         // defaults to 0 (lib/relockGrace.js), so the wallet locked the moment
         // Transak opened and the user returned mid-purchase to a PIN prompt.
         //
-        // withLockSuppressed is the existing mechanism for a deliberate OS
-        // hand-off that backgrounds us — the Face ID sheet (WalletProvider),
-        // the file picker (RestoreFromFile) and passkey enrolment
-        // (PasskeySetup) all use it. Buy simply never did.
-        //
-        // SECURITY NOTE, stated rather than buried: those three uses each cover
-        // a ~2s interaction. A Transak session is minutes (card entry, KYC,
-        // 3DS), so the wallet stays unlocked behind an external browser for
-        // that whole time, including if the device is put down or handed over.
-        // That is a real reduction in protection and it is deliberate.
-        //
-        // I4: the window MUST close. Suppression that never ends is a wallet
-        // that never locks, which is strictly worse than the prompt it
-        // replaced. It is bounded twice — by browserFinished, and by a hard
-        // timeout for when that event never arrives (app killed, event
-        // dropped, listener registration rejected).
+        // Checkout activity happens outside the wallet DOM. Suppress both
+        // native background locks and the wallet idle countdown for this
+        // bounded session. Manual/security locks and the absolute ceiling
+        // still cancel it. This deliberately retains the unlocked wallet
+        // behind the browser until close or the 15-minute limit.
+        finishBuyRef.current?.();
         let endSuppression;
         const handOff = new Promise((resolve) => { endSuppression = resolve; });
 
@@ -153,37 +150,29 @@ export default function BuyCrypto() {
           try { if (timer != null) clearTimeout(timer); } catch { /* ignore */ }
           try { listener?.remove(); } catch { /* ignore */ }
           endSuppression();
+          if (finishBuyRef.current === finish) finishBuyRef.current = null;
         };
 
+        finishBuyRef.current = finish;
         try {
-          timer = setTimeout(finish, BUY_LOCK_SUPPRESS_MAX_MS);
+          timer = setTimeout(() => { finish(); lock(); }, BUY_LOCK_SUPPRESS_MAX_MS);
         } catch {
           // I4: no timer means no bound — refuse to open the window at all
           // rather than open one that cannot be closed.
           finish();
+          throw new Error('Could not start buy session. Please try again.');
         }
 
-        // NOT awaited: the suppression window has to outlive this handler,
-        // which returns as soon as the browser is open so the spinner clears.
-        // handOff never rejects, so the catch is belt-and-braces against a
-        // throwing suppression wrapper rather than an expected path.
-        void Promise.resolve(withLockSuppressed(() => handOff)).catch(() => {});
-
-        Browser.addListener('browserFinished', finish).then(
-          (l) => {
-            listener = l;
-            // Raced: browserFinished already fired (or the bound elapsed)
-            // before registration resolved. Drop the listener immediately.
-            if (settled) { try { l.remove(); } catch { /* ignore */ } }
-          },
-          finish,
-        );
-
         try {
-          await Browser.open({ url });
-        } catch (openErr) {
+          await withBuyLockSuppressed(async () => {
+            listener = await Browser.addListener('browserFinished', finish);
+            if (settled) { await listener.remove(); return; }
+            await Browser.open({ url });
+            setLoading(false);
+            await handOff;
+          });
+        } finally {
           finish();
-          throw openErr;
         }
       } else {
         setWidgetUrl(url);
@@ -197,7 +186,7 @@ export default function BuyCrypto() {
     } finally {
       setLoading(false);
     }
-  }, [selectedAsset, getAddress, t]);
+  }, [selectedAsset, getAddress, t, withBuyLockSuppressed, lock]);
 
   useEffect(() => {
     function onMessage(event) {
