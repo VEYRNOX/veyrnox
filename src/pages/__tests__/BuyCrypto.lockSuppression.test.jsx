@@ -47,6 +47,7 @@ vi.mock('react-i18next', () => ({
 
 const browserOpen = vi.fn(async (/** @type {any} */ _opts) => {});
 const listenerRemove = vi.fn();
+const walletLock = vi.fn();
 /** @type {null | (() => void)} */
 let finishedHandler = null;
 
@@ -88,7 +89,8 @@ vi.mock('@/lib/WalletProvider', () => ({
     accounts: [{ address: '0xabc' }],
     btcAccount: null,
     solAccount: null,
-    withLockSuppressed,
+    withBuyLockSuppressed: withLockSuppressed,
+    lock: walletLock,
   }),
 }));
 
@@ -106,6 +108,8 @@ vi.mock('@/lib/useAdvisorSnapshot', () => ({ useAdvisorSnapshot: () => ({}) }));
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import BuyCrypto from '../BuyCrypto.jsx';
+import { Browser } from '@capacitor/browser';
+import { createBuySession } from '@/api/edgeApi';
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
@@ -125,7 +129,8 @@ describe('BuyCrypto — the Transak hand-off does not relock the wallet', () => 
     vi.useFakeTimers({ shouldAdvanceTime: true });
     depth = 0;
     finishedHandler = null;
-    browserOpen.mockClear();
+    browserOpen.mockReset();
+    walletLock.mockClear();
     listenerRemove.mockClear();
     withLockSuppressed.mockClear();
   });
@@ -155,6 +160,7 @@ describe('BuyCrypto — the Transak hand-off does not relock the wallet', () => 
 
     expect(depth).toBe(0);
     expect(listenerRemove).toHaveBeenCalled();
+    expect(walletLock).not.toHaveBeenCalled();
   });
 
   // The fail-closed half. Mutation check: remove the setTimeout bound in
@@ -173,6 +179,7 @@ describe('BuyCrypto — the Transak hand-off does not relock the wallet', () => 
       'an unbounded suppression window is a wallet that never locks — worse '
         + 'than the PIN prompt this replaced',
     ).toBe(0);
+    expect(walletLock).toHaveBeenCalledTimes(1);
   });
 
   // Mutation check: resolve the suppression promise before Browser.open →
@@ -182,5 +189,42 @@ describe('BuyCrypto — the Transak hand-off does not relock the wallet', () => 
     const suppressOrder = withLockSuppressed.mock.invocationCallOrder[0];
     const openOrder = browserOpen.mock.invocationCallOrder[0];
     expect(suppressOrder).toBeLessThan(openOrder);
+  });
+  it('does not open the browser if the wallet locked during session creation', async () => {
+    withLockSuppressed.mockRejectedValueOnce(new Error('WALLET_LOCKED'));
+    render(<MemoryRouter><BuyCrypto /></MemoryRouter>);
+    screen.getByRole('button', { name: /buy|continue/i }).click();
+    await screen.findByRole('alert');
+    expect(browserOpen).not.toHaveBeenCalled();
+  });
+
+  it('does not open without the browser close listener', async () => {
+    vi.mocked(Browser.addListener).mockRejectedValueOnce(new Error('listener unavailable'));
+    render(<MemoryRouter><BuyCrypto /></MemoryRouter>);
+    screen.getByRole('button', { name: /buy|continue/i }).click();
+    await screen.findByRole('alert');
+    expect(browserOpen).not.toHaveBeenCalled();
+    expect(depth).toBe(0);
+  });
+
+  it('releases suppression when the page unmounts', async () => {
+    await startBuy();
+    cleanup();
+    await flush();
+    expect(depth).toBe(0);
+    expect(listenerRemove).toHaveBeenCalled();
+    expect(walletLock).not.toHaveBeenCalled();
+  });
+
+  it('does not launch a late session after leaving the Buy page', async () => {
+    let resolve;
+    vi.mocked(createBuySession).mockReturnValueOnce(new Promise(r => { resolve = r; }));
+    render(<MemoryRouter><BuyCrypto /></MemoryRouter>);
+    screen.getByRole('button', { name: /buy|continue/i }).click();
+    cleanup();
+    resolve({ url: 'https://global.transak.com/?x=1' });
+    await flush();
+    expect(browserOpen).not.toHaveBeenCalled();
+    expect(depth).toBe(0);
   });
 });

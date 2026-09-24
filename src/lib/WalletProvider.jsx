@@ -385,6 +385,7 @@ export function WalletProvider({ children }) {
   // mnemonic; separate state so the EVM/BTC paths are untouched. null while locked.
   const [solAccount, setSolAccount] = useState(null);
   const lockTimer = useRef(null);
+  const buyLockSuppressions = useRef(new Set());
   // Codex P1 2026-08-15: signing-operation generation counter — bumped on
   // every lock() so withPrivateKey/withBtcPrivateKey/withSolPrivateKey can
   // detect a mid-operation lock and abort the CALLER's post-await handling.
@@ -555,6 +556,10 @@ export function WalletProvider({ children }) {
   }, [showSimulatedPasskeyPrompt]);
 
   const lock = useCallback(() => {
+    // A manual/security lock ends every Buy hand-off, including its native
+    // background suppression. A later unlock must never inherit that window.
+    for (const cancel of buyLockSuppressions.current) cancel();
+    buyLockSuppressions.current.clear();
     // Cancel any deferred relock-grace timer BEFORE state changes. Duress /
     // panic / deniability-activation / RASP-WARN / explicit user lock all
     // route through lock() directly, so a pending grace could otherwise
@@ -652,11 +657,29 @@ export function WalletProvider({ children }) {
   // idle-lock mechanism — it routes through lock() exactly like every other path.
   const armTimer = useCallback(() => {
     if (lockTimer.current) { clearTimeout(lockTimer.current); lockTimer.current = null; }
-    if (!containerRef.current) return;       // locked → nothing to arm
+    if (!containerRef.current || buyLockSuppressions.current.size) return;
     const ms = autoLockMsRef.current;
     if (ms == null) return;                  // "Never" → no idle lock
     lockTimer.current = setTimeout(lock, ms);
   }, [lock]);
+
+  // Buy is active work in a system browser, outside our DOM activity listener.
+  // The Buy page bounds this promise to 15 minutes and cancels it on close.
+  // Pause only idle/background locking; lock() and the absolute ceiling remain
+  // authoritative. Cancel races prevent a stale purchase surviving a new unlock.
+  const withBuyLockSuppressed = useCallback(async (fn) => {
+    if (!containerRef.current) throw new Error('Please unlock your wallet before starting a purchase.');
+    let cancel;
+    const cancelled = new Promise(resolve => { cancel = resolve; });
+    buyLockSuppressions.current.add(cancel);
+    armTimer();
+    try {
+      return await withLockSuppressed(() => Promise.race([Promise.resolve().then(fn), cancelled]));
+    } finally {
+      // lock() already cleared the set: do not reset a subsequent session's timer.
+      if (buyLockSuppressions.current.delete(cancel)) armTimer();
+    }
+  }, [armTimer]);
 
   // Absolute session ceiling (VULN-18 fix): arm a one-shot MAX_SESSION_MS timer
   // on unlock and cancel it on lock. Fires regardless of idle-timer setting,
@@ -3084,6 +3107,7 @@ export function WalletProvider({ children }) {
     // Exposed here so R3 UI files call it via useWallet() instead of importing
     // @/wallet-core/keystore directly (ring-boundary burn-down).
     withLockSuppressed,
+    withBuyLockSuppressed,
   };
 
   return (

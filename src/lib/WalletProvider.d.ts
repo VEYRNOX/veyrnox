@@ -108,6 +108,7 @@ export interface WalletContextValue {
   clearAuditLogEntries: any;
   lastUnlockAt: any;
   withLockSuppressed: any;
+  withBuyLockSuppressed: any;
 }
 
 export function useWallet(): WalletContextValue;
