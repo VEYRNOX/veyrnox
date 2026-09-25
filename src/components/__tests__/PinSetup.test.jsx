@@ -5,6 +5,8 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 // Framer Motion — stub to avoid animation timing issues in tests.
 vi.mock('motion/react', () => ({
@@ -42,6 +44,28 @@ function typePin(pin) {
 afterEach(() => { cleanup(); });
 
 describe('PinSetup', () => {
+  it('keeps both iOS mismatch selectors aligned with a rendered reset and permits a fresh ceremony', () => {
+    const swift = readFileSync(resolve(process.cwd(), 'ios/App/AppUITests/AppUITests.swift'), 'utf8');
+    const code = swift.split('\n').filter((line) => !/^\s*\/\//.test(line)).join('\n');
+    const selectors = [...code.matchAll(/let mismatch = app\.staticTexts\["([^"]+)"\]/g)];
+    expect(selectors).toHaveLength(2);
+
+    const onDone = vi.fn();
+    render(<PinSetup onDone={onDone} />);
+    typePin('19283746');
+    typePin('1928374'); // A dropped confirm digit must reset, not finish onboarding.
+    for (const [, label] of selectors) {
+      expect(screen.getByRole('alert').textContent).toBe(label);
+    }
+    expect(screen.getByRole('heading', { name: 'Choose an 8-digit PIN' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Confirm your PIN' })).toBeNull();
+    expect(onDone).not.toHaveBeenCalled();
+
+    typePin('19283746');
+    typePin('19283746');
+    expect(onDone).toHaveBeenCalledExactlyOnceWith('19283746');
+  });
+
   it('1. mounts on step 1, advances to step 2 after a valid PIN', () => {
     render(<PinSetup onDone={vi.fn()} onCancel={vi.fn()} />);
 

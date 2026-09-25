@@ -97,6 +97,15 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(swift).toContain('app.buttons["Continue"]');
   });
 
+  it('does not treat a reset to the first PIN stage as a completed iOS ceremony', () => {
+    const code = swift.split('\n').filter((line) => !/^\s*\/\//.test(line)).join('\n');
+    const ceremony = code.match(/private func setPinCeremony\([\s\S]*?\n {4}\}\n/)?.[0];
+    expect(ceremony).toBeTruthy();
+    expect(ceremony).toContain('let setHeading = app.staticTexts["Choose an 8-digit PIN"]');
+    expect(ceremony).toMatch(/if left && !setHeading\.exists && !confirmHeading\.exists && !mismatch\.exists \{ return \}/);
+    expect(ceremony).toMatch(/if setHeading\.exists \|\| mismatch\.exists \{/);
+  });
+
   // #2543: setPinCeremony short-circuits to a fresh ceremony when PinSetup
   // shows its lost-digit rejection copy, instead of re-pressing an already
   // cleared pad. That only works while the Swift strings match what
