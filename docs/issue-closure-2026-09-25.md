@@ -20,7 +20,7 @@ auto-closing them while acceptance evidence remains outstanding.
 
 ## #2750 - R8 optimization and resource shrinking
 
-Status: configuration change proposed in this branch; hardware tests pending.
+Status: configuration change proposed in draft PR #2765; hardware tests pending.
 
 Local validation: web build and Capacitor sync passed; 13 existing release and
 configuration tests passed; release-hygiene/RASP-bypass checks passed. Java 21
@@ -181,6 +181,11 @@ Status: first-write-wins #2644 and redemption retry #2727 merged; device pending
 The September 25 code review also found that native DeepLinkHandler discarded
 the `already_pending` result, so the second-link explanation was absent on that
 route. A focused follow-up PR supplies it before device acceptance.
+
+Draft PR #2766 supplies that explanation; 62 focused tests and lint pass, with
+the new warm/cold link checks demonstrated failing before the change. Draft
+PR #2764's iOS regression suites pass 18 tests; Swift syntax parsing passes,
+but no simulator or physical-device execution is claimed by that result.
 
 1. Prepare two real, valid referral codes A and B with recorded baseline counts.
    Do not use the example placeholder code from the UI.
