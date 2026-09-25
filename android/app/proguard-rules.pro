@@ -18,9 +18,10 @@
 -keepclassmembers @com.getcapacitor.annotation.CapacitorPlugin class * extends com.getcapacitor.Plugin {
     public <init>();
 }
--keep @com.getcapacitor.annotation.PluginMethod class * { *; }
 -keepclassmembers class * extends com.getcapacitor.Plugin {
-    @com.getcapacitor.annotation.PluginMethod public *;
+    @com.getcapacitor.PluginMethod public *;
+    @com.getcapacitor.annotation.ActivityCallback <methods>;
+    @com.getcapacitor.annotation.PermissionCallback <methods>;
 }
 
 # ── Veyrnox native plugins ────────────────────────────────────────────────────

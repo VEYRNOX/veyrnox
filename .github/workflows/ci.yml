@@ -653,6 +653,22 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
+      - name: Verify bundled R8 mapping
+        run: |
+          set -euo pipefail
+          AAB=android/app/build/outputs/bundle/googleRelease/app-google-release.aab
+          MAPPING=android/app/build/outputs/mapping/googleRelease/mapping.txt
+          test -s "$MAPPING"
+          unzip -p "$AAB" BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map > "$RUNNER_TEMP/bundled-r8.map"
+          test -s "$RUNNER_TEMP/bundled-r8.map"
+          cmp "$MAPPING" "$RUNNER_TEMP/bundled-r8.map"
+      - name: Upload R8 diagnostics
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ${{ inputs.build_staging_release && 'veyrnox-staging-r8' || 'veyrnox-release-r8' }}
+          path: android/app/build/outputs/mapping/googleRelease/
+          if-no-files-found: error
+          retention-days: 30
       - name: Upload APK artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:

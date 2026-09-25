@@ -170,7 +170,7 @@ android {
             // Explicitly non-debuggable in release (defense-in-depth alongside the
             // MainActivity setWebContentsDebuggingEnabled(false) guard).
             debuggable false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         // Firebase Robo re-signs APKs by default. That is incompatible with the
         // pre-WebView RASP certificate gate, which intentionally blocks any APK
@@ -209,9 +209,8 @@ dependencies {
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     // Android 15 edge-to-edge: `EdgeToEdge.enable(this)` in MainActivity.
     // Pinned explicitly rather than relying on appcompat's transitive
-    // activity version — Play's console flags deprecated setStatusBarColor /
-    // setNavigationBarColor from a compiled AAR and `EdgeToEdge.enable()`
-    // supersedes both.
+    // activity version. Enabling edge-to-edge does not remove compatibility
+    // calls inside dependencies; resolve Play findings with this build's mapping.
     implementation 'androidx.activity:activity:1.9.3'
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
