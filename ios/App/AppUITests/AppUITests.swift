@@ -226,8 +226,9 @@ final class AppUITests: XCTestCase {
     /// reports the desync honestly rather than letting it masquerade as a
     /// fail-closed provisioning result.
     private func setPinCeremony(app: XCUIApplication, pin: String, maxAttempts: Int = 3) {
+        let setHeading = app.staticTexts["Choose an 8-digit PIN"]
         let confirmHeading = app.staticTexts["Confirm your PIN"]
-        let mismatch = app.staticTexts["PINs didn't match. Start again."]
+        let mismatch = app.staticTexts["PINs didn't match. For your security both entries are cleared — set your PIN again."]
         // PinSetup's stage-one rejection copy for a lost-digit buffer. Source of
         // truth is checkPinStrength in src/lib/pinStrength.js; the copy-drift
         // guard in src/__tests__/firebase-test-lab-onboarding.test.js checks
@@ -279,8 +280,10 @@ final class AppUITests: XCTestCase {
             let confirmDone: () -> Bool = { !confirmHeading.exists || mismatch.exists }
             let left = submitPinUntilAdvanced(app: app, stage: "confirm", advanced: confirmDone)
 
-            if left && !mismatch.exists { return }
-            if mismatch.exists {
+            // A mismatch removes the confirm heading too. Only leave once BOTH
+            // stages are gone; the reset heading keeps recovery safe if copy drifts.
+            if left && !setHeading.exists && !confirmHeading.exists && !mismatch.exists { return }
+            if setHeading.exists || mismatch.exists {
                 NSLog("[VEYRNOX-XCUITEST] PIN attempt \(attempt): confirm mismatched, PinSetup reset both buffers; retrying")
             } else {
                 NSLog("[VEYRNOX-XCUITEST] PIN attempt \(attempt): confirm submit never advanced past PinSetup; retrying")
@@ -382,7 +385,7 @@ final class AppUITests: XCTestCase {
     /// short, the app was never going to leave that screen. Widening it would
     /// only turn an inaccurate red into a slower inaccurate red.
     private func assertPinFlowLeftPinSetup(app: XCUIApplication) {
-        let mismatch = app.staticTexts["PINs didn't match. Start again."]
+        let mismatch = app.staticTexts["PINs didn't match. For your security both entries are cleared — set your PIN again."]
         XCTAssertFalse(
             mismatch.waitForExistence(timeout: 5),
             "PIN confirm desynced and PinSetup reset to stage one, so the flow never reached provisioning. This is a test-harness failure against a slow WKWebView, NOT a fail-closed result and NOT evidence about secure-store handling — the run proves nothing either way about provisioning."
