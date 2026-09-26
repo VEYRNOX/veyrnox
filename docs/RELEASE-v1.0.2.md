@@ -488,11 +488,29 @@ on both stores rather than the next unused ones.
   the release is bounded 2026-09-24 → 2026-09-26.
 - Not verification of the shipped binary. Store approval is BUILT at most.
   RASP on a store install is not device-verified; no independent audit.
-- Not a re-run of the pre-submission checklist. The `.ipa` byte-check,
-  `scripts/asc-crashes.sh`, tester feedback and Play Vitals were not re-read in
-  this session, so their state for build 8 is unknown here, not passed.
-  `asc-crashes.sh` is the next read worth making now that a new build has
-  real installs.
+- Not a re-run of the pre-submission checklist. The `.ipa` byte-check and
+  Play Vitals were not re-read for build 8, so their state is unknown here,
+  not passed. The crash watch was (next item).
+- **Crash watch for build 8, read 2026-09-26 ~08:00Z** — the three sources of
+  `scripts/asc-crashes.sh`, run through the ASC API because this session had
+  no local key. Verdict under the script's own scoring: **DATA, not CLEAN**,
+  and early rather than conclusive: build 8 had been live at most two days,
+  and Apple's diagnostics fill slowly and only from users sharing analytics.
+  Re-read in a week.
+  - TestFlight crash submissions: **1 total**, and it is not build 8. Filed
+    2026-09-21T18:19Z against 1.0.2 **build 1** (`fb9be8ea`), comment
+    "Test", iPhone15_3 / iOS 27.2. Nothing from builds 2–8.
+  - Screenshot feedback (the control that proves the endpoint answers): **2**,
+    both 1.0.1-train, August ("App is not loading" 2026-08-16, "Align table"
+    2026-08-22). Nothing new for 1.0.2.
+  - `diagnosticSignatures` for build 8 (`b9371a63`): HTTP 200, **0 groups**.
+    A genuine zero by the script's rule (200, not 404). Build 59 also 200 / 0.
+  - `perfPowerMetrics` (hangs, launch): **UNMEASURED**. Needs the
+    `application/vnd.apple.xcode-metrics+json` Accept header, which the API
+    read tool cannot send; the container's proxy refuses
+    `api.appstoreconnect.apple.com` outright; and the App Manager operator
+    declined the read because its account is out of credits. Not clean, not
+    dirty: not read.
 
 ### Outstanding list, closed out
 
