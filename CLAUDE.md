@@ -77,9 +77,11 @@ architecture or security-critical code (wallet-core, signing, KEK, RASP).
 
 ## Current state (pointers; re-derive before relying on any number)
 
-- **Both stores are LIVE.** App Store 1.0.1 build 59 is `READY_FOR_SALE`, and Play is
-  published. The 1.0.2 train is in TestFlight/Internal. Read versionCode from
-  `android/app/build.gradle`; never write the current value here.
+- **Both stores are LIVE on 1.0.2.** App Store 1.0.2 build 8 is `READY_FOR_SALE`
+  (approved on its first review submission, `2af87adc`, 2026-09-24; read from ASC
+  2026-09-26), and Play 1.0.2 is published at 100% (2026-09-23). Read versionCode from
+  `android/app/build.gradle`; never write the current value here. The next iOS
+  archive needs a new ASC version record; 1.0.2 is closed.
   **"Submitted" has an outcome: record it in the session that learns it.**
 - **Real users exist:** thousands of telemetry devices, 500+ active subscribers, and one
   real full-price production purchase. No promotional offer has ever been exercised by a
