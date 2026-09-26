@@ -3288,9 +3288,17 @@ and `/v1/reviewSubmissions/*/items`), not from a console screenshot:
 
 **What this is not (I4):** a store approval is BUILT at most. Nothing here is
 device-verified or audited; the RASP-on-store-install and independent-audit
-caveats stand. The pre-submission checklist rows (ipa byte-check, `asc-crashes.sh`,
-tester feedback, Play Vitals) were not re-read in this session, so their state
-for build 8 is unknown here, not passed. Records amended in the same session, per
+caveats stand. The ipa byte-check and Play Vitals were not re-read for build 8,
+so their state is unknown here, not passed. The `asc-crashes.sh` sources were
+read ~08:00Z the same day (follow-up, after #2767 merged): 1 TestFlight crash
+submission in total, filed 2026-09-21 against 1.0.2 build 1 with the comment
+"Test", none from builds 2–8; 2 screenshot reports, both August / 1.0.1;
+`diagnosticSignatures` for build 8 HTTP 200 with 0 groups (a genuine zero, not a
+404); `perfPowerMetrics` UNMEASURED (custom Accept header not sendable from the
+session, host blocked by the proxy, operator out of credits). Under the script's
+scoring that is DATA, not CLEAN, and it is two days of exposure, so re-read in a
+week. Detail: `docs/RELEASE-v1.0.2.md`, "Crash watch for build 8". Records
+amended in the same session, per
 the "submitted has an outcome" rule: `CLAUDE.md`, `docs/RELEASE-v1.0.2.md`,
 `docs/RELEASE-v1.0.1-APPLE-SUBMISSION.md`, `docs/mobile-release-log.md`,
 `src/lib/featureCatalogue.js` (with a pin naming 1.0.2 as live).
