@@ -1,8 +1,13 @@
 # Veyrnox 1.0.2 — release notes and submission state
 
-Owner: Al Jobson. Last updated: 2026-09-23.
+Owner: Al Jobson. Last updated: 2026-09-26.
 
-**PLAY: LIVE 2026-09-23 — versionCode 57 at 100%. APPLE: NOT SUBMITTED.**
+**PLAY: LIVE 2026-09-23 — versionCode 57 at 100%. APPLE: LIVE — 1.0.2 build 8
+`READY_FOR_SALE`, approved on its first review submission (2026-09-24), read from
+App Store Connect 2026-09-26.** Both stores are on 1.0.2. The Apple record is in
+"Apple release record" below; the paragraphs that follow were written while Play
+was live and Apple was not, and are kept as the record of that gap.
+
 Google approved versionCode 57 and the owner published it the same day; it is
 in front of the entire Play install base. **versionCode 56 never shipped** — it
 was submitted on 2026-09-22, then withdrawn from review on 2026-09-23 and
@@ -11,8 +16,9 @@ replaced, because it predated fixes that reach Android. The full sequence is in
 because a reader who sees only "1.0.2 shipped" would reasonably assume 56 was
 what shipped.
 
-Apple has no 1.0.2 version record yet; every row in "Outstanding before Apple
-submission" still stands. Every status tag below follows `CLAUDE.md`: BUILT (in
+Apple's 1.0.2 record was created 2026-09-22 and shipped from it on 2026-09-24
+(see "Apple release record"); the "Outstanding before Apple submission" list is
+now historical. Every status tag below follows `CLAUDE.md`: BUILT (in
 code, tests green), TARGET, PLANNED, HONEST-DISABLED. Still not **verified** in
 this release: no on-chain txid and no independent audit. The owner's
 stock-device golden-path walkthrough was done on versionCode 57 and is
@@ -23,10 +29,10 @@ read to date, so there is no crash telemetry behind this release.
 
 ## Version numbers
 
-| | 1.0.1 (live) | 1.0.2 (this train) |
+| | 1.0.1 (superseded) | 1.0.2 (live on both stores) |
 |---|---|---|
 | Apple `MARKETING_VERSION` | 1.0.1 | 1.0.2 |
-| Apple `CURRENT_PROJECT_VERSION` | 59 (live) | 8 |
+| Apple `CURRENT_PROJECT_VERSION` | 59 (was live) | **8 (live, 2026-09-24)** |
 | Play `versionName` | 1.0.1 | 1.0.2 |
 | Play `versionCode` | 48 (was production) | **57 (live)** |
 
@@ -47,10 +53,12 @@ read.
 
 ## Baseline — what 1.0.1 actually is
 
-Read from App Store Connect on 2026-09-19, not from this repo's notes:
+Read from App Store Connect on 2026-09-19, not from this repo's notes. **This
+was the baseline when the train started; 1.0.1 was superseded by 1.0.2 on
+2026-09-24 (see "Apple release record").**
 
-- App `6790188660`, version `1.0.1`, `appStoreState: READY_FOR_SALE`. It is the
-  live version.
+- App `6790188660`, version `1.0.1`, `appStoreState: READY_FOR_SALE`. It was the
+  live version until 1.0.2 replaced it.
 - Live build is **59**, uploaded 2026-09-11, from review submission
   `3ca728bd` (submitted 2026-09-11T19:07Z, `COMPLETE`).
 - Builds 60 and 61 exist in this repo only. Neither was ever attached to a store
@@ -424,7 +432,81 @@ merge with `mergeStateStatus: BEHIND` as soon as #2756 landed ahead of it.
 Resolved with `gh pr update-branch`, not `--admin`. `CLAUDE.md` is corrected in
 the same change as this entry.
 
-## Outstanding before Apple submission
+## Apple release record — 1.0.2 build 8 approved first time, live
+
+Owner reported the approval on 2026-09-26; App Store Connect confirms it. Read
+at 2026-09-26T07:36Z via `get_app_store_status`,
+`/v1/apps/6790188660/appStoreVersions?include=build` and
+`/v1/reviewSubmissions/{id}/items?include=appStoreVersion`.
+
+### Final state
+
+| Field | Value |
+|---|---|
+| Version record | `b52c24c4`, `versionString 1.0.2`, created 2026-09-22T18:55Z |
+| Build | **8** (`b9371a63`), uploaded 2026-09-23T12:43Z, `processingState VALID` |
+| `appStoreState` | `READY_FOR_SALE` |
+| `appVersionState` | `READY_FOR_DISTRIBUTION` |
+| `releaseType` | `MANUAL` |
+| `liveVersion` | 1.0.2 — 1.0.1 build 59 is superseded |
+
+### Timeline
+
+| When (UTC) | Event |
+|---|---|
+| 2026-09-22 18:55 | 1.0.2 version record created in ASC (closes item 5 below). |
+| 2026-09-23 12:43 | Build 8 uploaded. `CURRENT_PROJECT_VERSION = 8` landed in `dbb7f13` (#2753) the same day; which commit was archived is not recoverable from ASC and is not claimed. |
+| 2026-09-24 06:58 | Submission `831a5134` (one item, no app version) — `COMPLETE`, `APPROVED`. |
+| 2026-09-24 14:54 | Submission `aa658231` (one item, no app version) — `COMPLETE`, `APPROVED`. |
+| 2026-09-24 16:38 | **Submission `2af87adc` — the release.** Four items, all `APPROVED`; one is the 1.0.2 version. `COMPLETE`. |
+| 2026-09-25 06:53 | Submission `78ad28aa` (one item, no app version) — `COMPLETE`, `APPROVED`. |
+| 2026-09-24 → 26 | Released. `MANUAL` means a human pressed Release; the API does not expose when. |
+| 2026-09-26 07:36 | Read: `READY_FOR_SALE`, `liveVersion` 1.0.2. |
+
+**No rejection this cycle.** 1.0.1 needed three submissions; 1.0.2 cleared on
+its first. `2af87adc` is the same submission id that item 5 below recorded on
+2026-09-23 as an unsubmittable draft attached to the live 1.0.1 — it was
+re-pointed at 1.0.2 and submitted, not recreated. The three one-item
+submissions on either side of it carry no `appStoreVersion` relationship; they
+are IAP-shaped but were not resolved here and are not the app release.
+
+### What is left in ASC, and why it is not a blocker
+
+An empty draft `41183a06` is `READY_FOR_REVIEW` with no items, and
+`get_app_store_status` returns `ready: false` with
+`STATE_NOT_SUITABLE_TO_SUBMIT` ("Ready for Distribution"). That is what a
+released version looks like from the submit-readiness check: there is nothing
+to submit. The next iOS release needs a **new** version record (1.0.3 or
+later), a bumped `CURRENT_PROJECT_VERSION`, and a bump of the pin in
+`src/__tests__/staging-mobile-release.test.js`, which now pins the LIVE numbers
+on both stores rather than the next unused ones.
+
+### What this is not (I4)
+
+- Not a release date to the day. The public iTunes lookup that carries
+  `currentVersionReleaseDate` was unreachable from this session (proxy 403);
+  the release is bounded 2026-09-24 → 2026-09-26.
+- Not verification of the shipped binary. Store approval is BUILT at most.
+  RASP on a store install is not device-verified; no independent audit.
+- Not a re-run of the pre-submission checklist. The `.ipa` byte-check,
+  `scripts/asc-crashes.sh`, tester feedback and Play Vitals were not re-read in
+  this session, so their state for build 8 is unknown here, not passed.
+  `asc-crashes.sh` is the next read worth making now that a new build has
+  real installs.
+
+### Outstanding list, closed out
+
+Items 1–4 were owner-side and are not evidenced in the repo beyond the state
+above. Item 5 closed 2026-09-22 (record created). Item 6 was decided
+2026-09-19. Item 7: none of the 43 sibling locale files still reads "Initial
+release" in `apple.whatsNew` (checked 2026-09-26; translation quality not
+checked). Item 8's `CLAUDE.md` and 1.0.1 record were amended 2026-09-23
+(#2758, #2759) and again on 2026-09-26 for this outcome.
+
+## Outstanding before Apple submission (historical — closed 2026-09-24)
+
+**Kept as written on 2026-09-23.** Every item below was resolved or consumed
+by the 1.0.2 submission recorded above; see "Outstanding list, closed out".
 
 Play is done — **shipped and live at 100%**, see "Play release record" above;
 every item below is Apple-only unless noted.

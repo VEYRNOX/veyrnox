@@ -3256,3 +3256,41 @@ survive an install") is accurate, because Install Referrer really is automatic.
 Apple's `whatsNew` is shown only to iOS users, so the one string that overclaims is
 the one only the affected platform reads. Not corrected here — the fix lands in
 `en.json` plus 43 machine-translated siblings, which is its own change.
+
+## 2026-09-26 — Apple approved 1.0.2 (build 8): `READY_FOR_SALE`, both stores on 1.0.2
+
+Owner reported the approval; App Store Connect confirms it. Read at
+2026-09-26T07:36Z (`get_app_store_status` plus `/v1/apps/6790188660/appStoreVersions`
+and `/v1/reviewSubmissions/*/items`), not from a console screenshot:
+
+- Version record `b52c24c4`, `versionString 1.0.2`, created 2026-09-22T18:55Z.
+  Build **8** (`b9371a63`, uploaded 2026-09-23T12:43Z, `processingState VALID`).
+  `appStoreState READY_FOR_SALE`, `appVersionState READY_FOR_DISTRIBUTION`,
+  `releaseType MANUAL`. It is `liveVersion`; 1.0.1 build 59 is superseded.
+- Review submission `2af87adc`, submitted 2026-09-24T16:38Z, `COMPLETE`, four
+  items all `APPROVED`, one of them the 1.0.2 version. **First submission, no
+  rejection** — unlike 1.0.1, which took three. The other three items carry no
+  app version and were not resolved here (IAP-shaped, unconfirmed).
+- Three further one-item submissions (`831a5134` 2026-09-24T06:58Z, `aa658231`
+  2026-09-24T14:54Z, `78ad28aa` 2026-09-25T06:53Z) are `COMPLETE`/`APPROVED` and
+  carry no app version. Not the release; contents not resolved here.
+- An empty draft `41183a06` sits at `READY_FOR_REVIEW` with no items, and
+  `get_app_store_status` reports `ready: false` with
+  `STATE_NOT_SUITABLE_TO_SUBMIT` because 1.0.2 is already Ready for Distribution.
+  That is the normal post-release state, not a blocker. The next iOS archive
+  needs a **new** version record and a bumped `CURRENT_PROJECT_VERSION`.
+- Release time: `MANUAL` means a human pressed Release, and the API does not
+  expose when. The public iTunes lookup that would was unreachable from this
+  session (proxy 403), so the release date is bounded 2026-09-24 → 2026-09-26.
+- Repo mapping: `CURRENT_PROJECT_VERSION = 8` / `MARKETING_VERSION = 1.0.2` landed
+  in `dbb7f13` (#2753, 2026-09-23). Which commit was actually archived is not
+  recoverable from ASC and is not claimed.
+
+**What this is not (I4):** a store approval is BUILT at most. Nothing here is
+device-verified or audited; the RASP-on-store-install and independent-audit
+caveats stand. The pre-submission checklist rows (ipa byte-check, `asc-crashes.sh`,
+tester feedback, Play Vitals) were not re-read in this session, so their state
+for build 8 is unknown here, not passed. Records amended in the same session, per
+the "submitted has an outcome" rule: `CLAUDE.md`, `docs/RELEASE-v1.0.2.md`,
+`docs/RELEASE-v1.0.1-APPLE-SUBMISSION.md`, `docs/mobile-release-log.md`,
+`src/lib/featureCatalogue.js` (with a pin naming 1.0.2 as live).
