@@ -137,7 +137,8 @@ this.
 
 | Tier | Sites | Note |
 |---|---|---|
-| Good fit, no blocker | AlternativeTo (done), SaaSHub (done), FinancesOnline | FinancesOnline checked 2026-09-28: financesonline.com/add-product/ is a plain lead-capture form (Name, Product name, Job title, Email, Website URL, optional Skype) — no login, no phone number required |
+| Good fit, no blocker | AlternativeTo (done), SaaSHub (done) | |
+| Skip — no fitting category | FinancesOnline | Checked and attempted 2026-09-28: the form itself is a plain lead-capture (Name/Product/Job title/Email/Website, no login, no phone), but its required Category dropdown has no cryptocurrency/wallet option anywhere — closest matches are "Free Security Software" and "IT Security Software", which would misdescribe Veyrnox as a business security tool. Owner chose to skip rather than force an inaccurate category. |
 | Good fit, needs phone number | Crozdesk, Software Suggest | Both checked 2026-09-28. Crozdesk's "Apply to list your software" routes to vendor.revleads.com/user/signup — really a RevLeads ad-network signup (required phone + "Monthly Marketing Budget", reads as a sales funnel). Software Suggest's softwaresuggest.com/vendors "Create a Free Listing" form also requires Phone*. Need a real number from the owner before either can proceed |
 | Good fit, needs owner's own browser | TrustRadius, SaaSworthy | TrustRadius checked 2026-09-28: solutions.trustradius.com/claim-your-profile/ has a genuine "Claim My Free Profile" flow. SaaSworthy: vendor-portal registration in progress, owner was mid-signup |
 | Blocked by bot detection | G2, Capterra, GetApp, Software Advice | Checked 2026-09-28. G2 itself 403s headless browsing outright. Capterra's "Get Your Product Listed" and GetApp/Software Advice all route into g2.com/products/new (Capterra is explicitly "powered by G2 Digital Markets" now) — same domain, same block. Needs the owner's own logged-in browser session, not this automation |
