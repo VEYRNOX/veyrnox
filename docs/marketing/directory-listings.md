@@ -49,8 +49,20 @@ pricing in the Play draft) are excluded until the owner confirms current prices.
 - **Alternatives to name:** Trust Wallet, Exodus, MetaMask, Rainbow, Phantom
 - **Pricing:** free wallet plus an optional Safety Plus subscription. Confirm the
   current prices in RevenueCat/the stores before quoting numbers.
+- **Long description:** Veyrnox is a self-custody multi-chain crypto wallet (ETH,
+  BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, USDT) built for coercion resistance.
+  A duress PIN opens a separate decoy wallet, hidden wallets conceal how many
+  wallets exist, and a panic wipe destroys local key material. Keys are
+  encrypted with AES-256-GCM and Argon2id, and bound to the device's Secure
+  Enclave (iOS) or AndroidKeyStore/StrongBox (Android) — they never leave the
+  device. Transactions are simulated locally before signing, with
+  address-poisoning and approval warnings. WalletConnect v2 is supported.
 
 ## Claims that must not appear
+
+**Owner-confirmed 2026-09-28: no audit claims at all, anywhere, in any form —
+lead with the security stack instead.** The long description above follows
+this.
 
 - **"Independently audited" / "third-party audited", in any form, anywhere.**
   The 2026-06-23 "ECC" audit (`docs/audit-triage/ecc-independent-audit-2026-06-23.md`)
