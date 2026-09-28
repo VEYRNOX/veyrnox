@@ -10,8 +10,36 @@ owner; every submission is confirmed with the owner before the submit button.
 - Google Play: https://play.google.com/store/apps/details?id=com.veyrnox.app
 - Support: support@veyrnox.com
 - Logo: `public/icon-512.png`, `public/veyrnox-icon.svg`
-- Screenshots: take from the store listings; not in the repo
 - Wording base: `docs/play-launch/store-listing.md` (short description, full description)
+
+## Screenshots
+
+Vetted from `~/Downloads/Apple Store Photos/iPhone 6.9″ (1320×2868)/` (owner's
+local machine, not in the repo). Each frame was opened and checked against its
+own on-screen text before approval — several were rejected for mismatches.
+
+**Approved for general directories:**
+- `04.png` — "Split your seed, keep control" (Shamir backup)
+- `06.png` — "60+ tools, one wallet" (feature grid)
+- `09.png` — "A full security toolkit" (Duress PIN, Stealth Wallets, Panic Wipe, RASP, etc.)
+
+**Approved for AI-directory listings only** (There's An AI For That, Futurepedia,
+etc. — this is the one frame that actually shows the AI feature):
+- `05.png` — Vigil chat blocking a sanctioned address
+
+**Rejected — do not use anywhere without a fix:**
+- `01.png` — headline "Live balances" contradicts on-screen "Reference rate, not live market data"
+- `02.png` — status-bar text overlap ("Back" over the clock), keyboard bar visible
+- `03.png`, `08.png` — both show the simulator's "Signing and key access are turned off in emulated environments" error banner
+- `07.png` — headline price ($3,200) doesn't match the chart axis (~$2.4-2.5k); simulator balance
+- `10.png` — headline "Dashboard, Center, Access, Anomalies" doesn't match the Suspicious Assets screen shown
+
+**Not reviewed / excluded:** `veyrnox-photos/`, `veyrnox-photos-light/` (owner's
+Downloads) — not opened. `05-buy` and `09-decoy` in those folders should stay out
+regardless: Buy is the owner-only Transak area, and publishing decoy-mode UI is
+the owner's call, not a default. iPad frames and the subscription-price renders
+(filenames show $19.99/$159.99, which don't match the $5.99/$49.99 Safety Plus
+pricing in the Play draft) are excluded until the owner confirms current prices.
 
 ## Copy blocks
 
@@ -24,9 +52,17 @@ owner; every submission is confirmed with the owner before the submit button.
 
 ## Claims that must not appear
 
-- "Audited" unqualified. Only the core wallet had the independent ECC audit
-  (June 2026). KEK and RASP are internal-only. The independent audit of the full
-  stack is outstanding (I4: internal is never presented as independent).
+- **"Independently audited" / "third-party audited", in any form, anywhere.**
+  The 2026-06-23 "ECC" audit (`docs/audit-triage/ecc-independent-audit-2026-06-23.md`)
+  was 10 parallel `veyrnox-honest-reviewer` **Claude subagents** run by the project
+  itself, not an external firm — it calls itself "independent" only because the
+  two agent runs didn't share context with each other. CLAUDE.md's hard rules
+  say plainly: "the independent third-party audit of the full stack remains
+  outstanding." External copy must follow that line, not the audit doc's own
+  self-label. KEK and RASP are internal-only on top of that. (I4: internal is
+  never presented as independent.) Safe alternative: describe the security
+  stack factually (AES-256-GCM, Argon2id, hardware-bound keys, RASP) without
+  any audit claim.
 - "Verified" for anything other than a real on-chain tx.
 - "No telemetry / no analytics / no attribution tracking". Telemetry is
   consent-gated and a referral attribute exists. The Play draft in
