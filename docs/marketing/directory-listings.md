@@ -147,7 +147,7 @@ this.
 
 | Site | Account (owner) | Submitted | Live URL | Notes |
 |---|---|---|---|---|
-| AlternativeTo | | | | |
+| AlternativeTo | Yes (owner) | 2026-09-28 | Pending review (in queue) | Owner submitted; paid $15 for the "Human content review" add-on (their own Stripe checkout, order confirmed). Tags: cryptocurrency-wallet, bitcoin-wallet. Platforms: iPhone, Android with store links. Screenshots: 04/06/09 with captions. Full description expanded to the tier breakdown per owner request. |
 | SaaSHub | | | | |
 | ProductRank | | | | |
 | SaaSworthy | | | | |
