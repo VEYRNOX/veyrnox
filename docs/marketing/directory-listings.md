@@ -148,7 +148,7 @@ this.
 | Site | Account (owner) | Submitted | Live URL | Notes |
 |---|---|---|---|---|
 | AlternativeTo | Yes (owner) | 2026-09-28 | Pending review (in queue) | Owner submitted; paid $15 for the "Human content review" add-on (their own Stripe checkout, order confirmed). Tags: cryptocurrency-wallet, bitcoin-wallet. Platforms: iPhone, Android with store links. Screenshots: 04/06/09 with captions. Full description expanded to the tier breakdown per owner request. |
-| SaaSHub | | | | |
+| SaaSHub | Yes (owner) | 2026-09-28 | Pending approval (up to 32 days, Free tier) | Owner submitted on the Free plan — declined the pre-selected $75 Priority+ upsell (asked first). Categories: Cryptocurrency Wallets, Security & Privacy, Mobile Wallet, plus Cryptocurrencies/Crypto/Blockchain/Cyber Security/Security from a follow-up step. Competitors: MetaMask.io, Trust Wallet, Phantom, Ambire Wallet, Atomic Wallet, Exodus.io, MyEtherWallet, Unstoppable Wallet. Logo + 3 screenshots uploaded. Pricing tab filled (Free/Paid yes, no trial, USD 5.99/mo Safety Plus). Extended description filled (2000-char limit found by trial — first attempt at 2889 chars was rejected). Not verified — "Verified+" badge is bundled only in the paid $75 tier; declined. Crawler also surfaced a real LinkedIn company page (linkedin.com/company/veyrnoxwallet, ~5 followers) not found in the repo/site search earlier — worth checking directly next time, not just repo/llms.txt/site footer. |
 | ProductRank | | | | |
 | SaaSworthy | | | | |
 | SaaS Directory | | | | |
