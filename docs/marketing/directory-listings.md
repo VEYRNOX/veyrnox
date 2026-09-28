@@ -137,11 +137,11 @@ this.
 
 | Tier | Sites | Note |
 |---|---|---|
-| Good fit | AlternativeTo, SaaSHub, ProductRank, SaaSworthy, SaaS Directory, GrowthList, Software Suggest, Crozdesk | Product submission forms |
+| Good fit | AlternativeTo, SaaSHub, SaaSworthy, SaaS Directory, GrowthList, Software Suggest, Crozdesk | Product submission forms |
 | Low fit | G2, Capterra / GetApp / Software Advice (one Gartner vendor form), TrustRadius, FinancesOnline | B2B software oriented; check for a crypto-wallet category. No incentivised reviews |
 | Weak fit | There's An AI For That, Futurepedia, Toolify, FutureTools, AI Tool Hunt, AI Explorer | Only as "AI security advisor for wallets" |
 | Skip | Clutch, DesignRush | Agency directories |
-| Unverified | Summit.co, Magnus Asset | Confirm URLs before any work |
+| Unverified | Summit.co, Magnus Asset, ProductRank | Confirm URLs before any work. ProductRank checked 2026-09-28: `.io` is a paid ecommerce-AEO audit SaaS (not a listing directory), `.ai` is a separate AI-visibility tracking tool, `.co` only turns up in an 11-year-old Medium post (possibly defunct) — a Reddit post also references an unrelated "ProductRank" Product-Hunt-style directory with no domain given. None confirmed as the directory this kit originally assumed; get the exact URL from the owner before spending more time on it. |
 
 ## Tracker
 
