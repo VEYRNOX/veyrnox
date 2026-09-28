@@ -37,9 +37,11 @@ etc. — this is the one frame that actually shows the AI feature):
 **Not reviewed / excluded:** `veyrnox-photos/`, `veyrnox-photos-light/` (owner's
 Downloads) — not opened. `05-buy` and `09-decoy` in those folders should stay out
 regardless: Buy is the owner-only Transak area, and publishing decoy-mode UI is
-the owner's call, not a default. iPad frames and the subscription-price renders
-(filenames show $19.99/$159.99, which don't match the $5.99/$49.99 Safety Plus
-pricing in the Play draft) are excluded until the owner confirms current prices.
+the owner's call, not a default. iPad frames are excluded as out of scope for
+these listings. The subscription-price renders ($19.99/$159.99) are **not** a
+mismatch — confirmed 2026-09-28 (owner + live veyrnox.com/pricing) that this is
+the AI Security Protection tier, a real, separate, higher tier above Safety
+Plus ($5.99/mo, $49.99/yr). See Pricing below.
 
 ## Copy blocks
 
@@ -47,16 +49,64 @@ pricing in the Play draft) are excluded until the owner confirms current prices.
 - **Tagline:** Self-custody crypto wallet. Your keys stay on your device. Coercion-resistant.
 - **Categories:** Cryptocurrency wallet; Finance; Security and privacy
 - **Alternatives to name:** Trust Wallet, Exodus, MetaMask, Rainbow, Phantom
-- **Pricing:** free wallet plus an optional Safety Plus subscription. Confirm the
-  current prices in RevenueCat/the stores before quoting numbers.
-- **Long description:** Veyrnox is a self-custody multi-chain crypto wallet (ETH,
-  BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, USDT) built for coercion resistance.
-  A duress PIN opens a separate decoy wallet, hidden wallets conceal how many
-  wallets exist, and a panic wipe destroys local key material. Keys are
-  encrypted with AES-256-GCM and Argon2id, and bound to the device's Secure
-  Enclave (iOS) or AndroidKeyStore/StrongBox (Android) — they never leave the
-  device. Transactions are simulated locally before signing, with
-  address-poisoning and approval warnings. WalletConnect v2 is supported.
+- **Pricing (owner-confirmed 2026-09-28, matches live veyrnox.com/pricing):**
+  - Free — unlimited wallets/transactions, hardware-protected keys, biometric
+    access, RASP runtime protection, plain-language transaction review,
+    anti-phishing checks, full untruncated addresses, all 10 assets,
+    WalletConnect + QR pairing, live prices.
+  - Safety Plus — $5.99/mo or $49.99/yr. Everything in Free, plus two
+    independent recovery paths (Personal Backup: 2-of-3 Shamir Secret Sharing;
+    Personal Vault: password+PIN encrypted, stored in the user's own iCloud/
+    Google Drive/OneDrive — Veyrnox has no access to either), transaction
+    simulation, continuous anti-phishing, anomaly/drain alerts, spending
+    controls, security dashboard, and coercion resistance (decoy wallet,
+    duress PIN).
+  - AI Security Protection — $19.99/mo or $159.99/yr. Everything in Safety
+    Plus, plus address threat screening, phishing-site detection, rule-based
+    risk scoring, malicious-contract/drainer detection, token-approval
+    review/monitoring, dApp/DEX warnings, an AI Security Advisor, and
+    priority incident support. The AI layer is advisory only — it cannot
+    sign transactions, hold keys, or act without the user's review.
+- **Long description:** Veyrnox is a self-custody multi-chain crypto wallet
+  (ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, USDT — 10 assets across 8
+  networks) built for coercion resistance. A duress PIN opens a separate decoy
+  wallet, hidden wallets conceal how many wallets exist, and a panic wipe
+  destroys local key material. Keys are encrypted with AES-256-GCM and
+  Argon2id, and bound to the device's Secure Enclave (iOS) or
+  AndroidKeyStore/StrongBox (Android) — they never leave the device.
+  Transactions are simulated locally before signing, with address-poisoning
+  and approval warnings. WalletConnect v2 is supported. Fiat purchases go
+  through Transak, which handles its own identity verification; Veyrnox never
+  receives the customer's identity or card details from that flow.
+- **Roadmap (do not present as shipped):** ~100 supported assets, plus swap
+  and bridge capabilities.
+
+## Owner-supplied canonical copy (2026-09-28)
+
+Verbatim source-of-truth text from the owner, more detailed than the blocks
+above — use this to resolve any conflict, and pull from it directly for any
+listing that wants full tier breakdowns or a "what is Veyrnox" description:
+
+> Veyrnox is a self custody wallet. Private keys remain encrypted on the
+> user's device, and Veyrnox cannot hold funds, move assets or access the
+> user's personal cloud account.
+>
+> The wallet currently supports ten assets across eight networks: Ethereum,
+> Bitcoin, Solana, Polygon, Arbitrum, Optimism, Avalanche, BNB Chain, USDC and
+> USDT.
+>
+> RASP means Runtime Application Self Protection. It monitors for conditions
+> such as rooted or jailbroken devices, debugging, hooking, instrumentation
+> and application tampering. Veyrnox can warn the user or prevent sensitive
+> actions when the operating environment appears unsafe.
+>
+> Creating and using the wallet does not require Veyrnox to hold an account
+> containing the user's keys. Paid subscriptions are processed through Apple
+> or Google and can be cancelled through the relevant app-store subscription
+> settings.
+
+Full tier feature lists are folded into the Pricing bullet above rather than
+duplicated here.
 
 ## Claims that must not appear
 
