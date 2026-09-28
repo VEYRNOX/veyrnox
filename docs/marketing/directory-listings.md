@@ -137,11 +137,14 @@ this.
 
 | Tier | Sites | Note |
 |---|---|---|
-| Good fit | AlternativeTo, SaaSHub, SaaSworthy, SaaS Directory, GrowthList, Software Suggest, Crozdesk | Product submission forms |
-| Low fit | G2, Capterra / GetApp / Software Advice (one Gartner vendor form), TrustRadius, FinancesOnline | B2B software oriented; check for a crypto-wallet category. No incentivised reviews |
-| Weak fit | There's An AI For That, Futurepedia, Toolify, FutureTools, AI Tool Hunt, AI Explorer | Only as "AI security advisor for wallets" |
-| Skip | Clutch, DesignRush | Agency directories |
-| Unverified | Summit.co, Magnus Asset, ProductRank | Confirm URLs before any work. ProductRank checked 2026-09-28: `.io` is a paid ecommerce-AEO audit SaaS (not a listing directory), `.ai` is a separate AI-visibility tracking tool, `.co` only turns up in an 11-year-old Medium post (possibly defunct) — a Reddit post also references an unrelated "ProductRank" Product-Hunt-style directory with no domain given. None confirmed as the directory this kit originally assumed; get the exact URL from the owner before spending more time on it. |
+| Good fit, no blocker | AlternativeTo (done), SaaSHub (done), FinancesOnline | FinancesOnline checked 2026-09-28: financesonline.com/add-product/ is a plain lead-capture form (Name, Product name, Job title, Email, Website URL, optional Skype) — no login, no phone number required |
+| Good fit, needs phone number | Crozdesk, Software Suggest | Both checked 2026-09-28. Crozdesk's "Apply to list your software" routes to vendor.revleads.com/user/signup — really a RevLeads ad-network signup (required phone + "Monthly Marketing Budget", reads as a sales funnel). Software Suggest's softwaresuggest.com/vendors "Create a Free Listing" form also requires Phone*. Need a real number from the owner before either can proceed |
+| Good fit, needs owner's own browser | TrustRadius, SaaSworthy | TrustRadius checked 2026-09-28: solutions.trustradius.com/claim-your-profile/ has a genuine "Claim My Free Profile" flow. SaaSworthy: vendor-portal registration in progress, owner was mid-signup |
+| Blocked by bot detection | G2, Capterra, GetApp, Software Advice | Checked 2026-09-28. G2 itself 403s headless browsing outright. Capterra's "Get Your Product Listed" and GetApp/Software Advice all route into g2.com/products/new (Capterra is explicitly "powered by G2 Digital Markets" now) — same domain, same block. Needs the owner's own logged-in browser session, not this automation |
+| Wrong site entirely | GrowthList, ProductRank | Checked 2026-09-28. growthlist.co is a B2B lead-gen service selling lists of newly-funded startups to recruiters/agencies — the opposite direction, no "list your product" flow exists. ProductRank: `.io` is a paid ecommerce-AEO audit SaaS, `.ai` is a separate AI-visibility tracker, `.co` only appears in an 11-year-old Medium post — none is the directory this kit assumed |
+| Skip — doesn't fit | Clutch, DesignRush | Checked 2026-09-28. Both are pure service-provider/agency directories (Development, IT Services, Marketing, Design, Business Services / "List Your Agency") — no software-product category exists on either site. Veyrnox is a product, not an agency |
+| Weak fit | There's An AI For That, Futurepedia, Toolify, FutureTools, AI Tool Hunt, AI Explorer | Only as "AI security advisor for wallets" — not checked yet |
+| Unverified | Summit.co, Magnus Asset, SaaS Directory | Confirm exact URLs before any work — "SaaS Directory" is too generic a name to know which site is meant |
 
 ## Tracker
 
