@@ -250,7 +250,7 @@
   ],
   "overrides": {
     "serialize-javascript": "^7.0.0",
-    "axios": "^1.18.0",
+    "axios": "^1.20.0",
     "ethers": {
       "ws": "^8.21.0"
     },
