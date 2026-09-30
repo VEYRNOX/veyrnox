@@ -38,6 +38,7 @@ const LOCAL_KEYS = [
   'veyrnox-ai-nudge-dismissed',
   'veyrnox-backup-nudge-dismissed',
   'veyrnox-referral-prompt-dismissed',
+  'veyrnox-last-paid-sub',
 ];
 
 describe('panic wipe — paywall/session-day + referral-prompt residue (I-3)', () => {

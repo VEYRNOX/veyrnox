@@ -559,7 +559,7 @@ export const FEATURE_CATEGORIES = [
         displayName: 'iOS App Store',
         status: 'built',
         summary: 'Native iOS shell — live on the App Store',
-        explanation: 'Built. Native iOS shell via Capacitor. Version 1.0.1 is live on the App Store — App Store Connect reports appStoreState READY_FOR_SALE, approved from the 11 September 2026 review submission after two rejections on 8 September, neither of which was a KEK or RASP failure. Apple Organisation account (Veyrnox LTD, Team R54268MWFV) verified. CLI archive and upload pipeline working (xcodebuild + altool). NOT verified: RASP on an App Store install is not device-verified; the shipped binary has had no independent security audit; TestFlight crash and Xcode Organizer hang data have not been read since release.',
+        explanation: 'Built. Native iOS shell via Capacitor. Version 1.0.2 is live on the App Store — App Store Connect reports appStoreState READY_FOR_SALE (read 26 September 2026), approved on its first review submission of 24 September 2026 with no rejection. It replaced 1.0.1, which shipped on 11 September 2026 after two rejections on 8 September, neither of which was a KEK or RASP failure. Apple Organisation account (Veyrnox LTD, Team R54268MWFV) verified. CLI archive and upload pipeline working (xcodebuild + altool). NOT verified: RASP on an App Store install is not device-verified; the shipped binary has had no independent security audit; TestFlight crash and Xcode Organizer hang data have not been read since release.',
       },
       {
         name: 'Android App',

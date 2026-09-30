@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { SAFETY_PLUS_FEATURES, AI_SECURITY_PROTECTION_FEATURES } from '../tier';
-import { SAFETY_PLUS_ROUTES, AI_SECURITY_PROTECTION_ROUTES } from '../safetyPlusRoutes';
+import { SAFETY_PLUS_ROUTES, SAFETY_PLUS_PAGE_GATED_ROUTES, AI_SECURITY_PROTECTION_ROUTES } from '../safetyPlusRoutes';
+
+// Routes open to every tier whose creation actions are gated in-page.
+const ENFORCED_ROUTES = [...SAFETY_PLUS_ROUTES, ...SAFETY_PLUS_PAGE_GATED_ROUTES];
 
 // tier.js decides what /plans ADVERTISES as paid. safetyPlusRoutes.js decides
 // what FeatureGate actually GATES. Nothing has ever tied the two together, and
@@ -66,7 +69,7 @@ describe('tier feature lists vs route gates — parity', () => {
       if (routes === SEND_EMBEDDED) continue;
       for (const route of routes) {
         expect(
-          SAFETY_PLUS_ROUTES,
+          ENFORCED_ROUTES,
           `/plans advertises "${name}" as Safety Plus but ${route} is not gated — ` +
             'either gate the route or move the feature out of SAFETY_PLUS_FEATURES',
         ).toContain(route);

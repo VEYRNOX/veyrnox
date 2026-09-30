@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   SAFETY_PLUS_ROUTES,
+  SAFETY_PLUS_PAGE_GATED_ROUTES,
   isSafetyPlusRoute,
   AI_SECURITY_PROTECTION_ROUTES,
   isAiSecurityProtectionRoute,
@@ -14,7 +15,6 @@ import {
 // gate); they are tracked as Send-flow follow-up.
 const EXPECTED_GATED = [
   // SECURITY
-  '/duress-pin',
   '/stealth-wallets',
   '/panic-wipe',
   '/hardware-wallet',
@@ -24,7 +24,6 @@ const EXPECTED_GATED = [
   '/token-approvals',
   '/budget',
   '/spam-filter',
-  '/personal-backup',
   '/audit-log',
   // FINANCE
   '/advanced-analytics',
@@ -32,6 +31,14 @@ const EXPECTED_GATED = [
 ];
 
 describe('safetyPlusRoutes', () => {
+  // Cancellation must never lock existing recovery / deniability management.
+  it('recovery and duress management routes are never route-gated', () => {
+    for (const route of ['/personal-backup', '/duress-pin']) {
+      expect(isSafetyPlusRoute(route), `${route} must stay reachable after expiry`).toBe(false);
+      expect(SAFETY_PLUS_PAGE_GATED_ROUTES).toContain(route);
+    }
+  });
+
   it('gates exactly the Safety Plus routes from the plans page', () => {
     expect(SAFETY_PLUS_ROUTES).toEqual(EXPECTED_GATED);
   });
