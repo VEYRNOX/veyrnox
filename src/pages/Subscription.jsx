@@ -30,10 +30,25 @@ import { redeemCode } from "@/lib/redeemCode";
 import {
   getAiSecurityProtectionOfferingId,
   offerPriceInfo,
+  findOfferOption,
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
   RETENTION_OFFERING_ID,
 } from "@/lib/purchases";
+
+// Play Store offer tag for the 14-day free trial. On Android we must name
+// the offer by tag or the store picks a default subscription option — see
+// the `rc-ignore-offer` comment in `src/lib/purchases.js`. Play only exposes
+// the trial's subscriptionOption to the client when the user is server-side
+// eligible (new subscriber to the app), so `findOfferOption(pkg, TAG)`
+// returning truthy IS the eligibility check; ineligible users fall through
+// to the base plan.
+//
+// iOS uses a different mechanism (App Store introductory offer, not a
+// tagged promotional offer): StoreKit auto-applies it at purchase to
+// eligible new subscribers without any client-side selection, so this tag
+// is Play-only.
+const PLAY_FREE_TRIAL_OFFER_TAG = "free-trial-14d";
 
 // AppGallery has no RevenueCat backend — huawei flavor dispatches to HMS IAP
 // via HuaweiIapPlugin. Every other flavor (google, samsung, fdroid, iOS) goes
@@ -555,7 +570,20 @@ export default function Subscription() {
     }
     setBusy(true);
     try {
-      await purchasePackage(pkg, { offerTag });
+      // On Android, when no referral/retention offer is active, name the free
+      // trial by tag so RC's SDK picks the trial subscription option instead
+      // of letting the store choose the default. findOfferOption returning
+      // truthy is itself the eligibility check — Play only exposes the option
+      // when the user is server-side eligible, so ineligible users get null
+      // here and fall through to the base plan price. iOS intro offers are
+      // auto-applied by StoreKit, so no client-side selection is needed there.
+      const effectiveOfferTag =
+        offerTag ||
+        (Capacitor.getPlatform() === "android" &&
+        findOfferOption(pkg, PLAY_FREE_TRIAL_OFFER_TAG)
+          ? PLAY_FREE_TRIAL_OFFER_TAG
+          : null);
+      await purchasePackage(pkg, { offerTag: effectiveOfferTag });
       // Codex P1 2026-08-16: purchasePackage() returning is NOT the same as
       // "entitlement granted". RC + StoreKit / Play Billing can delay,
       // fail, or downgrade the grant after the call resolves (deferred
