@@ -8,7 +8,7 @@ on:
         required: false
         default: "main"
   push:
-    branches: [main]
+    branches: [main, "fix/canary-gate-output-race"]
 
 concurrency:
   group: canary-${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.sha }}
