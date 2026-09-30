@@ -62,6 +62,12 @@ vi.mock('@/components/security/useActionGuard', () => ({
   }),
 }));
 
+// Creating an Emergency PIN is tier-gated in-page; removal must work on EVERY
+// tier, so the default here is Free.
+vi.mock('@/lib/TierProvider', () => ({
+  useTier: () => ({ currentTier: 'free', loading: false }),
+}));
+
 vi.mock('@/lib/decoyBalance', () => ({
   resolveDecoyBalance: vi.fn(async () => ({ eth: '0', source: 'chain' })),
   seedDemoDecoyBalance: vi.fn(),
@@ -112,5 +118,14 @@ describe('DuressPin — removal without a configured-state oracle', () => {
     const text = document.body.textContent;
     expect(text).not.toMatch(/is configured/i);
     expect(text).not.toMatch(/already set/i);
+  });
+});
+
+describe('DuressPin — tier gating of creation only', () => {
+  it('on Free the page renders removal and an upsell instead of the PIN setup form', async () => {
+    await renderSettled();
+    expect(screen.getByTestId('remove-duress-pin-btn')).toBeTruthy();
+    expect(screen.getByTestId('duress-setup-upsell')).toBeTruthy();
+    expect(screen.queryByText('New Emergency PIN')).toBeNull();
   });
 });

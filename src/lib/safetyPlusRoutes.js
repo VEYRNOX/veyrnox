@@ -16,7 +16,6 @@
 
 export const SAFETY_PLUS_ROUTES = [
   // SECURITY
-  '/duress-pin',
   '/stealth-wallets',
   '/panic-wipe',
   '/hardware-wallet',
@@ -26,11 +25,21 @@ export const SAFETY_PLUS_ROUTES = [
   '/token-approvals',
   '/budget',
   '/spam-filter',
-  '/personal-backup',
   '/audit-log',
   // FINANCE
   '/advanced-analytics',
   '/recurring',
+];
+
+// Routes that hold USING / MANAGING existing recovery or deniability material
+// (restore a vault, re-export, remove an Emergency PIN). They are reachable on
+// every tier so a lapsed subscriber is never locked out of what they already
+// made; only CREATING new Safety Plus material is gated, inside the page.
+// Keep them out of SAFETY_PLUS_ROUTES: a route gate replaces the whole page,
+// including the restore and removal controls (product defect found 2026-09-30).
+export const SAFETY_PLUS_PAGE_GATED_ROUTES = [
+  '/duress-pin',
+  '/personal-backup',
 ];
 
 export function isSafetyPlusRoute(path) {

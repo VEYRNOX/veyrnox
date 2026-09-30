@@ -39,6 +39,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useWallet } from "@/lib/WalletProvider";
+import { useTier } from "@/lib/TierProvider";
+import { hasSafetyPlusAccess } from "@/lib/tier";
+import { Link } from "react-router";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { DEMO } from "@/api/demoClient";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
@@ -116,6 +119,11 @@ function DecoyBalance({ address, refreshKey }) {
 export default function DuressPin() {
   const { t } = useTranslation("security");
   const wallet = useWallet();
+  // Creating/changing an Emergency PIN is Safety Plus. Removal and the page
+  // itself stay open on every tier so a lapsed subscriber can always manage
+  // what they already set up (and so this page is no presence oracle).
+  const { currentTier, loading: tierLoading } = useTier();
+  const hasSafetyPlus = hasSafetyPlusAccess(currentTier);
   const {
     isUnlocked, isDecoy, isHidden, accounts,
     hasVault, setDuressPin, removeDuressPin, enableDecoyBiometricUnlock,
@@ -434,7 +442,20 @@ export default function DuressPin() {
         </div>
       )}
 
-      {/* Setup card */}
+      {/* Setup card — creating or changing an Emergency PIN is Safety Plus. */}
+      {!tierLoading && !hasSafetyPlus && (
+        <div data-testid="duress-setup-upsell" className="p-5 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
+          <p className="text-sm font-semibold">{t("duress.setup_locked_title")}</p>
+          <p className="text-xs text-muted-foreground">{t("duress.setup_locked_body")}</p>
+          <Link
+            to="/plans"
+            className="inline-flex items-center justify-center min-h-11 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold"
+          >
+            {t("duress.setup_locked_cta")}
+          </Link>
+        </div>
+      )}
+      {hasSafetyPlus && (
       <div className="p-5 rounded-xl border border-border bg-card">
         <div className="flex items-center gap-2 mb-4">
           <Shield className="h-5 w-5 text-primary" />
@@ -582,6 +603,7 @@ export default function DuressPin() {
           </div>
         )}
       </div>
+      )}
 
       {/* Live demonstration — DEMO only.
           TODO(owner): verify DCE strips this entire block from the production Vite

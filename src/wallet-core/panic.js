@@ -430,6 +430,10 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   // AI Security Protection nudge. A stronger tell than its neighbour — it can
   // only be written by a device that held a paid tier.
   'veyrnox-ai-nudge-dismissed',
+  // subscriptionState.js LAST_PAID_KEY: the last paid tier + expiry, kept only so
+  // the UI can say "your paid protection has ended". Proves the device held a
+  // paid plan, so it is residue.
+  'veyrnox-last-paid-sub',
   'veyrnox-backup-nudge-dismissed',
   // Branch review 2026-08-15 (S-1): the sibling dismissal marker the paywall
   // sweep above missed. Writer: components/ReferralPrompt.jsx DISMISSED_KEY.
