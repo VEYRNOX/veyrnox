@@ -86,12 +86,34 @@ jobs:
         run: node scripts/check-edge-endpoints.mjs "$DEPLOY_URL"
 
   canary-smoke:
+    # No job-level `if:` on needs.deploy-canary.outputs.deployment_url here.
+    # GitHub Actions evaluates a job's `if:` as soon as its `needs` report their
+    # conclusion, which races the runner-side flush of a *compiled* action's
+    # (cloudflare/wrangler-action) job-level outputs: deploy-canary reliably has
+    # `deployment_url` set by the time canary-gate reads it later in the same
+    # run, but canary-smoke's job-level `if:` was observed skipping this job on
+    # every push-triggered run even though the URL was actually non-empty
+    # (verified 2026-09-30 via a temporary debug step: deploy-canary.result was
+    # `success` and deployment_url was populated, yet canary-smoke.result was
+    # `skipped`). Default `needs: deploy-canary` semantics already skip this job
+    # if deploy-canary fails; the "did we actually get a URL" check below runs
+    # as a step instead, which evaluates later (once the runner has already
+    # picked up the job) and fails loudly rather than silently skipping.
     needs: deploy-canary
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    if: ${{ needs.deploy-canary.outputs.deployment_url != '' }}
     steps:
+      - name: Verify a deployment URL was produced
+        env:
+          URL: ${{ needs.deploy-canary.outputs.deployment_url }}
+        run: |
+          if [ -z "$URL" ]; then
+            echo "::error::deploy-canary succeeded but produced no deployment_url output"
+            exit 1
+          fi
+          echo "Smoke-testing $URL"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.sha }}
