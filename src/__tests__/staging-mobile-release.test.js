@@ -41,7 +41,11 @@ describe('staging mobile release contract', () => {
     expect(walletEntry).toContain('navigate("/onboarding/restore-shares")');
   });
 
-  it('uses the next unused store numbers confirmed in the consoles', () => {
+  it('pins the store numbers of the live 1.0.2 release', () => {
+    // Both numbers are CONSUMED, not "next unused": Play versionCode 57 went live
+    // 2026-09-23 and Apple build 8 was approved 2026-09-24 (READY_FOR_SALE, read
+    // 2026-09-26). Bump both, and this pin, before the next upload — Apple also
+    // needs a new version record, since 1.0.2 is Ready for Distribution.
     // Matched with the trailing newline so a later bump to 570+ cannot satisfy
     // this pin by prefix — 'versionCode 57' is a substring of 'versionCode 570'.
     expect(androidBuild).toContain('versionCode 57\n');

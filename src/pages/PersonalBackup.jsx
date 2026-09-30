@@ -1025,14 +1025,15 @@ const TABS = ENABLE_PERSONAL_BACKUP_SHARDS
 
 export default function PersonalBackup() {
   const { createBackup, exportRecoveryShares, exportRecoveryBundles, restoreFromRecoveryShares, lock, isDecoy, isHidden, getBackupPublicAddresses } = useWallet();
-  const { currentTier } = useTier();
+  const { currentTier, loading: tierLoading } = useTier();
   const navigate = useNavigate();
   const [tab, setTab] = useState("export");
   const [shardExportReady, setShardExportReady] = useState(() => (isNativePlatformSafe() ? null : true));
-  // Vault backup ("Create backup" + "Restore") is free. Shard-based
-  // "Advanced (2-of-3)" is Safety Plus only — tab stays visible so free
-  // users can discover the feature; clicking it renders an upsell card
-  // instead of the export/restore panel.
+  // CREATING new recovery material ("Create backup" .enc file and the
+  // "Advanced (2-of-3)" shares) is Safety Plus. USING existing material
+  // ("Restore") is free on every tier, so cancelling never strands a backup.
+  // Tabs stay visible so free users can discover the features; a gated tab
+  // renders an upsell card in place of the create panel.
   const hasSafetyPlus = hasSafetyPlusAccess(currentTier);
 
   useEffect(() => {
@@ -1093,7 +1094,37 @@ export default function PersonalBackup() {
       </div>
 
       {/* Tab content */}
-      {tab === "export" && (
+      {(tab === "export" || tab === "shares") && tierLoading && (
+        <p className="text-sm text-muted-foreground text-center mt-6">Loading…</p>
+      )}
+      {tab === "export" && !tierLoading && !hasSafetyPlus && (
+        <div className="space-y-4" data-testid="export-tab-upsell">
+          <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold">Creating a new encrypted backup — Safety Plus</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              A backup file you already made stays valid and can be restored at any time, on
+              any plan. Creating a new one needs an active Safety Plus subscription.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTab("restore")}
+            className="w-full min-h-11 py-3 rounded-xl border border-border font-medium"
+          >
+            Restore from a backup file
+          </button>
+          <Link
+            to="/plans"
+            className="w-full min-h-11 py-3 rounded-xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2"
+          >
+            See Safety Plus
+          </Link>
+        </div>
+      )}
+      {tab === "export" && hasSafetyPlus && (
         <ExportTab createBackup={createBackup} isDecoy={isDecoy} isHidden={isHidden} publicAddresses={getBackupPublicAddresses ? getBackupPublicAddresses() : []} />
       )}
       {tab === "restore" && (
@@ -1114,7 +1145,7 @@ export default function PersonalBackup() {
           shardExportReady={shardExportReady}
         />
       )}
-      {tab === "shares" && ENABLE_PERSONAL_BACKUP_SHARDS && !hasSafetyPlus && (
+      {tab === "shares" && ENABLE_PERSONAL_BACKUP_SHARDS && !tierLoading && !hasSafetyPlus && (
         <div className="space-y-4" data-testid="shares-tab-upsell">
           <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
             <div className="flex items-center gap-2">
@@ -1128,10 +1159,14 @@ export default function PersonalBackup() {
             </p>
           </div>
           <div className="p-4 rounded-xl border border-border bg-card/40 text-xs space-y-2">
-            <p className="font-semibold">Personal Backup is free — this is the advanced tier.</p>
+            <p className="font-semibold">Restoring is always free.</p>
             <p className="text-muted-foreground">
-              "Create backup" and "Restore" stay free for everyone. The 2-of-3 shard flow adds
-              coercion resistance and single-copy loss tolerance on top.
+              Restoring from a backup file never needs a subscription. Creating new backups and
+              2-of-3 shares is part of Safety Plus.
+            </p>
+            <p className="text-muted-foreground" data-testid="shares-existing-note">
+              Already have shares? Recovering with two valid shares never needs a subscription:
+              choose Restore on the wallet entry screen. Creating new shares needs Safety Plus.
             </p>
           </div>
           <Link
@@ -1143,6 +1178,21 @@ export default function PersonalBackup() {
           </Link>
         </div>
       )}
+
+      {/* Personal-cloud warning — a backup file kept in your own cloud account is
+          only as available as that account. */}
+      <div data-testid="personal-cloud-warning" className="p-4 rounded-xl border border-border bg-secondary/30 text-xs space-y-1.5">
+        <p className="font-semibold">Keep more than one recovery location</p>
+        <p className="text-muted-foreground">
+          Your backup file may be stored in your own cloud account. Veyrnox cannot access that
+          account or its credentials. A suspended account, a billing dispute, a forgotten
+          password or a provider outage could temporarily or permanently block access to it.
+        </p>
+        <p className="text-muted-foreground">
+          Do not keep every recovery method behind the same device, email address, login or
+          cloud account.
+        </p>
+      </div>
 
       {/* Footer note */}
       <p className="text-xs text-muted-foreground text-center pb-4">

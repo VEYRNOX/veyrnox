@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { SAFETY_PLUS_ROUTES } from '@/lib/safetyPlusRoutes';
+import { SAFETY_PLUS_ROUTES, SAFETY_PLUS_PAGE_GATED_ROUTES } from '@/lib/safetyPlusRoutes';
 
 describe('SafetyPlus.jsx feature routes', () => {
   it('every route listed on the hub page exists in the canonical Safety Plus route list', () => {
@@ -12,7 +12,7 @@ describe('SafetyPlus.jsx feature routes', () => {
     const routeMatches = [...source.matchAll(/route:\s*"([^"]+)"/g)].map((m) => m[1]);
     expect(routeMatches.length).toBeGreaterThan(0);
     for (const route of routeMatches) {
-      expect(SAFETY_PLUS_ROUTES, `${route} must be a real, gated route`).toContain(route);
+      expect([...SAFETY_PLUS_ROUTES, ...SAFETY_PLUS_PAGE_GATED_ROUTES], `${route} must be a real, gated route`).toContain(route);
     }
   });
 });
