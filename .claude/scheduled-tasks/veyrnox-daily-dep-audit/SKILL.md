@@ -287,6 +287,29 @@ Two consequences worth carrying:
 
 ### `stream-json` — max severity: moderate — accepted 2026-09-03
 
+- **Candidate remediation, 2026-09-30; not a retirement or merge claim.**
+  Published `jayson@5.0.0` removes `stream-json` entirely. The scoped
+  `@solana/web3.js` override in this candidate selects that exact release and removes
+  the obsolete Jayson UUID override. Solana `1.99.0` still declares `jayson ^4.3.0`,
+  so ordinary resolution cannot select it. Jayson 5 requires Node >=20 and changes
+  server stream framing; Solana uses its browser client, whose request IDs now use
+  Web Crypto (`randomUUID`, falling back to `getRandomValues`). Regression coverage
+  in `src/wallet-core/__tests__/sol-rpc-dependency.test.js` exercises real Connection
+  HTTP single/batch/error paths and WebSocket subscriptions on loopback, plus the
+  browser client's HTTP notifications (Connection has no HTTP notification API).
+  Local candidate evidence: `npm ci` passed; Solana resolves installed Jayson 5.0.0
+  and a recursive installed-manifest scan found no `stream-json`. All nine new
+  compatibility tests passed, including browser-entry `getRandomValues` fallback
+  and missing-crypto failure before transport. The existing Solana suite, core
+  typecheck, targeted lint and `npm run build:release` passed. Only four lockfile
+  package entries change (Jayson, plus removed eyes/stream-chain/stream-json);
+  all bundled entries remain byte-for-byte equivalent as parsed JSON.
+  Keep this residual accepted on main until the change lands and its installed
+  dependency tree is checked. No on-chain transaction, real-device verification,
+  independent audit, or feature-status promotion is claimed. The historical
+  no-fix rationale below describes the Jayson 4 chain; it does not rule out this
+  newly available owner migration. The bundled Appium residuals are unaffected.
+
 - **Advisory:** GHSA-528h-pc64-c93x — `pick`/`ignore`/`filter`/`replace` filters are
   O(depth²) on nested input, so small crafted JSON blocks the event loop for seconds to
   minutes (DoS). Vulnerable `<= 3.4.0`; the tree carries `1.9.1`.
@@ -335,7 +358,9 @@ Two consequences worth carrying:
   right rather than only as an `effects` entry. Per the `elliptic` entry's rule, a count
   that moves for an unexplained reason is a revisit trigger — this one is explained, and
   re-derived from `npm audit --json` rather than assumed.
-- **Revisit trigger:** `jayson` widens its `stream-json` range to admit `>= 3.5.0` (then
+- **Revisit trigger:** `jayson` removes `stream-json` (FIRED by 5.0.0; evaluate the
+  major-version compatibility and Solana range before adoption); OR `jayson` widens
+  its `stream-json` range to admit `>= 3.5.0` (then
   the fix is a plain lockfile update, no override); OR `stream-json` backports the fix to
   a 1.x release; OR `@solana/web3.js` drops `jayson`; OR any code in `src/` or any new
   dependency imports `jayson`'s main entry rather than `jayson/lib/client/browser`, which
