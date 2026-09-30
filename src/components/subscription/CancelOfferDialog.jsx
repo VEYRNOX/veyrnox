@@ -38,6 +38,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ShieldOff, EyeOff, Trash2, Sparkles } from "lucide-react";
 import { TIER, tierLabel } from "@/lib/tier";
+import { CANCEL_FLOW } from "@/lib/subscriptionCopy";
 
 // What actually stops working. Coercion-resistant Safety Plus set for
 // everyone; the AI Security Protection tier bundles Safety Plus + live
@@ -159,7 +160,10 @@ export default function CancelOfferDialog({
           <Button variant="ghost" className="w-full" onClick={onContinue}>
             Continue to cancel
           </Button>
-          <p className="text-xs text-muted-foreground text-center pt-1">
+          <p className="text-xs text-muted-foreground text-center pt-1" data-testid="cancel-flow-before">
+            {CANCEL_FLOW.before}
+          </p>
+          <p className="text-xs text-muted-foreground text-center">
             Cancelling is handled by the App Store or Google Play. You keep
             {" "}{tierName} until the end of the period you've paid for.
           </p>

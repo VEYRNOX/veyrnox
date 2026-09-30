@@ -24,6 +24,14 @@ import {
 } from '@/lib/purchases';
 import { setCachedTier } from '@/lib/tierCache';
 import {
+  NO_SUBSCRIPTION,
+  describeSubscription,
+  deriveSubscriptionView,
+  readLastPaid,
+  writeLastPaid,
+  resolveSubscriptionDetail,
+} from '@/lib/subscriptionState';
+import {
   isDeniabilitySessionActive,
   DENIABILITY_SESSION_CHANGED_EVENT,
 } from '@/wallet-core/deniabilitySession.js';
@@ -38,6 +46,28 @@ export function TierProvider({ children }) {
     : null;
   const [currentTier, setCurrentTier] = useState(FORCED_TIER || 'free');
   const [loading, setLoading] = useState(true);
+  // Lifecycle state for DISPLAY only (cancelled / billing retry / expired, expiry
+  // date). Never consulted by any gate; see subscriptionState.js.
+  const [subscription, setSubscription] = useState(NO_SUBSCRIPTION);
+
+  const applySubscriptionDetail = useCallback((detail) => {
+    try {
+      writeLastPaid(detail);
+      setSubscription(deriveSubscriptionView(detail, detail ? null : readLastPaid()));
+    } catch {
+      /* display-only: a failure here must not touch the tier */
+    }
+  }, []);
+
+  const refreshSubscription = useCallback(async () => {
+    try {
+      const { reachable, detail } = await resolveSubscriptionDetail();
+      // Store unreachable: say nothing new. Never show "expired" for an outage.
+      if (reachable) applySubscriptionDetail(detail);
+    } catch {
+      /* display-only */
+    }
+  }, [applySubscriptionDetail]);
 
   // Mirror React state into the sync tier cache so non-React readers
   // (approvalRiskNotes.js, phishing feed init, etc.) can gate on tier
@@ -72,8 +102,9 @@ export function TierProvider({ children }) {
     const tier = await resolveTier();
     if (resolveGenerationRef.current !== myGen) return tier;
     setCurrentTier(tier);
+    refreshSubscription();
     return tier;
-  }, [bumpResolveGeneration]);
+  }, [bumpResolveGeneration, refreshSubscription]);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,6 +147,7 @@ export function TierProvider({ children }) {
       }
       setCurrentTier(tier);
       setLoading(false);
+      refreshSubscription();
     })();
 
     (async () => {
@@ -132,8 +164,10 @@ export function TierProvider({ children }) {
           // is active — force 'free' instead. Fail closed.
           if (isDeniabilitySessionActive()) {
             setCurrentTier('free');
+            setSubscription(NO_SUBSCRIPTION);
             return;
           }
+          applySubscriptionDetail(describeSubscription(customerInfo));
           // Codex P2 2026-08-15: own-property + shape check (see entitlement.js).
           const active = customerInfo?.entitlements?.active ?? {};
           const ownedAi = Object.prototype.hasOwnProperty.call(active, AI_SECURITY_PROTECTION_ENTITLEMENT);
@@ -180,6 +214,7 @@ export function TierProvider({ children }) {
           // force when it eventually lands (Codex P2 race fix).
           bumpResolveGeneration();
           setCurrentTier('free');
+          setSubscription(NO_SUBSCRIPTION);
         } else {
           // Flip-off: re-resolve to pick up the real tier. refreshTier() is
           // itself generation-guarded — a subsequent flip TRUE will bump the
@@ -195,7 +230,7 @@ export function TierProvider({ children }) {
     return () => window.removeEventListener(DENIABILITY_SESSION_CHANGED_EVENT, onChange);
   }, [FORCED_TIER, refreshTier, bumpResolveGeneration]);
 
-  const value = { currentTier, loading, refreshTier };
+  const value = { currentTier, loading, refreshTier, subscription };
 
   return <TierCtx.Provider value={value}>{children}</TierCtx.Provider>;
 }
