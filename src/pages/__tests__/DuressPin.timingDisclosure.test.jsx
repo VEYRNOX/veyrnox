@@ -90,6 +90,11 @@ vi.mock('@/components/security/useActionGuard', () => ({
   }),
 }));
 
+// Setup form is Safety Plus; these tests exercise it.
+vi.mock('@/lib/TierProvider', () => ({
+  useTier: () => ({ currentTier: 'safety_plus', loading: false }),
+}));
+
 vi.mock('@/lib/decoyBalance', () => ({
   resolveDecoyBalance: vi.fn(async () => ({ eth: '0', source: 'chain' })),
   seedDemoDecoyBalance: vi.fn(),

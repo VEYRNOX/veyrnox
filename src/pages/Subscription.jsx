@@ -56,6 +56,13 @@ import { annualSavingPercent } from "@/lib/annualSaving";
 import { discountPercent } from "@/lib/discountPercent";
 import { recordAttribution, fetchReferralTier, claimFirstReferralBonus } from "@/api/referralApi";
 import { OFFER_UNAVAILABLE } from "@/lib/purchases";
+import TierComparison from "@/components/subscription/TierComparison";
+import {
+  CancellationAssurance,
+  WhySubscription,
+  RecoveryFaq,
+} from "@/components/subscription/CancellationAssurance";
+import { TIER_DESCRIPTIONS } from "@/lib/subscriptionCopy";
 import OutcomeSteps, {
   OUTCOME_STEPS,
   OUTCOME_SEEN_KEY,
@@ -931,6 +938,12 @@ export default function Subscription() {
                 </p>
               )}
 
+              <p className="text-sm text-muted-foreground">{TIER_DESCRIPTIONS.safety_plus}</p>
+              <WhySubscription />
+              {/* Cancellation assurance sits ABOVE the purchase button and the
+                  renewal terms, never only below the legal text. */}
+              <CancellationAssurance />
+
               {/* CTA */}
               {/* whitespace-normal etc. — same reasoning as the AI tier CTA
                   below: the outcome-named "Upgrade to Safety Plus — $9.99"
@@ -1071,6 +1084,9 @@ export default function Subscription() {
                         <span className="text-xs text-muted-foreground line-through mono-value">{aiSelectedRegularPrice}</span>
                       )}
                     </div>
+                    <p className="text-sm text-muted-foreground">{TIER_DESCRIPTIONS.ai_security_protection}</p>
+                    <WhySubscription />
+                    <CancellationAssurance showAgentLimits />
                     {/* whitespace-normal + h-auto + py-3 overrides the base
                         Button's whitespace-nowrap so the outcome-named
                         "Subscribe to AI Security Protection — $19.99" text
@@ -1099,7 +1115,11 @@ export default function Subscription() {
                     {isNative && (
                       <>
                         <p className="text-xs text-muted-foreground text-center">
-                          Billed as an in-app subscription through the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"}.
+                          <span className="font-semibold text-foreground">Cancel anytime.</span>{" "}
+                          Renews {billing === "annual" ? "yearly" : "monthly"} at{" "}
+                          {aiSelectedPriceString ?? "the store price"} until cancelled — billed as an in-app
+                          subscription through the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"};
+                          manage or cancel in your account settings.
                         </p>
                         <button
                           type="button"
@@ -1137,6 +1157,21 @@ export default function Subscription() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Compare plans + recovery explainer + legal links ── */}
+      <section className="space-y-3" aria-labelledby="compare-tiers-heading">
+        <h2 id="compare-tiers-heading" className="text-sm font-semibold uppercase tracking-wide">
+          Compare tiers
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          AI Security Protection includes Safety Plus, and Safety Plus builds on Free.
+        </p>
+        <TierComparison />
+        <RecoveryFaq />
+        <p className="text-xs text-muted-foreground text-center">
+          <Link to="/terms-legal" className="underline">Privacy Policy and Terms</Link>
+        </p>
+      </section>
     </div>
   );
 }
