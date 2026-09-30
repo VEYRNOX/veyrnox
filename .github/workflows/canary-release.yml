@@ -86,20 +86,25 @@ jobs:
         run: node scripts/check-edge-endpoints.mjs "$DEPLOY_URL"
 
   canary-smoke:
-    # No job-level `if:` on needs.deploy-canary.outputs.deployment_url here.
-    # GitHub Actions evaluates a job's `if:` as soon as its `needs` report their
-    # conclusion, which races the runner-side flush of a *compiled* action's
-    # (cloudflare/wrangler-action) job-level outputs: deploy-canary reliably has
-    # `deployment_url` set by the time canary-gate reads it later in the same
-    # run, but canary-smoke's job-level `if:` was observed skipping this job on
-    # every push-triggered run even though the URL was actually non-empty
-    # (verified 2026-09-30 via a temporary debug step: deploy-canary.result was
-    # `success` and deployment_url was populated, yet canary-smoke.result was
-    # `skipped`). Default `needs: deploy-canary` semantics already skip this job
-    # if deploy-canary fails; the "did we actually get a URL" check below runs
-    # as a step instead, which evaluates later (once the runner has already
-    # picked up the job) and fails loudly rather than silently skipping.
     needs: deploy-canary
+    # GitHub Actions implicitly ANDs any custom `if:` (one that doesn't itself
+    # start with always()/success()/failure()/cancelled()) with success(), and
+    # success() is false here on every push trigger because validate-ref (an
+    # ancestor of deploy-canary, skipped on push since it only runs on
+    # workflow_dispatch) taints the WHOLE downstream chain by default - even
+    # though deploy-canary explicitly overrode that taint for itself via its own
+    # `always() && (...)` below. That taint is not cleared for canary-smoke just
+    # because deploy-canary ran anyway, so canary-smoke was skipped on every
+    # push for at least 11 days (#2788), including in a first fix attempt here
+    # that only removed the custom if: - which reverts to the bare default
+    # success() and skips for the exact same reason. Mirror deploy-canary's own
+    # pattern instead: always() to escape the ancestor taint, then an explicit
+    # check of deploy-canary's own result (verified 2026-09-30 with a temporary
+    # debug step showing deployment_url was genuinely non-empty and
+    # deploy-canary.result was `success`, yet canary-smoke was still skipped
+    # under both the original if: and the no-if: attempt - only this pattern
+    # actually ran the job under push).
+    if: always() && needs.deploy-canary.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
