@@ -92,6 +92,16 @@ never analysed — report it rather than folding it into the existing baseline.
 
 ## Signals
 
+### Owner removal signal (added 2026-09-30)
+
+Check whether `jayson@latest` removes `dependencies.stream-json` entirely as well
+as whether it widens the range. This signal FIRED in 5.0.0. Solana 1.99.0 still
+requires Jayson ^4.3.0, so it is a major-version migration candidate, not an
+automatic lockfile refresh. Consult the daily audit's candidate note and require
+real Connection HTTP/WebSocket regression tests, core typecheck, release build,
+and a clean installed-tree check before proposing retirement. Do not classify a
+missing dependency key as "no movement" or claim this candidate has merged.
+
 Each is a separate probe. Report every one as FIRED or NOT FIRED with the value observed —
 never a bare "no movement" summary, because the value is what the next run compares
 against.
@@ -205,13 +215,14 @@ Report it. Do not open a PR, do not edit `package.json`, do not edit the residua
 this task is read-only, exactly like the daily audit it supports.
 
 State which signal fired, the observed value, and whether it is sufficient to retire the
-residual. Only SIGNAL 1 (with its caveat clear), SIGNAL 2, or SIGNAL 3 can clear it;
+residual. The owner-removal signal (with compatibility acceptance), SIGNAL 1
+(with its caveat clear), SIGNAL 2, or SIGNAL 3 can clear it;
 SIGNAL 4 changes how the daily audit must report it, and SIGNAL 5 is an escalation rather
 than a resolution. Per the daily audit's own rule, retirement requires the vulnerable
 package to be gone from the **INSTALLED** tree — confirmed with `npm ci` and an on-disk
 version check — not merely from a resolved lockfile and not on the strength of npm's
-`fixAvailable`, which for this advisory already reports `true` while every available route
-is either absent or breaks `jayson`.
+`fixAvailable`. The old stream-json 3.x override beneath Jayson 4 remains broken;
+the Jayson 5 owner migration is a distinct candidate requiring its own evidence.
 
 ## Output
 
