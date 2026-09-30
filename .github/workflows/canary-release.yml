@@ -73,7 +73,7 @@ jobs:
 
       - name: Deploy canary to Cloudflare Pages
         id: deploy
-        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -87,11 +87,38 @@ jobs:
 
   canary-smoke:
     needs: deploy-canary
+    # GitHub Actions implicitly ANDs any custom `if:` (one that doesn't itself
+    # start with always()/success()/failure()/cancelled()) with success(), and
+    # success() is false here on every push trigger because validate-ref (an
+    # ancestor of deploy-canary, skipped on push since it only runs on
+    # workflow_dispatch) taints the WHOLE downstream chain by default - even
+    # though deploy-canary explicitly overrode that taint for itself via its own
+    # `always() && (...)` below. That taint is not cleared for canary-smoke just
+    # because deploy-canary ran anyway, so canary-smoke was skipped on every
+    # push for at least 11 days (#2788), including in a first fix attempt here
+    # that only removed the custom if: - which reverts to the bare default
+    # success() and skips for the exact same reason. Mirror deploy-canary's own
+    # pattern instead: always() to escape the ancestor taint, then an explicit
+    # check of deploy-canary's own result (verified 2026-09-30 with a temporary
+    # debug step showing deployment_url was genuinely non-empty and
+    # deploy-canary.result was `success`, yet canary-smoke was still skipped
+    # under both the original if: and the no-if: attempt - only this pattern
+    # actually ran the job under push).
+    if: always() && needs.deploy-canary.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    if: ${{ needs.deploy-canary.outputs.deployment_url != '' }}
     steps:
+      - name: Verify a deployment URL was produced
+        env:
+          URL: ${{ needs.deploy-canary.outputs.deployment_url }}
+        run: |
+          if [ -z "$URL" ]; then
+            echo "::error::deploy-canary succeeded but produced no deployment_url output"
+            exit 1
+          fi
+          echo "Smoke-testing $URL"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.sha }}

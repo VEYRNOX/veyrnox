@@ -109,3 +109,53 @@ describe('TierProvider', () => {
     await waitFor(() => expect(unsubscribe).toHaveBeenCalled());
   });
 });
+
+describe('TierProvider — subscription lifecycle (display only)', () => {
+  beforeEach(() => { localStorage.clear(); });
+  function SubProbe() {
+    const { currentTier, subscription } = useTier();
+    return (
+      <div>
+        <span data-testid="tier2">{currentTier}</span>
+        <span data-testid="sub">{subscription.status}</span>
+      </div>
+    );
+  }
+  const liveEnt = (over = {}) => ({ entitlements: { active: { safety_plus: { isActive: true, willRenew: true, expirationDate: '2027-03-01T00:00:00Z', ...over } } } });
+
+  it('listener: willRenew=false shows cancelled while the tier stays paid', async () => {
+    resolveTier.mockResolvedValue('safety_plus');
+    render(<TierProvider><SubProbe /></TierProvider>);
+    await waitFor(() => expect(capturedListener).toBeTruthy());
+    await act(async () => { capturedListener(liveEnt({ willRenew: false })); });
+    expect(screen.getByTestId('tier2').textContent).toBe('safety_plus');
+    expect(screen.getByTestId('sub').textContent).toBe('cancelled');
+  });
+
+  it('listener: lapse after a paid period shows expired and the tier is free', async () => {
+    resolveTier.mockResolvedValue('safety_plus');
+    render(<TierProvider><SubProbe /></TierProvider>);
+    await waitFor(() => expect(capturedListener).toBeTruthy());
+    await act(async () => { capturedListener(liveEnt()); });
+    await act(async () => { capturedListener({ entitlements: { active: {} } }); });
+    expect(screen.getByTestId('tier2').textContent).toBe('free');
+    expect(screen.getByTestId('sub').textContent).toBe('expired');
+  });
+
+  it('a never-paid user sees no subscription state', async () => {
+    resolveTier.mockResolvedValue('free');
+    render(<TierProvider><SubProbe /></TierProvider>);
+    await waitFor(() => expect(screen.getByTestId('tier2').textContent).toBe('free'));
+    await act(async () => { capturedListener({ entitlements: { active: {} } }); });
+    expect(screen.getByTestId('sub').textContent).toBe('none');
+  });
+
+  it('a store outage (tier resolves free, detail unreadable) never reads as expired', async () => {
+    localStorage.setItem('veyrnox-last-paid-sub', JSON.stringify({ tier: 'safety_plus', expiresAt: 1 }));
+    resolveTier.mockResolvedValue('free');
+    render(<TierProvider><SubProbe /></TierProvider>);
+    await waitFor(() => expect(screen.getByTestId('tier2').textContent).toBe('free'));
+    // purchases mock has no getCustomerInfo => resolveSubscriptionDetail is unreachable
+    expect(screen.getByTestId('sub').textContent).toBe('none');
+  });
+});
