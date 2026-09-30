@@ -1,6 +1,6 @@
 # Veyrnox 1.0.1 — Apple App Store Submission State
 
-Owner: Al Jobson. Last updated: 2026-09-23.
+Owner: Al Jobson. Last updated: 2026-09-26.
 
 **OUTCOME: APPROVED AND SHIPPED.** 1.0.1 build 59 is live on the App Store
 (`appStoreState: READY_FOR_SALE`), uploaded 2026-09-11 from review submission
@@ -15,10 +15,11 @@ and is kept; only the outcome was missing. Per `CLAUDE.md`, "submitted" has an
 outcome and it gets recorded in the session that learns it — that did not
 happen here, and this entry is the repair.
 
-**Current train:** Apple is still on 1.0.1. There is no 1.0.2 version record;
-every Apple row in `docs/RELEASE-v1.0.2.md` under "Outstanding before Apple
-submission" still stands. Play has since moved to 1.0.2 (versionCode 57, live
-2026-09-23 at 100%), so the two stores are deliberately out of step.
+**Superseded (2026-09-26):** 1.0.1 is no longer the live version. Apple
+approved 1.0.2 build 8 on its first review submission (`2af87adc`, submitted
+2026-09-24T16:38Z) and it is `READY_FOR_SALE`, read from App Store Connect on
+2026-09-26. Play had moved to 1.0.2 on 2026-09-23, so both stores are on 1.0.2
+again. The record is in `docs/RELEASE-v1.0.2.md` under "Apple release record".
 
 ---
 

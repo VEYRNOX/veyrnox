@@ -415,6 +415,78 @@ Two consequences worth carrying:
   than trusting it. See the `brace-expansion` entry for a watcher whose "Tracked" claim was
   false for four weeks because it was registered DISABLED and never ran once.
 
+### `brace-expansion` (nested, `appium-uiautomator2-driver`) — max severity: high — accepted 2026-09-30
+
+- **Advisory — three GHSAs stacked on the same version:** `GHSA-q2hr-2g5m-vwhr` (moderate,
+  quadratic-time `{a},b}` expansion, patched `>=5.0.12` on this line), `GHSA-qhr7-859c-m2p7`
+  (high, DoS via unbounded recursion on nested brace groups, patched `>=5.0.11`), and
+  `GHSA-6j4f-fj2g-mc7p` (high, DoS via unbounded recursion in `parseCommaParts`, patched
+  `>=5.0.10`). The resolved copy is `5.0.9`, below all three floors, so it carries the
+  worst of the three: high.
+- **Chain — verified 2026-09-30 with `npm ls brace-expansion --all`, entirely inside a
+  bundled devDependency:** `appium-uiautomator2-driver@8.7.0` (bundled) →
+  `appium-adb@16.0.5` (bundled) → `@appium/support@7.2.7` → `glob@13.0.6` →
+  `minimatch@10.2.6` → `brace-expansion@5.0.9`. This is deeper than earlier notes on this
+  same path assumed (they didn't need the full chain because the remediation — a driver
+  bump — doesn't depend on it); recorded here so a future run doesn't have to re-derive it
+  from scratch.
+- **Why accepted — the immobilising mechanism changed, and the practical answer didn't.**
+  Through driver `8.6.1`, this nested subtree was governed by a published
+  `npm-shrinkwrap.json` (see the `appium-uiautomator2-driver` mechanism note under
+  `## Retired residuals` → `shell-quote`, and `package.json`'s
+  `//overrides-audit-notes`). **At `8.7.0` that shrinkwrap is gone — verified 2026-09-30:
+  no `npm-shrinkwrap.json` in the installed tarball, and `hasShrinkwrap` is absent from
+  this lockfile entry.** The driver now ships the same subtree via `bundleDependencies`
+  instead (`@appium/css-locator-to-native`, `appium-adb`, `appium-android-driver`,
+  `appium-uiautomator2-server`, `asyncbox`, `axios`, `io.appium.settings`, `portscanner`,
+  `teen_process`), which is equally immutable from this repo: neither `overrides` nor a
+  `package-lock.json` edit can reach inside a bundled dependency's own `node_modules`.
+  **Tested directly, not assumed:** an `overrides["brace-expansion"] = "^1.1.21"` entry
+  was added and regenerated with `npm install --package-lock-only` — every OTHER copy in
+  the tree moved to `1.1.21`, and this one nested copy stayed at `5.0.9`. The entry was
+  reverted (never committed) once that confirmed it. The remediation is therefore
+  unchanged in shape from the shrinkwrap era — bump the driver — and `8.7.0` is already
+  `latest`, checked 2026-09-30 (`8.6.1` → `8.6.2` → `8.6.3` → `8.6.4` → `8.7.0`, nothing
+  newer published).
+- **Reachability:** dev-only. `appium-uiautomator2-driver` is a devDependency used only by
+  the Android E2E harness (`android:test*` scripts). The whole chain lives inside
+  `node_modules/appium-uiautomator2-driver`'s own bundle and is never imported by `src/`
+  or reached by the production `vite build` — confirmed by the same build that shipped
+  PR #2783 (`npm run build` succeeded with this copy still at `5.0.9`, because it was
+  never in the bundle graph to begin with).
+- **Accounts for** 1 high finding as of 2026-09-30 (single node:
+  `node_modules/appium-uiautomator2-driver/node_modules/brace-expansion`) — the only
+  survivor after PR #2783 cleared the other 10 nested/root `brace-expansion` copies (root,
+  `@eslint/config-array`, `@wdio/config`, `archiver-utils`, `eslint`, `filelist`, `glob`,
+  `mocha`, `readdir-glob`, `webdriverio`) with a plain `npm install --package-lock-only` —
+  every one of those resolved to a patched version already inside its consumer's existing
+  declared range, so none of them needed an override either. Those 10 were a **regression**
+  of the `brace-expansion` entry retired 2026-08-22 under `## Retired residuals`: the
+  lockfile had drifted back to unpatched floors (`1.1.18`, `2.1.4`, `5.0.9`) even though
+  every declared range already permitted the patched version. Per that entry's own "if it
+  comes back" clause, the regression surfaced as a normal unsuppressed finding rather than
+  a silent reinstatement — this entry covers only what's left after fixing it.
+- **Revisit trigger:** a newer `appium-uiautomator2-driver` release ships whose bundle
+  carries `brace-expansion >= 5.0.12`; OR the driver stops bundling this subtree and goes
+  back to a resolvable dependency (shrinkwrapped or plain); OR any of the three advisories
+  is re-rated; OR the chain shortens (`appium-adb` or `@appium/support` drops
+  `glob`/`minimatch`); OR the Android E2E harness is dropped from `devDependencies`
+  entirely. On any of these, re-derive the chain with `npm ls brace-expansion --all`
+  first — per this file's own rule, retire only once the vulnerable package is actually
+  gone from the INSTALLED tree, not merely absent from a version number or a `fixAvailable`
+  flag.
+- **Tracked:** not tracked — no watcher. None of the three existing dep-audit watchers
+  (`elliptic`, `stream-json`, `morgan`) cover this chain, and this audit may not create one
+  (see Constraints) — it reports the gap, the owner decides whether one is worth adding.
+- **Cross-reference:** also noted in `package.json`'s `//overrides-audit-notes` (search
+  `appium-uiautomator2-driver`). That 2026-08-10 note already tracked this exact nested
+  path at `5.0.9` and called it settled — correctly, against the two advisories known at
+  the time (`GHSA-mh99-v99m-4gvg`, `GHSA-rgw5-rvv9-x895`). It stopped being settled when
+  `GHSA-qhr7-859c-m2p7` and `GHSA-6j4f-fj2g-mc7p` were published afterward against the same
+  version. If either file is updated for this chain, update the other in the same
+  commit — see the `shell-quote`/`body-parser` entries under `## Retired residuals` for
+  what three weeks of drift between these two files looks like.
+
 ## Retired residuals
 
 Entries that were accepted, then genuinely cleared. Kept as a record so a future reader

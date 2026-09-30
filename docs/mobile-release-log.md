@@ -1,6 +1,6 @@
 # Mobile Release Log
 
-Last updated: 2026-09-23
+Last updated: 2026-09-26
 
 **Scope note.** Everything below the 2026-08-19 entries was staging / internal
 testing. This log stopped there and missed both public launches entirely — it
@@ -26,10 +26,13 @@ predated fixes that reach Android. Its versionCode is permanently consumed.
 
 | Date | Version | Build | State |
 |---|---|---|---|
-| 2026-09-11 | 1.0.1 | 59 | `READY_FOR_SALE`. Still the live version. |
+| 2026-09-11 | 1.0.1 | 59 | `READY_FOR_SALE`. Superseded 2026-09-2x by 1.0.2. |
+| 2026-09-24 | 1.0.2 | **8** | **`READY_FOR_SALE`, the live version** (read from ASC 2026-09-26T07:36Z). Approved on its first review submission, `2af87adc`, submitted 2026-09-24T16:38Z, every item `APPROVED`. No rejection this cycle. |
 
-Apple has no 1.0.2 version record. Build numbers restart per train, so 1.0.2's
-build 8 in the repo is not behind 1.0.1's build 59.
+`releaseType` is `MANUAL`, so a human pressed Release; the API does not expose
+the release timestamp, so the release date is bounded between the 2026-09-24
+submission and the 2026-09-26 read, not known to the day. Build numbers restart
+per train, so 1.0.2's build 8 is not behind 1.0.1's build 59.
 
 Full record: `docs/RELEASE-v1.0.2.md`.
 

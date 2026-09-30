@@ -173,6 +173,11 @@ describe('iOS App catalogue copy', () => {
     const feature = byName('iOS App');
     expect(feature.explanation).toMatch(/live on the App Store/i);
     expect(feature.explanation).toMatch(/READY_FOR_SALE/);
+    // The live version is named, and the superseded one is not described as
+    // live. Apple approved 1.0.2 on 2026-09-24 (ASC read 2026-09-26); this went
+    // stale for 1.0.1 once and was caught 12 days late, hence the explicit pin.
+    expect(feature.explanation).toMatch(/Version 1\.0\.2 is live on the App Store/);
+    expect(feature.explanation).not.toMatch(/Version 1\.0\.1 is live/);
     // Shipping is not auditing. These must survive any future copy edit.
     expect(feature.explanation).toMatch(/rasp on an App Store install is not device-verified/i);
     expect(feature.explanation).toMatch(/no independent\s+security audit/i);
