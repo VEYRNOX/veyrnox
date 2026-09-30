@@ -1,7 +1,19 @@
 # Directory listings: kit and tracker
 
-Status: DRAFT. Nothing has been submitted. Accounts are created and owned by the
-owner; every submission is confirmed with the owner before the submit button.
+Status: IN PROGRESS. Two submissions live (AlternativeTo, SaaSHub — see Tracker).
+Accounts are created and owned by the owner; every submission is confirmed with
+the owner before the submit button.
+
+**2026-09-30 correction (branch review 2026-09-29 caught this):** the Long
+description below wrongly presented Safety Plus-only paid features (Duress
+PIN, Stealth/hidden wallets, Panic wipe, Transaction simulation,
+address-poisoning warnings — confirmed against `src/lib/tier.js`
+`SAFETY_PLUS_FEATURES`) as general capabilities, and claimed Veyrnox "never
+receives the customer's identity" from Transak when `functions/api/buy/webhook.js`
+comments confirm the backend does receive email + address on some events (it
+just doesn't log them). Both claims have already propagated into the live
+AlternativeTo and SaaSHub submissions and need correcting there too — both are
+still pending review as of this fix.
 
 ## Source facts (do not invent beyond these)
 
@@ -53,31 +65,42 @@ Plus ($5.99/mo, $49.99/yr). See Pricing below.
   - Free — unlimited wallets/transactions, hardware-protected keys, biometric
     access, RASP runtime protection, plain-language transaction review,
     anti-phishing checks, full untruncated addresses, all 10 assets,
-    WalletConnect + QR pairing, live prices.
+    WalletConnect + QR pairing, and USD reference-rate pricing (**not** "live
+    prices" — `USD_RATES` in `src/lib/cryptos.js` is an explicitly static
+    table; the app's own UI discloses "Reference rate, not live market data"
+    on every figure derived from it — the owner's original paste said "live
+    asset prices," but the code doesn't support that wording, so don't use it
+    externally).
   - Safety Plus — $5.99/mo or $49.99/yr. Everything in Free, plus two
     independent recovery paths (Personal Backup: 2-of-3 Shamir Secret Sharing;
     Personal Vault: password+PIN encrypted, stored in the user's own iCloud/
     Google Drive/OneDrive — Veyrnox has no access to either), transaction
     simulation, continuous anti-phishing, anomaly/drain alerts, spending
-    controls, security dashboard, and coercion resistance (decoy wallet,
-    duress PIN).
+    controls, security dashboard, and coercion resistance (duress PIN, decoy
+    wallet, stealth/hidden wallets, panic wipe). **These coercion-resistance
+    and transaction-simulation features are Safety Plus-only** — confirmed
+    against `SAFETY_PLUS_FEATURES` in `src/lib/tier.js`. Do not describe them
+    as general/Free-tier capabilities in any listing.
   - AI Security Protection — $19.99/mo or $159.99/yr. Everything in Safety
     Plus, plus address threat screening, phishing-site detection, rule-based
     risk scoring, malicious-contract/drainer detection, token-approval
     review/monitoring, dApp/DEX warnings, an AI Security Advisor, and
     priority incident support. The AI layer is advisory only — it cannot
     sign transactions, hold keys, or act without the user's review.
-- **Long description:** Veyrnox is a self-custody multi-chain crypto wallet
-  (ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, USDT — 10 assets across 8
-  networks) built for coercion resistance. A duress PIN opens a separate decoy
-  wallet, hidden wallets conceal how many wallets exist, and a panic wipe
-  destroys local key material. Keys are encrypted with AES-256-GCM and
-  Argon2id, and bound to the device's Secure Enclave (iOS) or
-  AndroidKeyStore/StrongBox (Android) — they never leave the device.
-  Transactions are simulated locally before signing, with address-poisoning
-  and approval warnings. WalletConnect v2 is supported. Fiat purchases go
-  through Transak, which handles its own identity verification; Veyrnox never
-  receives the customer's identity or card details from that flow.
+- **Long description (corrected 2026-09-30 — see note above; the version used
+  in the live AlternativeTo/SaaSHub submissions predates this fix):** Veyrnox
+  is a self-custody multi-chain crypto wallet (ETH, BTC, SOL, MATIC, ARB, OP,
+  AVAX, BNB, USDC, USDT — 10 assets across 8 networks). Keys are encrypted
+  with AES-256-GCM and Argon2id, and bound to the device's Secure Enclave
+  (iOS) or AndroidKeyStore/StrongBox (Android) — they never leave the device.
+  WalletConnect v2 is supported. A paid Safety Plus tier adds coercion
+  resistance (duress PIN opens a decoy wallet, stealth/hidden wallets conceal
+  how many wallets exist, panic wipe destroys local key material) and
+  pre-sign transaction simulation with address-poisoning and approval
+  warnings. Fiat purchases go through Transak, which handles its own identity
+  verification; Transak's webhook data (which can include the customer's
+  email and address on some events) reaches Veyrnox's backend but is not
+  logged.
 - **Roadmap (do not present as shipped):** ~100 supported assets, plus swap
   and bridge capabilities.
 
@@ -132,16 +155,26 @@ this.
   those lines as needing an honesty review before reuse anywhere.
 - "AI-powered wallet". Only the paid Security Advisor uses AI.
 - Anything about Buy/Transak beyond what is live (owner-only area).
+- **Unqualified coercion-resistance claims.** `docs/play-launch/store-listing.md`
+  (~lines 107-116) carries limits the kit's Long description currently omits:
+  Duress PIN is "runtime deniability — not hidden-volume storage; a forensic
+  inspection of device storage can still reveal a second vault exists."
+  Stealth wallets: "on-chain data stays public — anyone who knows one of your
+  addresses can still see its balance and history." Panic Wipe: "protects the
+  device, not the seed itself — a seed backup held elsewhere still recovers
+  the wallet." Where space allows, carry at least one of these; where it
+  doesn't (character-limited forms), don't claim more than the feature does.
 
-## Fit triage (from memory; verify each site's current rules on submission)
+## Fit triage (each row dated with when it was actually checked)
 
 | Tier | Sites | Note |
 |---|---|---|
 | Good fit, no blocker | AlternativeTo (done), SaaSHub (done) | |
 | Skip — no fitting category | FinancesOnline | Checked and attempted 2026-09-28: the form itself is a plain lead-capture (Name/Product/Job title/Email/Website, no login, no phone), but its required Category dropdown has no cryptocurrency/wallet option anywhere — closest matches are "Free Security Software" and "IT Security Software", which would misdescribe Veyrnox as a business security tool. Owner chose to skip rather than force an inaccurate category. |
-| Good fit, needs phone number | Crozdesk, Software Suggest | Both checked 2026-09-28. Crozdesk's "Apply to list your software" routes to vendor.revleads.com/user/signup — really a RevLeads ad-network signup (required phone + "Monthly Marketing Budget", reads as a sales funnel). Software Suggest's softwaresuggest.com/vendors "Create a Free Listing" form also requires Phone*. Need a real number from the owner before either can proceed |
-| Good fit, needs owner's own browser | TrustRadius, SaaSworthy | TrustRadius checked 2026-09-28: solutions.trustradius.com/claim-your-profile/ has a genuine "Claim My Free Profile" flow. SaaSworthy: vendor-portal registration in progress, owner was mid-signup |
+| Good fit, needs phone number | Crozdesk | Checked 2026-09-28. "Apply to list your software" routes to vendor.revleads.com/user/signup — really a RevLeads ad-network signup (required phone + "Monthly Marketing Budget", reads as a sales funnel). Owner supplied +447949467271 2026-09-30, same number a separate session had removed from the public Google Play developer profile two days earlier — owner confirmed reuse is fine, but flag before reusing it again elsewhere |
+| Good fit, needs owner's own browser | TrustRadius, SaaSworthy, Software Suggest | TrustRadius checked 2026-09-28: solutions.trustradius.com/claim-your-profile/ has a genuine "Claim My Free Profile" flow. SaaSworthy: vendor-portal registration in progress, owner was mid-signup. Software Suggest moved here 2026-09-30: all fields (Name/Email/Organization/Phone/Website/London) filled and verified correct, but "Next" silently does nothing headless — no validation error, no submit request ever fires. Matches invisible bot-detection (reCAPTCHA v3-style), same failure class as the G2 family below. Owner has the exact field values ready to paste in their own browser |
 | Blocked by bot detection | G2, Capterra, GetApp, Software Advice | Checked 2026-09-28. G2 itself 403s headless browsing outright. Capterra's "Get Your Product Listed" and GetApp/Software Advice all route into g2.com/products/new (Capterra is explicitly "powered by G2 Digital Markets" now) — same domain, same block. Needs the owner's own logged-in browser session, not this automation |
+| Environment issue | (affects any site needing a visible sign-in window) | 2026-09-30: gstack's `handoff` (visible browser) is broken on this machine — macOS XProtect kills the headed Chromium at launch (gstack issue #2554), not a simple permission prompt; clearing the quarantine xattr didn't help. Headless `$B` still works fine for everything that doesn't need a human sign-in/CAPTCHA step. Until fixed, any "needs owner's own browser" site means the owner opens it directly themselves, not via a handoff window |
 | Wrong site entirely | GrowthList, ProductRank | Checked 2026-09-28. growthlist.co is a B2B lead-gen service selling lists of newly-funded startups to recruiters/agencies — the opposite direction, no "list your product" flow exists. ProductRank: `.io` is a paid ecommerce-AEO audit SaaS, `.ai` is a separate AI-visibility tracker, `.co` only appears in an 11-year-old Medium post — none is the directory this kit assumed |
 | Skip — doesn't fit | Clutch, DesignRush | Checked 2026-09-28. Both are pure service-provider/agency directories (Development, IT Services, Marketing, Design, Business Services / "List Your Agency") — no software-product category exists on either site. Veyrnox is a product, not an agency |
 | Weak fit | There's An AI For That, Futurepedia, Toolify, FutureTools, AI Tool Hunt, AI Explorer | Only as "AI security advisor for wallets" — not checked yet |
