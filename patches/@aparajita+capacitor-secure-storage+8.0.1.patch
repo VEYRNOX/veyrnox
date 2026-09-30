@@ -1,17 +1,17 @@
 diff --git a/node_modules/@aparajita/capacitor-secure-storage/android/src/main/java/com/aparajita/capacitor/securestorage/SecureStorage.java b/node_modules/@aparajita/capacitor-secure-storage/android/src/main/java/com/aparajita/capacitor/securestorage/SecureStorage.java
-index 0000000..1111111 100644
+index e3721b6..dd0b236 100644
 --- a/node_modules/@aparajita/capacitor-secure-storage/android/src/main/java/com/aparajita/capacitor/securestorage/SecureStorage.java
 +++ b/node_modules/@aparajita/capacitor-secure-storage/android/src/main/java/com/aparajita/capacitor/securestorage/SecureStorage.java
-@@ -126,7 +126,7 @@ public class SecureStorage extends Plugin {
+@@ -147,7 +147,7 @@ public class SecureStorage extends Plugin {
      getPrefs()
        .edit()
        .putString(prefixedKey, encryptString(data, prefixedKey))
 -      .apply();
 +      .commit();
    }
-
+ 
    private String getDataFromKeyStore(String prefixedKey)
-@@ -157,7 +157,7 @@ public class SecureStorage extends Plugin {
+@@ -178,7 +178,7 @@ public class SecureStorage extends Plugin {
      throws java.security.KeyStoreException {
      if (keyStore.containsAlias(alias)) {
        keyStore.deleteEntry(alias);
@@ -19,4 +19,4 @@ index 0000000..1111111 100644
 +      getPrefs().edit().remove(alias).commit();
        return true;
      }
-
+ 
