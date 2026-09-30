@@ -101,7 +101,21 @@ export function initSentry() {
       Sentry.dedupeIntegration(),
       Sentry.functionToStringIntegration(),
     ],
-    sendDefaultPii: false,
+    // Sentry 11 defaults these categories to collection; opt out explicitly.
+    // Keep the send-time scrubber as a second layer of protection.
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: false,
+      httpBodies: [],
+      urlQueryParams: false,
+      graphQL: { document: false, variables: false },
+      genAI: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      queues: false,
+      stackFrameVariables: false,
+      frameContextLines: 0,
+    },
     tracesSampleRate: 0,
     beforeSend: scrub,
     beforeBreadcrumb: () => null,
