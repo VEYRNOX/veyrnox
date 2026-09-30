@@ -20,8 +20,8 @@ resolver error resolves to `free` (fail closed for premium features only).
 
 ## Per state
 
-`Now` = behaviour in this PR. `PR 2` = needs the entitlement-state plumbing (willRenew,
-expiry, billing issue, persisted last-known tier), which is not built yet.
+Lifecycle states are read from RevenueCat customer info by `src/lib/subscriptionState.js`
+and shown on /plans and in Settings. They are DISPLAY ONLY; gating is unchanged.
 
 | Capability | Free | Safety Plus | AI Security Protection | Cancelled, until period end | Billing retry / grace | Expired |
 |---|---|---|---|---|---|---|
@@ -35,20 +35,24 @@ expiry, billing issue, persisted last-known tier), which is not built yet.
 | Stealth wallets, panic wipe, hardware wallet, budget, audit log, anomaly, analytics | no | yes | yes | yes | store-dependent | no |
 | Live threat intel, AI advisor, trust score, suspicious-asset screening | no | no | yes | yes (if AI) | store-dependent | no |
 
-"Store-dependent": RevenueCat keeps the entitlement active while the store retries; the app
-today only sees active / not active. Cancelled-but-active is indistinguishable from renewing
-until PR 2 reads `willRenew`.
+Status rules: `billingIssueDetectedAt` set = billing retry; else `willRenew === false` =
+cancelled; else active; nothing active but a previously paid record = expired. "Store-dependent"
+means RevenueCat keeps the entitlement active while the store retries, so the gate follows
+whatever RevenueCat reports.
 
 ## Known gaps (tracked, not hidden)
 
 1. **Panic wipe stays Safety Plus after expiry.** It is a premium action, not existing
    recovery material, so it was not un-gated. A lapsed user loses it. Owner decision needed
    if this should be free (it is a safety capability).
-2. **No persisted last-known tier.** If the store/RevenueCat lookup throws, the app resolves
-   `free` until it recovers. Wallet access is unaffected; premium screens show the paywall.
-   RevenueCat's own SDK cache may cover this; not verified. PR 2.
-3. **No expiry date, no cancelled / grace / expired detection in the UI.** The state copy is in
-   `src/lib/subscriptionCopy.js` but is not wired. PR 2.
+2. **No persisted last-known tier for gating, on purpose.** A self-editable local value that
+   keeps premium features on is a self-upgrade hole. If the store lookup throws, gated screens
+   show the paywall until it recovers; wallet access is unaffected. Continuity offline is
+   RevenueCat's own SDK cache (not verified on device). Only a display-only record (last paid
+   tier + expiry, key `veyrnox-last-paid-sub`) is kept, to word the "expired" message; it is
+   never written in deniability/demo and is in panic.js `ALL_RESIDUE_KEYS`.
+3. **A store outage is never shown as "expired".** Expired needs RevenueCat to answer with
+   nothing active.
 4. **No intro-offer eligibility check exists**, so no intro-offer copy is shown.
 5. **Four Safety Plus features are advertised but not gated** (calldata decode, address-poisoning
    warnings, risk scoring, transaction simulation): they live inside Send (`tier.js` header).

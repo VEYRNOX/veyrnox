@@ -8,6 +8,7 @@ import WhitelistManager from "../components/security/WhitelistManager";
 import { useTheme } from 'next-themes';
 import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
+import SubscriptionStatus from "@/components/subscription/SubscriptionStatus";
 import { useTier } from "@/lib/TierProvider";
 import { hasSafetyPlusAccess, tierLabel, TIER } from "@/lib/tier";
 import { getAuthModel } from "@/lib/authModel";
@@ -43,7 +44,7 @@ export default function Settings() {
     auditLogWritable = true,
     isUnlocked, isDecoy, isHidden,
   } = useWallet();
-  const { currentTier } = useTier();
+  const { currentTier, subscription } = useTier();
   const isSafetyPlus = hasSafetyPlusAccess(currentTier);
   const planLabel = tierLabel(currentTier);
   const [showDelete, setShowDelete] = useState(false);
@@ -513,6 +514,8 @@ export default function Settings() {
         </div>
         <span className="text-sm text-primary font-medium">View plans</span>
       </Link>
+      {/* Status + expiry: cancelled, billing retry and expired are all visible here. */}
+      <SubscriptionStatus subscription={subscription} />
 
       <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-2">Wallet</h2>
       {/* Withdrawal Address Whitelist */}

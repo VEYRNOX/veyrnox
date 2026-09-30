@@ -56,13 +56,14 @@ import { annualSavingPercent } from "@/lib/annualSaving";
 import { discountPercent } from "@/lib/discountPercent";
 import { recordAttribution, fetchReferralTier, claimFirstReferralBonus } from "@/api/referralApi";
 import { OFFER_UNAVAILABLE } from "@/lib/purchases";
+import SubscriptionStatus from "@/components/subscription/SubscriptionStatus";
 import TierComparison from "@/components/subscription/TierComparison";
 import {
   CancellationAssurance,
   WhySubscription,
   RecoveryFaq,
 } from "@/components/subscription/CancellationAssurance";
-import { TIER_DESCRIPTIONS } from "@/lib/subscriptionCopy";
+import { TIER_DESCRIPTIONS, STATE_COPY } from "@/lib/subscriptionCopy";
 import OutcomeSteps, {
   OUTCOME_STEPS,
   OUTCOME_SEEN_KEY,
@@ -150,7 +151,7 @@ function HighlightChips({ features, max = 6 }) {
 // feature is added that gates on currentTier, THAT gate must re-verify
 // via resolveTier() at consumption time, not trust the client cache.
 export default function Subscription() {
-  const { currentTier, refreshTier } = useTier();
+  const { currentTier, refreshTier, subscription } = useTier();
   const currentPlanName = tierLabel(currentTier);
   const isSafetyPlusPlan = currentTier === TIER.SAFETY_PLUS;
   const isAiSecurityProtectionPlan = currentTier === TIER.AI_SECURITY_PROTECTION;
@@ -652,7 +653,7 @@ export default function Subscription() {
       await restorePurchases();
       const tier = await refreshTier();
       toast[tier === TIER.FREE ? "info" : "success"](
-        tier === TIER.FREE ? "No active subscription purchase found" : `${tierLabel(tier)} restored`
+        tier === TIER.FREE ? "No active subscription purchase found" : STATE_COPY.restored
       );
     } catch {
       toast.error("Restore failed — please try again");
@@ -758,6 +759,8 @@ export default function Subscription() {
   return (
     <div className="max-w-xl mx-auto p-6 space-y-6">
       <BackButton />
+
+      <SubscriptionStatus subscription={subscription} />
 
       <CancelOfferDialog
         open={cancelOfferOpen}
