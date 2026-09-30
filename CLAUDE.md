@@ -214,6 +214,16 @@ architecture or security-critical code (wallet-core, signing, KEK, RASP).
     under an induced failure.
   - CI rollup: an absent context or `conclusion: ""` is pending, not green. Read the
     FTL `OUTCOME` table, not the run status.
+  - A job's custom `if:` implicitly ANDs with `success()` unless it starts with
+    `always()`/`failure()`/`cancelled()`. An unrelated ancestor job skipped for its
+    own reason (e.g. a `workflow_dispatch`-only validation step) silently taints
+    that `success()` for every job downstream of it — independent of whatever the
+    `if:` actually checks. `canary-gate` failed on 100+ consecutive pushes to `main`
+    this way: the first fix attempt (just deleting the custom `if:`) still skipped
+    the job, because the bare default `if:` is `success()` too. The real fix
+    mirrors whatever pattern the job that already escapes the same ancestor uses —
+    `always() && needs.<job>.result == 'success'` — not a guess about which output
+    was empty.
 - **Mutation-check every new test pin**: reintroduce the defect, see it go red, restore.
   Watch for prefix matches, pins matching their own comments, and fixed windows spilling
   into the next function.
