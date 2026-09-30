@@ -66,9 +66,8 @@ export const CANCEL_FLOW = {
     'Existing Shamir Recovery Shares and your encrypted Personal Backup remain usable.',
 };
 
-// Subscription-state messages. Wired to real entitlement state in the follow-up PR
-// (willRenew / expiry / billing-issue plumbing); the strings are fixed here so
-// review of the wording is separate from review of the gating-path change.
+// Subscription-state messages, rendered by components/subscription/SubscriptionStatus
+// from the lifecycle view in lib/subscriptionState.js (display only, never a gate).
 export const STATE_COPY = {
   active:
     'Your subscription is active. Your wallet and assets remain self-custodial and under your control.',
