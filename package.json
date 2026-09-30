@@ -218,7 +218,7 @@
     "autoprefixer": "^10.6.1",
     "baseline-browser-mapping": "^2.11.24",
     "cross-env": "^10.1.0",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.4",
     "esbuild": "^0.28.2",
     "eslint": "^10.10.0",
     "eslint-plugin-react": "^7.37.4",
