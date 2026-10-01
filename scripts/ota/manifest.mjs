@@ -28,7 +28,7 @@ export const NATIVE_API = 1;
 
 // Mirrors the native path check: no absolute paths, no `..`, no backslashes.
 // Vite output only ever uses this character set.
-const SAFE_PATH = /^[A-Za-z0-9._@-]+(\/[A-Za-z0-9._@-]+)*$/;
+export const SAFE_PATH = /^[A-Za-z0-9._@-]+(\/[A-Za-z0-9._@-]+)*$/;
 
 function listFiles(root, dir = root) {
   const out = [];
