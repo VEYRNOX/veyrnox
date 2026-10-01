@@ -44,7 +44,10 @@ vi.mock('@/components/TelemetryConsent', () => ({
 // Native by default; individual tests flip this for the web case.
 const isNativePlatform = vi.fn(() => true);
 vi.mock('@capacitor/core', () => ({
-  Capacitor: { isNativePlatform: () => isNativePlatform() },
+  Capacitor: {
+    isNativePlatform: () => isNativePlatform(),
+    getPlatform: () => (isNativePlatform() ? 'android' : 'web'),
+  },
   registerPlugin: vi.fn(() => ({})),
 }));
 
