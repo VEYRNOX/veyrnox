@@ -16,7 +16,7 @@ export const config = {
       platformName: 'Android',
       'appium:automationName': 'UiAutomator2',
       'appium:deviceName': process.env.ANDROID_DEVICE_UDID || 'emulator-5554', // set ANDROID_DEVICE_UDID for a real device
-      'appium:app': path.join(__dirname, '../../android/app/build/outputs/apk/debug/app-debug.apk'),
+      'appium:app': path.resolve(process.env.APPIUM_APP || path.join(__dirname, '../../android/app/build/outputs/apk/google/debug/app-google-debug.apk')),
       'appium:appPackage': 'com.veyrnox.app.debug',
       'appium:appActivity': 'com.veyrnox.app.MainActivity',
       'appium:autoGrantPermissions': true,

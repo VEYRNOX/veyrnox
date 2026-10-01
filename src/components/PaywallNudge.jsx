@@ -33,6 +33,10 @@ import { useTier } from '@/lib/TierProvider';
 import { TIER } from '@/lib/tier';
 import { upsellFor } from '@/components/WinPaywall';
 import { winFiredThisSession } from '@/lib/winPaywall';
+import { Capacitor } from '@capacitor/core';
+import { hasRedeemed } from '@/lib/referral';
+import { loadSafetyPlusTrial } from '@/lib/safetyPlusTrial';
+import { trialHeadline, trialRenewalLine } from '@/lib/freeTrial';
 
 const SESSION_COUNT_KEY = 'veyrnox-session-day-count';
 const SESSION_LAST_DAY_KEY = 'veyrnox-session-last-day';
@@ -124,17 +128,41 @@ export function shouldShowPaywallNudge(currentTier) {
 // constant's note.
 const NUDGE_ROUTES = ['/', '/dashboard'];
 const SETTLE_MS = 2500;
+// How long the nudge will wait for the store to confirm a free trial before it
+// shows its normal copy. A late answer is a "no": the nudge must not hold up or
+// reshape itself on a slow network, and it never claims "free" unconfirmed.
+const TRIAL_LOOKUP_BUDGET_MS = 1200;
+
+function trialLookup(tier) {
+  // Only the Free -> Safety Plus offer has a trial; the AI offer does not.
+  if (tier !== TIER.FREE) return Promise.resolve(null);
+  const lookup = loadSafetyPlusTrial({
+    platform: Capacitor.getPlatform(),
+    hasReferral: hasRedeemed(),
+  });
+  const budget = new Promise((resolve) => setTimeout(() => resolve(null), TRIAL_LOOKUP_BUDGET_MS));
+  return Promise.race([lookup, budget]).catch(() => null);
+}
 
 export default function PaywallNudge() {
   const { currentTier } = useTier();
   const navigate = useNavigate();
   const location = useLocation();
   const [visible, setVisible] = useState(false);
+  // Set only from a store-confirmed, eligible trial (see safetyPlusTrial.js).
+  const [trial, setTrial] = useState(null);
   const dismissKey = dismissKeyFor(currentTier);
   // Free keeps its own day-count copy; Safety Plus gets the AI offer.
-  const offer = currentTier === TIER.SAFETY_PLUS
-    ? upsellFor(TIER.SAFETY_PLUS)
+  const freeOffer = trial
+    ? {
+        id: TIER.SAFETY_PLUS,
+        title: `Try Safety Plus — ${trialHeadline(trial.days)}`,
+        body: `${NUDGE_BODY} ${trialRenewalLine({ days: trial.days, priceString: trial.priceString, billing: 'annual' })}`,
+        cta: 'See free trial',
+        to: '/plans',
+      }
     : { id: TIER.SAFETY_PLUS, title: 'Upgrade to Safety Plus', body: NUDGE_BODY, cta: 'See plans', to: '/plans' };
+  const offer = currentTier === TIER.SAFETY_PLUS ? upsellFor(TIER.SAFETY_PLUS) : freeOffer;
   const containerRef = useModalA11y({ active: visible, onEscape: () => handleDismiss() });
 
   const trackedRef = useRef(false);
@@ -142,11 +170,19 @@ export default function PaywallNudge() {
     if (trackedRef.current) return;
     if (!NUDGE_ROUTES.includes(location.pathname)) return;
     if (!shouldShowPaywallNudge(currentTier)) return;
-    const timer = setTimeout(() => {
+    let cancelled = false;
+    const timer = setTimeout(async () => {
       if (trackedRef.current) return;
       // A win can land inside the settle window; re-check before showing.
       if (!shouldShowPaywallNudge(currentTier)) return;
+      // Ask the store about a free trial only now that the nudge is certain to
+      // show (never in decoy/demo, which shouldShowPaywallNudge excludes).
+      const confirmedTrial = await trialLookup(currentTier);
+      if (cancelled || trackedRef.current) return;
+      // The lookup can outlive a win or a mid-session deniability flip.
+      if (!shouldShowPaywallNudge(currentTier)) return;
       trackedRef.current = true;
+      setTrial(confirmedTrial);
       setVisible(true);
       // 'day_3' is a STABLE SERIES KEY, not a description — it names this
       // nudge in production `public.events` from before DAY_THRESHOLD moved.
@@ -154,7 +190,7 @@ export default function PaywallNudge() {
       // measurement that justifies the threshold. Leave it.
       void trackEvent(EVENT.PAYWALL_SHOWN, { trigger: 'day_3', offer: offer.id }).catch(() => {});
     }, SETTLE_MS);
-    return () => clearTimeout(timer);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [currentTier, location.pathname]);
 
   // Codex P2 2026-08-16: shouldShowPaywallNudge is only re-evaluated when

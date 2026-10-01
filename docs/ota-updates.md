@@ -1,6 +1,8 @@
 # OTA web-bundle updates
 
-**Status: BUILT, INTERNAL.** Not device-verified.
+**Status: BUILT, INTERNAL.** Verified end to end on the **iOS simulator** against a
+staging release (2026-10-01). **Not verified** on a physical device, on Android, or
+on the production channel, and not with a store-signed binary.
 
 **Signing keys are provisioned (2026-09-18).** Two YubiKey 5C NFC tokens, each
 holding a non-extractable P-256 key generated on-token in PIV slot 9c, with
@@ -14,6 +16,88 @@ touch required per signature:
 Both were proven end to end against a real 1066-file bundle: each token's
 signature verified under its own pinned key and under no other. That is tooling
 evidence, not device evidence.
+
+## Staging canary published (2026-10-01)
+
+The first real release went to the **staging** channel, as a harmless canary. It is
+the first bundle ever on `updates.veyrnox.com`; production still has none
+(`production/latest.json` is a 404).
+
+| | |
+|---|---|
+| Channel / version | `staging` / `202610010509` |
+| Built from | `main` at `209d8cd3`, `npm run build:staging` |
+| Signed with | token B (39744871), sealed and verified against the pinned keys |
+| Files | 1071 files, all fetched back from the live host and matched to the manifest sha256 before `latest.json` went up |
+| Pointer | `staging/latest.json`, uploaded last, `Cache-Control: no-cache` |
+
+**Picked up by one iOS simulator, and nothing else** (see the next section). It is
+`channel: staging`, so the store apps (production channel) refuse it by design; only
+a `--mode staging` build whose own version is older than the release can take it.
+Everything outside that one run is still tooling evidence.
+
+What the canary taught, each fixed in the procedure below:
+
+- `pkcs11-tool` needs `--login` with current OpenSC (see "Releasing a fix").
+- Cloudflare rewrote one HTML file in transit and its sha256 stopped matching (see
+  "What it does NOT guarantee").
+- Neither PIN was recorded where it was needed, and two tokens came within one wrong
+  guess of locking (see "If a PIN is lost").
+
+## Staging canary: iOS simulator result (2026-10-01)
+
+**The canary downloaded, booted and was promoted on an iOS simulator.** The whole
+chain ran: the signature check, the per-file sha256 check, promotion on first render,
+and the version floor moving up. No PIN was entered and no wallet was created.
+
+| | |
+|---|---|
+| Device | iPhone 17 Pro simulator, iOS 26.5, Xcode 27.0 |
+| Binary | web code identical to `main` at `c086d1fd`; `OTA_BUNDLE_VERSION=202610010000 npm run build:staging`, then `npx cap sync ios`, then a signed simulator build (`DEVELOPMENT_TEAM=R54268MWFV`) |
+| Embedded manifest | `staging` / `202610010000`, no dev flags set |
+| First cold start | the app fetched the release into `Library/VeyrnoxOTA/202610010509`: 1073 files, the 1071 bundle files plus the manifest and signature. State: `pending = 202610010509` |
+| Second cold start | `active = 202610010509`, `floor = 202610010509`, `pending = 0` |
+
+The update check ran on the very first cold start, on the welcome screen, before any
+wallet existed, which is what the design says (see the I3 and I2 bullet under "What it does NOT
+guarantee", below).
+
+**Test procedure, in case you repeat it:**
+
+1. **Pin the test binary's version below the release's.** A binary's embedded version
+   is its build time, and a store build newer than an OTA bundle wins and deletes
+   it. A binary built *after* the canary would therefore carry a newer version and
+   ignore the canary. Build the test binary with `OTA_BUNDLE_VERSION` set to a value
+   older than the release. (This follows the "a store update newer than the OTA bundle
+   wins" row in the table under "Why this is dangerous"; the ignored-canary case
+   itself was avoided, not run.)
+2. Build with `--mode staging`, since a staging bundle is refused by a production
+   binary. Run `npx cap sync ios` immediately before the build, because
+   `ios/App/App/public` is gitignored and `xcodebuild` does not rebuild it.
+3. Cold start the app twice: terminate it, then launch it again. The first start
+   stages the update; the second boots it.
+4. Read the result without touching the wallet. Find the data folder with
+   `xcrun simctl get_app_container <udid> com.veyrnox.app data`, list
+   `Library/VeyrnoxOTA`, and read `veyrnoxOta.active`, `.pending`, `.pendingBooted`
+   and `.floor` from `Library/Preferences/com.veyrnox.app.plist` with `plutil -p`.
+   The plist can lag the app by a few seconds, because UserDefaults are written
+   behind a cache: a read taken right after the second launch still showed
+   `pending`, and a read a few seconds later showed `active`. `simctl spawn ...
+   defaults read` cannot see this app's domain, so read the file.
+
+**What this does not show:**
+
+- **A physical device or Android.** Nothing here runs on Android, and the simulator is
+  not hardware.
+- **The production channel or a store-signed binary.** Production has no release, and
+  the simulator ran a debug build, so the pinned-key and channel checks ran against a
+  staging manifest only.
+- **Any failure path.** A bad signature, a hash mismatch, a bundle that boots but never
+  reports ready, and the rollback were not exercised on a device; they are covered
+  by unit tests.
+- **That the new code is what rendered.** The canary's web code was built from an
+  older commit than the binary's, so after promotion the simulator is running that
+  older code. The proof is the state values above, not anything on screen.
 
 ## ARMED for 1.0.2 (2026-09-19, owner decision — reverses the #2627 disarm)
 
@@ -129,6 +213,17 @@ without Apple or Google review. The design keeps the update host and CI
 - **Staging and production share the same keys**; only the signed `channel` differs.
   Every staging release therefore needs a token in hand. Don't let that convenience
   pull a key online. Use a separate staging token if staging releases are frequent.
+- **Cloudflare can rewrite a file in transit, and the device then refuses the
+  bundle.** Found on 2026-10-01: Email Address Obfuscation rewrites any `text/html`
+  response that contains an email address. It replaced `support@veyrnox.com` in
+  `veyrnox-docs.html` with a `[email protected]` stub and appended a script, 230 bytes
+  larger, so its sha256 no longer matched. The loader checks every file's sha256, so
+  one rewritten file fails the whole update closed. Nothing unsafe happens, but the
+  release never installs. Two fixes, either is enough: upload everything as
+  `application/octet-stream` (done above, and it needs no zone change), or add a
+  Cloudflare configuration rule for `updates.veyrnox.com` that turns off Email Address
+  Obfuscation and any other response rewriting. The configuration rule has not been
+  made; the zone is untouched. The "Verify the live copy" step is what catches this.
 - **Attestation does not cover OTA code.** App Attest and Play Integrity attest the
   store binary, not JS loaded afterwards.
 - **"Ready" is a first-render heuristic.** A bundle that renders but breaks later
@@ -157,7 +252,15 @@ without Apple or Google review. The design keeps the update host and CI
    ```
 
    That replaces the factory PIN (`123456`), PUK (`12345678`) and management key.
-   Write the new PIN and PUK into your password manager, per token.
+
+   **Save the PIN and PUK before the next command, not after.** One password-manager
+   entry per token, named `Veyrnox OTA token A` / `Veyrnox OTA token B`, holding the
+   serial, the PIN **and** the PUK. Give each token its own PIN. A PIN is 6 to 8
+   characters (letters and digits are allowed; 8 is the hard maximum), and so is the
+   PUK. The prompts do not echo, so a typo here is silent: prove the saved value
+   works by signing a test bundle (see "Releasing a fix") before you pin anything.
+   The management key is stored on the token and guarded by the PIN, so there is
+   nothing to save for it.
 
    ```bash
    ykman piv keys generate --algorithm eccp256 --pin-policy once --touch-policy always 9c pubkey-token-a.pem
@@ -185,6 +288,26 @@ without Apple or Google review. The design keeps the update host and CI
    lost token costs nothing: keep signing with the other and drop the lost key in the
    next store release. If both are lost, OTA stops until a store release pins new
    keys. Neither case ever risks funds.
+
+   ### If a PIN is lost
+
+   Each token allows **3 wrong PIN tries**, then the PIN is blocked, and the PUK has
+   its own 3. Read the counters first. This costs no try:
+
+   ```bash
+   ykman piv info | head -3
+   ```
+
+   - **Do not keep guessing.** A wrong PIN is spent for good until a correct one
+     resets the counter. On 2026-10-01 a lost PIN took token B to one try left.
+   - **PIN blocked, PUK known:** `ykman piv access unblock-pin` keeps the key.
+   - **PIN and PUK both unknown:** the only way back in is `ykman piv reset`, which
+     refuses to run until both are blocked and then **wipes the slot 9c key**. The
+     pinned public key then matches nothing on that token. Existing installs can
+     only be given a replacement key by a store release.
+   - Resetting one token while the other still signs is cheap; resetting both stops
+     OTA until a store release pins new keys. A reset does not touch FIDO2, OTP or
+     passkeys on the token.
 2. **Pin both public keys.** Put them into `OtaConfig.publicKeysSpkiB64` (iOS) and
    `OtaConfig.PUBLIC_KEYS_SPKI_B64` (Android), same keys in the same order;
    `ota-manifest.test.js` fails if the two lists differ. Before the store release,
@@ -194,7 +317,9 @@ without Apple or Google review. The design keeps the update host and CI
    only disables that key (fail closed), but you would not find out until a release.
 3. **Hosting.** Create an R2 bucket with public read, served at
    `https://updates.veyrnox.com` (already in CSP `connect-src`). Give `latest.json`
-   `Cache-Control: no-cache`. Everything else is immutable.
+   `Cache-Control: no-cache`. Everything else is immutable. Cloudflare must not
+   rewrite what this host serves; see the email-obfuscation note under "What it does
+   NOT guarantee".
 4. **Ship a store release** that carries the key. Installs on older binaries never
    take OTA updates.
 
@@ -223,11 +348,18 @@ flag. It writes `ota-release/<channel>/<version>/…` and
 PKCS#11. The token asks for your PIN and a physical tap:
 
 ```bash
-pkcs11-tool --module /opt/homebrew/lib/libykcs11.dylib --sign --mechanism ECDSA-SHA256 --id 02 --input-file ota-release/production/<version>/ota-manifest.json --output-file /tmp/ota-manifest.rawsig
+pkcs11-tool --module /opt/homebrew/lib/libykcs11.dylib --login --sign --mechanism ECDSA-SHA256 --id 02 --input-file ota-release/production/<version>/ota-manifest.json --output-file /tmp/ota-manifest.rawsig
 ```
 
 `--id 02` is PIV slot 9c. Check the id on your token with
 `pkcs11-tool --module /opt/homebrew/lib/libykcs11.dylib --list-objects --type privkey`.
+
+**`--login` is required** with the current OpenSC (0.27.1). Without it the PIN is
+accepted and the sign step then fails with
+`C_SignFinal failed: rv = CKR_USER_NOT_LOGGED_IN`, which looks like a bad PIN or a
+missed touch and is neither. The PIN counter stays at 3 of 3 in that case, which is
+how to tell. Tap the token as soon as its light flashes; an unanswered touch times
+out after about 15 seconds. Each token has its own PIN, and the prompt does not echo.
 
 Store the signature with `seal`. PKCS#11 emits a raw signature while the app
 verifies DER, so this converts it and refuses to write anything that does not
@@ -248,13 +380,67 @@ node scripts/ota/release.mjs verify ota-release/production/<version>
 **Upload in this order: files first, then the manifest and signature, then
 `latest.json` last.** Clients never see a pointer to a partial release.
 
+Upload every object as `application/octet-stream`, **not** by file type. The native
+loader reads raw bytes and ignores the content type, and Cloudflare only rewrites
+`text/html` (see "What it does NOT guarantee"). `rclone` was not installed for the
+2026-10-01 canary, so this is the `wrangler` route that was actually used. It needs
+a Cloudflare login with R2 write access (`npx wrangler whoami` shows it):
+
 ```bash
-rclone copy ota-release/production/<version> r2:veyrnox-updates/production/<version>
+cd ota-release/<channel>/<version> && find files -type f -print0 | xargs -0 -P 8 -I{} npx wrangler r2 object put "veyrnox-updates/<channel>/<version>/{}" --file "{}" --content-type application/octet-stream --remote
 ```
 
 ```bash
-rclone copyto ota-release/production/latest.json r2:veyrnox-updates/production/latest.json
+npx wrangler r2 object put veyrnox-updates/<channel>/<version>/ota-manifest.json --file ota-release/<channel>/<version>/ota-manifest.json --content-type application/octet-stream --remote
 ```
+
+```bash
+npx wrangler r2 object put veyrnox-updates/<channel>/<version>/ota-manifest.sig --file ota-release/<channel>/<version>/ota-manifest.sig --content-type application/octet-stream --remote
+```
+
+Run all of these from the repo root. The first block changes into the release
+directory inside its own command, so it leaves your shell where it was.
+
+**Verify the live copy before you upload `latest.json`.** A mismatch means the device
+will refuse the whole bundle, so find it now:
+
+```bash
+node scripts/ota/verify-live.mjs ota-release/<channel>/<version>
+```
+
+It fetches every object back from the public host and compares it with what was
+signed: the live `ota-manifest.json` and `ota-manifest.sig` must be byte-identical to
+your local, sealed copies, and every file in the manifest must hash to its manifest
+sha256. It requests the exact URLs a device does (`<base>/<channel>/<version>/files/<path>`,
+raw path, `cache: 'no-store'`), with the channel and version taken from the manifest
+itself, so it cannot check the wrong release. The base URL defaults to
+`https://updates.veyrnox.com`; pass another as a second argument. Plain `http` is
+refused except to `localhost`.
+
+- **Pass:** exit 0 and `live copy OK: <n> objects match the signed manifest — safe to
+  upload latest.json`.
+- **Fail:** exit 1, `do NOT upload latest.json`, and each failing path with its reason
+  (`hash mismatch`, `http 404`, `unreachable`). A hash mismatch also shows the live and
+  local byte counts: a live copy a few bytes larger than local is a host rewriting the
+  file, which is how the Cloudflare email-obfuscation problem showed up. Fix it by
+  re-uploading the file (as `application/octet-stream`) or by finding what rewrote it,
+  then run the check again.
+- Network errors and 5xx answers are retried twice; a 4xx is final.
+- **It checks the files, the manifest and the signature, not the pointer.** After
+  go-live, `latest.json` is still checked with the `curl` below.
+
+It was run against the 2026-10-01 staging canary on the live host: 1073 objects, all
+matching (the 1071 files plus the manifest and the signature).
+
+Only then publish the pointer, with the no-cache header the hosting step calls for:
+
+```bash
+npx wrangler r2 object put veyrnox-updates/<channel>/latest.json --file ota-release/<channel>/latest.json --content-type application/json --cache-control no-cache --remote
+```
+
+Confirm it with `curl -sI https://updates.veyrnox.com/<channel>/latest.json`, which
+should show `cache-control: no-cache`. `rclone copy` to the same keys also works if
+it is installed; the order and the content-type rule still apply.
 
 Devices download the update on their next cold start and boot it on the cold start
 after that. Only files whose sha256 is not already on the device are downloaded.

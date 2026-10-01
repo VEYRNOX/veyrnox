@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router';
@@ -36,6 +36,14 @@ vi.mock('@/lib/purchases', () => ({
   SAFETY_PLUS_MONTHLY_PACKAGE: '$rc_monthly',
   SAFETY_PLUS_ANNUAL_PACKAGE: '$rc_annual',
   RETENTION_OFFERING_ID: 'retention',
+}));
+
+// iOS trial eligibility is an async RevenueCat answer. Defaults to false (not
+// eligible / unknown) in beforeEach so every pre-existing case keeps its
+// price-only copy; the free-trial block below overrides it per case.
+const checkIntroTrialEligibility = vi.fn();
+vi.mock('@/lib/introTrialEligibility', () => ({
+  checkIntroTrialEligibility: (...a) => checkIntroTrialEligibility(...a),
 }));
 
 const hasRedeemedMock = vi.fn();
@@ -118,6 +126,7 @@ beforeEach(() => {
   getTierInfoMock.mockReturnValue({ key: 'none', commission: 0, next: null });
   getOfferingIdForTierMock.mockReturnValue(null);
   offerPriceInfo.mockReturnValue(null);
+  checkIntroTrialEligibility.mockResolvedValue(false);
   getAiSecurityProtectionOfferingId.mockReturnValue(null);
   calculateDiscountCentsMock.mockImplementation((full, comm) => Math.round(full * comm / 100));
   useTierMock.mockReturnValue({ currentTier: 'free', tiers: [], refreshTier });
@@ -583,6 +592,37 @@ describe('Subscription page — tier-based referral discount', () => {
     setupGoldReferral();
     renderPage();
     await waitFor(() => expect(screen.getByText(/referral pricing available.*10% off/i)).toBeTruthy());
+  });
+
+  // The purchase gives the referral offer's tag precedence over the free trial
+  // (purchaseAndRefresh: `offerTag || trial`), so a referred buyer is NOT getting
+  // the trial. Saying "14 days free" over a referral purchase would be wrong.
+  it('makes no free-trial claim when a referral offer is what the purchase applies', async () => {
+    getPlatform.mockReturnValue('android');
+    try {
+      const withTrial = (identifier, priceString, price) => ({
+        identifier,
+        product: {
+          identifier: `${identifier}_product`,
+          priceString,
+          price,
+          subscriptionOptions: [{
+            tags: ['free-trial-14d'],
+            freePhase: { billingPeriod: { unit: 'DAY', value: 14 }, price: { amountMicros: 0 } },
+          }],
+        },
+      });
+      const pkgs = [withTrial('$rc_monthly', '$5.99', 5.99), withTrial('$rc_annual', '$49.99', 49.99)];
+      setupGoldReferral();
+      getOfferings.mockResolvedValue({ availablePackages: pkgs });
+      getTierOffering.mockResolvedValue({ availablePackages: pkgs });
+      renderPage();
+      await waitFor(() => expect(screen.getByText(/referral pricing available.*10% off/i)).toBeTruthy());
+      expect(screen.queryByTestId('free-trial-line')).toBeNull();
+      expect(screen.queryByText(/free trial/i)).toBeNull();
+    } finally {
+      getPlatform.mockReturnValue('ios');
+    }
   });
 
   // The banner used to render referrerTierInfo.commission — the REFERRER's
@@ -1177,5 +1217,99 @@ describe('Subscription page — AI tier never substitutes the other billing peri
     });
     fireEvent.click(cta);
     expect(purchasePackage).not.toHaveBeenCalled();
+  });
+});
+
+// "14 days free" is a claim about what the store will charge. It may appear only
+// when the store reports a free phase for the package being bought AND this user
+// is eligible; every other case keeps the price-only copy. Pure derivation is
+// covered in lib/__tests__/freeTrial.test.js; this block pins the wiring.
+describe('Subscription page — free trial copy', () => {
+  const playFreePhase = {
+    billingPeriod: { unit: 'DAY', value: 14 },
+    price: { amountMicros: 0 },
+  };
+  const playPkg = (identifier, priceString, withTrial = true) => ({
+    identifier,
+    product: {
+      identifier: `${identifier}_product`,
+      priceString,
+      subscriptionOptions: withTrial
+        ? [{ tags: ['free-trial-14d'], freePhase: playFreePhase }]
+        : [],
+    },
+  });
+  const iosIntro = { price: 0, cycles: 1, periodUnit: 'DAY', periodNumberOfUnits: 14 };
+  const iosPkg = (identifier, priceString) => ({
+    identifier,
+    product: { identifier: `${identifier}_product`, priceString, introPrice: iosIntro },
+  });
+  const offeringOf = (monthly, annual) => ({ availablePackages: [monthly, annual] });
+
+  beforeEach(() => {
+    isNativePlatform.mockReturnValue(true);
+  });
+  afterEach(() => {
+    getPlatform.mockReturnValue('ios');
+  });
+
+  it('Android, eligible: shows the headline, the post-trial price, terms and a trial CTA', async () => {
+    getPlatform.mockReturnValue('android');
+    getOfferings.mockResolvedValue(offeringOf(playPkg('$rc_monthly', '$5.99'), playPkg('$rc_annual', '$49.99')));
+    renderPage();
+    const line = await screen.findByTestId('free-trial-line');
+    expect(line).toHaveTextContent('14 days free');
+    expect(line).toHaveTextContent('then $49.99/year');
+    expect(screen.getByRole('button', { name: 'Start 14-day free trial' })).toBeEnabled();
+    expect(screen.getByTestId('free-trial-terms')).toHaveTextContent(/before the trial ends/i);
+  });
+
+  it('Android, ineligible (no trial option exposed): price-only copy, no free claim', async () => {
+    getPlatform.mockReturnValue('android');
+    getOfferings.mockResolvedValue(
+      offeringOf(playPkg('$rc_monthly', '$5.99', false), playPkg('$rc_annual', '$49.99', false)),
+    );
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
+    expect(screen.queryByTestId('free-trial-line')).toBeNull();
+    expect(screen.queryByText(/free trial/i)).toBeNull();
+    expect(screen.getByRole('button', { name: /Upgrade to Safety Plus — \$49\.99/ })).toBeTruthy();
+  });
+
+  it('iOS, eligible: shows the trial once eligibility is confirmed', async () => {
+    getPlatform.mockReturnValue('ios');
+    checkIntroTrialEligibility.mockResolvedValue(true);
+    getOfferings.mockResolvedValue(offeringOf(iosPkg('$rc_monthly', '$5.99'), iosPkg('$rc_annual', '$49.99')));
+    renderPage();
+    expect(await screen.findByTestId('free-trial-line')).toHaveTextContent('14 days free');
+    expect(screen.getByRole('button', { name: 'Start 14-day free trial' })).toBeTruthy();
+  });
+
+  it('iOS, NOT eligible: the package carries introPrice but no free claim is made', async () => {
+    getPlatform.mockReturnValue('ios');
+    checkIntroTrialEligibility.mockResolvedValue(false);
+    getOfferings.mockResolvedValue(offeringOf(iosPkg('$rc_monthly', '$5.99'), iosPkg('$rc_annual', '$49.99')));
+    renderPage();
+    await waitFor(() => expect(checkIntroTrialEligibility).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
+    expect(screen.queryByTestId('free-trial-line')).toBeNull();
+    expect(screen.getByRole('button', { name: /Upgrade to Safety Plus — \$49\.99/ })).toBeTruthy();
+  });
+
+  it('iOS, eligibility still pending: no claim until it resolves', async () => {
+    getPlatform.mockReturnValue('ios');
+    checkIntroTrialEligibility.mockReturnValue(new Promise(() => {}));
+    getOfferings.mockResolvedValue(offeringOf(iosPkg('$rc_monthly', '$5.99'), iosPkg('$rc_annual', '$49.99')));
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
+    expect(screen.queryByTestId('free-trial-line')).toBeNull();
+  });
+
+  it('web: never shows a free-trial claim', async () => {
+    isNativePlatform.mockReturnValue(false);
+    getPlatform.mockReturnValue('web');
+    renderPage();
+    expect(screen.queryByTestId('free-trial-line')).toBeNull();
+    expect(screen.queryByText(/free trial/i)).toBeNull();
   });
 });
