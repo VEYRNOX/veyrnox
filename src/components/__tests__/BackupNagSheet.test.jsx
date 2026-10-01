@@ -33,6 +33,17 @@ vi.mock('@/wallet-core/deniabilitySession', () => ({
   isDeniabilityOrDemoActive: vi.fn(() => false),
 }));
 
+// The store lookup behind the "14 days free" wording. Defaults to "no confirmed
+// trial", so every pre-existing case keeps today's copy; the free-trial block
+// below overrides it per case.
+const loadTrialMock = vi.fn(() => Promise.resolve(null));
+vi.mock('@/lib/safetyPlusTrial', () => ({
+  TRIAL_LOOKUP_BUDGET_MS: 1200,
+  loadSafetyPlusTrialWithin: (...a) => loadTrialMock(...a),
+}));
+const hasRedeemedMock = vi.fn(() => false);
+vi.mock('@/lib/referral', () => ({ hasRedeemed: () => hasRedeemedMock() }));
+
 async function loadSheet() {
   const mod = await import('@/components/BackupNagSheet');
   return mod.default ?? mod.BackupNagSheet;
@@ -56,14 +67,14 @@ describe('BackupNagSheet', () => {
   it('dismiss button calls dismissForSession', async () => {
     const Sheet = await loadSheet();
     render(<Sheet addrs={['0xaaa']} />);
-    fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /dismiss/i }));
     expect(backupNagMock.dismissForSession).toHaveBeenCalledTimes(1);
   });
 
   it('"Learn about Safety Plus" navigates to /plans', async () => {
     const Sheet = await loadSheet();
     render(<Sheet addrs={['0xaaa']} />);
-    fireEvent.click(screen.getByRole('button', { name: /learn about safety plus/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /learn about safety plus/i }));
     expect(navigateMock).toHaveBeenCalledWith('/plans');
   });
 
@@ -74,6 +85,89 @@ describe('BackupNagSheet', () => {
     const Sheet = await loadSheet();
     const { container } = render(<Sheet addrs={['0xaaa']} />);
     expect(container.textContent ?? '').not.toMatch(/Safety Plus|Protect/i);
+  });
+});
+
+// "14 days free" is a claim about what the store will charge: the sheet may say it
+// only when loadSafetyPlusTrialWithin confirms an eligible, store-reported trial.
+// Every other outcome keeps today's wording. The derivation itself (zero-price
+// phase, iOS eligibility, no referral) is covered in lib/__tests__.
+describe('BackupNagSheet free-trial wording', () => {
+  beforeEach(async () => {
+    // The I3 test above leaves these flipped; this block needs the sheet visible.
+    const den = await import('@/wallet-core/deniabilitySession');
+    vi.mocked(den.isDeniabilityOrDemoActive).mockReturnValue(false);
+    backupNagMock.shouldShowBackupNag.mockReturnValue(true);
+    loadTrialMock.mockResolvedValue(null);
+    hasRedeemedMock.mockReturnValue(false);
+  });
+
+  it('a confirmed trial: says 14 days free with the price after it, and offers to see it', async () => {
+    loadTrialMock.mockResolvedValue({ days: 14, priceString: '$49.99' });
+    const Sheet = await loadSheet();
+    render(<Sheet addrs={['0xaaa']} />);
+    const cta = await screen.findByRole('button', { name: 'See free trial' });
+    expect(screen.getByText(/14 days free, then \$49\.99\/year/)).toBeTruthy();
+    expect(screen.getByText(/before the trial ends/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /learn about safety plus/i })).toBeNull();
+    fireEvent.click(cta);
+    // Same behavior as the old button: mark shown, go to /plans (not a purchase).
+    expect(backupNagMock.markBackupNagShown).toHaveBeenCalledTimes(1);
+    expect(navigateMock).toHaveBeenCalledWith('/plans');
+  });
+
+  it('keeps the original sentence about encrypted backups alongside the trial', async () => {
+    loadTrialMock.mockResolvedValue({ days: 14, priceString: '$49.99' });
+    const Sheet = await loadSheet();
+    render(<Sheet addrs={['0xaaa']} />);
+    await screen.findByRole('button', { name: 'See free trial' });
+    expect(screen.getByText(/adds encrypted backups/i)).toBeTruthy();
+  });
+
+  it('no confirmed trial: today\'s copy and button, no free claim', async () => {
+    loadTrialMock.mockResolvedValue(null);
+    const Sheet = await loadSheet();
+    const { container } = render(<Sheet addrs={['0xaaa']} />);
+    await screen.findByRole('button', { name: /learn about safety plus/i });
+    expect(container.textContent ?? '').not.toMatch(/free/i);
+  });
+
+  it('shows nothing while the store lookup is still pending (no flash of the wrong copy)', async () => {
+    loadTrialMock.mockReturnValue(new Promise(() => {}));
+    const Sheet = await loadSheet();
+    const { container } = render(<Sheet addrs={['0xaaa']} />);
+    await Promise.resolve();
+    expect(container.textContent ?? '').not.toMatch(/Protect your wallet|Safety Plus/);
+  });
+
+  it('asks the lookup with the live referral flag and a bounded wait', async () => {
+    hasRedeemedMock.mockReturnValue(true);
+    const Sheet = await loadSheet();
+    render(<Sheet addrs={['0xaaa']} />);
+    await screen.findByRole('button', { name: /learn about safety plus/i });
+    expect(loadTrialMock).toHaveBeenCalledTimes(1);
+    const [budgetMs, args] = loadTrialMock.mock.calls[0];
+    expect(budgetMs).toBeGreaterThan(0);
+    expect(budgetMs).toBeLessThanOrEqual(2000);
+    expect(args.hasReferral).toBe(true);
+  });
+
+  it('I3: makes no store lookup in a decoy/demo session', async () => {
+    const den = await import('@/wallet-core/deniabilitySession');
+    vi.mocked(den.isDeniabilityOrDemoActive).mockReturnValue(true);
+    const Sheet = await loadSheet();
+    const { container } = render(<Sheet addrs={['0xaaa']} />);
+    await Promise.resolve();
+    expect(loadTrialMock).not.toHaveBeenCalled();
+    expect(container.textContent ?? '').toBe('');
+  });
+
+  it('makes no store lookup when the sheet is not due to show', async () => {
+    backupNagMock.shouldShowBackupNag.mockReturnValue(false);
+    const Sheet = await loadSheet();
+    render(<Sheet addrs={['0xaaa']} />);
+    await Promise.resolve();
+    expect(loadTrialMock).not.toHaveBeenCalled();
   });
 });
 
