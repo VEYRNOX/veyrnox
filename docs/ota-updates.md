@@ -401,12 +401,36 @@ npx wrangler r2 object put veyrnox-updates/<channel>/<version>/ota-manifest.sig 
 Run all of these from the repo root. The first block changes into the release
 directory inside its own command, so it leaves your shell where it was.
 
-**Verify the live copy before you upload `latest.json`.** Fetch every file back from
-`https://updates.veyrnox.com/<channel>/<version>/files/<path>`, hash it, and compare
-with the `files` map in `ota-manifest.json`; compare the live manifest and signature
-with the local ones too. Every file must match. A mismatch means the device will
-refuse the whole bundle, so fix it now: re-upload the file, or find what rewrote it.
-(The check used on 2026-10-01 is a short script and is not in the repo yet.)
+**Verify the live copy before you upload `latest.json`.** A mismatch means the device
+will refuse the whole bundle, so find it now:
+
+```bash
+node scripts/ota/verify-live.mjs ota-release/<channel>/<version>
+```
+
+It fetches every object back from the public host and compares it with what was
+signed: the live `ota-manifest.json` and `ota-manifest.sig` must be byte-identical to
+your local, sealed copies, and every file in the manifest must hash to its manifest
+sha256. It requests the exact URLs a device does (`<base>/<channel>/<version>/files/<path>`,
+raw path, `cache: 'no-store'`), with the channel and version taken from the manifest
+itself, so it cannot check the wrong release. The base URL defaults to
+`https://updates.veyrnox.com`; pass another as a second argument. Plain `http` is
+refused except to `localhost`.
+
+- **Pass:** exit 0 and `live copy OK: <n> objects match the signed manifest — safe to
+  upload latest.json`.
+- **Fail:** exit 1, `do NOT upload latest.json`, and each failing path with its reason
+  (`hash mismatch`, `http 404`, `unreachable`). A hash mismatch also shows the live and
+  local byte counts: a live copy a few bytes larger than local is a host rewriting the
+  file, which is how the Cloudflare email-obfuscation problem showed up. Fix it by
+  re-uploading the file (as `application/octet-stream`) or by finding what rewrote it,
+  then run the check again.
+- Network errors and 5xx answers are retried twice; a 4xx is final.
+- **It checks the files, the manifest and the signature, not the pointer.** After
+  go-live, `latest.json` is still checked with the `curl` below.
+
+It was run against the 2026-10-01 staging canary on the live host: 1073 objects, all
+matching (the 1071 files plus the manifest and the signature).
 
 Only then publish the pointer, with the no-cache header the hosting step calls for:
 
