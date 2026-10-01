@@ -36,10 +36,11 @@ import {
   RETENTION_OFFERING_ID,
 } from "@/lib/purchases";
 
-// Play Store offer tag for the 14-day free trial. On Android we must name
-// the offer by tag or the store picks a default subscription option — see
-// the `rc-ignore-offer` comment in `src/lib/purchases.js`. Play only exposes
-// the trial's subscriptionOption to the client when the user is server-side
+// The Play free-trial offer tag now lives in `src/lib/freeTrial.js`, beside the
+// display logic that reads the same option. On Android we must name the offer
+// by tag or the store picks a default subscription option — see the
+// `rc-ignore-offer` comment in `src/lib/purchases.js`. Play only exposes the
+// trial's subscriptionOption to the client when the user is server-side
 // eligible (new subscriber to the app), so `findOfferOption(pkg, TAG)`
 // returning truthy IS the eligibility check; ineligible users fall through
 // to the base plan.
@@ -47,8 +48,8 @@ import {
 // iOS uses a different mechanism (App Store introductory offer, not a
 // tagged promotional offer): StoreKit auto-applies it at purchase to
 // eligible new subscribers without any client-side selection, so this tag
-// is Play-only.
-const PLAY_FREE_TRIAL_OFFER_TAG = "free-trial-14d";
+// is Play-only. The paywall COPY for iOS is gated on a positive eligibility
+// check (`src/lib/introTrialEligibility.js`).
 
 // AppGallery has no RevenueCat backend — huawei flavor dispatches to HMS IAP
 // via HuaweiIapPlugin. Every other flavor (google, samsung, fdroid, iOS) goes
@@ -68,6 +69,14 @@ import {
   storeDiscountCents,
 } from "@/lib/referral";
 import { annualSavingPercent } from "@/lib/annualSaving";
+import {
+  PLAY_FREE_TRIAL_OFFER_TAG,
+  freeTrialDays,
+  trialHeadline,
+  trialCtaLabel,
+  trialRenewalLine,
+} from "@/lib/freeTrial";
+import { checkIntroTrialEligibility } from "@/lib/introTrialEligibility";
 import { discountPercent } from "@/lib/discountPercent";
 import { recordAttribution, fetchReferralTier, claimFirstReferralBonus } from "@/api/referralApi";
 import { OFFER_UNAVAILABLE } from "@/lib/purchases";
@@ -459,6 +468,32 @@ export default function Subscription() {
   const usingAiReferralPackage =
     billing === "annual" ? usingAiReferralAnnual : usingAiReferralMonthly;
   const aiActiveOfferTag = usingAiReferralPackage ? aiReferralOfferTag : null;
+
+  // Free-trial copy. Shown only when the store verifiably reports a free phase
+  // for the package being bought AND this user is eligible for it (see
+  // freeTrial.js); otherwise the paywall keeps its price-only wording. Never
+  // alongside a referral/retention offer — that offer, not the trial, is what
+  // the purchase applies (purchaseAndRefresh gives `offerTag` precedence).
+  // iOS eligibility is a per-product async answer; unknown/pending => no claim.
+  const platform = Capacitor.getPlatform();
+  const selectedProductId = selectedPackage?.product?.identifier ?? null;
+  const [iosTrialEligible, setIosTrialEligible] = useState({});
+  useEffect(() => {
+    if (platform !== "ios" || isHuawei || !selectedProductId) return undefined;
+    if (selectedProductId in iosTrialEligible) return undefined;
+    let cancelled = false;
+    checkIntroTrialEligibility(selectedPackage).then((eligible) => {
+      if (!cancelled) setIosTrialEligible((prev) => ({ ...prev, [selectedProductId]: eligible }));
+    });
+    return () => { cancelled = true; };
+  }, [platform, selectedProductId]);
+  const trialDays =
+    isHuawei || activeOfferTag
+      ? null
+      : freeTrialDays(selectedPackage, {
+          platform,
+          iosEligible: iosTrialEligible[selectedProductId] === true,
+        });
 
   // A discounted package still reports the BASE price in product.priceString —
   // it wraps the same store product as the full-price package. The offer price
@@ -960,6 +995,17 @@ export default function Subscription() {
                     </span>
                   )}
               </div>
+              {trialDays != null && (
+                <p
+                  className="text-sm font-semibold text-primary -mt-2"
+                  data-testid="free-trial-line"
+                >
+                  {trialHeadline(trialDays)}
+                  <span className="font-normal text-muted-foreground">
+                    {" "}— then {selectedPriceString ?? "the store price"}/{billing === "annual" ? "year" : "month"}
+                  </span>
+                </p>
+              )}
               {billing === "annual" && (
                 <p className="text-xs text-muted-foreground -mt-2">
                   {/* Was "4 months free vs. monthly." — wrong even at USD base
@@ -997,10 +1043,12 @@ export default function Subscription() {
                     working; the outcome now sits next to it. */}
                 {!isNative
                   ? "Upgrade to Safety Plus — mobile only"
-                  : selectedPriceString
-                    ? `Upgrade to Safety Plus — ${selectedPriceString}`
-                    : pricingRetryLabel(ctaRetry, offeringsSettled)
-                      ?? "Upgrade to Safety Plus — loading pricing"}
+                  : trialDays != null && selectedPriceString
+                    ? trialCtaLabel(trialDays)
+                    : selectedPriceString
+                      ? `Upgrade to Safety Plus — ${selectedPriceString}`
+                      : pricingRetryLabel(ctaRetry, offeringsSettled)
+                        ?? "Upgrade to Safety Plus — loading pricing"}
               </Button>
               <PricingStatus subject="Safety Plus" retry={ctaRetry} settled={offeringsSettled} />
 
@@ -1008,10 +1056,22 @@ export default function Subscription() {
                   point of purchase, so it sits with the CTA rather than in
                   small print further down. */}
               <p className="text-xs text-muted-foreground text-center">
-                <span className="font-semibold text-foreground">Cancel anytime.</span>{" "}
-                Renews {billing === "annual" ? "yearly" : "monthly"} at{" "}
-                {selectedPriceString ?? "the store price"} until cancelled — manage or cancel in your{" "}
-                {Capacitor.getPlatform() === "ios" ? "App Store" : "Google Play"} account settings.
+                {trialDays != null ? (
+                  <>
+                    <span className="font-semibold text-foreground" data-testid="free-trial-terms">
+                      {trialRenewalLine({ days: trialDays, priceString: selectedPriceString, billing })}
+                    </span>{" "}
+                    Renews {billing === "annual" ? "yearly" : "monthly"} until cancelled — manage or cancel in your{" "}
+                    {Capacitor.getPlatform() === "ios" ? "App Store" : "Google Play"} account settings.
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold text-foreground">Cancel anytime.</span>{" "}
+                    Renews {billing === "annual" ? "yearly" : "monthly"} at{" "}
+                    {selectedPriceString ?? "the store price"} until cancelled — manage or cancel in your{" "}
+                    {Capacitor.getPlatform() === "ios" ? "App Store" : "Google Play"} account settings.
+                  </>
+                )}
               </p>
               {isNative ? (
                 <>
