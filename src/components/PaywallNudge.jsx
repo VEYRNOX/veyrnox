@@ -35,7 +35,7 @@ import { upsellFor } from '@/components/WinPaywall';
 import { winFiredThisSession } from '@/lib/winPaywall';
 import { Capacitor } from '@capacitor/core';
 import { hasRedeemed } from '@/lib/referral';
-import { loadSafetyPlusTrial } from '@/lib/safetyPlusTrial';
+import { loadSafetyPlusTrialWithin, TRIAL_LOOKUP_BUDGET_MS } from '@/lib/safetyPlusTrial';
 import { trialHeadline, trialRenewalLine } from '@/lib/freeTrial';
 
 const SESSION_COUNT_KEY = 'veyrnox-session-day-count';
@@ -128,20 +128,16 @@ export function shouldShowPaywallNudge(currentTier) {
 // constant's note.
 const NUDGE_ROUTES = ['/', '/dashboard'];
 const SETTLE_MS = 2500;
-// How long the nudge will wait for the store to confirm a free trial before it
-// shows its normal copy. A late answer is a "no": the nudge must not hold up or
-// reshape itself on a slow network, and it never claims "free" unconfirmed.
-const TRIAL_LOOKUP_BUDGET_MS = 1200;
-
+// A late store answer is a "no": the nudge must not hold up or reshape itself on
+// a slow network, and it never claims "free" unconfirmed (safetyPlusTrial.js owns
+// the time limit, shared with BackupNagSheet).
 function trialLookup(tier) {
   // Only the Free -> Safety Plus offer has a trial; the AI offer does not.
   if (tier !== TIER.FREE) return Promise.resolve(null);
-  const lookup = loadSafetyPlusTrial({
+  return loadSafetyPlusTrialWithin(TRIAL_LOOKUP_BUDGET_MS, {
     platform: Capacitor.getPlatform(),
     hasReferral: hasRedeemed(),
   });
-  const budget = new Promise((resolve) => setTimeout(() => resolve(null), TRIAL_LOOKUP_BUDGET_MS));
-  return Promise.race([lookup, budget]).catch(() => null);
 }
 
 export default function PaywallNudge() {

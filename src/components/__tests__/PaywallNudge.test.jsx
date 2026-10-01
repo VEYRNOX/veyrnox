@@ -15,12 +15,13 @@ vi.mock('@/lib/TierProvider', () => ({
 // The store lookup behind the "free trial" copy. Defaults to "no confirmed
 // trial" so every pre-existing case keeps today's copy.
 vi.mock('@/lib/safetyPlusTrial', () => ({
-  loadSafetyPlusTrial: vi.fn(() => Promise.resolve(null)),
+  TRIAL_LOOKUP_BUDGET_MS: 1200,
+  loadSafetyPlusTrialWithin: vi.fn(() => Promise.resolve(null)),
 }));
 
 import PaywallNudge, { shouldShowPaywallNudge, DAY_THRESHOLD, NUDGE_BODY } from '@/components/PaywallNudge';
 import { useTier } from '@/lib/TierProvider';
-import { loadSafetyPlusTrial } from '@/lib/safetyPlusTrial';
+import { loadSafetyPlusTrialWithin } from '@/lib/safetyPlusTrial';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 const SESSION_COUNT_KEY = 'veyrnox-session-day-count';
@@ -142,7 +143,7 @@ describe('PaywallNudge render', () => {
   });
 
   it('free + a store-confirmed trial: the nudge says 14 days free, with the price after it', async () => {
-    vi.mocked(loadSafetyPlusTrial).mockResolvedValueOnce({ days: 14, priceString: '$49.99' });
+    vi.mocked(loadSafetyPlusTrialWithin).mockResolvedValueOnce({ days: 14, priceString: '$49.99' });
     await show('free');
     expect(screen.getByRole('heading', { name: 'Try Safety Plus — 14 days free' })).toBeTruthy();
     expect(screen.getByText(/14 days free, then \$49\.99\/year/)).toBeTruthy();
@@ -150,22 +151,44 @@ describe('PaywallNudge render', () => {
     expect(screen.queryByText('See plans')).toBeNull();
   });
 
-  it('a lookup that never answers falls back to today\'s copy within the budget', async () => {
-    vi.mocked(loadSafetyPlusTrial).mockReturnValueOnce(new Promise(() => {}));
+  it('holds the dialog until the lookup settles, then shows today\'s copy on "no trial"', async () => {
+    // The time limit itself lives in safetyPlusTrial.js (loadSafetyPlusTrialWithin,
+    // tested there). Here: the nudge waits for that answer and never flashes the
+    // wrong copy first.
+    let settle;
+    vi.mocked(loadSafetyPlusTrialWithin).mockReturnValueOnce(new Promise((resolve) => { settle = resolve; }));
     vi.mocked(useTier).mockReturnValue({ currentTier: 'free' });
     localStorage.setItem(SESSION_COUNT_KEY, '5');
     render(<MemoryRouter initialEntries={['/']}><PaywallNudge /></MemoryRouter>);
-    await act(async () => { vi.advanceTimersByTime(2500); });
+    await act(async () => { vi.advanceTimersByTime(3000); });
     expect(screen.queryByRole('dialog')).toBeNull(); // still waiting on the store
-    await act(async () => { vi.advanceTimersByTime(1300); });
+    await act(async () => { settle(null); });
     expect(screen.getByRole('heading', { name: 'Upgrade to Safety Plus' })).toBeTruthy();
     expect(screen.queryByText(/free/i)).toBeNull();
   });
 
+  it('asks for the trial with a bounded wait and the live referral flag', async () => {
+    vi.mocked(loadSafetyPlusTrialWithin).mockClear();
+    await show('free');
+    expect(loadSafetyPlusTrialWithin).toHaveBeenCalledTimes(1);
+    const [budgetMs, args] = vi.mocked(loadSafetyPlusTrialWithin).mock.calls[0];
+    expect(budgetMs).toBeGreaterThan(0);
+    expect(budgetMs).toBeLessThanOrEqual(2000);
+    expect(args.hasReferral).toBe(false);
+  });
+
+  it('passes a redeemed referral through, so the lookup can refuse the trial claim', async () => {
+    // The purchase applies the referral offer, not the trial, to a referred user.
+    localStorage.setItem('veyrnox-referral', JSON.stringify({ redeemedCode: 'VYX-ABC123' }));
+    vi.mocked(loadSafetyPlusTrialWithin).mockClear();
+    await show('free');
+    expect(vi.mocked(loadSafetyPlusTrialWithin).mock.calls[0][1].hasReferral).toBe(true);
+  });
+
   it('the AI offer for Safety Plus never asks about a trial', async () => {
-    vi.mocked(loadSafetyPlusTrial).mockClear();
+    vi.mocked(loadSafetyPlusTrialWithin).mockClear();
     await show('safety_plus');
-    expect(loadSafetyPlusTrial).not.toHaveBeenCalled();
+    expect(loadSafetyPlusTrialWithin).not.toHaveBeenCalled();
   });
 });
 

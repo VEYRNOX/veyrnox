@@ -49,6 +49,10 @@ import { trackEvent, EVENT } from '@/api/trackEvent';
 import { useTier } from '@/lib/TierProvider';
 import { TIER } from '@/lib/tier';
 import { WIN_EVENT } from '@/lib/winPaywall';
+import { Capacitor } from '@capacitor/core';
+import { hasRedeemed } from '@/lib/referral';
+import { loadSafetyPlusTrialWithin, TRIAL_LOOKUP_BUDGET_MS } from '@/lib/safetyPlusTrial';
+import { trialHeadline, trialRenewalLine } from '@/lib/freeTrial';
 
 export { WIN, recordWin } from '@/lib/winPaywall';
 
@@ -85,8 +89,16 @@ export default function WinPaywall() {
   const navigate = useNavigate();
   const reduce = useReducedMotion();
   const [win, setWin] = useState(null);
+  // Free-trial wording. undefined = still asking the store for THIS win, null =
+  // no confirmed trial (today's copy), object = a store-confirmed, eligible
+  // trial. The modal renders nothing until it settles, at most
+  // TRIAL_LOOKUP_BUDGET_MS, so the copy never changes under the user's eyes. A
+  // new win starts a fresh lookup and never reuses the last answer.
+  const [trial, setTrial] = useState(undefined);
   // Free only — see the 2026-09-21 note above.
   const offer = currentTier === TIER.FREE ? upsellFor(currentTier) : null;
+  // upsellFor returns a new object every render, so effects key on the id.
+  const offerId = offer?.id ?? null;
 
   const close = useCallback(() => setWin(null), []);
   const containerRef = useModalA11y({ active: !!win, onEscape: close });
@@ -94,20 +106,49 @@ export default function WinPaywall() {
   useEffect(() => {
     const onWin = (e) => {
       if (isDeniabilityOrDemoActive()) return;
+      setTrial(undefined);
       setWin(e?.detail?.trigger || 'win');
     };
     window.addEventListener(WIN_EVENT, onWin);
     return () => window.removeEventListener(WIN_EVENT, onWin);
   }, []);
 
+  // Ask the store only for a win that will actually show: a free user, outside a
+  // decoy/demo session (I3). One lookup per win.
   useEffect(() => {
-    if (!win || !offer) return;
-    void trackEvent(EVENT.PAYWALL_SHOWN, { trigger: win, offer: offer.id }).catch(() => {});
-  }, [win, offer]);
+    if (!win || !offerId || isDeniabilityOrDemoActive()) return undefined;
+    let cancelled = false;
+    loadSafetyPlusTrialWithin(TRIAL_LOOKUP_BUDGET_MS, {
+      platform: Capacitor.getPlatform(),
+      hasReferral: hasRedeemed(),
+    }).then((confirmed) => {
+      if (!cancelled) setTrial(confirmed);
+    });
+    return () => { cancelled = true; };
+  }, [win, offerId]);
+
+  // Counted as shown once the modal is actually on screen, once per win. It used
+  // to depend on `offer`, a fresh object each render, so any re-render re-fired it.
+  const settled = trial !== undefined;
+  useEffect(() => {
+    if (!win || !offerId || !settled) return;
+    void trackEvent(EVENT.PAYWALL_SHOWN, { trigger: win, offer: offerId }).catch(() => {});
+  }, [win, offerId, settled]);
 
   // Live re-check: a session that flipped to decoy while this was open must
   // not keep an upsell — its mere presence discloses the primary tier.
   if (!win || !offer || isDeniabilityOrDemoActive()) return null;
+  if (trial === undefined) return null;
+
+  // Same funnel offer id either way; only the words change.
+  const shown = trial
+    ? {
+        ...offer,
+        title: `Try Safety Plus — ${trialHeadline(trial.days)}`,
+        body: `${offer.body} ${trialRenewalLine({ days: trial.days, priceString: trial.priceString, billing: 'annual' })}`,
+        cta: 'See free trial',
+      }
+    : offer;
 
   const dismiss = () => {
     close();
@@ -126,13 +167,13 @@ export default function WinPaywall() {
         ref={containerRef}
         role="dialog"
         aria-modal="true"
-        aria-label={offer.title}
+        aria-label={shown.title}
         data-testid="win-paywall"
         data-win={win}
         className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xl"
       >
         <div className="flex items-start justify-between">
-          <h2 className="text-lg font-bold">{offer.title}</h2>
+          <h2 className="text-lg font-bold">{shown.title}</h2>
           <button onClick={dismiss} className="text-muted-foreground hover:text-foreground" aria-label="Dismiss">
             <X className="h-4 w-4" />
           </button>
@@ -148,9 +189,9 @@ export default function WinPaywall() {
             <Vigil state="asleep" size={84} />
           </motion.div>
         </div>
-        <p className="text-sm text-muted-foreground">{offer.body}</p>
+        <p className="text-sm text-muted-foreground">{shown.body}</p>
         <div className="flex gap-3">
-          <Button onClick={upgrade} className="flex-1">{offer.cta}</Button>
+          <Button onClick={upgrade} className="flex-1">{shown.cta}</Button>
           <Button onClick={dismiss} variant="outline" className="flex-1">Not now</Button>
         </div>
       </div>
