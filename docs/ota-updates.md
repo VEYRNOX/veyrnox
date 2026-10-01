@@ -48,7 +48,13 @@ What the canary taught, each fixed in the procedure below:
 
 **The canary downloaded, booted and was promoted on an iOS simulator.** The whole
 chain ran: the signature check, the per-file sha256 check, promotion on first render,
-and the version floor moving up. No PIN was entered and no wallet was created.
+and the version floor moving up. No PIN was entered and no wallet was created during
+the test itself: both cold starts landed on the welcome screen, and the state was read
+from the app's files.
+A wallet was created in that simulator by hand afterwards, once the canary was already
+active, so that simulator is no longer a clean first-run state. To repeat the
+first-run case, use a fresh simulator or erase this one (detach the live panel first,
+or the shutdown and erase silently do nothing).
 
 | | |
 |---|---|
