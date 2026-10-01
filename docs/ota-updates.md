@@ -234,6 +234,25 @@ with `OTA_IO`, and `src/lib/otaUpdate.js` swallows the error outside DEV.
   `unzip -l` before assuming the fix above is complete.
 - iOS is not affected: it reads the file straight from the app bundle.
 
+**Fix (this branch, ships with the next Android release; not in 1.0.2).**
+`OtaBundleVerifier.prefill` now reports a held file whose source cannot be opened as
+`missing` instead of throwing, so it is downloaded and sha256-checked by `stage` like
+any other file (nothing is trusted without its hash). Pinned by four JVM tests;
+reintroducing the throw turns two of them red. **Verified on the emulator** against the
+staging canary: manifest, `.well-known/*` and every other file downloaded, `stage`
+accepted it, the second cold start promoted it, and `status()` reported
+`runningVersion 202610010509`. Not yet verified on a physical phone.
+
+**A second Android-only failure, found while verifying the fix.** After `prepare` passed,
+`stage` returned `OTA_VERIFY_FAILED`: Cloudflare had injected its Web Analytics beacon
+into `index.html` (22325 bytes, not the signed 21964). Android's HTTP client sends
+`Accept: text/html, ...`, and the staging canary's HTML files were served as
+`text/html`, so Cloudflare rewrote them; `curl` (`Accept: */*`) and iOS never saw it.
+Re-uploading `index.html` as `application/octet-stream` fixed it. **Production was not
+affected**, because every object there was uploaded as `octet-stream`. Check it with
+`curl -H 'Accept: text/html'` as well as plain `curl`; `verify-live` should send that
+header too (not done yet).
+
 ## Production canary published (2026-10-01)
 
 A **no-change canary** went to the production channel: the exact shipped 1.0.2 web
