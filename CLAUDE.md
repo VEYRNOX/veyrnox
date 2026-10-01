@@ -89,9 +89,19 @@ architecture or security-critical code (wallet-core, signing, KEK, RASP).
   `lib/consent.js` (writes), and suppressed in deniability/demo (I3).
 - Hardware KEK is device-verified on iOS and Android, and RASP F-09 is device-verified on
   both (INTERNAL). Vault: AES-256-GCM, Argon2id 96 MiB/t=6 for new vaults, 192 MiB/t=3
-  for older ones (the v2 migration flag stays OFF until Gate 1 of #2101).
-- Open residuals: EVM key unzeroable (ethers v6), #1111 (vault AAD v:3), #2275 (17 inert
-  e2e security assertions), and the independent audit.
+  for older ones. `KDF_PROFILE_V2_MIGRATION_ENABLED` is `false` in `vault.js`. #2101 was
+  closed by the owner (2026-08-28) without the real-device v2 cold-unlock benchmark run
+  and without the flag flipped; if revisited, the benchmark and deniability-parity gate
+  still apply.
+- Open residuals (re-checked against `main` 2026-10-01):
+  - EVM key unzeroable (ethers v6).
+  - Vault AAD v:3 (#1111, closed): the v:3 reader and format are BUILT (#1649), but
+    `AAD_V3_MIGRATION_ENABLED` is `false`, so writes stay v:2 and `kekWrap`/`kekSalt`/
+    `hardwareKekVersion` are not yet bound against downgrade tampering.
+  - Post-audit control e2e (#2275, closed as superseded): the 17 inert `test.fixme`
+    assertions were replaced by 17 source-content tests (#2296). They run, but never open
+    a browser; this is regression protection, not behavioural validation.
+  - The independent audit of the full stack.
 - Detail and evidence: `docs/Feature-Status.md` and the archive.
 
 ## Pre-submission checklist (BOTH stores, every build incl. 1.0.2)
