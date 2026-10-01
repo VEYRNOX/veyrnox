@@ -1,8 +1,11 @@
 # OTA web-bundle updates
 
 **Status: BUILT, INTERNAL.** Verified end to end on the **iOS simulator** against a
-staging release (2026-10-01). **Not verified** on a physical device, on Android, or
-on the production channel, and not with a store-signed binary.
+staging release (2026-10-01). **Android is NOT verified, and the one Android run
+failed:** on an emulator the update check was blocked by Cloudflare before anything
+downloaded (see "Staging canary: Android emulator result"). Also not verified on a
+physical device, on the production channel, or with a store-signed binary. **Nothing
+is published to production.**
 
 **Signing keys are provisioned (2026-09-18).** Two YubiKey 5C NFC tokens, each
 holding a non-extractable P-256 key generated on-token in PIV slot 9c, with
@@ -98,6 +101,86 @@ guarantee", below).
 - **That the new code is what rendered.** The canary's web code was built from an
   older commit than the binary's, so after promotion the simulator is running that
   older code. The proof is the state values above, not anything on screen.
+
+## Staging canary: Android emulator result (2026-10-01)
+
+**The canary was never downloaded on Android.** The update check was blocked at the
+host. This is the only Android run so far, and it was on an emulator, not a phone, so
+it does not say whether real Android devices are blocked too.
+
+| | |
+|---|---|
+| Device | fresh emulator, Android 14 (API 34, `google_apis`, arm64), WebView Chrome 113 |
+| Binary | the exact shipped 1.0.2 web code (`a4559997`; iOS build 8 `dbb7f135` differs only in a Gradle file and a test), `OTA_BUNDLE_VERSION=202610010000 npm run build:staging`, `npx cap sync android`, then `assembleGoogleDebug` (`com.veyrnox.app.debug`) |
+| Native side | fine. The OTA plugin reported `enabled: true`, channel `staging`, `nativeApi: 1`, `runningVersion` and `newestKnownVersion` both `202610010000`, and wrote its state file with all zeros |
+| Web side | **blocked.** Every request from the WebView to `updates.veyrnox.com` (`latest.json` on both channels, a file under a release) returned **HTTP 403, the Cloudflare "Sorry, you have been blocked" page**. The same WebView read `www.veyrnox.com/robots.txt` with 200, so the zone is not blocking it wholesale |
+| Result | `VeyrnoxOTA` never appeared in the app's data, so there was no second cold start to run |
+
+**What Cloudflare says** (Security, Events, zone `veyrnox.com`, last 24 hours, filtered
+to host `updates.veyrnox.com` and action Block): 19 blocks, all by **managed rules**,
+none by a custom rule.
+
+- **Ruleset:** Cloudflare OWASP Core Ruleset.
+- **Rule:** `920274: Invalid character in request headers (outside of very strict set)`,
+  rule id `ac090cd641d742b3adba4ece7f4d7e64`, 15 of the 19.
+- Seven of the 19 came from the test machine, with the emulator WebView's exact user
+  agent and `Referer: localhost`, on `/staging/latest.json` (5) and
+  `/production/latest.json` (3). The event shows `HTTP/1.1` and method `GET`.
+- The other four blocks were by different managed rules (`Drupal - Anomaly:Header:X-Forwarded-For`
+  twice, a missing or empty `Accept`, and a non-GET/POST method, which was a `HEAD`).
+  They were not attributed to any source here.
+- The zone's nine custom rules are all about `tip.veyrnox.com` and `tip-staging.veyrnox.com`.
+  None mentions the updates host, so the managed OWASP rules apply to it in full.
+- The event list also accepts filters in the URL, for example
+  `.../security/analytics/events?action=block&host=updates.veyrnox.com`.
+
+**What is NOT known.** Which header trips rule 920274. Plain `curl` to the same URL gets
+200 with each of these tried on its own: `Origin: https://localhost` and
+`capacitor://localhost`, the emulator's exact user agent, a modern Pixel user agent,
+`X-Requested-With: com.veyrnox.app.debug`, browser-style `Sec-Fetch-*` and `Referer`,
+and a quoted `sec-ch-ua`. It also is not known whether a real phone, whose WebView is
+current, sends anything that trips the rule. The emulator image's WebView is Chrome 113
+from 2023.
+
+**Failure mode.** A blocked update check fails closed: the app stays on its current
+bundle and nothing unsafe happens. But if real Android devices are blocked the same
+way, **Android OTA would silently never apply**, and a production release would reach
+iOS only.
+
+**A fix has been considered and NOT applied.** A custom rule on the `veyrnox.com` zone
+with the expression `(http.host eq "updates.veyrnox.com")`, action Skip, scoped to rule
+`920274` of the OWASP ruleset only. It matches the zone's existing "Skip WAF on staging"
+pattern. It was started and deliberately not saved: it lowers protection on that hostname,
+so it needs an explicit owner decision, and the physical-phone result may show it is
+unnecessary. The reasoning for it, if it is made: the host serves public, signed files
+that the app verifies against pinned keys and per-file hashes, so its security does not
+depend on the WAF. If skipping that single rule is not enough, other OWASP rules may
+also trip, and the next step would be skipping managed rules for the host. The cost of
+either is less generic scanning protection on `updates.veyrnox.com`.
+
+**Consequence for releasing.** The production release is on hold until a physical
+Android phone has taken the staging canary, or the rule question is settled.
+
+**Android test procedure and traps**, so the next run does not repeat them:
+
+1. **Use Java 21 for Gradle**, to match CI. The default `openjdk` formula is Java 25 and
+   Gradle 8.14 fails at once with `Unsupported class file major version 69`.
+2. **A locked emulator cannot launch the app.** One existing AVD had a device lock; its
+   user stayed `RUNNING_LOCKED`, the app was "partially direct-boot aware", and
+   `am start` returned `-92` (`START_CLASS_NOT_FOUND`) with `monkey` finding no launcher.
+   Check `dumpsys user` for `RUNNING_UNLOCKED`, or create a fresh AVD
+   (`avdmanager create avd -n <name> -k "system-images;android-34;google_apis;arm64-v8a" -d pixel_7`).
+   Do not wipe an AVD that holds other installs.
+3. **Launch with** `am start -n com.veyrnox.app.debug/com.veyrnox.app.MainActivity`.
+4. **Screenshots come back empty**: the wallet blocks screen capture (`FLAG_SECURE`).
+   Debug builds expose the WebView over DevTools instead:
+   `adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>`, then
+   `curl localhost:9222/json` lists the page and its websocket, and a `Runtime.evaluate`
+   over that websocket can run `fetch(...)` or call
+   `Capacitor.Plugins.VeyrnoxOta.status()`. It touches no wallet state.
+5. **Read the OTA state** with `adb shell run-as com.veyrnox.app.debug cat shared_prefs/VeyrnoxOta.xml`
+   (`active`, `pending`, `pendingBooted`, `floor`) and
+   `... ls files/VeyrnoxOTA` for the staged versions.
 
 ## ARMED for 1.0.2 (2026-09-19, owner decision — reverses the #2627 disarm)
 
