@@ -1,11 +1,11 @@
 # OTA web-bundle updates
 
 **Status: BUILT, INTERNAL.** Verified end to end on the **iOS simulator** against a
-staging release (2026-10-01). **Android is NOT verified, and the one Android run
-failed:** on an emulator the update check was blocked by Cloudflare before anything
-downloaded (see "Staging canary: Android emulator result"). Also not verified on a
-physical device, on the production channel, or with a store-signed binary. **Nothing
-is published to production.**
+staging release (2026-10-01). **Android OTA does not work in the shipped 1.0.2
+binary** (see "Android: the `.well-known` asset bug"), so a production release reaches
+iOS only until an Android store release fixes it. A **no-change canary is live on the
+production channel** (bundle `202610011706`, see "Production canary published"). Not
+yet verified on a physical device of either platform, or with a store-signed binary.
 
 **Signing keys are provisioned (2026-09-18).** Two YubiKey 5C NFC tokens, each
 holding a non-extractable P-256 key generated on-token in PIV slot 9c, with
@@ -23,8 +23,8 @@ evidence, not device evidence.
 ## Staging canary published (2026-10-01)
 
 The first real release went to the **staging** channel, as a harmless canary. It is
-the first bundle ever on `updates.veyrnox.com`; production still has none
-(`production/latest.json` is a 404).
+the first bundle ever on `updates.veyrnox.com`; at that time production had none
+(`production/latest.json` was a 404; see "Production canary published").
 
 | | |
 |---|---|
@@ -98,7 +98,7 @@ guarantee", below).
 
 - **A physical device or Android.** Nothing here runs on Android, and the simulator is
   not hardware.
-- **The production channel or a store-signed binary.** Production has no release, and
+- **The production channel or a store-signed binary.** At that point production had no release, and
   the simulator ran a debug build, so the pinned-key and channel checks ran against a
   staging manifest only.
 - **Any failure path.** A bad signature, a hash mismatch, a bundle that boots but never
@@ -164,8 +164,9 @@ depend on the WAF. If skipping that single rule is not enough, other OWASP rules
 also trip, and the next step would be skipping managed rules for the host. The cost of
 either is less generic scanning protection on `updates.veyrnox.com`.
 
-**Consequence for releasing.** The production release is on hold until a physical
-Android phone has taken the staging canary, or the rule question is settled.
+**Consequence for releasing.** Superseded: the rule was skipped for the host (see
+"Cloudflare: the managed-rule exception") and a second, separate Android failure was
+found (see "Android: the `.well-known` asset bug").
 
 **Android test procedure and traps**, so the next run does not repeat them:
 
@@ -187,6 +188,76 @@ Android phone has taken the staging canary, or the rule question is settled.
 5. **Read the OTA state** with `adb shell run-as com.veyrnox.app.debug cat shared_prefs/VeyrnoxOta.xml`
    (`active`, `pending`, `pendingBooted`, `floor`) and
    `... ls files/VeyrnoxOTA` for the staged versions.
+
+## Cloudflare: the managed-rule exception (2026-10-01)
+
+After the finding above, the owner added a **Managed rules exception** (Security, Security
+rules, Create rule, Managed rules exception) on zone `veyrnox.com`:
+
+- **Expression:** `(http.host eq "updates.veyrnox.com")`
+- **Skip:** the OWASP Core Ruleset rule `920274` only (the form allows a per-rule skip;
+  the custom-rule form only offers broad skips, so use this one).
+- **Order matters: it must be FIRST.** Managed-rule exceptions run before the
+  Execute rows that apply the managed rulesets. The first deploy was placed after them
+  and changed nothing (36 of 46 requests still blocked). Use Place at, First, then re-test.
+
+After that the emulator and a Pixel WebView got 200s from `updates.veyrnox.com`, and
+Security Events showed no new blocks for the emulator. Other managed rules and the
+host's `HEAD` / empty-`Accept` blocks are unchanged. The host serves public, signed
+files verified against pinned keys and per-file hashes, so its security does not depend
+on the WAF; the cost is less generic scanning protection on that hostname.
+
+## Android: the `.well-known` asset bug (2026-10-01)
+
+With the network path open, the Android emulator downloaded `ota-manifest.json` and
+`ota-manifest.sig` and then stopped: no bundle file, no `pending`, no error shown.
+
+**Root cause.** The embedded manifest lists 1070 files, including
+`.well-known/README.md`, `.well-known/apple-app-site-association` and
+`.well-known/assetlinks.json`. Android's asset packaging drops files whose names start
+with a dot, so the debug APK has **zero** entries under `assets/public/.well-known/`
+(1070 `assets/public/` entries in all, counted with `unzip -l`).
+`OtaUpdatePlugin.kt` `prepare()` reuses an unchanged file by opening it from
+`context.assets`; that open throws for the first `.well-known` file, `prepare` fails
+with `OTA_IO`, and `src/lib/otaUpdate.js` swallows the error outside DEV.
+
+**Consequences.**
+
+- **Android OTA is broken in every shipped 1.0.2 binary**, in a way OTA itself cannot
+  fix: the code that fails is native. It fails closed and silently; the app stays on its
+  embedded bundle.
+- It needs a store release (Android 1.0.3): either make `prepare()` treat an asset it
+  cannot open as `missing` so it is downloaded, or stop dot-files being dropped
+  (`androidResources.ignoreAssetsPattern`) or exclude them from the manifest.
+- **Not checked:** whether the underscore-prefixed manifest entries (`_headers`,
+  `_redirects`, `assets/_esm-*.js`, `assets/_u64-*.js`) are in the APK. Check with
+  `unzip -l` before assuming the fix above is complete.
+- iOS is not affected: it reads the file straight from the app bundle.
+
+## Production canary published (2026-10-01)
+
+A **no-change canary** went to the production channel: the exact shipped 1.0.2 web
+code, rebuilt with a newer version number, so it changes nothing a user sees. It is not
+built from `main`.
+
+| | |
+|---|---|
+| Source | `a4559997`, in a clean worktree (`.env.production` is tracked, so no `.env.local` and no dev flags) |
+| Build | `OTA_BUNDLE_VERSION=202610011706 npm run build` |
+| Channel / version | `production` / `202610011706` |
+| Files | 1070 in the manifest; 1072 objects including the manifest and signature |
+| Manifest sha256 | `e116e6e206faebc27d00ebd63289405302576ee5bd6aaec2a69d1f7e69befaf9` |
+| Signed with | token B (39744871), PIN and touch by the owner; `seal` and `verify` passed against the pinned keys |
+| Upload order | files, manifest and signature, `verify-live`, then `latest.json` last with `no-cache` |
+
+**Caught by `verify-live`:** the parallel upload reported two lines containing
+"error"/"fail" and `_redirects` was missing from the host (HTTP 404). It was re-uploaded
+and `verify-live` re-run (`live copy OK: 1072 objects match`) before `latest.json` was
+published. Do not trust the exit code of the `xargs` upload; run `verify-live` every time.
+
+**Reach.** iOS 1.0.2 installs only. **Not yet verified on a real iPhone:** relaunch twice
+on a device never rebuilt from source and read the OTA running version.
+**To roll back,** see "Rolling back".
 
 ## ARMED for 1.0.2 (2026-09-19, owner decision — reverses the #2627 disarm)
 
