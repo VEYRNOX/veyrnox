@@ -1,6 +1,8 @@
 # OTA web-bundle updates
 
-**Status: BUILT, INTERNAL.** Not device-verified.
+**Status: BUILT, INTERNAL.** Verified end to end on the **iOS simulator** against a
+staging release (2026-10-01). **Not verified** on a physical device, on Android, or
+on the production channel, and not with a store-signed binary.
 
 **Signing keys are provisioned (2026-09-18).** Two YubiKey 5C NFC tokens, each
 holding a non-extractable P-256 key generated on-token in PIV slot 9c, with
@@ -29,10 +31,10 @@ the first bundle ever on `updates.veyrnox.com`; production still has none
 | Files | 1071 files, all fetched back from the live host and matched to the manifest sha256 before `latest.json` went up |
 | Pointer | `staging/latest.json`, uploaded last, `Cache-Control: no-cache` |
 
-**Not device-verified.** No device has picked it up. It is `channel: staging`, so the
-store apps (production channel) refuse it by design; only a `--mode staging` build
-installed from an older binary can take it. Until a device does, treat everything
-below as tooling evidence.
+**Picked up by one iOS simulator, and nothing else** (see the next section). It is
+`channel: staging`, so the store apps (production channel) refuse it by design; only
+a `--mode staging` build whose own version is older than the release can take it.
+Everything outside that one run is still tooling evidence.
 
 What the canary taught, each fixed in the procedure below:
 
@@ -41,6 +43,61 @@ What the canary taught, each fixed in the procedure below:
   "What it does NOT guarantee").
 - Neither PIN was recorded where it was needed, and two tokens came within one wrong
   guess of locking (see "If a PIN is lost").
+
+## Staging canary: iOS simulator result (2026-10-01)
+
+**The canary downloaded, booted and was promoted on an iOS simulator.** The whole
+chain ran: the signature check, the per-file sha256 check, promotion on first render,
+and the version floor moving up. No PIN was entered and no wallet was created.
+
+| | |
+|---|---|
+| Device | iPhone 17 Pro simulator, iOS 26.5, Xcode 27.0 |
+| Binary | web code identical to `main` at `c086d1fd`; `OTA_BUNDLE_VERSION=202610010000 npm run build:staging`, then `npx cap sync ios`, then a signed simulator build (`DEVELOPMENT_TEAM=R54268MWFV`) |
+| Embedded manifest | `staging` / `202610010000`, no dev flags set |
+| First cold start | the app fetched the release into `Library/VeyrnoxOTA/202610010509`: 1073 files, the 1071 bundle files plus the manifest and signature. State: `pending = 202610010509` |
+| Second cold start | `active = 202610010509`, `floor = 202610010509`, `pending = 0` |
+
+The update check ran on the very first cold start, on the welcome screen, before any
+wallet existed, which is what the design says (see the I3 and I2 bullet under "What it does NOT
+guarantee", below).
+
+**Test procedure, in case you repeat it:**
+
+1. **Pin the test binary's version below the release's.** A binary's embedded version
+   is its build time, and a store build newer than an OTA bundle wins and deletes
+   it. A binary built *after* the canary would therefore carry a newer version and
+   ignore the canary. Build the test binary with `OTA_BUNDLE_VERSION` set to a value
+   older than the release. (This follows the "a store update newer than the OTA bundle
+   wins" row in the table under "Why this is dangerous"; the ignored-canary case
+   itself was avoided, not run.)
+2. Build with `--mode staging`, since a staging bundle is refused by a production
+   binary. Run `npx cap sync ios` immediately before the build, because
+   `ios/App/App/public` is gitignored and `xcodebuild` does not rebuild it.
+3. Cold start the app twice: terminate it, then launch it again. The first start
+   stages the update; the second boots it.
+4. Read the result without touching the wallet. Find the data folder with
+   `xcrun simctl get_app_container <udid> com.veyrnox.app data`, list
+   `Library/VeyrnoxOTA`, and read `veyrnoxOta.active`, `.pending`, `.pendingBooted`
+   and `.floor` from `Library/Preferences/com.veyrnox.app.plist` with `plutil -p`.
+   The plist can lag the app by a few seconds, because UserDefaults are written
+   behind a cache: a read taken right after the second launch still showed
+   `pending`, and a read a few seconds later showed `active`. `simctl spawn ...
+   defaults read` cannot see this app's domain, so read the file.
+
+**What this does not show:**
+
+- **A physical device or Android.** Nothing here runs on Android, and the simulator is
+  not hardware.
+- **The production channel or a store-signed binary.** Production has no release, and
+  the simulator ran a debug build, so the pinned-key and channel checks ran against a
+  staging manifest only.
+- **Any failure path.** A bad signature, a hash mismatch, a bundle that boots but never
+  reports ready, and the rollback were not exercised on a device; they are covered
+  by unit tests.
+- **That the new code is what rendered.** The canary's web code was built from an
+  older commit than the binary's, so after promotion the simulator is running that
+  older code. The proof is the state values above, not anything on screen.
 
 ## ARMED for 1.0.2 (2026-09-19, owner decision — reverses the #2627 disarm)
 
