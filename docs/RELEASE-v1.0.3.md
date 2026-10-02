@@ -26,15 +26,16 @@ too so both stores carry the same version and contents.
 | | 1.0.2 (live on both stores) | 1.0.3 (this release) |
 |---|---|---|
 | Apple `MARKETING_VERSION` | 1.0.2 | **1.0.3** |
-| Apple `CURRENT_PROJECT_VERSION` | 8 (consumed) | **58** |
+| Apple `CURRENT_PROJECT_VERSION` | 8 (consumed) | **59** (58 consumed, superseded) |
 | Play `versionName` | 1.0.2 | **1.0.3** |
-| Play `versionCode` | 57 (consumed) | **58** |
+| Play `versionCode` | 57 (consumed) | **59** |
 
-Set by #2821 and pinned by `src/__tests__/staging-mobile-release.test.js` (red before the
-bump, green after). Apple would accept a restart at build 1; **58 on both was the owner's
-choice (2026-10-02)** so one number names the release on both stores. Neither number is
-consumed until its first successful upload. If an upload is rejected or withdrawn after
-that, bump again rather than reuse.
+Pinned by `src/__tests__/staging-mobile-release.test.js` (red before each bump, green after).
+1.0.3 started at **58 on both** (#2821; owner's choice, 2026-10-02, so one number names the
+release on both stores; Apple would accept a restart at build 1). **Apple 1.0.3 (58) was
+uploaded on 2026-10-02 and is consumed.** The owner then held 1.0.3 for the AI Security
+free-trial fix (#2823), so it ships as **59 on both**. Never reuse a number that has been
+uploaded; bump again.
 
 ## Scope: all of `main` since 1.0.2 (owner decision, 2026-10-02)
 
@@ -98,11 +99,11 @@ non-English listing is uploaded, or the other languages will describe 1.0.2.
 
 | # | Step | Owner | State |
 |---|---|---|---|
-| 1 | #2821 (version bump) merged | CI | open |
-| 2 | 1.0.3 version record in App Store Connect | owner | not created |
-| 3 | `npm run build && npx cap sync ios` immediately before the iOS archive | build | not started |
-| 4 | `.ipa` dev-flag check prints nothing | build | not started |
-| 5 | Android release `.aab`, versionCode 58 | build | not started |
+| 1 | #2821 (bump to 58) merged; #2823 (AI trial fix) and the bump to 59 merged | CI | 58 merged; 59 pending |
+| 2 | 1.0.3 version record in App Store Connect | owner | **created** 2026-10-02 (`fffa15e9…`, MANUAL) |
+| 3 | `npm run build && npx cap sync ios` immediately before the iOS archive | build | done for 58; redo for 59 |
+| 4 | `.ipa` dev-flag check prints nothing | build | passed for 58; redo for 59 |
+| 5 | Android release `.aab`, versionCode 59 | build | not started |
 | 6 | Owner's golden-path walkthrough on a stock device never touched by a debug build: Create Wallet, Import Seed, Send/Receive, plus Buy, the paywall and Settings › Web bundle | owner | not started |
 | 7 | `bash scripts/asc-crashes.sh` — only `CLEAN` passes | build | not started |
 | 8 | `scripts/play-vitals.sh` — an empty result is not a pass | build | not started |
@@ -111,7 +112,16 @@ non-English listing is uploaded, or the other languages will describe 1.0.2.
 
 ## Apple release record
 
-None yet.
+| When (BST) | Event |
+|---|---|
+| 2026-10-02 12:05 | 1.0.3 (58) archived from `1d35cfe6` in a clean worktree (tracked `.env.production`, no `.env.local`, no dev flags), exported as an App Store `.ipa` signed Apple Distribution, team `R54268MWFV`. `.ipa` dev-flag check printed nothing. Embedded web bundle: production, `202610021103`. |
+| 2026-10-02 12:06 | The local export reserved an ASC build-upload slot for 1.0.3 (58) in `AWAITING_UPLOAD`. Uploads from Xcode Organizer and from Transporter did not fill it (no new upload record appeared). |
+| 2026-10-02 12:25 | Uploaded with `xcodebuild -exportArchive` and `destination: upload`; ASC moved the slot to `PROCESSING`, then build 58 to `VALID`. `usesNonExemptEncryption: false`. |
+| 2026-10-02 12:28 | 1.0.3 App Store version created (`fffa15e9-63cb-4f69-a3bc-0706257697da`), `PREPARE_FOR_SUBMISSION`, release type MANUAL. English (U.S.) only. |
+| 2026-10-02 | Build 58 attached and the Apple "What's New" saved; Apple's submit check reported ready, 0 blockers. **Not submitted.** |
+| 2026-10-02 | Owner held 1.0.3 for the AI Security free-trial fix (#2823). 1.0.3 moves to build 59; build 58 is consumed and is to be replaced on the version before submission. |
+
+The empty draft review submission `41183a06…` (no items) predates 1.0.3 and was left alone.
 
 ## Play release record
 
