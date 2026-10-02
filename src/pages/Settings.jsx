@@ -34,6 +34,7 @@ import SessionSettings from "../components/security/SessionSettings";
 import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Spinner from "@/components/Spinner";
+import OtaVersionRow from "@/components/OtaVersionRow";
 export default function Settings() {
   const { t } = useTranslation("wallet");
   const queryClient = useQueryClient();
@@ -651,6 +652,10 @@ export default function Settings() {
           </button>
         </div>
       )}
+
+      {/* Which web bundle this device runs (OTA is otherwise invisible). Local status only;
+          hides itself on web and in decoy/demo (I3). */}
+      <OtaVersionRow />
 
       <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-2">Danger zone</h2>
       {/* Danger Zone */}
