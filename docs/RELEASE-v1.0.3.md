@@ -64,12 +64,14 @@ Tooling that does not ship in the app: `verify-live` and its Android `Accept` ch
 Source of truth: `store-metadata/en.json`. Apple and Play are separate strings (see
 `store-metadata/README.md`).
 
-**Apple** (`apple.whatsNew`, 526 of 4000 chars). It names no other platform (App Review
-Guideline 2.3.10) and does not describe over-the-air updates, which Apple permits only for
-changes that do not alter the app's purpose:
+**Apple** (`apple.whatsNew`, 536 of 4000 chars; matches App Store Connect as saved on
+2026-10-02). It names no other platform (App Review Guideline 2.3.10) and does not describe
+over-the-air updates, which Apple permits only for changes that do not alter the app's
+purpose. The first section names AI Security Protection because build 59 shows its trial
+too (#2823); "and in reminders" was dropped because the reminders only advertise Safety+:
 
-> Try Safety+ free for 14 days
-> If you are eligible, the free trial is now shown clearly on the plans screen and in reminders.
+> Try Safety+ and AI Security Protection free for 14 days
+> If you are eligible, the free trial is now shown clearly on the plans screen.
 >
 > Clearer subscriptions
 > See your plan's status and its renewal or expiry date, compare plans side by side, and see exactly what happens if you cancel.
@@ -120,6 +122,8 @@ non-English listing is uploaded, or the other languages will describe 1.0.2.
 | 2026-10-02 12:28 | 1.0.3 App Store version created (`fffa15e9-63cb-4f69-a3bc-0706257697da`), `PREPARE_FOR_SUBMISSION`, release type MANUAL. English (U.S.) only. |
 | 2026-10-02 | Build 58 attached and the Apple "What's New" saved; Apple's submit check reported ready, 0 blockers. **Not submitted.** |
 | 2026-10-02 | Owner held 1.0.3 for the AI Security free-trial fix (#2823). 1.0.3 moves to build 59; build 58 is consumed and is to be replaced on the version before submission. |
+| 2026-10-02 13:44 | Promotional Text set (it was empty on 1.0.2): "Try Safety+ or AI Security Protection free for 14 days if you are eligible: duress PIN, hidden wallets, panic wipe and live Vigil threat answers." App Review notes: the 1.0.2 notes kept verbatim (the "minimum 8 digits" PIN line matches `MIN_PIN_LENGTH = 8` in `src/lib/pinStrength.js`), plus a "Free trial (new in 1.0.3)" paragraph explaining that the paywall claims the trial only when StoreKit reports the account eligible. |
+| 2026-10-02 ~14:20 | What's New updated to name both trials (text above). All three fields read back through the ASC API after saving. |
 
 The empty draft review submission `41183a06…` (no items) predates 1.0.3 and was left alone.
 
