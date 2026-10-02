@@ -250,8 +250,9 @@ into `index.html` (22325 bytes, not the signed 21964). Android's HTTP client sen
 `text/html`, so Cloudflare rewrote them; `curl` (`Accept: */*`) and iOS never saw it.
 Re-uploading `index.html` as `application/octet-stream` fixed it. **Production was not
 affected**, because every object there was uploaded as `octet-stream`. Check it with
-`curl -H 'Accept: text/html'` as well as plain `curl`; `verify-live` should send that
-header too (not done yet).
+`curl -H 'Accept: text/html'` as well as plain `curl`. `verify-live` now does this itself:
+it requests every object a second time with Android's `Accept`, so a rewrite that only
+Android would receive fails the check (reported as `[android client]`).
 
 ## Production canary published (2026-10-01)
 
@@ -592,7 +593,11 @@ signed: the live `ota-manifest.json` and `ota-manifest.sig` must be byte-identic
 your local, sealed copies, and every file in the manifest must hash to its manifest
 sha256. It requests the exact URLs a device does (`<base>/<channel>/<version>/files/<path>`,
 raw path, `cache: 'no-store'`), with the channel and version taken from the manifest
-itself, so it cannot check the wrong release. The base URL defaults to
+itself, so it cannot check the wrong release. Each object is fetched twice: once with
+a plain request (what iOS and `fetch` send) and once with Android's `Accept: text/html,
+…` and a Dalvik user agent. Cloudflare rewrites a `text/html` response only for the
+second kind, which is how an injected analytics script reached Android alone (see
+"Android: the `.well-known` asset bug"). The base URL defaults to
 `https://updates.veyrnox.com`; pass another as a second argument. Plain `http` is
 refused except to `localhost`.
 
