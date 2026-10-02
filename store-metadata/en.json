@@ -31,9 +31,9 @@
       "limit": 4000
     },
     "whatsNew": {
-      "value": "Theft Protection (optional)\nAn extra biometric check when you unlock, and again on a send that goes over your spend limit. It is now also required to loosen a spend limit or switch the protection off. On iPhone this is Face ID specifically.\n\nYou can see what you are approving\nWhen an app asks to spend your tokens over WalletConnect, the screen now names the token, the spender and whether the amount is unlimited. Several approval types previously showed only a raw code and \"Value: 0\".\n\nReferral links that survive an install\nTap an invite link, choose \"Copy code & get it on the App Store\", then after installing paste it into \"Have a referral code?\" and tap Apply. Your code is applied when you finish setup.\n\nAlso fixed\nRedeem Code and Manage Subscription open properly; they previously did nothing. The send amount is larger and is actually applied. A spend limit can be adjusted. The send screen says plainly that a transfer cannot be undone. Bigger tap targets, a readable minimum text size, and clearer empty screens throughout.",
+      "value": "Try Safety+ free for 14 days\nIf you are eligible, the free trial is now shown clearly on the plans screen and in reminders.\n\nClearer subscriptions\nSee your plan's status and its renewal or expiry date, compare plans side by side, and see exactly what happens if you cancel.\n\nSmoother buying\nYour wallet no longer locks you out partway through a purchase.\n\nReferral links\nIf you open a second referral link, the app now tells you that only the first code can be applied.\n\nAlso\nSecurity and stability updates throughout the app.",
       "limit": 4000,
-      "note": "Source of truth for the 1.0.2 release notes; every sibling locale is machine-translated from this string. `reviewed` stays true here because this file is the source — there is no translation fidelity to vouch for. Corrected 2026-09-19 after the #2541 iOS fresh-install run: the referral paragraph described the Android mechanism (\"the code is still applied afterwards\"), which is automatic only via Play Install Referrer. iOS needs Copy code -> Paste -> Apply, and apple.whatsNew is read only by iOS users. play.releaseNotes was accurate and is unchanged. All 43 siblings re-translated from this string in the same commit. Corrected 2026-09-24 for App Review Guideline 2.3.10: removed the Android biometric sentence from the English Apple release notes to match the saved App Store Connect 1.0.2 metadata. This correction does not update the sibling locales."
+      "note": "Source of truth for the 1.0.3 release notes (written 2026-10-02). Deliberately names no other platform (App Review Guideline 2.3.10, which removed an Android sentence from the 1.0.2 notes) and does not describe over-the-air updates. The 1.0.2 text this replaced is in git history. The 43 sibling locales still carry the 1.0.2 text until they are re-translated from this string."
     },
     "supportUrl": {
       "value": "https://veyrnox.com/support",
@@ -59,7 +59,7 @@
       "limit": 4000
     },
     "releaseNotes": {
-      "value": "Theft Protection: an optional extra biometric check when you unlock, and again on a send over your spend limit.\nPrivacy: decoy and hidden sessions no longer read or change analytics, budgets, recurring payments, savings goals or invoices. Panic wipe clears two markers it was missing.\nReferral links now survive an install.\nBigger tap targets, a readable minimum text size, and the send screen now says plainly that a transfer cannot be undone.",
+      "value": "Safety+ 14-day free trial: shown clearly on the plans screen and in reminders, and now available on Android.\nClearer subscriptions: plan status, renewal or expiry date, plans side by side, and what happens if you cancel.\nBuying: your wallet no longer locks partway through a purchase.\nSmall app fixes can now arrive between Play Store releases.\nSecurity and stability updates.",
       "limit": 500,
       "note": "Play caps release notes at 500 chars (Apple allows 4000), so this is its own shorter string, not a truncation of apple.whatsNew."
     }
