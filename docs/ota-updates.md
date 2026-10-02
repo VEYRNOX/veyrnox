@@ -1,11 +1,14 @@
 # OTA web-bundle updates
 
-**Status: BUILT, INTERNAL.** Verified end to end on the **iOS simulator** against a
-staging release (2026-10-01). **Android OTA does not work in the shipped 1.0.2
-binary** (see "Android: the `.well-known` asset bug"), so a production release reaches
-iOS only until an Android store release fixes it. A **no-change canary is live on the
-production channel** (bundle `202610011706`, see "Production canary published"). Not
-yet verified on a physical device of either platform, or with a store-signed binary.
+**Status: BUILT, INTERNAL.** Verified end to end on a **physical iPhone** against a
+staging release (2026-10-02, development build; see "Staging: physical iPhone result"),
+and earlier on the iOS simulator. **Android OTA does not work in the shipped 1.0.2
+binary** (see "Android: the `.well-known` asset bug"; fixed on `main` by #2816, which
+needs a store release), so a production release reaches iOS only until then. A
+**no-change canary is live on the production channel** (bundle `202610011706`, see
+"Production canary published"). Not verified end to end with a store-signed binary:
+an App Store iPhone was seen fetching the production manifest and signature, but the
+swap itself was not observed on it.
 
 **Signing keys are provisioned (2026-09-18).** Two YubiKey 5C NFC tokens, each
 holding a non-extractable P-256 key generated on-token in PIV slot 9c, with
@@ -275,9 +278,65 @@ built from `main`.
 and `verify-live` re-run (`live copy OK: 1072 objects match`) before `latest.json` was
 published. Do not trust the exit code of the `xargs` upload; run `verify-live` every time.
 
-**Reach.** iOS 1.0.2 installs only. **Not yet verified on a real iPhone:** relaunch twice
-on a device never rebuilt from source and read the OTA running version.
+**Reach.** iOS 1.0.2 installs only. **What has been seen from real devices** (Cloudflare
+Security Analytics, sampled):
+
+- **An App Store iPhone** (the owner's, 1.0.2 build 8) fetched `production/latest.json`,
+  then `production/202610011706/ota-manifest.json` and `ota-manifest.sig`, at 06:26 BST
+  on 2026-10-02, right after a cold start. It fetched no files, which is expected for a
+  no-change bundle: every file hash matches the embedded bundle, so `prepare` returns
+  nothing missing. Whether it then staged and booted the bundle cannot be seen from the
+  host, and 1.0.2 has no screen that shows it.
+- **A real Android 1.0.2 phone** (Android 11, TECNO) fetched the production manifest at
+  22:47 BST on 2026-10-01 and no files after it: the first real-device sighting of the
+  `.well-known` bug.
+- Traffic is low: about 300 `production/latest.json` requests in the 7 days to
+  2026-10-02, many of them from Microsoft-owned addresses with an iPhone WebView user
+  agent. Request volume is far below the subscriber count; the reason is not known.
+
 **To roll back,** see "Rolling back".
+
+## Staging: physical iPhone result (2026-10-02)
+
+**OTA works end to end on a real iPhone.** The running web bundle changed on screen from
+the embedded `202610020000` to the downloaded `202610020712`.
+
+| | |
+|---|---|
+| Device | iPhone 17 Pro Max (the owner's; its Veyrnox held no funds), cabled, Developer Mode on |
+| Binary | `main` at `efd1063f`, which includes the Settings "Web bundle" row (#2818). `OTA_BUNDLE_VERSION=202610020000 npm run build:staging`, `npx cap sync ios`, `xcodebuild -configuration Debug` signed for team `R54268MWFV`, installed with `xcrun devicectl device install app` |
+| Release | staging `202610020712`, the same code rebuilt, 1072 files, signed with token B, `seal` and `verify` passed, `verify-live` (both client profiles) `1074 objects match` before `latest.json` |
+| Production | untouched (`production/latest.json` stayed `202610011706`) |
+
+What the owner saw in Settings, "Web bundle":
+
+1. Before `latest.json` changed: `202610020000`, "The app code this device is running".
+2. After a full close and reopen: `202610020000`, "An update is staged and applies after
+   you fully close and reopen the app".
+3. After a second full close and reopen: **`202610020712`**.
+
+**What this proves and what it does not.** Real hardware ran the whole flow on the
+staging channel: the update check, download, signature check against the pinned keys,
+per-file hashes, staging and the swap on a cold start. It was a **development-signed**
+build, so it says nothing new about the App Store binary; that build's update check is
+covered only by the 06:26 host log above.
+
+**Traps from this run:**
+
+- **A development build replaces the App Store app.** Debug and Release share the app ID
+  `com.veyrnox.app`, so installing from Xcode overwrites the store install, and the
+  wallet's Keychain items (including the hardware KEK) may not be readable afterwards.
+  Use a phone with no real funds, or one whose seed is backed up. To go back, delete the
+  app and reinstall it from the App Store.
+- **A staging device build needs `.env.staging.local`.** The tracked `.env.staging` has
+  no `VITE_EDGE_BASE`, so on a phone every `/api/*` call fails closed: market news, for
+  one, does not load. This run built from a clean checkout on purpose and lost those
+  features; it did not affect the update, which only talks to `updates.veyrnox.com`.
+- **Uploading 1072 files with `xargs -P 8` took over 20 minutes** for a quarter of them,
+  because every file starts a new `npx wrangler` (13–25 s each). `-P 24` finished the
+  rest in about 15 minutes. `verify-live` is what proves the upload complete, whatever
+  the concurrency.
+
 
 ## ARMED for 1.0.2 (2026-09-19, owner decision — reverses the #2627 disarm)
 
