@@ -18,8 +18,17 @@ const CONCURRENCY = 6
 
 let started = false
 
+// One registration shared by the update flow and the Settings readout: Capacitor
+// warns when a plugin is registered twice.
+let plugin
+const otaPlugin = () => (plugin ??= registerPlugin('VeyrnoxOta'))
+
+/** Local native status only (no network). Used by the Settings "Web bundle" row. */
+export const getOtaStatus = () => otaPlugin().status()
+
+/** @param {{ ota?: any, filesystem?: any, fetchImpl?: typeof fetch, baseUrl?: string }} [options] */
 export async function runOtaUpdate({
-  ota = registerPlugin('VeyrnoxOta'),
+  ota = otaPlugin(),
   filesystem,
   fetchImpl = fetch,
   baseUrl = OTA_BASE_URL,
