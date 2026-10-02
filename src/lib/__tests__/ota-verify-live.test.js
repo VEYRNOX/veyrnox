@@ -47,7 +47,7 @@ function fakeFetch(host) {
   const impl = async (url, opts) => {
     calls.push({ url, opts })
     let hit = host.get(url)
-    if (typeof hit === 'function') hit = hit(calls.filter((c) => c.url === url).length)
+    if (typeof hit === 'function') hit = hit(calls.filter((c) => c.url === url).length, opts)
     if (hit instanceof Error) throw hit
     if (hit === undefined) return { ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) }
     if (Buffer.isBuffer(hit)) {
@@ -80,6 +80,42 @@ describe('verifyLive', () => {
     expect(r.failures).toHaveLength(1)
     expect(r.failures[0]).toMatchObject({ path: 'index.html', reason: 'hash mismatch' })
     expect(r.failures[0].liveBytes).toBeGreaterThan(r.failures[0].localBytes)
+  })
+
+  // Found 2026-10-02: Cloudflare injected its analytics beacon into index.html, but only
+  // for requests whose Accept includes text/html. Android's HTTP client sends that;
+  // plain fetch and iOS send */*. A check from one client profile cannot see it.
+  const ANDROID_ACCEPT = /text\/html/
+  const acceptOf = (c) => c.opts?.headers?.Accept ?? ''
+
+  it('fails when the host rewrites a file only for an Android-style Accept: text/html', async () => {
+    const { dir, host, prefix, files } = makeRelease()
+    const good = Buffer.from(files['index.html'])
+    const rewritten = Buffer.from(`${files['index.html']}<script src="https://static.cloudflareinsights.com/beacon.js"></script>`)
+    host.set(`${prefix}/files/index.html`, (_n, opts) => (ANDROID_ACCEPT.test(opts?.headers?.Accept ?? '') ? rewritten : good))
+    const r = await run(dir, host)
+    expect(r.ok).toBe(false)
+    expect(r.failures).toHaveLength(1)
+    expect(r.failures[0]).toMatchObject({ path: 'index.html', reason: 'hash mismatch', client: 'android' })
+    expect(r.failures[0].liveBytes).toBeGreaterThan(r.failures[0].localBytes)
+  })
+
+  it('requests every object a second time with an Android-style Accept, and the first time without one', async () => {
+    const { dir, host, prefix } = makeRelease()
+    const r = await run(dir, host)
+    const hits = r.calls.filter((c) => c.url === `${prefix}/files/index.html`)
+    expect(hits).toHaveLength(2)
+    expect(ANDROID_ACCEPT.test(acceptOf(hits[0]))).toBe(false)
+    expect(ANDROID_ACCEPT.test(acceptOf(hits[1]))).toBe(true)
+    expect(hits.every((c) => c.opts?.cache === 'no-store')).toBe(true)
+  })
+
+  it('does not run the Android check for an object the default check already failed', async () => {
+    const { dir, host, prefix } = makeRelease()
+    host.delete(`${prefix}/files/index.html`)
+    const r = await run(dir, host)
+    expect(r.failures).toEqual([{ path: 'index.html', reason: 'http 404' }])
+    expect(r.calls.filter((c) => c.url === `${prefix}/files/index.html`)).toHaveLength(1)
   })
 
   it('fails on a file the host does not have', async () => {
@@ -121,7 +157,10 @@ describe('verifyLive', () => {
     host.set(`${prefix}/files/index.html`, (n) => (n === 1 ? new Error('reset') : n === 2 ? { status: 503 } : good))
     const r = await run(dir, host)
     expect(r.ok).toBe(true)
-    expect(r.calls.filter((c) => c.url === `${prefix}/files/index.html`)).toHaveLength(3)
+    // Three default-client requests (error, 503, success); the Android-profile check is a fourth call.
+    const hits = r.calls.filter((c) => c.url === `${prefix}/files/index.html`)
+    expect(hits.filter((c) => !ANDROID_ACCEPT.test(acceptOf(c)))).toHaveLength(3)
+    expect(hits).toHaveLength(4)
   })
 
   it('reports a permanently unreachable file once retries are spent', async () => {

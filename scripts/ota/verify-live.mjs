@@ -31,6 +31,16 @@ const DEFAULT_CONCURRENCY = 12;
 const DEFAULT_RETRIES = 2;
 const DEFAULT_RETRY_DELAY_MS = 400;
 
+// Android's HTTP client asks for `text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2`.
+// Cloudflare rewrites a text/html response (it injected its analytics beacon into
+// index.html on 2026-10-02) only when the request's Accept includes text/html, so a
+// plain fetch (Accept: */*, like iOS) never sees it. Every object is therefore also
+// requested with this header, and the bytes must still match what was signed.
+export const ANDROID_HEADERS = Object.freeze({
+  Accept: 'text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2',
+  'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 14)',
+});
+
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
@@ -86,12 +96,12 @@ function localFileSize(releaseDir, path) {
  * not there, and asking again changes nothing.
  * Returns { bytes } or { reason }.
  */
-async function getBytes(url, { fetchImpl, retries, retryDelayMs }) {
+async function getBytes(url, { fetchImpl, retries, retryDelayMs, headers }) {
   let reason = 'unreachable';
   for (let attempt = 0; attempt <= retries; attempt++) {
     if (attempt > 0 && retryDelayMs > 0) await wait(retryDelayMs);
     try {
-      const res = await fetchImpl(url, { cache: 'no-store' });
+      const res = await fetchImpl(url, headers ? { cache: 'no-store', headers } : { cache: 'no-store' });
       if (res.ok) return { bytes: Buffer.from(await res.arrayBuffer()) };
       reason = `http ${res.status}`;
       if (res.status < 500) return { reason };
@@ -117,7 +127,7 @@ export async function verifyLive(releaseDir, baseUrl = DEFAULT_BASE_URL, opts = 
   const base = assertSafeBase(baseUrl);
   const { manifest, bytes: manifestBytes } = readLocalManifest(releaseDir);
   const release = `${base}/${manifest.channel}/${manifest.bundleVersion}`;
-  const get = (url) => getBytes(url, { fetchImpl, retries, retryDelayMs });
+  const get = (url, headers) => getBytes(url, { fetchImpl, retries, retryDelayMs, headers });
 
   const failures = [];
   const signatureBytes = readFileSync(join(releaseDir, SIGNATURE_NAME));
@@ -144,6 +154,20 @@ export async function verifyLive(releaseDir, baseUrl = DEFAULT_BASE_URL, opts = 
           liveBytes: got.bytes.length,
           localBytes: localBytes ?? localFileSize(releaseDir, path),
         });
+      } else {
+        // Default client matched; now ask the way Android does.
+        const android = await get(url, ANDROID_HEADERS);
+        if (!android.bytes) {
+          failures.push({ path, reason: android.reason, client: 'android' });
+        } else if (sha256(android.bytes) !== want) {
+          failures.push({
+            path,
+            reason: 'hash mismatch',
+            client: 'android',
+            liveBytes: android.bytes.length,
+            localBytes: localBytes ?? localFileSize(releaseDir, path),
+          });
+        }
       }
     }
   };
@@ -163,7 +187,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.error(`live copy DIFFERS: ${failures.length} of ${checked} objects failed — do NOT upload latest.json`);
       for (const f of failures.slice(0, 20)) {
         const size = f.liveBytes !== undefined && f.localBytes !== undefined ? ` (live ${f.liveBytes} bytes, local ${f.localBytes})` : '';
-        console.error(`  ${f.path}: ${f.reason}${size}`);
+        const client = f.client ? ` [${f.client} client]` : '';
+        console.error(`  ${f.path}: ${f.reason}${size}${client}`);
       }
       if (failures.length > 20) console.error(`  … and ${failures.length - 20} more`);
       process.exit(1);
