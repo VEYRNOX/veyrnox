@@ -83,9 +83,8 @@ architecture or security-critical code (wallet-core, signing, KEK, RASP).
   `android/app/build.gradle`; never write the current value here. The next iOS
   archive needs a new ASC version record; 1.0.2 is closed.
   **"Submitted" has an outcome: record it in the session that learns it.**
-- **1.0.3 is submitted to both stores, in review** (2026-10-02; ships all of `main`).
-  Apple: manual release. Play: managed publishing on. Not live until the owner releases.
-  State, IDs and checklist: `docs/RELEASE-v1.0.3.md`. Record approval/rejection there.
+- **1.0.3: LIVE on Google Play (2026-10-02); Apple in review** (manual release). Ships all
+  of `main`. State, IDs and checklist: `docs/RELEASE-v1.0.3.md`. Record Apple's outcome there.
 - **OTA web-bundle updates are live in production** (no-change canary). iOS takes them;
   Android 1.0.2 cannot (native bug, fixed by #2816, ships in 1.0.3). Runbook and evidence:
   `docs/ota-updates.md`. Any production publish needs the owner's YubiKey and explicit go.

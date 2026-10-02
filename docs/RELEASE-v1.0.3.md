@@ -2,14 +2,13 @@
 
 Owner: Al Jobson. Last updated: 2026-10-02.
 
-**STATE: SUBMITTED TO BOTH STORES, IN REVIEW (2026-10-02). Not approved, not released.**
+**STATE: GOOGLE PLAY LIVE ON 1.0.3; APPLE IN REVIEW (2026-10-02).**
+- **Google Play: LIVE.** 1.0.3 (59) approved by Google and **published by the owner on
+  2026-10-02 at 19:05 BST**, 100% rollout, 178 countries/regions ("Available on Google Play").
 - **Apple:** 1.0.3 (59) `WAITING_FOR_REVIEW`, review submission `41183a06-2fd9-458c-a996-52940304b672`,
-  submitted 2026-10-02T15:00:34Z. Release type MANUAL.
-- **Google Play:** 1.0.3 (59) production release sent for review 2026-10-02 (~16:20 UTC),
-  100% rollout. Managed publishing is ON, so it is not published until the owner presses Publish.
+  submitted 2026-10-02T15:00:34Z. Release type MANUAL. The App Store is still on 1.0.2 (build 8).
 
-Both stores are still live on 1.0.2 (Play versionCode 57, App Store build 8) until the owner
-releases. Update this header in the session that learns each outcome (approved, rejected,
+Update this header in the session that learns each outcome (Apple approved, rejected,
 released).
 
 Status tags follow `CLAUDE.md`: BUILT (in code, tests green), TARGET, PLANNED,
@@ -91,11 +90,15 @@ too (#2823); "and in reminders" was dropped because the reminders only advertise
 > Also
 > Security and stability updates throughout the app.
 
-**Play** (`play.releaseNotes`, 376 of 500 chars):
+**Play** (`play.releaseNotes`, 475 of 500 chars; what the live release carries, updated in
+Play Console on 2026-10-02 after approval). The first line names both trials because all four
+active Play subscriptions have an active `free-trial-14d` offer (checked offer by offer, below);
+the referral line matches the iOS notes:
 
-> Safety+ 14-day free trial: shown clearly on the plans screen and in reminders, and now available on Android.
+> Safety+ and AI Security Protection: try either free for 14 days if you are eligible, shown clearly on the plans screen.
 > Clearer subscriptions: plan status, renewal or expiry date, plans side by side, and what happens if you cancel.
 > Buying: your wallet no longer locks partway through a purchase.
+> Referral links: opening a second link now tells you only the first code can be applied.
 > Small app fixes can now arrive between Play Store releases.
 > Security and stability updates.
 
@@ -146,3 +149,7 @@ non-English listing is uploaded, or the other languages will describe 1.0.2.
 | 2026-10-02 16:43 | Production environment approved for `publish-to-play-internal` (owner). Uploaded to the **internal** track: "Successfully uploaded 1 artifacts", edit `05647123479100637645` committed. Play Console: "Available to internal testers", released 4:43 PM. Run #6316 finished green. |
 | 2026-10-02 | Owner installed 1.0.3 from internal testing (opted in at the internal-test link) and did the golden-path walkthrough. |
 | 2026-10-02 ~17:20 | Promoted internal → **Production**: release name 1.0.3, bundle 59 replacing 57, 100% rollout, all targeted countries, en-US release notes (`play.releaseNotes`, 376 chars). Device catalogue unchanged (12,314 phones, 0 lost). Play reported "Installs on active devices: 12". Saved, then **sent for review** from Publishing overview; it shows under "Changes in review" while Google's quick checks run. **Managed publishing is ON.** |
+| 2026-10-02 (by ~18:45) | **Approved by Google**: Publishing overview moved 1.0.3 to "Changes ready to publish"; Console notification "Your recent app update has been approved and is ready for you to publish". |
+| 2026-10-02 ~18:50 | Release notes edited on the approved release (Edit release details) to name both trials and add the referral line (text above, 475 chars). It stayed under "Changes ready to publish"; no re-review. |
+| 2026-10-02 | Free-trial offers checked in Play Console, offer by offer: `free-trial-14d` is Active in 175 countries with a single **Free trial, 14 days** phase on all four active subscriptions (`safety_plus_monthly`, `safety_plus_annual`, `ai_security_protection_monthly_v2`, `ai_security_protection_annual_v2`). Eligibility on all four is **"Never had any subscription in this app"**, so on Android a past subscriber to one plan does not get the other plan's trial (on iOS, Apple judges eligibility per subscription group). Each offer also carries `rc-ignore-offer`; the app selects the trial by its `free-trial-14d` tag. |
+| 2026-10-02 19:05 | **Published** by the owner: "Available on Google Play", 178 countries/regions, 100%. |

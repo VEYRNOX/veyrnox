@@ -59,7 +59,7 @@
       "limit": 4000
     },
     "releaseNotes": {
-      "value": "Safety+ 14-day free trial: shown clearly on the plans screen and in reminders, and now available on Android.\nClearer subscriptions: plan status, renewal or expiry date, plans side by side, and what happens if you cancel.\nBuying: your wallet no longer locks partway through a purchase.\nSmall app fixes can now arrive between Play Store releases.\nSecurity and stability updates.",
+      "value": "Safety+ and AI Security Protection: try either free for 14 days if you are eligible, shown clearly on the plans screen.\nClearer subscriptions: plan status, renewal or expiry date, plans side by side, and what happens if you cancel.\nBuying: your wallet no longer locks partway through a purchase.\nReferral links: opening a second link now tells you only the first code can be applied.\nSmall app fixes can now arrive between Play Store releases.\nSecurity and stability updates.",
       "limit": 500,
       "note": "Play caps release notes at 500 chars (Apple allows 4000), so this is its own shorter string, not a truncation of apple.whatsNew."
     }
