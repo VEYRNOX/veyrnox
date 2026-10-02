@@ -4,7 +4,8 @@
 staging release (2026-10-02, development build; see "Staging: physical iPhone result"),
 and earlier on the iOS simulator. **Android OTA does not work in the shipped 1.0.2
 binary** (see "Android: the `.well-known` asset bug"; fixed on `main` by #2816, which
-needs a store release), so a production release reaches iOS only until then. A
+ships in the 1.0.3 store release, in preparation — `docs/RELEASE-v1.0.3.md`), so a
+production release reaches iOS only until then. A
 **no-change canary is live on the production channel** (bundle `202610011706`, see
 "Production canary published"). Not verified end to end with a store-signed binary:
 an App Store iPhone was seen fetching the production manifest and signature, but the

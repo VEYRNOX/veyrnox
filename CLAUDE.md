@@ -83,6 +83,11 @@ architecture or security-critical code (wallet-core, signing, KEK, RASP).
   `android/app/build.gradle`; never write the current value here. The next iOS
   archive needs a new ASC version record; 1.0.2 is closed.
   **"Submitted" has an outcome: record it in the session that learns it.**
+- **1.0.3 is in preparation for both stores** (owner, 2026-10-02: ships all of `main`).
+  State and checklist: `docs/RELEASE-v1.0.3.md`. Not submitted until that file says so.
+- **OTA web-bundle updates are live in production** (no-change canary). iOS takes them;
+  Android 1.0.2 cannot (native bug, fixed by #2816, ships in 1.0.3). Runbook and evidence:
+  `docs/ota-updates.md`. Any production publish needs the owner's YubiKey and explicit go.
 - **Real users exist:** thousands of telemetry devices, 500+ active subscribers, and one
   real full-price production purchase. No promotional offer has ever been exercised by a
   real purchase. Telemetry is consent-gated in `api/trackEvent.js` (egress) and
