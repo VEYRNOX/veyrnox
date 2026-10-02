@@ -17,7 +17,7 @@
       "limit": 30
     },
     "promotionalText": {
-      "value": "Theft Protection: an extra biometric check on unlock and on over-limit sends. Plus live threat intel, step-by-step Send, WalletConnect QR pairing and 24h prices.",
+      "value": "Try Safety+ or AI Security Protection free for 14 days if you are eligible: duress PIN, hidden wallets, panic wipe and live Vigil threat answers.",
       "limit": 170,
       "note": "Editable without a review resubmission."
     },
@@ -31,9 +31,9 @@
       "limit": 4000
     },
     "whatsNew": {
-      "value": "Try Safety+ free for 14 days\nIf you are eligible, the free trial is now shown clearly on the plans screen and in reminders.\n\nClearer subscriptions\nSee your plan's status and its renewal or expiry date, compare plans side by side, and see exactly what happens if you cancel.\n\nSmoother buying\nYour wallet no longer locks you out partway through a purchase.\n\nReferral links\nIf you open a second referral link, the app now tells you that only the first code can be applied.\n\nAlso\nSecurity and stability updates throughout the app.",
+      "value": "Try Safety+ and AI Security Protection free for 14 days\nIf you are eligible, the free trial is now shown clearly on the plans screen.\n\nClearer subscriptions\nSee your plan's status and its renewal or expiry date, compare plans side by side, and see exactly what happens if you cancel.\n\nSmoother buying\nYour wallet no longer locks you out partway through a purchase.\n\nReferral links\nIf you open a second referral link, the app now tells you that only the first code can be applied.\n\nAlso\nSecurity and stability updates throughout the app.",
       "limit": 4000,
-      "note": "Source of truth for the 1.0.3 release notes (written 2026-10-02). Deliberately names no other platform (App Review Guideline 2.3.10, which removed an Android sentence from the 1.0.2 notes) and does not describe over-the-air updates. The 1.0.2 text this replaced is in git history. The 43 sibling locales still carry the 1.0.2 text until they are re-translated from this string."
+      "note": "Source of truth for the 1.0.3 release notes; matches App Store Connect as saved on 2026-10-02 (read back through the API). Names no other platform (App Review Guideline 2.3.10) and does not describe over-the-air updates. The first section names AI Security Protection because 1.0.3 (59) shows its trial too (#2823); \"and in reminders\" was dropped because the reminders only advertise Safety+. The 43 sibling locales still carry the 1.0.2 text until they are re-translated from this string."
     },
     "supportUrl": {
       "value": "https://veyrnox.com/support",
