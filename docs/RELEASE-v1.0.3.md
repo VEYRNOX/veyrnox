@@ -2,9 +2,15 @@
 
 Owner: Al Jobson. Last updated: 2026-10-02.
 
-**STATE: IN PREPARATION. Not built, not uploaded, not submitted to either store.**
-Both stores are still on 1.0.2 (Play versionCode 57, App Store build 8). Update this
-header in the session that learns each outcome; "submitted" has an outcome.
+**STATE: SUBMITTED TO BOTH STORES, IN REVIEW (2026-10-02). Not approved, not released.**
+- **Apple:** 1.0.3 (59) `WAITING_FOR_REVIEW`, review submission `41183a06-2fd9-458c-a996-52940304b672`,
+  submitted 2026-10-02T15:00:34Z. Release type MANUAL.
+- **Google Play:** 1.0.3 (59) production release sent for review 2026-10-02 (~16:20 UTC),
+  100% rollout. Managed publishing is ON, so it is not published until the owner presses Publish.
+
+Both stores are still live on 1.0.2 (Play versionCode 57, App Store build 8) until the owner
+releases. Update this header in the session that learns each outcome (approved, rejected,
+released).
 
 Status tags follow `CLAUDE.md`: BUILT (in code, tests green), TARGET, PLANNED,
 HONEST-DISABLED. Nothing in this release is **verified** in the strict sense (a real
@@ -105,12 +111,12 @@ non-English listing is uploaded, or the other languages will describe 1.0.2.
 | 2 | 1.0.3 version record in App Store Connect | owner | **created** 2026-10-02 (`fffa15e9…`, MANUAL) |
 | 3 | `npm run build && npx cap sync ios` immediately before the iOS archive | build | done for 58; redo for 59 |
 | 4 | `.ipa` dev-flag check prints nothing | build | passed for 58; redo for 59 |
-| 5 | Android release `.aab`, versionCode 59 | build | not started |
-| 6 | Owner's golden-path walkthrough on a stock device never touched by a debug build: Create Wallet, Import Seed, Send/Receive, plus Buy, the paywall and Settings › Web bundle | owner | **iOS done** 2026-10-02 on TestFlight build 59 (owner-reported, not instrumented); Android not started (no 1.0.3 Play build yet) |
-| 7 | `bash scripts/asc-crashes.sh` — only `CLEAN` passes | build | **EMPTY (unmeasured)** 2026-10-02 ~15:10 BST for build 59; re-run after about a day of TestFlight use |
-| 8 | `scripts/play-vitals.sh` — an empty result is not a pass | build | not started |
+| 5 | Android release `.aab`, versionCode 59 | build | **done** — CI #6316 from `a5a136f2`; built APK manifest read with `aapt2`: `com.veyrnox.app`, versionCode 59, versionName 1.0.3 |
+| 6 | Owner's golden-path walkthrough on a stock device never touched by a debug build: Create Wallet, Import Seed, Send/Receive, plus Buy, the paywall and Settings › Web bundle | owner | **done on both** 2026-10-02: iOS on TestFlight build 59, Android on Play internal-testing 1.0.3 (59). Owner-reported, not instrumented. |
+| 7 | `bash scripts/asc-crashes.sh` — only `CLEAN` passes | build | **EMPTY (unmeasured), waived by the owner** 2026-10-02: single tester, no crashes in the walkthrough. Not a CLEAN pass. |
+| 8 | `scripts/play-vitals.sh` — an empty result is not a pass | build | **not run** (the worktree guard refuses running the script; not attempted another way). Single tester, so it would be unmeasured too. |
 | 9 | Read the tester feedback comments | owner | read 2026-10-02: none on build 59 (the app's only entries are older builds) |
-| 10 | Submit both; manual release on both so they go live together | owner | not started |
+| 10 | Submit both; manual release on both so they go live together | owner | **submitted both** 2026-10-02 (Apple MANUAL release; Play managed publishing ON). Release not yet pressed. |
 
 ## Apple release record
 
@@ -128,9 +134,15 @@ non-English listing is uploaded, or the other languages will describe 1.0.2.
 | 2026-10-02 ~14:50 | Description: "Both include a 14-day free trial if eligible." added under Optional Subscriptions; the duplicate "Full privacy policy" sentence dropped to fit 4000 chars (3994). |
 | 2026-10-02 | Owner's golden-path walkthrough done on TestFlight build 59 (owner-reported). |
 | 2026-10-02 ~15:10 | Crash check (the three reads `asc-crashes.sh` makes, run through the ASC API because the worktree guard refused the script): TestFlight crash submissions for build 59: none (the app's only one is a "Test" report on 1.0.2 build 1, 2026-09-21). Screenshot feedback for build 59: none (two older entries, August). `diagnosticSignatures` for build 59: 200, 0 groups, but the build was about 1.5 h old. **Result: EMPTY, which is unmeasured, not CLEAN.** Owner chose to wait about a day and re-run before submitting. |
-
-The empty draft review submission `41183a06…` (no items) predates 1.0.3 and was left alone.
+| 2026-10-02 ~16:00 | Owner reversed that: as the only tester, more waiting would not produce data. Crash check **waived**: the walkthrough found no crashes, ASC had no crash or feedback reports for build 59, and its diagnostics stay EMPTY without other users. |
+| 2026-10-02 16:00:34 | **Submitted for review.** 1.0.3 (59) added to the existing empty draft review submission `41183a06-2fd9-458c-a996-52940304b672` (it held 0 items, so nothing stale went with it) and submitted. ASC API: submission `WAITING_FOR_REVIEW`, version `WAITING_FOR_REVIEW`, build 59, release type MANUAL. |
 
 ## Play release record
 
-None yet.
+| When (BST) | Event |
+|---|---|
+| 2026-10-02 16:26 | CI #6316 (`workflow_dispatch`, `build_release` + `force_play_upload`, `target_sha` `a5a136f2`) started. Earlier manual attempt #6303 had a mistyped `target_sha` and failed at the `target_sha is a full commit SHA` guard; its release and publish jobs were skipped, nothing built or uploaded. |
+| 2026-10-02 ~16:33 | Production environment approved (owner). `android-release` built and signed the AAB and APK; `samsung-release` built a Samsung APK (artifact only, published nowhere). The job's "Report built versionCode" step printed an empty value: its `grep -m1 versionCode` matches a comment line in `build.gradle`. Cosmetic; the publish gate parses the number correctly. The built APK's manifest, read with `aapt2`: versionCode 59, versionName 1.0.3. |
+| 2026-10-02 16:43 | Production environment approved for `publish-to-play-internal` (owner). Uploaded to the **internal** track: "Successfully uploaded 1 artifacts", edit `05647123479100637645` committed. Play Console: "Available to internal testers", released 4:43 PM. Run #6316 finished green. |
+| 2026-10-02 | Owner installed 1.0.3 from internal testing (opted in at the internal-test link) and did the golden-path walkthrough. |
+| 2026-10-02 ~17:20 | Promoted internal → **Production**: release name 1.0.3, bundle 59 replacing 57, 100% rollout, all targeted countries, en-US release notes (`play.releaseNotes`, 376 chars). Device catalogue unchanged (12,314 phones, 0 lost). Play reported "Installs on active devices: 12". Saved, then **sent for review** from Publishing overview; it shows under "Changes in review" while Google's quick checks run. **Managed publishing is ON.** |
