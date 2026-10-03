@@ -286,12 +286,14 @@ describe('canonicalAddress — the same rule as TIP normalizeAddressByShape', ()
     }
   });
 
-  // Mixed case is invalid bech32, but a list can carry one, and TIP keys it
-  // lowercase.
-  it('lowercases a bech32 address written in mixed case', () => {
-    expect(mod.canonicalAddress('bc1qAr0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq')).toBe(BECH32);
-    expect(mod.canonicalAddress('BC1Par0srrr7xfkvy5l643lydnw9re59gtzzwf5mdqar0srrr7xfkvy5l643lyd'))
-      .toBe('bc1par0srrr7xfkvy5l643lydnw9re59gtzzwf5mdqar0srrr7xfkvy5l643lyd');
+  it('does not fold checksum-invalid or mixed-case bech32-shaped strings', () => {
+    const mixed = 'bc1qAr0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
+    expect(mod.canonicalAddress(mixed)).toBe(mixed);
+  });
+
+  it('keeps a valid Solana Base58 address with a bech32-looking prefix case-sensitive', () => {
+    const solana = `bc1Q${'q'.repeat(39)}`;
+    expect(mod.canonicalAddress(solana)).toBe(solana);
   });
 
   // "1" and "b" are base58 digits but not bech32 ones, so this is base58 even
@@ -395,11 +397,12 @@ describe('address comparison — canonical, with lowercased entries still matche
     expect(mod.lookupLocal(SOLANA.toLowerCase())).toBeNull();
   });
 
-  it('finds a bech32 address the manifest carries in mixed case', async () => {
-    await loadManifest([sanctioned('bc1qAr0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq')]);
+  it('does not match case variants of a case-preserved Solana address with a bech32 prefix', async () => {
+    const solana = `bc1Q${'q'.repeat(39)}`;
+    await loadManifest([sanctioned(solana)]);
 
-    expect(mod.lookupLocal(BECH32)).toMatchObject({ cat: 'sanctions' });
-    expect(mod.lookupLocal(BECH32.toUpperCase())).toMatchObject({ cat: 'sanctions' });
+    expect(mod.lookupLocal(solana)).toMatchObject({ cat: 'sanctions' });
+    expect(mod.lookupLocal(solana.toLowerCase())).toBeNull();
   });
 
   it('reports the sanctions entry when an address is also listed by another feed', async () => {

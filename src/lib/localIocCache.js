@@ -28,6 +28,7 @@
 //   next non-deniability unlock.
 
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
+import { bech32, bech32m } from '@scure/base';
 
 const DB_NAME = 'veyrnox-ioc-cache';
 const DB_VERSION = 1;
@@ -184,10 +185,22 @@ function canonicalStringify(v) {
 // If the two rules drift, an exact comparison silently misses.
 
 const EVM_ADDRESS = /^0x[0-9a-f]{40}$/i;
-// bc1/tb1 followed only by bech32 data characters, in any letter case. Base58
-// has digits bech32 lacks ("1", "b", "i", "o"), which tells a base58 address
-// that starts with "bc1" apart.
-const BECH32_BTC_ADDRESS = /^(bc1|tb1)[ac-hj-np-z02-9]+$/i;
+function isBitcoinBech32Address(address) {
+  if (!/^(bc1|tb1)/i.test(address)) return false;
+
+  // A prefix and alphabet check is ambiguous with Base58 (including valid
+  // Solana addresses). Requiring a valid bech32/bech32m checksum prevents a
+  // case-sensitive address from being folded into the Bitcoin index.
+  for (const codec of [bech32, bech32m]) {
+    try {
+      const decoded = codec.decode(address, 90);
+      if (decoded.prefix === 'bc' || decoded.prefix === 'tb') return true;
+    } catch {
+      // Try the other Bitcoin checksum variant.
+    }
+  }
+  return false;
+}
 
 const isLowercase = (s) => s === s.toLowerCase();
 
@@ -198,7 +211,7 @@ const isLowercase = (s) => s === s.toLowerCase();
  */
 export function canonicalAddress(address) {
   const trimmed = address.trim();
-  if (EVM_ADDRESS.test(trimmed) || BECH32_BTC_ADDRESS.test(trimmed)) {
+  if (EVM_ADDRESS.test(trimmed) || isBitcoinBech32Address(trimmed)) {
     return trimmed.toLowerCase();
   }
   return trimmed;
