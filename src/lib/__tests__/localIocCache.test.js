@@ -86,6 +86,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -132,6 +133,29 @@ describe('I3 — the manifest fetch is gated at the module, not the caller', () 
     expect(Object.keys(init.headers).map((h) => h.toLowerCase()).sort())
       .toEqual(['accept', 'content-type']);
     expect(init.body).toBe('{}');
+  });
+
+  it('keeps the timeout active while consuming the response body', async () => {
+    vi.useFakeTimers();
+    let requestSignal;
+    vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
+      requestSignal = init.signal;
+      return {
+        ok: true,
+        status: 200,
+        text: () => new Promise((_resolve, reject) => {
+          requestSignal.addEventListener('abort', () => {
+            reject(new DOMException('The operation was aborted', 'AbortError'));
+          }, { once: true });
+        }),
+      };
+    }));
+
+    const result = expect(mod.refreshManifest()).rejects.toThrow(/abort/i);
+    await vi.advanceTimersByTimeAsync(20_000);
+
+    await result;
+    expect(requestSignal.aborted).toBe(true);
   });
 });
 

@@ -249,6 +249,7 @@ export async function refreshManifest() {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   let resp;
+  let raw;
   try {
     resp = await fetch(url, {
       method: 'POST',
@@ -256,15 +257,18 @@ export async function refreshManifest() {
       body: '{}',
       signal: controller.signal,
     });
+    if (!resp.ok) {
+      throw new Error(`manifest fetch failed: HTTP ${resp.status}`);
+    }
+
+    // Keep the abort timer alive until the body is consumed. Headers can
+    // arrive promptly while a stalled or trickling response body never ends.
+    raw = await resp.text();
   } finally {
     clearTimeout(timer);
   }
-  if (!resp.ok) {
-    throw new Error(`manifest fetch failed: HTTP ${resp.status}`);
-  }
 
   // Cap before parse — see MAX_MANIFEST_BYTES.
-  const raw = await resp.text();
   if (raw.length > MAX_MANIFEST_BYTES) {
     throw new Error('manifest too large — refusing to parse');
   }
