@@ -285,64 +285,26 @@ Two consequences worth carrying:
   is a major *downgrade* and still declares `@ethersproject/*` v5, so it never cleared
   this advisory. Evaluated and rejected 2026-07-19.
 
-### `braces` — max severity: high — accepted 2026-10-03
-
-- **Advisory:** GHSA-vfj7-8cjw-p6xm (CVSS 7.5, CWE-674) — stack-exhaustion Denial of
-  Service through deeply nested brace patterns. Vulnerable `<= 3.0.3`. Published
-  2026-09-18; first reported by this audit on 2026-10-03.
-- **Why accepted — there is no patched release.** `3.0.3` is `latest` and the last
-  published version (checked 2026-10-03), and the GitHub advisory record carries
-  `first_patched_version: null`. No range resolution and no `overrides` entry can reach
-  a fix that does not exist. npm's `fixAvailable` is `true` on every finding and is not
-  a fix on any of them: it offers `tailwindcss` `4.3.3` (a semver-major framework
-  migration), `patch-package` `6.0.7` and `@wdio/mocha-framework` `5.18.6` (both major
-  DOWNGRADES).
-- **Chains — three, all through one root copy, `node_modules/braces@3.0.3`:**
-  1. `tailwindcss-animate@1.0.7` (direct production dependency) → peer
-     `tailwindcss@3.4.19` (direct devDependency) → `micromatch@4.0.8` /
-     `fast-glob@3.3.3` / `chokidar@3.6.0` → `braces`.
-  2. `@wdio/mocha-framework@9.32.0` (direct, dev) → `mocha@10.8.2` → `chokidar@3.6.0` →
-     `braces`. `@wdio/mocha-framework` declares `mocha ^10.8.2`; mocha only left
-     `chokidar` 3 in later majors, outside that range.
-  3. `patch-package@8.0.1` (direct, dev; runs as `postinstall`) →
-     `find-yarn-workspace-root@2.0.0` → `micromatch` → `braces`. `8.0.1` is `latest`.
-- **Reachability — build and test tooling only.** npm counts chain 1 as production
-  because the production dependency `tailwindcss-animate` declares Tailwind as a peer;
-  Tailwind itself is a direct devDependency and runs at build time as a PostCSS plugin.
-  No wallet-user or network input reaches these patterns. Local repository content and
-  pull-request changes can control Tailwind content globs, mocha watch globs and
-  `patch-package` workspace lookup, so a crafted PR can crash its CI build. That stays
-  inside the existing untrusted-PR code-execution boundary and grants no new runner
-  privilege; the realistic impact is denial of the local or CI build.
-  **Measured 2026-10-03 at `origin/main` `238ce2bb`, not assumed:** nothing under `src/`,
-  `functions/` or `supabase/` imports `braces`, `micromatch`, `chokidar` or `fast-glob`;
-  and a production `npm run build` was grepped across all 557 `dist/assets/*.js` chunks
-  for `micromatch`, `fast-glob`, `chokidar`, `picomatch`, `fill-range`, `to-regex-range`
-  and `expandRange` — zero matches for all seven (control: `ethers` matches 12 chunks).
-  The word `braces` matches exactly one chunk, as prose ("belt-and-braces") in a
-  sanctions-source label, not the library.
-- **Accounts for** 9 high findings as of 2026-10-03 at `origin/main` `238ce2bb`:
-  `braces` as the advisory root, plus `micromatch`, `fast-glob`, `chokidar`,
-  `tailwindcss`, `mocha`, `@wdio/mocha-framework`, `find-yarn-workspace-root` and
-  `patch-package` as dependents. A count that moves for an unexplained reason is a
-  revisit trigger.
-- **Revisit trigger:** a patched `braces` release ships (then it is a plain lockfile
-  update: `micromatch` declares `^3.0.3`, `chokidar` `~3.0.2`); OR the advisory is
-  re-rated; OR a chain drops it (Tailwind 4 adoption, `@wdio/mocha-framework` admitting a
-  mocha major that uses `chokidar >= 4`, `patch-package` dropping
-  `find-yarn-workspace-root`); OR any code in `src/`, `functions/` or `supabase/`, or any
-  runtime dependency, starts importing `braces`/`micromatch` on user- or
-  network-supplied patterns — re-run the bundle grep above before assuming it still
-  holds.
-- **Tracked:** not tracked — no watcher. This audit may not create one (see
-  Constraints); the owner decides whether one is worth adding. Until then the only
-  thing that will notice a patched `braces` is someone reading the advisory.
-
 ## Retired residuals
 
 Entries that were accepted, then genuinely cleared. Kept as a record so a future reader
 can tell "this was fixed" from "this was never looked at", and so the evidence that
 justified each retirement is on file rather than in a PR description.
+
+### `braces` GHSA-vfj7-8cjw-p6xm — remediated 2026-10-03
+
+- Upstream still has no patched release, so Veyrnox vendors a compatibility fork at
+  `vendor/braces` as version `3.0.4-veyrnox.1`. Its parser rejects AST nesting above 100
+  before the recursive compile/expand walkers execute. `maxDepth` may lower that ceiling
+  but cannot raise it.
+- The root `file:vendor/braces` devDependency and `$braces` npm override force all three
+  former paths (Tailwind, WebdriverIO/Mocha, and patch-package) to this one guarded copy.
+  `scripts/check-braces-depth.mjs` pins normal compile/expand behavior and reproduces the
+  advisory against brace and parenthesis nesting.
+- This is a maintained downstream security fork, not an upstream release. When upstream
+  publishes an official patched version, replace the file dependency and override with
+  that release, run the regression check, perform a clean `npm ci`, and verify the audit
+  remains clear.
 
 ### `shell-quote` — accepted 2026-07-21, reinstated 2026-07-27, RETIRED 2026-08-23
 
