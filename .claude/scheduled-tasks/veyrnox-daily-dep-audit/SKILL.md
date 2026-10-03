@@ -298,19 +298,22 @@ Two consequences worth carrying:
   migration), `patch-package` `6.0.7` and `@wdio/mocha-framework` `5.18.6` (both major
   DOWNGRADES).
 - **Chains — three, all through one root copy, `node_modules/braces@3.0.3`:**
-  1. `tailwindcss@3.4.19` (direct, listed under `dependencies`) → `micromatch@4.0.8` /
+  1. `tailwindcss-animate@1.0.7` (direct production dependency) → peer
+     `tailwindcss@3.4.19` (direct devDependency) → `micromatch@4.0.8` /
      `fast-glob@3.3.3` / `chokidar@3.6.0` → `braces`.
   2. `@wdio/mocha-framework@9.32.0` (direct, dev) → `mocha@10.8.2` → `chokidar@3.6.0` →
      `braces`. `@wdio/mocha-framework` declares `mocha ^10.8.2`; mocha only left
      `chokidar` 3 in later majors, outside that range.
   3. `patch-package@8.0.1` (direct, dev; runs as `postinstall`) →
      `find-yarn-workspace-root@2.0.0` → `micromatch` → `braces`. `8.0.1` is `latest`.
-- **Reachability — build and test tooling only, and the patterns are ours.** npm counts
-  chain 1 as production because `tailwindcss` sits in `dependencies`, but Tailwind runs
-  at build time as a PostCSS plugin. The patterns `braces` expands are the `content`
-  globs in `tailwind.config.js`, mocha's watch globs and `patch-package`'s workspace
-  lookup: all repo-controlled, none attacker-supplied. The realistic impact is a
-  developer crashing their own build.
+- **Reachability — build and test tooling only.** npm counts chain 1 as production
+  because the production dependency `tailwindcss-animate` declares Tailwind as a peer;
+  Tailwind itself is a direct devDependency and runs at build time as a PostCSS plugin.
+  No wallet-user or network input reaches these patterns. Local repository content and
+  pull-request changes can control Tailwind content globs, mocha watch globs and
+  `patch-package` workspace lookup, so a crafted PR can crash its CI build. That stays
+  inside the existing untrusted-PR code-execution boundary and grants no new runner
+  privilege; the realistic impact is denial of the local or CI build.
   **Measured 2026-10-03 at `origin/main` `238ce2bb`, not assumed:** nothing under `src/`,
   `functions/` or `supabase/` imports `braces`, `micromatch`, `chokidar` or `fast-glob`;
   and a production `npm run build` was grepped across all 557 `dist/assets/*.js` chunks
