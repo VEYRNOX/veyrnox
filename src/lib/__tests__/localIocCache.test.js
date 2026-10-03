@@ -97,7 +97,7 @@ describe('I3 — the manifest fetch is gated at the module, not the caller', () 
     deniability.session = true;
     deniability.orDemo = true;
 
-    await expect(mod.refreshManifest('https://tip.example')).rejects.toThrow(/I3/);
+    await expect(mod.refreshManifest()).rejects.toThrow(/I3/);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -112,7 +112,7 @@ describe('I3 — the manifest fetch is gated at the module, not the caller', () 
     deniability.session = false;
     deniability.orDemo = true;
 
-    await expect(mod.refreshManifest('https://tip.example')).rejects.toThrow(/I3/);
+    await expect(mod.refreshManifest()).rejects.toThrow(/I3/);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -122,9 +122,16 @@ describe('I3 — the manifest fetch is gated at the module, not the caller', () 
 
     // Rejects later (the fake signature will not verify) — we only assert the
     // gate let it THROUGH to the network.
-    await expect(mod.refreshManifest('https://tip.example')).rejects.toBeTruthy();
+    await expect(mod.refreshManifest()).rejects.toBeTruthy();
     expect(fetchSpy).toHaveBeenCalledOnce();
-    expect(fetchSpy.mock.calls[0][0]).toBe('https://tip.example/api/v1/manifest');
+    // Through the proxy, never to the TIP Worker directly: that route is
+    // HMAC-only and the wallet must not sign.
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe('/api/edge/tip-manifest');
+    expect(init.method).toBe('POST');
+    expect(Object.keys(init.headers).map((h) => h.toLowerCase()).sort())
+      .toEqual(['accept', 'content-type']);
+    expect(init.body).toBe('{}');
   });
 });
 
@@ -156,7 +163,7 @@ describe('I3 residue — a read must not bring the database into existence', () 
 describe('signature verification (real crypto, hardcoded key)', () => {
   it('rejects a manifest whose signature does not verify', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => okResponse(manifest('2026-08-09T00:00:00Z'))));
-    await expect(mod.refreshManifest('https://tip.example'))
+    await expect(mod.refreshManifest())
       .rejects.toThrow(/signature verification failed/);
   });
 
@@ -164,14 +171,14 @@ describe('signature verification (real crypto, hardcoded key)', () => {
     const m = manifest('2026-08-09T00:00:00Z');
     delete m.signature;
     vi.stubGlobal('fetch', vi.fn(async () => okResponse(m)));
-    await expect(mod.refreshManifest('https://tip.example')).rejects.toThrow(/unsigned/);
+    await expect(mod.refreshManifest()).rejects.toThrow(/unsigned/);
   });
 
   it('rejects a manifest signed under an unknown key id', async () => {
     const m = manifest('2026-08-09T00:00:00Z');
     m.public_key_id = 'attacker-key-v9';
     vi.stubGlobal('fetch', vi.fn(async () => okResponse(m)));
-    await expect(mod.refreshManifest('https://tip.example')).rejects.toThrow(/public_key_id/);
+    await expect(mod.refreshManifest()).rejects.toThrow(/public_key_id/);
   });
 });
 
@@ -185,12 +192,12 @@ describe('rollback — a valid signature does not make a manifest current', () =
   it('accepts a newer manifest over a cached one', async () => {
     const bad = '0x000000000000000000000000000000000000dead';
     vi.stubGlobal('fetch', vi.fn(async () => okResponse(manifest('2026-08-01T00:00:00Z'))));
-    await mod.refreshManifest('https://tip.example');
+    await mod.refreshManifest();
 
     vi.stubGlobal('fetch', vi.fn(async () => okResponse(
       manifest('2026-08-09T00:00:00Z', [{ addr: bad, cat: 'sanctions', src: 'ofac' }]),
     )));
-    await mod.refreshManifest('https://tip.example');
+    await mod.refreshManifest();
 
     expect(mod.lookupLocal(bad)).toMatchObject({ cat: 'sanctions' });
     expect(mod.getCacheMeta().generated_at).toBe('2026-08-09T00:00:00Z');
@@ -201,12 +208,12 @@ describe('rollback — a valid signature does not make a manifest current', () =
     vi.stubGlobal('fetch', vi.fn(async () => okResponse(
       manifest('2026-08-09T00:00:00Z', [{ addr: bad, cat: 'sanctions', src: 'ofac' }]),
     )));
-    await mod.refreshManifest('https://tip.example');
+    await mod.refreshManifest();
 
     // The replay: an authentic manifest from before `bad` was listed. Every
     // other check passes — key id, signature, shape. Only recency fails.
     vi.stubGlobal('fetch', vi.fn(async () => okResponse(manifest('2026-08-01T00:00:00Z'))));
-    await expect(mod.refreshManifest('https://tip.example')).rejects.toThrow(/rollback/);
+    await expect(mod.refreshManifest()).rejects.toThrow(/rollback/);
 
     // The sanctioned address must still screen. Without the check the entry
     // silently disappeared — and in deniability mode there is no network
@@ -217,13 +224,13 @@ describe('rollback — a valid signature does not make a manifest current', () =
 
   it('accepts a re-fetch of the SAME manifest (equal timestamps are a no-op)', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => okResponse(manifest('2026-08-09T00:00:00Z'))));
-    await mod.refreshManifest('https://tip.example');
-    await expect(mod.refreshManifest('https://tip.example')).resolves.toBeUndefined();
+    await mod.refreshManifest();
+    await expect(mod.refreshManifest()).resolves.toBeUndefined();
   });
 
   it('refuses a manifest with no usable generated_at (fail closed)', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => okResponse(manifest('not-a-date'))));
-    await expect(mod.refreshManifest('https://tip.example'))
+    await expect(mod.refreshManifest())
       .rejects.toThrow(/generated_at/);
   });
 });
@@ -236,6 +243,6 @@ describe('payload cap', () => {
       status: 200,
       text: async () => huge,
     })));
-    await expect(mod.refreshManifest('https://tip.example')).rejects.toThrow(/too large/);
+    await expect(mod.refreshManifest()).rejects.toThrow(/too large/);
   });
 });

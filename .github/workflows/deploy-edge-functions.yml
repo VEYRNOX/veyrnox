@@ -26,7 +26,7 @@ on:
         description: 'Function to deploy (or "all")'
         default: 'all'
         type: choice
-        options: [all, first-referral-bonus, tip-screen, tip-chat, rc-webhook]
+        options: [all, first-referral-bonus, tip-screen, tip-chat, tip-manifest, rc-webhook]
 
 permissions:
   contents: read
@@ -54,6 +54,8 @@ jobs:
           - name: tip-screen
             verify_jwt: 'false'
           - name: tip-chat
+            verify_jwt: 'false'
+          - name: tip-manifest
             verify_jwt: 'false'
           - name: rc-webhook
             verify_jwt: 'false'

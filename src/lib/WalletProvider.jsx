@@ -715,12 +715,13 @@ export function WalletProvider({ children }) {
   useEffect(() => {
     if (!isUnlocked) return;
     if (decoyRef.current || hiddenRef.current) return;
-    const tipBaseUrl = import.meta.env.VITE_TIP_BASE_URL;
-    if (!tipBaseUrl) return;
+    // Feature switch only, as in tipScreen.js: the fetch goes through the
+    // /api/edge/tip-manifest proxy, never to this URL.
+    if (!import.meta.env.VITE_TIP_BASE_URL) return;
     // Fire-and-forget. Import dynamically so the ~4KB module + Web-Crypto
     // path doesn't sit in the login-critical bundle.
     import('@/lib/localIocCache.js')
-      .then(({ refreshManifestIfDue }) => refreshManifestIfDue(tipBaseUrl))
+      .then(({ refreshManifestIfDue }) => refreshManifestIfDue())
       .catch((err) => {
         if (import.meta.env.DEV) console.error('[IOC cache] refresh trigger failed:', err);
       });
