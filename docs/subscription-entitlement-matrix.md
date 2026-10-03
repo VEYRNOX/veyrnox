@@ -66,8 +66,11 @@ whatever RevenueCat reports.
 
 Issue #2780 follow-up: distinguish current encrypted recovery bundles (two matching
 bundles plus passphrase, usable on a replacement device) from legacy same-device
-shares (original encrypted vault required). The in-app Free restore path must cover
-both. Creating new backup files/bundles remains paid per #2781.
+shares (original encrypted vault required). Both stay free, by different routes: legacy
+shares restore in-app from Personal Backup's Advanced tab; bundles restore only from the
+wallet entry screen (`/onboarding/restore-shares`), which refuses to run while a vault
+exists on the device. Personal Backup therefore does not link to it. Creating new backup
+files/bundles remains paid per #2781.
 
 Current `.enc` files require BOTH the backup password and eight-digit backup PIN.
 They decrypt locally. The old two-seal `.enc` format has no reader in `vaultBackup.js`;
