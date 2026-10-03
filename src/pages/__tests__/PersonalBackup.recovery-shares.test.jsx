@@ -80,7 +80,7 @@ afterEach(() => {
   cleanup();
 });
 
-async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus', shardExportReady = true, native = false, mockBundleWrap = false }) {
+async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus', tierLoading = false, tierState = /** @type {{ currentTier: string, loading: boolean } | null} */ (null), shardExportReady = true, native = false, mockBundleWrap = false }) {
   if (enableShards) vi.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
   vi.resetModules();
   vi.doMock('@capacitor/core', () => ({
@@ -107,7 +107,7 @@ async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus', sh
   // presumes shards are reachable, so default to Safety Plus; the free-tier
   // upsell path gets its own explicit test below.
   vi.doMock('@/lib/TierProvider', () => ({
-    useTier: () => ({ currentTier: tier, tiers: {}, loading: false, refreshTier: vi.fn() }),
+    useTier: () => tierState ?? ({ currentTier: tier, tiers: {}, loading: tierLoading, refreshTier: vi.fn() }),
   }));
   const mod = await import('@/pages/PersonalBackup');
   return mod.default;
@@ -703,6 +703,79 @@ describe('PersonalBackup — same-device restore rejects a cross-device bundle e
 });
 
 describe('PersonalBackup — Advanced tab entitlement (free tier)', () => {
+  it.each([false, true])('can submit existing shares on Free while loading=%s without exporting', async (tierLoading) => {
+    const restoredBytes = [];
+    const restoreFromRecoveryShares = vi.fn(async (shares) => {
+      restoredBytes.push(...shares.map((s) => Array.from(s)));
+    });
+    const exportRecoveryBundles = vi.fn();
+    const lock = vi.fn();
+    const tierState = { currentTier: 'free', loading: tierLoading };
+    const Page = await loadPage({
+      enableShards: true, tierState,
+      useWalletValue: { restoreFromRecoveryShares, exportRecoveryBundles, lock, isDecoy: false, isHidden: false },
+    });
+    const rawShares = [new Uint8Array(88).fill(1), new Uint8Array(88).fill(2)];
+    const originalClick = HTMLInputElement.prototype.click;
+    vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(/** @this {HTMLInputElement} */ function () {
+      if (this.type !== 'file') return originalClick.call(this);
+      Object.defineProperty(this, 'files', {
+        value: rawShares.map((bytes, i) => new File([bytes], `share-${i}.bin`)), configurable: true,
+      });
+      this.onchange?.(new Event('change'));
+    });
+    const { rerender } = render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    fireEvent.click(screen.getByRole('button', { name: /choose 2 share files/i }));
+    fireEvent.change(screen.getByPlaceholderText('New PIN (digits only)'), { target: { value: '24681024' } });
+    fireEvent.change(screen.getByPlaceholderText(/confirm new pin/i), { target: { value: '24681024' } });
+    await waitFor(() => expect(screen.getByRole('button', { name: /restore wallet/i })).toBeEnabled());
+    if (tierLoading) {
+      tierState.currentTier = 'safety_plus';
+      tierState.loading = false;
+      rerender(<MemoryRouter><Page /></MemoryRouter>);
+      expect(screen.getByPlaceholderText('New PIN (digits only)')).toHaveValue('24681024');
+      expect(screen.getByRole('button', { name: /restore wallet/i })).toBeEnabled();
+    }
+    fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
+    await waitFor(() => expect(lock).toHaveBeenCalledOnce());
+    expect(restoreFromRecoveryShares).toHaveBeenCalledExactlyOnceWith(expect.any(Array), '24681024');
+    expect(restoredBytes).toEqual(rawShares.map((s) => Array.from(s)));
+    expect(exportRecoveryBundles).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { tier: 'free', tierLoading: false },
+    { tier: 'free', tierLoading: true },
+    { tier: 'safety_plus', tierLoading: true },
+  ])('keeps existing share recovery accessible for $tier with loading=$tierLoading', async ({ tier, tierLoading }) => {
+    const exportRecoveryBundles = vi.fn();
+    const Page = await loadPage({
+      enableShards: true, tier, tierLoading,
+      useWalletValue: { exportRecoveryBundles, restoreFromRecoveryShares: vi.fn(), lock: vi.fn(), isDecoy: false, isHidden: false },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    expect(screen.getByRole('button', { name: /restore wallet/i })).toBeDisabled();
+    expect(screen.getByPlaceholderText('New PIN (digits only)')).toBeTruthy();
+    expect(screen.getByRole('link', { name: /restore from recovery bundles/i })).toHaveAttribute('href', '/onboarding/restore-shares');
+    expect(screen.queryByRole('button', { name: /split & save 3 shares/i })).toBeNull();
+    expect(exportRecoveryBundles).not.toHaveBeenCalled();
+  });
+
+  it.each(['isDecoy', 'isHidden'])('does not expose Free share recovery in %s sessions', async (sessionFlag) => {
+    const restoreFromRecoveryShares = vi.fn();
+    const Page = await loadPage({
+      enableShards: true, tier: 'free',
+      useWalletValue: { restoreFromRecoveryShares, lock: vi.fn(), isDecoy: false, isHidden: false, [sessionFlag]: true },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    expect(screen.queryByRole('button', { name: /restore wallet/i })).toBeNull();
+    expect(screen.queryByRole('link', { name: /restore from recovery bundles/i })).toBeNull();
+    expect(restoreFromRecoveryShares).not.toHaveBeenCalled();
+  });
+
   it('free tier: tab is visible but content is the upsell, not the export panel', async () => {
     const exportRecoveryShares = vi.fn();
     const Page = await loadPage({
