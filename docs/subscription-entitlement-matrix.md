@@ -13,6 +13,7 @@ resolver error resolves to `free` (fail closed for premium features only).
 |---|---|
 | Unlock, view balances, receive, sign, send | No `useTier` in `WalletProvider.jsx`; `presignGate` takes the RASP tier, not the subscription tier (`SendCrypto.jsx`) |
 | Restore from 2 valid Shamir shares (onboarding) | `/onboarding/restore-shares` is outside `FeatureGate`; `RestoreFromShares.jsx` has no tier reference |
+| Restore legacy same-device shares | Personal Backup's Advanced tab exposes `RecoveryRestorePanel` on Free and during entitlement lookup; it still requires the original encrypted vault and existing RASP/credential checks |
 | Restore from an existing encrypted backup file | `RestoreFromFile.jsx` has no tier reference; also the in-app Restore tab |
 | Using an existing Emergency PIN / decoy at unlock | Unlock path has no tier check |
 | Removing an Emergency PIN | Route no longer gated; removal card renders on every tier |
@@ -62,6 +63,29 @@ whatever RevenueCat reports.
 7. Paywall strings are hard-coded English (not in the i18n catalogue), as before.
 
 ## Verification still owed (real devices)
+
+Issue #2780 follow-up: distinguish current encrypted recovery bundles (two matching
+bundles plus passphrase, usable on a replacement device) from legacy same-device
+shares (original encrypted vault required). The in-app Free restore path must cover
+both. Creating new backup files/bundles remains paid per #2781.
+
+Current `.enc` files require BOTH the backup password and eight-digit backup PIN.
+They decrypt locally. The old two-seal `.enc` format has no reader in `vaultBackup.js`;
+do not promise blanket legacy compatibility. This differs from supported legacy
+raw recovery shares. Record rejection of unsupported files and determine whether
+any user-held file requires a separate migration before publishing compatibility
+claims. Website copy needs its own review against these format requirements.
+
+On both iOS and Android, record the shipped build/commit and test: cancelled but
+still paid; actual expiry; missing/failed store lookup; and replacement-device
+restore without a purchase. Use empty/test wallets. Check balances/receive/send,
+restore with both credentials, rejection with either missing credential, two matching
+bundles with the required passphrase, legacy same-device shares, and recovery from
+an independently accessible file/cloud copy. Confirm local decryption needs no
+Veyrnox service, while recording OS authentication and cloud/network requirements.
+Record actual enforcement of configured duress/spending/monitoring controls after
+expiry separately from whether their settings page opens. Keep #2780 open until
+this evidence and the exact website FAQ wording have been approved.
 
 The 14-point list in the handover (purchase, cancel, expiry, billing retry, restore on a new
 device, store unavailable, recovery after expiry, localised price, screen reader) has not been
