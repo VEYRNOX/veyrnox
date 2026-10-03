@@ -968,8 +968,8 @@ All BUILT / device-verified on the test iPhone — NOT independently audited.
   iOS 26 where NSLog is not Appium-streamable) rather than faking evidence; iOS-F5 / iOS-F3
   (native ObjC compile/heap items) are out of WDIO scope and are noted, not stubbed.
   Nothing here is "verified." Not independently audited.
-- OTA web-bundle updates — ✅ BUILT, INTERNAL, **live in production on iOS** (updated
-  2026-10-02). Signed bundles (ECDSA P-256, two YubiKey-held keys pinned in the native
+- OTA web-bundle updates — ✅ BUILT, INTERNAL, **live in production on iOS and, from
+  1.0.3, Android** (updated 2026-10-03). Signed bundles (ECDSA P-256, two YubiKey-held keys pinned in the native
   binary, per-file sha256, forward-only versions, rollback if a bundle never reports
   ready) served from `updates.veyrnox.com`. **Evidence:** a physical iPhone
   (development build, staging channel) went from the embedded `202610020000` to the
@@ -979,7 +979,8 @@ All BUILT / device-verified on the test iPhone — NOT independently audited.
   `202610011706` is the live production bundle. **Android: does NOT work on 1.0.2** —
   the native `prepare` aborted on `.well-known` files the APK never contained, also seen
   on a real user's phone; fixed by #2816 (emulator-verified, not on a physical Android
-  phone), which ships in 1.0.3. Not independently audited. Runbook and full evidence:
+  phone), which shipped in 1.0.3 (live on Google Play 2026-10-02). No physical Android
+  phone has taken an OTA update yet. Not independently audited. Runbook and full evidence:
   `docs/ota-updates.md`.
 - Mobile App PWA / Mobile Widget — ❌ removed (PR #48)
 

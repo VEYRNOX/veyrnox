@@ -6,20 +6,48 @@
 // letting the user see the full value prop before committing. I3: suppressed
 // in decoy/demo (defence-in-depth, matches FirstRunTour/consent pattern).
 
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { X } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
+import { Capacitor } from "@capacitor/core";
 import Vigil from "@/components/Vigil";
 import { Button } from "@/components/ui/button";
 import { useBackupNag } from "@/lib/useBackupNag";
+import { hasRedeemed } from "@/lib/referral";
+import { loadSafetyPlusTrialWithin, TRIAL_LOOKUP_BUDGET_MS } from "@/lib/safetyPlusTrial";
+import { trialRenewalLine } from "@/lib/freeTrial";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+
+const BODY =
+  "Your wallet only lives on this device. Safety Plus adds encrypted backups so you can recover it if anything happens.";
 
 export default function BackupNagSheet({ publicAddresses }) {
   const navigate = useNavigate();
   const { shouldShow, dismissForSession, promoteToCompleted } = useBackupNag(publicAddresses);
   const reduce = useReducedMotion();
 
+  // Free-trial wording. undefined = still asking the store, null = no confirmed
+  // trial (today's copy), object = a store-confirmed, eligible trial. The sheet
+  // renders nothing until this settles, at most TRIAL_LOOKUP_BUDGET_MS, so the
+  // copy never changes under the user's eyes. The lookup only starts once the
+  // sheet is due to show, and never in a decoy/demo session (I3).
+  const [trial, setTrial] = useState(undefined);
+  const due = shouldShow && !isDeniabilityOrDemoActive();
+  useEffect(() => {
+    if (!due || trial !== undefined) return undefined;
+    let cancelled = false;
+    loadSafetyPlusTrialWithin(TRIAL_LOOKUP_BUDGET_MS, {
+      platform: Capacitor.getPlatform(),
+      hasReferral: hasRedeemed(),
+    }).then((confirmed) => {
+      if (!cancelled) setTrial(confirmed);
+    });
+    return () => { cancelled = true; };
+  }, [due, trial]);
+
   if (isDeniabilityOrDemoActive() || !shouldShow) return null;
+  if (trial === undefined) return null;
 
   return (
     // Below md the Layout bottom nav is on screen (md:hidden, ~4rem tall plus
@@ -58,8 +86,9 @@ export default function BackupNagSheet({ publicAddresses }) {
           </button>
         </div>
         <p className="text-[13px] leading-relaxed text-muted-foreground mb-3">
-          Your wallet only lives on this device. Safety Plus adds encrypted backups
-          so you can recover it if anything happens.
+          {trial
+            ? `${BODY} ${trialRenewalLine({ days: trial.days, priceString: trial.priceString, billing: "annual" })}`
+            : BODY}
         </p>
         <div className="grid gap-2">
           <Button
@@ -72,7 +101,7 @@ export default function BackupNagSheet({ publicAddresses }) {
               navigate("/plans");
             }}
           >
-            Learn about Safety Plus
+            {trial ? "See free trial" : "Learn about Safety Plus"}
           </Button>
         </div>
       </div>

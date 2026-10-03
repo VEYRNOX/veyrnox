@@ -24,6 +24,11 @@ vi.mock('@capacitor/core', () => ({
   Capacitor: { isNativePlatform: () => true, getPlatform: () => 'android' },
 }));
 
+// Native development builds intentionally run in demo mode. This suite covers
+// the production-native control, so pin the build-time demo signal off while
+// retaining the live deniability-session checks below.
+vi.mock('@/api/demoClient', () => ({ DEMO: false }));
+
 // Best-effort cache clear on disable — spied so we can assert it was invoked.
 const clearFastpathDekSpy = vi.fn(async () => {});
 vi.mock('@/plugins/androidBiometricCache', () => ({

@@ -8,7 +8,9 @@
 // Runs once per cold start, before unlock, identically in real, decoy and demo
 // sessions: the request pattern must not reveal which session is open (I3).
 //
-// STATUS: BUILT, INTERNAL — not device-verified, no key provisioned.
+// STATUS: BUILT, INTERNAL — signing keys provisioned 2026-09-18; seen end to end on a
+// physical iPhone (development build, staging channel). Not on a physical Android phone,
+// not with a store-signed binary, not independently audited.
 import { Capacitor, registerPlugin } from '@capacitor/core'
 
 export const OTA_BASE_URL = 'https://updates.veyrnox.com'
