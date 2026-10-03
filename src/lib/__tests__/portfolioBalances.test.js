@@ -208,12 +208,39 @@ describe('live-price injection (optional, default-preserving)', () => {
   it('computePortfolio applies the live map to USD when provided', async () => {
     getBalanceEth.mockResolvedValue(2);
     const live = { ETH: 1000 };
-    const { byWallet, grandTotal } = await computePortfolio(
+    const { byWallet, grandTotal, priceBasis, pricesUpdatedAt } = await computePortfolio(
       [{ id: 'w1', enabledAssets: ['ETH'] }],
       { w1: { evm: '0xabc' } },
       live,
+      12345,
     );
     expect(byWallet.w1.assets[0].usd).toBe(2000); // 2 ETH * $1000 live
     expect(grandTotal).toBe(2000);
+    expect(priceBasis).toBe('live');
+    expect(pricesUpdatedAt).toBe(12345);
+  });
+
+  it('marks the whole result approximate when any symbol falls back from a partial live map', async () => {
+    getBalanceEth.mockResolvedValue(1);
+    const { byWallet, priceBasis, pricesUpdatedAt } = await computePortfolio(
+      [{ id: 'w1', enabledAssets: ['ETH', 'AVAX'] }],
+      { w1: { evm: '0xabc' } },
+      { ETH: 1000 },
+      12345,
+    );
+    expect(byWallet.w1.assets.find((asset) => asset.symbol === 'ETH').usd).toBe(1000);
+    expect(byWallet.w1.assets.find((asset) => asset.symbol === 'AVAX').usd).toBe(usdRate('AVAX'));
+    expect(priceBasis).toBe('approx');
+    expect(pricesUpdatedAt).toBeNull();
+  });
+
+  it('marks reference-rate results approximate', async () => {
+    getBalanceEth.mockResolvedValue(1);
+    const result = await computePortfolio(
+      [{ id: 'w1', enabledAssets: ['ETH'] }],
+      { w1: { evm: '0xabc' } },
+    );
+    expect(result.priceBasis).toBe('approx');
+    expect(result.pricesUpdatedAt).toBeNull();
   });
 });
