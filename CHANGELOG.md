@@ -91,7 +91,10 @@ withdrawn; it never shipped. See `docs/RELEASE-v1.0.2.md`.
 - Transak widget URL matches the Create Widget spec and no longer re-mints tokens in a loop (#2654).
 
 ### Security
-- Independent security audit of 2026-09-21: all findings remediated (#2731).
+- Security audit remediation of 2026-09-21: all findings addressed (#2731). #2731's commit
+  title calls that audit "independent", but no report for it is checked in, so it is treated
+  as internal here; one of its fixes was later tracked as a regression
+  (`docs/audit-findings-tracker.md`).
 - Fail closed on multicall- and permit-wrapped approvals (#2740); S7 calldata/contract-code
   mismatch scored on the WalletConnect path (#2743).
 - Revoking the current device now locks the session that minted the token (SEC-03, #2708);
