@@ -216,7 +216,7 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
             <div className="flex-1">
               <p className="text-sm font-semibold">Did you save the backup file?</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Open the file where you saved it, unlock with your backup password or backup PIN, then tap "I saved it" below.
+                Open the file where you saved it, unlock with both your backup password and backup PIN, then tap &quot;I saved it&quot; below.
               </p>
               <div className="mt-3 flex gap-2">
                 <button
@@ -284,7 +284,7 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
           <li>No addresses, no transaction history, no personal data.</li>
         </ul>
         <p className="mt-2 text-caution font-medium">
-          Choose a backup password and PIN now — different from your app unlock PIN, not stored in the file. Both are required to restore. Forget either and your funds are gone forever.
+          Choose a backup password and PIN now — different from your app unlock PIN, not stored in the file. Both are required to restore this backup. Keep another recovery method in case you forget either.
         </p>
       </div>
 
@@ -368,7 +368,7 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
         {isIos
           ? <>Saves <span className="font-mono">veyrnox.enc</span> where you choose (Files, iCloud, OneDrive, etc.)</>
           : <>Saves <span className="font-mono">veyrnox.enc</span> to Downloads.</>}
-        {" "}Only VEYRNOX can open it — only with the password or PIN you just chose.
+        {" "}Restoring this file requires both the backup password and the backup PIN you just chose. Decryption happens on your device.
       </p>
 
       {gateModal}
@@ -503,6 +503,24 @@ async function pickShareFiles(minCount, maxCount) {
   });
 }
 
+// Internal error codes (RECOVERY_SHARE_MALFORMED and friends) are identifiers,
+// not sentences. Human-readable messages pass through unchanged so the user
+// still learns which step failed.
+const INTERNAL_ERROR_CODE = /^[A-Z][A-Z0-9_]+$/;
+const RECOVERY_RESTORE_ERROR_COPY = {
+  RECOVERY_SHARE_MALFORMED: "One of those files is not a valid recovery share. Choose the two share files again.",
+  RECOVERY_SHARE_UNWRAP_FAILED: "Could not unlock a share. Check the recovery passphrase and try again.",
+  RECOVERY_PASSPHRASE_TOO_SHORT: "That recovery passphrase is too short.",
+};
+const RECOVERY_RESTORE_ERROR_FALLBACK = "Recovery failed. Check that both files are from the same set and try again.";
+
+function describeRecoveryRestoreError(err) {
+  const message = typeof err?.message === "string" ? err.message.trim() : "";
+  if (!message) return RECOVERY_RESTORE_ERROR_FALLBACK;
+  if (!INTERNAL_ERROR_CODE.test(message)) return message;
+  return RECOVERY_RESTORE_ERROR_COPY[message] || RECOVERY_RESTORE_ERROR_FALLBACK;
+}
+
 function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
   const navigate = useNavigate();
   // pickedFiles carries raw bytes as picked from disk — either 88-byte raw
@@ -633,7 +651,7 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
       // fail-closed: surface the raw error so the user learns whether it was
       // a bad share set, wrong passphrase, wrong-generation shares, or a
       // KEK/hardware error.
-      toast.error(err?.message || "Recovery failed.");
+      toast.error(describeRecoveryRestoreError(err));
     } finally {
       // Zero ONLY freshly unwrapped share bytes. Raw picks alias pickedFiles
       // and must stay intact for retry — clearPickedFiles zeros them on
@@ -663,8 +681,9 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
       <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
         <p className="font-semibold text-warning">Same-device only</p>
         <p>
-          Restore only works on a device that still has the encrypted vault. Recovering onto a brand-new device
-          (device lost or reset) needs vault-ciphertext transport, which is a later phase.
+          These legacy shares only work on a device that still has the encrypted vault. Recovery bundles
+          (two matching bundles and their recovery passphrase) are for a new or reset device: restore them
+          from the wallet entry screen there. They cannot be restored over the wallet already on this device.
         </p>
       </div>
 
@@ -758,6 +777,8 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
   );
 }
 
+const EXPORT_BLOCKED_REASON_ID = "recovery-shares-export-blocked-reason";
+
 function RecoveryShareTab({
   exportRecoveryShares,
   exportRecoveryBundles,
@@ -766,8 +787,11 @@ function RecoveryShareTab({
   isDecoy,
   isHidden,
   shardExportReady,
+  canCreate,
+  createBlockedReason,
 }) {
-  const [mode, setMode] = useState("export"); // 'export' | 'restore'
+  // Keep this mode and the restore panel mounted when entitlement lookup settles.
+  const [mode, setMode] = useState(() => canCreate ? "export" : "restore");
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
@@ -785,9 +809,10 @@ function RecoveryShareTab({
   }
 
   const passphraseCheck = checkRecoveryPassphrase(recoveryPassphrase);
-  const canExport = shardExportReady === true && pin.length === 8 && passphraseCheck.ok;
+  const canExport = canCreate && shardExportReady === true && pin.length === 8 && passphraseCheck.ok;
 
   const runSplit = async () => {
+    if (!canCreate) return;
     const gate = sensitiveGate(raspArtifact, "export");
     if (gate.blocked) {
       toast.error(gate.sentence || "Recovery share export is disabled on this device right now.");
@@ -862,7 +887,8 @@ function RecoveryShareTab({
     }
   };
 
-  const ModeToggle = (
+  const isBlocked = (id) => id === "export" && !canCreate;
+  const ModeButtons = (
     <div className="flex gap-1 p-1 bg-secondary/50 rounded-xl">
       {[
         { id: "export", label: "Export", Icon: Download },
@@ -870,9 +896,16 @@ function RecoveryShareTab({
       ].map(({ id, label, Icon }) => (
         <button
           key={id}
-          onClick={() => setMode(id)}
+          type="button"
+          onClick={() => { if (!isBlocked(id)) setMode(id); }}
+          // aria-disabled, not disabled: the button stays focusable so a
+          // keyboard or screen-reader user can reach it and hear why it is off.
+          aria-disabled={isBlocked(id) || undefined}
+          aria-describedby={isBlocked(id) ? EXPORT_BLOCKED_REASON_ID : undefined}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
-            mode === id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+            isBlocked(id)
+              ? "text-muted-foreground opacity-50 cursor-not-allowed"
+              : mode === id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           <Icon className="h-3.5 w-3.5" />
@@ -881,8 +914,18 @@ function RecoveryShareTab({
       ))}
     </div>
   );
+  const ModeToggle = (
+    <div className="space-y-2">
+      {ModeButtons}
+      {!canCreate && (
+        <p id={EXPORT_BLOCKED_REASON_ID} role="status" className="text-xs text-muted-foreground text-center">
+          {createBlockedReason || "Export is unavailable right now."} Restore works on every plan.
+        </p>
+      )}
+    </div>
+  );
 
-  if (done) {
+  if (done && mode === "export" && canCreate) {
     return (
       <div className="space-y-4">
         {ModeToggle}
@@ -924,6 +967,15 @@ function RecoveryShareTab({
     );
   }
 
+  if (!canCreate) {
+    return (
+      <div className="space-y-4">
+        {ModeToggle}
+        <p role="status" className="text-sm text-muted-foreground">Choose Restore to use existing recovery shares without a subscription.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {ModeToggle}
@@ -956,8 +1008,8 @@ function RecoveryShareTab({
 
       <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
         <p>
-          Same-device restore ships in this build; cross-device (device lost) recovery is a later phase. Keep an
-          .enc backup alongside these shares.
+          Keep two matching recovery bundles and their recovery passphrase for recovery on a new device.
+          Legacy share files alone need the original device&apos;s encrypted vault. Keep an .enc backup alongside.
         </p>
       </div>
 
@@ -1094,7 +1146,9 @@ export default function PersonalBackup() {
       </div>
 
       {/* Tab content */}
-      {(tab === "export" || tab === "shares") && tierLoading && (
+      {/* The shares tab stays usable for restore during lookup and explains the
+          pending Export state beside its own toggle. */}
+      {tab === "export" && tierLoading && (
         <p className="text-sm text-muted-foreground text-center mt-6">Loading…</p>
       )}
       {tab === "export" && !tierLoading && !hasSafetyPlus && (
@@ -1124,7 +1178,7 @@ export default function PersonalBackup() {
           </Link>
         </div>
       )}
-      {tab === "export" && hasSafetyPlus && (
+      {tab === "export" && !tierLoading && hasSafetyPlus && (
         <ExportTab createBackup={createBackup} isDecoy={isDecoy} isHidden={isHidden} publicAddresses={getBackupPublicAddresses ? getBackupPublicAddresses() : []} />
       )}
       {tab === "restore" && (
@@ -1134,7 +1188,7 @@ export default function PersonalBackup() {
           backLabel="Back to Create backup"
         />
       )}
-      {tab === "shares" && ENABLE_PERSONAL_BACKUP_SHARDS && hasSafetyPlus && (
+      {tab === "shares" && ENABLE_PERSONAL_BACKUP_SHARDS && (
         <RecoveryShareTab
           exportRecoveryShares={exportRecoveryShares}
           exportRecoveryBundles={exportRecoveryBundles}
@@ -1143,6 +1197,8 @@ export default function PersonalBackup() {
           isDecoy={isDecoy}
           isHidden={isHidden}
           shardExportReady={shardExportReady}
+          canCreate={!tierLoading && hasSafetyPlus}
+          createBlockedReason={tierLoading ? "Checking your plan…" : "Creating new shares needs Safety Plus."}
         />
       )}
       {tab === "shares" && ENABLE_PERSONAL_BACKUP_SHARDS && !tierLoading && !hasSafetyPlus && (
@@ -1164,10 +1220,14 @@ export default function PersonalBackup() {
               Restoring from a backup file never needs a subscription. Creating new backups and
               2-of-3 shares is part of Safety Plus.
             </p>
-            <p className="text-muted-foreground" data-testid="shares-existing-note">
-              Already have shares? Recovering with two valid shares never needs a subscription:
-              choose Restore on the wallet entry screen. Creating new shares needs Safety Plus.
-            </p>
+            {!isDecoy && !isHidden && (
+              <p className="text-muted-foreground" data-testid="shares-existing-note">
+                Existing recovery material never needs a subscription. Use the Restore form above for
+                legacy same-device shares. Two matching recovery bundles and their passphrase restore
+                from the wallet entry screen on a device that has no wallet yet. Creating new shares
+                needs Safety Plus.
+              </p>
+            )}
           </div>
           <Link
             to="/plans"
