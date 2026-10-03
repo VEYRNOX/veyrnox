@@ -5,14 +5,18 @@ staging release (2026-10-02, development build; see "Staging: physical iPhone re
 and earlier on the iOS simulator. **A production release now reaches iOS and Android
 1.0.3.** Android OTA does not work in the 1.0.2 binary (see "Android: the `.well-known`
 asset bug"); the fix (#2816) shipped in 1.0.3, live on Google Play at 100% since
-2026-10-02 (`docs/RELEASE-v1.0.3.md`). That fix is emulator-verified only: **no physical
-Android phone has taken an OTA update yet**, so the first production publish is also the
-first real-device test of the Android path (a failure leaves the phone on its embedded
-bundle). Android installs still on 1.0.2 cannot update. A
-**no-change canary is live on the production channel** (bundle `202610011706`, see
-"Production canary published"). Not verified end to end with a store-signed binary:
-an App Store iPhone was seen fetching the production manifest and signature, but the
-swap itself was not observed on it.
+2026-10-02 (`docs/RELEASE-v1.0.3.md`). Android installs still on 1.0.2 cannot update.
+
+**Production bundle `202610031506` is live (published 2026-10-03 15:32 UTC, built from
+`main` at `467c3552`) and has been seen applied on store-signed binaries on both
+platforms.** The owner reported the Settings "Web bundle" row on their App Store iPhone
+moving from a version ending `322` to `202610031506`, and on a physical Android 1.0.3
+phone from a version ending `536` to `202610031506`, each after full restarts, the same
+afternoon. This is the first physical Android phone to take an OTA update, and the first
+observed swap on a store-signed iPhone. The evidence is the owner's reading of that row,
+not a log or a host-side trace; the Android model and OS version were not recorded, and
+the `322`/`536` starting versions are assumed to be the embedded 1.0.3 store bundles.
+It replaces the no-change canary (`202610011706`, see "Production canary published").
 
 **Signing keys are provisioned (2026-09-18).** Two YubiKey 5C NFC tokens, each
 holding a non-extractable P-256 key generated on-token in PIV slot 9c, with
