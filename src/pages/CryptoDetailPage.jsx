@@ -29,6 +29,7 @@ import { formatAssetId } from "@/wallet-core/assetId.js";
 import { assetDisplaySymbol, assetChainLabel } from "@/lib/assetLabel";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { DEMO } from "@/api/demoClient";
+import { formatUsd } from "@/lib/locale";
 
 export default function CryptoDetailPage() {
   const { t } = useTranslation("wallet");
@@ -52,7 +53,7 @@ export default function CryptoDetailPage() {
   // user's token holdings. `enabled: isUnlocked` did not cover this: a decoy
   // session IS unlocked.
   const deniable = DEMO || isDecoy || isHidden || isDeniabilityOrDemoActive();
-  const { changeFor } = useBasketPrices();
+  const { priceFor, changeFor } = useBasketPrices();
   const { data: portfolio } = usePortfolio(wallets, walletAddresses);
   const { data: tokenRowsRaw = [] } = useQuery({
     queryKey: ["wallet-tokens"],
@@ -102,7 +103,16 @@ export default function CryptoDetailPage() {
     );
   }
 
-  const change = changeFor(symbol);
+  // ARB/OP hold native ETH on their rollups, so the registry points them at
+  // ETH's feed; the raw ticker resolves to the governance token. Same
+  // resolution WatchlistPage and WalletPortfolioPage do. The chart uses the
+  // same key so the header quote and the candles are always the same market.
+  const priceKey = resolvedAsset?.priceSymbol || symbol;
+  // Live spot price from the fixed-basket feed. null when the feed is off /
+  // failed / deniable / demo — then NO price renders (I4): the static
+  // TOP_CRYPTOS reference constant must never be shown as a quote.
+  const spotPrice = priceFor(priceKey);
+  const change = changeFor(priceKey);
   const isUp = change == null ? null : change >= 0;
   const handleSpamOverride = (tokenId, mode) => {
     setSpamTokenOverride(tokenId, mode);
@@ -143,9 +153,11 @@ export default function CryptoDetailPage() {
             <span className="text-sm text-muted-foreground font-mono">{assetDisplaySymbol(resolvedAsset) || symbol}</span>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-lg font-semibold mono-value">
-              ${asset.usd.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-            </span>
+            {spotPrice != null && (
+              <span className="text-lg font-semibold mono-value" data-testid="asset-spot-price">
+                {formatUsd(spotPrice, undefined, { maximumFractionDigits: spotPrice < 1 ? 4 : 2, minimumFractionDigits: 2 })}
+              </span>
+            )}
             {isUp != null && (
               <span className={`text-xs font-mono ${isUp ? "text-success" : "text-destructive"}`}>
                 {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(2)}%
@@ -263,7 +275,7 @@ export default function CryptoDetailPage() {
       </div>
 
       {/* Chart */}
-      <CandlestickChart symbol={symbol} period={period} />
+      <CandlestickChart symbol={priceKey} period={period} />
 
       {/* Actions — Buy sits alongside Send when the ship gate is on.
           All three labels go through nav.tab_* , which every one of the 44
