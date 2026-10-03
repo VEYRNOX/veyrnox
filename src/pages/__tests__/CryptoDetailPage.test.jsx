@@ -21,8 +21,14 @@ vi.mock("@/lib/advisorBridge", () => ({
   openAdvisor: vi.fn(),
   publishAdvisorContext: vi.fn(),
 }));
+// Mutable so a test can turn the live feed on; reset to "not live" in beforeEach.
+const basketState = /** @type {{ data: Record<string, { price: number, change24h: number }> | null }} */ ({ data: null });
 vi.mock("@/hooks/useBasketPrices", () => ({
-  useBasketPrices: () => ({ changeFor: () => null, isLive: false }),
+  useBasketPrices: () => ({
+    priceFor: (s) => basketState.data?.[s]?.price ?? null,
+    changeFor: (s) => basketState.data?.[s]?.change24h ?? null,
+    isLive: !!basketState.data,
+  }),
 }));
 vi.mock("@/components/CandlestickChart", () => ({
   default: ({ symbol, period }) => <div data-testid="chart">{symbol}-{period}</div>,
@@ -40,6 +46,7 @@ import { base44 } from "@/api/base44Client";
 const walletTokenListMock = /** @type {any} */ (base44.entities.WalletToken.list);
 
 beforeEach(() => {
+  basketState.data = null;
   walletState.isUnlocked = false;
   walletState.wallets = [];
   walletState.walletAddresses = [];
@@ -104,4 +111,30 @@ test("renders suspicious token warning when spam-token clones share the asset sy
   expect(await screen.findByText(/suspicious usdc token copy detected/i)).toBeInTheDocument();
   expect(screen.getByText(/usdc-rewards\.com/i)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /ask ai advisor/i })).toBeInTheDocument();
+});
+
+// The header price used to be TOP_CRYPTOS[].usd — a hardcoded reference constant
+// (BTC 68000, ETH 3200) rendered with no disclosure, directly above a LIVE chart.
+test("header shows the live spot price, not the static reference constant", () => {
+  basketState.data = { BTC: { price: 97123.45, change24h: 1.5 } };
+  renderAt("BTC");
+  expect(screen.getByTestId("asset-spot-price")).toHaveTextContent("97,123.45");
+  expect(screen.queryByText(/68,000/)).not.toBeInTheDocument();
+});
+
+test("header renders NO price when the live feed is unavailable (I4: never a stale constant as a quote)", () => {
+  renderAt("BTC");
+  expect(screen.queryByTestId("asset-spot-price")).not.toBeInTheDocument();
+  expect(screen.queryByText(/68,000/)).not.toBeInTheDocument();
+});
+
+test("ARB (native ETH on Arbitrum) prices and charts from the ETH feed via priceSymbol", () => {
+  basketState.data = {
+    ETH: { price: 4321.5, change24h: -2 },
+    ARB: { price: 0.55, change24h: 9 },
+  };
+  renderAt("ARB");
+  expect(screen.getByTestId("asset-spot-price")).toHaveTextContent("4,321.50");
+  expect(screen.getByTestId("chart")).toHaveTextContent("ETH-1D");
+  expect(screen.getByText(/2\.00%/)).toBeInTheDocument();
 });
