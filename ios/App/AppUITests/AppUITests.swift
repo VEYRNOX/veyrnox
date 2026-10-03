@@ -219,8 +219,9 @@ final class AppUITests: XCTestCase {
     /// Bounded at 3 attempts, and the bound is a TIME budget, not a taste
     /// judgement. Three attempts exceeded the former 300s allowance in run
     /// 33623177119 and reported "Executed 0 tests", losing the assertion.
-    /// The allowance is now 600s; run 34622660295 used 320s for two failed
-    /// attempts, leaving room for one final retry under the 1000s watchdog.
+    /// The allowance is now 750s; run 37155168000 reached the import submit at
+    /// 563s after AX stalls, so 600s could not fit the terminal assertion. The
+    /// workflow's 1000s watchdog remains the aggregate bound across both tests.
     ///
     /// If all attempts are consumed the caller's assertPinFlowLeftPinSetup()
     /// reports the desync honestly rather than letting it masquerade as a
@@ -303,7 +304,7 @@ final class AppUITests: XCTestCase {
     /// already advanced would be inert anyway.
     ///
     /// Budget: 3 presses x 8s = 24s worst case per stage. Run 33626090694 used
-    /// 532s of the 600s allowance with no re-presses, so this fits — but it is
+    /// 532s before the allowance was raised to 750s, so this fits — but it is
     /// the tightest thing in the file. If the allowance moves, re-do this sum.
     ///
     /// `rejected` returns false immediately, without re-pressing, when the app
