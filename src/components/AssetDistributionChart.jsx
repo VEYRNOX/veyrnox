@@ -30,13 +30,22 @@ function CustomLegend({ payload = undefined }) {
   );
 }
 
-export default function AssetDistributionChart({ wallets }) {
-  // Group wallets by currency
+/**
+ * `slices` — precomputed [{ name, usd }] (the real portfolio page passes
+ * assetDistribution(), which carries the same live/approx values as its total).
+ * `wallets` — legacy demo-tour shape [{ currency, balance }], priced through the
+ * static reference table (demo makes no price request by design).
+ */
+export default function AssetDistributionChart({ slices = undefined, wallets = [] }) {
   const grouped = {};
-  wallets.forEach(w => {
-    if (!grouped[w.currency]) grouped[w.currency] = 0;
-    grouped[w.currency] += (w.balance || 0) * (USD_RATES[w.currency] || 1);
-  });
+  if (slices) {
+    slices.forEach(s => { grouped[s.name] = (grouped[s.name] || 0) + s.usd; });
+  } else {
+    wallets.forEach(w => {
+      if (!grouped[w.currency]) grouped[w.currency] = 0;
+      grouped[w.currency] += (w.balance || 0) * (USD_RATES[w.currency] || 1);
+    });
+  }
 
   const total = Object.values(grouped).reduce((s, v) => s + v, 0);
 

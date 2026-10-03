@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWallet } from "@/lib/WalletProvider";
-import { usePortfolio, sumPortfolioTotal } from "@/lib/portfolioBalances";
+import { usePortfolio, sumPortfolioTotal, assetDistribution } from "@/lib/portfolioBalances";
 import { resolveAssetRow } from "@/lib/balanceDisplay";
 import { ASSETS, getAsset, getAssetById } from "@/wallet-core/assets.js";
 import { isAssetIdString } from "@/wallet-core/assetId.js";
@@ -134,6 +134,37 @@ const fmtAmount = (n) =>
 
 // "12:04" local time for the live-price freshness stamp.
 const fmtPriceTime = (ts) => (ts ? new Date(ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "");
+
+// Price-basis line under the portfolio total. Live: refresh control + fetch time.
+// Otherwise the total was priced from the static USD_RATES table, so it is
+// labelled approximate AND carries the reference-rate disclosure. The note is
+// approx-only: under a live total it contradicted the "Live" label above it.
+export function PriceBasisNote({ priceBasis, pricesUpdatedAt, onRefresh }) {
+  const { t } = useTranslation("wallet");
+  if (priceBasis === "live") {
+    return (
+      <div className="mt-1 flex justify-center">
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          title={t("portfolio.refreshPricesTooltip")}
+        >
+          <RefreshCw className="h-3 w-3" />
+          {t("portfolio.live")}{pricesUpdatedAt ? " · " + fmtPriceTime(pricesUpdatedAt) : ""}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <>
+      <div className="mt-1 flex justify-center">
+        <span className="text-xs text-muted-foreground">{t("portfolio.approximate")}</span>
+      </div>
+      <ReferenceRateNote />
+    </>
+  );
+}
 
 // Seed reveal grid is a shared component — see src/components/SeedGrid.jsx.
 
@@ -967,22 +998,7 @@ export default function WalletPortfolioPage() {
         {pfIncomplete && (
           <p className="text-xs text-caution mt-1">{t("portfolio.partialTotalNote")}</p>
         )}
-        <div className="mt-1 flex justify-center">
-          {priceBasis === "live" ? (
-            <button
-              type="button"
-              onClick={() => refetchPrices?.()}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-              title={t("portfolio.refreshPricesTooltip")}
-            >
-              <RefreshCw className="h-3 w-3" />
-              {t("portfolio.live")}{pricesUpdatedAt ? " · " + fmtPriceTime(pricesUpdatedAt) : ""}
-            </button>
-          ) : (
-            <span className="text-xs text-muted-foreground">{t("portfolio.approximate")}</span>
-          )}
-        </div>
-        <ReferenceRateNote />
+        <PriceBasisNote priceBasis={priceBasis} pricesUpdatedAt={pricesUpdatedAt} onRefresh={() => refetchPrices?.()} />
         {/* DENIABILITY (CLAUDE.md "never show wallet count/list" · I3 / KEK spec §5):
             a wallet-COUNT line is a cardinality tell — it reveals how many wallets
             the active context holds, and a coercer comparing counts across unlocks
@@ -1127,7 +1143,7 @@ export default function WalletPortfolioPage() {
 
         <TabsContent value="analytics" className="mt-3 space-y-6">
           <PortfolioChart transactions={txList} currentBalance={pfTotal} />
-          <AssetDistributionChart wallets={pfWallets} />
+          <AssetDistributionChart slices={assetDistribution(pfWallets, byWallet)} />
         </TabsContent>
       </Tabs>
 

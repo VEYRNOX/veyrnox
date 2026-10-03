@@ -25,6 +25,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ASSETS, getAsset, getAssetById } from '@/wallet-core/assets.js';
 import { isAssetIdString } from '@/wallet-core/assetId.js';
 import { USD_RATES } from '@/lib/cryptos.js';
+import { assetDisplaySymbol } from '@/lib/assetLabel.js';
 import { getProvider, getBalanceEth } from '@/wallet-core/evm/provider.js';
 import { getToken, ERC20_ABI } from '@/wallet-core/evm/tokens.js';
 import { getBalanceSats } from '@/wallet-core/btc/provider.js';
@@ -222,6 +223,32 @@ export function sumPortfolioTotal(pfWallets, byWallet) {
     if (entry.indeterminate) indeterminate = true;
   }
   return { total, indeterminate };
+}
+
+/**
+ * Per-asset USD split for a set of wallets, for the distribution chart. Sums the
+ * SAME `usd` values sumPortfolioTotal() adds up (live or reference basis — whatever
+ * computePortfolio priced them at), so the chart can never disagree with the total
+ * above it. Grouped by display symbol (ARB/OP rows are native ETH → 'ETH').
+ * Failed reads (usd null) and zero rows are skipped. Largest first.
+ *
+ * @param {Array<{id:string}>} pfWallets
+ * @param {Object.<string,{assets?:Array<{id?:string, symbol:string, usd:number|null}>}>} byWallet
+ * @returns {Array<{name:string, usd:number}>}
+ */
+export function assetDistribution(pfWallets, byWallet) {
+  /** @type {Record<string, number>} */
+  const totals = {};
+  for (const w of pfWallets) {
+    for (const a of byWallet[w.id]?.assets ?? []) {
+      if (!Number.isFinite(a.usd) || a.usd <= 0) continue;
+      const name = assetDisplaySymbol((a.id && getAssetById(a.id)) || a.symbol);
+      totals[name] = (totals[name] || 0) + a.usd;
+    }
+  }
+  return Object.entries(totals)
+    .map(([name, usd]) => ({ name, usd }))
+    .sort((x, y) => y.usd - x.usd);
 }
 
 // Stable cache key: which wallets, which addresses, which enabled assets. When
