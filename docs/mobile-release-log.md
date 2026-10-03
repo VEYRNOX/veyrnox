@@ -1,10 +1,8 @@
 # Mobile Release Log
 
-Last updated: 2026-10-02
+Last updated: 2026-10-03
 
-**Next: 1.0.3 (59) on both stores — in preparation, not submitted.** Version bump #2821;
-record in `docs/RELEASE-v1.0.3.md`. Add the rows below only when each store has an
-outcome.
+**Current: 1.0.3 (59) is live on both stores.** Full record: `docs/RELEASE-v1.0.3.md`.
 
 **Scope note.** Everything below the 2026-08-19 entries was staging / internal
 testing. This log stopped there and missed both public launches entirely — it
@@ -19,7 +17,8 @@ staging history is kept underneath, unedited.
 | Date | Version | versionCode | State |
 |---|---|---|---|
 | 2026-09-12 | 1.0.1 | 48 | Published. Superseded 2026-09-23. |
-| 2026-09-23 | 1.0.2 | **57** | **Live, 100% rollout.** |
+| 2026-09-23 | 1.0.2 | 57 | Published, 100% rollout. Superseded 2026-10-02. |
+| 2026-10-02 | 1.0.3 | **59** | **Live, 100% rollout**, published 19:05 BST. |
 
 versionCode 49 reached Closed testing (`alpha`) only and was never the live
 production release. versionCode 56 was submitted to production review on
@@ -31,7 +30,8 @@ predated fixes that reach Android. Its versionCode is permanently consumed.
 | Date | Version | Build | State |
 |---|---|---|---|
 | 2026-09-11 | 1.0.1 | 59 | `READY_FOR_SALE`. Superseded 2026-09-2x by 1.0.2. |
-| 2026-09-24 | 1.0.2 | **8** | **`READY_FOR_SALE`, the live version** (read from ASC 2026-09-26T07:36Z). Approved on its first review submission, `2af87adc`, submitted 2026-09-24T16:38Z, every item `APPROVED`. No rejection this cycle. |
+| 2026-10-03 | 1.0.3 | **59** | **`READY_FOR_SALE`, the live version** (read from ASC 2026-10-03). Approved on its first review submission, `41183a06`, submitted 2026-10-02T15:00:34Z; released by the owner 2026-10-03. |
+| 2026-09-24 | 1.0.2 | 8 | `READY_FOR_SALE` (read from ASC 2026-09-26T07:36Z), superseded 2026-10-03 by 1.0.3. Approved on its first review submission, `2af87adc`, submitted 2026-09-24T16:38Z, every item `APPROVED`. No rejection this cycle. |
 
 `releaseType` is `MANUAL`, so a human pressed Release; the API does not expose
 the release timestamp, so the release date is bounded between the 2026-09-24
