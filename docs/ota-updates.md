@@ -2,10 +2,13 @@
 
 **Status: BUILT, INTERNAL.** Verified end to end on a **physical iPhone** against a
 staging release (2026-10-02, development build; see "Staging: physical iPhone result"),
-and earlier on the iOS simulator. **Android OTA does not work in the shipped 1.0.2
-binary** (see "Android: the `.well-known` asset bug"; fixed on `main` by #2816, which
-ships in the 1.0.3 store release, in preparation — `docs/RELEASE-v1.0.3.md`), so a
-production release reaches iOS only until then. A
+and earlier on the iOS simulator. **A production release now reaches iOS and Android
+1.0.3.** Android OTA does not work in the 1.0.2 binary (see "Android: the `.well-known`
+asset bug"); the fix (#2816) shipped in 1.0.3, live on Google Play at 100% since
+2026-10-02 (`docs/RELEASE-v1.0.3.md`). That fix is emulator-verified only: **no physical
+Android phone has taken an OTA update yet**, so the first production publish is also the
+first real-device test of the Android path (a failure leaves the phone on its embedded
+bundle). Android installs still on 1.0.2 cannot update. A
 **no-change canary is live on the production channel** (bundle `202610011706`, see
 "Production canary published"). Not verified end to end with a store-signed binary:
 an App Store iPhone was seen fetching the production manifest and signature, but the
