@@ -164,20 +164,20 @@ class OtaUpdatePlugin : Plugin() {
             } ?: emptyMap()
             val fromActive = activeFiles.entries.associate { (p, h) -> h to p }
             val fromEmbedded = emb.files.entries.associate { (p, h) -> h to p }
+            val missingPaths = OtaBundleVerifier.prefill(
+                m.files, dir,
+                fromActive = { hash ->
+                    if (activeDir == null) null
+                    else fromActive[hash]?.let { File(activeDir, it) }?.takeIf { it.isFile }
+                },
+                openEmbedded = { hash ->
+                    fromEmbedded[hash]?.let {
+                        try { context.assets.open("public/$it") } catch (e: java.io.IOException) { null }
+                    }
+                },
+            )
             val missing = JSArray()
-            for ((path, hash) in m.files) {
-                val dest = File(dir, path)
-                dest.parentFile?.mkdirs()
-                when {
-                    activeDir != null && fromActive.containsKey(hash) ->
-                        File(activeDir, fromActive.getValue(hash)).copyTo(dest, overwrite = true)
-                    fromEmbedded.containsKey(hash) ->
-                        context.assets.open("public/${fromEmbedded.getValue(hash)}").use { input ->
-                            dest.outputStream().use { input.copyTo(it) }
-                        }
-                    else -> missing.put(path)
-                }
-            }
+            missingPaths.forEach { missing.put(it) }
             call.resolve(JSObject().put("missing", missing))
         } catch (e: Exception) {
             call.reject("OTA_IO")

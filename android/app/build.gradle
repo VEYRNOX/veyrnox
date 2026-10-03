@@ -35,14 +35,17 @@ android {
         // removal of the user-facing "Built" badge — all of which reach Android.
         // A versionCode is consumed permanently by its first successful upload, so
         // 56 can never be reused even after its submission is withdrawn.
-        versionCode 57
+        // 1.0.3 (2026-10-02): 57 was consumed by 1.0.2, live at 100% on 2026-09-23.
+        // 1.0.3 started at 58 to match iOS; iOS 58 was then uploaded and the owner held
+        // 1.0.3 for the AI Security trial fix (#2823), so 1.0.3 ships as 59 on both.
+        versionCode 59
         // Customer-facing version for the public Play launch. versionCode is internal
         // bookkeeping (monotonic, permanently consumed per upload, never shown to users);
         // versionName is what appears on the store listing.
         // 1.0.2 opens a new release train aligned with the iOS 1.0.2 train. 1.0.1 is
         // live on the App Store (build 59, READY_FOR_SALE). On Play, versionCode 48 is
         // the live production release and 49 reached Closed testing (alpha) only.
-        versionName "1.0.2"
+        versionName "1.0.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         // RASP APK tamper detection — inject via -PRELEASE_CERT_SHA256=<hash>.
         // Blank = fail-closed (I4). Release builds validate format at task start.

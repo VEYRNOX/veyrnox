@@ -10,6 +10,9 @@ import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 
 const captureReferralFromUrl = vi.fn();
+const toastInfo = vi.fn();
+vi.mock('sonner', () => ({ toast: { info: (...args) => toastInfo(...args) } }));
+
 vi.mock('@/lib/referralAttribution', () => ({
   captureReferralFromUrl: (...a) => captureReferralFromUrl(...a),
   captureInstallReferrer: () => Promise.resolve(),
@@ -48,6 +51,7 @@ function mount() {
 describe('DeepLinkHandler — /r/<code> referral links', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    captureReferralFromUrl.mockReset();
     launchUrl = null;
     warmListener = null;
   });
@@ -81,6 +85,36 @@ describe('DeepLinkHandler — /r/<code> referral links', () => {
     mount();
     await waitFor(() => expect(captureReferralFromUrl).toHaveBeenCalledTimes(1));
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  describe.each(['cold', 'warm'])('%s referral explanation', (delivery) => {
+    async function openReferral(result) {
+      captureReferralFromUrl.mockReturnValue(result);
+      const url = 'https://veyrnox.com/r/VYX-AB3DEF';
+      if (delivery === 'cold') launchUrl = url;
+      mount();
+      if (delivery === 'warm') {
+        await waitFor(() => expect(warmListener).toBeTypeOf('function'));
+        warmListener({ url });
+      }
+      await waitFor(() => expect(captureReferralFromUrl).toHaveBeenCalledTimes(1));
+    }
+
+    it('explains that the first pending referral is retained without showing codes', async () => {
+      await openReferral('already_pending');
+      expect(toastInfo).toHaveBeenCalledExactlyOnceWith(
+        'A referral code is already saved for this setup. Only the first code can be applied.',
+      );
+      expect(navigate).not.toHaveBeenCalled();
+      expect(setPendingWcUri).not.toHaveBeenCalled();
+    });
+
+    it.each(['denied', 'duplicate', 'invalid', 'captured'])('does not toast for %s', async (result) => {
+      await openReferral(result);
+      expect(toastInfo).not.toHaveBeenCalled();
+      expect(navigate).not.toHaveBeenCalled();
+      expect(setPendingWcUri).not.toHaveBeenCalled();
+    });
   });
 
   it('leaves WalletConnect links on the pairing path', async () => {

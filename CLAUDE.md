@@ -83,15 +83,30 @@ architecture or security-critical code (wallet-core, signing, KEK, RASP).
   `android/app/build.gradle`; never write the current value here. The next iOS
   archive needs a new ASC version record; 1.0.2 is closed.
   **"Submitted" has an outcome: record it in the session that learns it.**
+- **1.0.3: LIVE on Google Play (2026-10-02); Apple in review** (manual release). Ships all
+  of `main`. State, IDs and checklist: `docs/RELEASE-v1.0.3.md`. Record Apple's outcome there.
+- **OTA web-bundle updates are live in production** (no-change canary). iOS takes them;
+  Android 1.0.2 cannot (native bug, fixed by #2816, ships in 1.0.3). Runbook and evidence:
+  `docs/ota-updates.md`. Any production publish needs the owner's YubiKey and explicit go.
 - **Real users exist:** thousands of telemetry devices, 500+ active subscribers, and one
   real full-price production purchase. No promotional offer has ever been exercised by a
   real purchase. Telemetry is consent-gated in `api/trackEvent.js` (egress) and
   `lib/consent.js` (writes), and suppressed in deniability/demo (I3).
 - Hardware KEK is device-verified on iOS and Android, and RASP F-09 is device-verified on
   both (INTERNAL). Vault: AES-256-GCM, Argon2id 96 MiB/t=6 for new vaults, 192 MiB/t=3
-  for older ones (the v2 migration flag stays OFF until Gate 1 of #2101).
-- Open residuals: EVM key unzeroable (ethers v6), #1111 (vault AAD v:3), #2275 (17 inert
-  e2e security assertions), and the independent audit.
+  for older ones. `KDF_PROFILE_V2_MIGRATION_ENABLED` is `false` in `vault.js`. #2101 was
+  closed by the owner (2026-08-28) without the real-device v2 cold-unlock benchmark run
+  and without the flag flipped; if revisited, the benchmark and deniability-parity gate
+  still apply.
+- Open residuals (re-checked against `main` 2026-10-01):
+  - EVM key unzeroable (ethers v6).
+  - Vault AAD v:3 (#1111, closed): the v:3 reader and format are BUILT (#1649), but
+    `AAD_V3_MIGRATION_ENABLED` is `false`, so writes stay v:2 and `kekWrap`/`kekSalt`/
+    `hardwareKekVersion` are not yet bound against downgrade tampering.
+  - Post-audit control e2e (#2275, closed as superseded): the 17 inert `test.fixme`
+    assertions were replaced by 17 source-content tests (#2296). They run, but never open
+    a browser; this is regression protection, not behavioural validation.
+  - The independent audit of the full stack.
 - Detail and evidence: `docs/Feature-Status.md` and the archive.
 
 ## Pre-submission checklist (BOTH stores, every build incl. 1.0.2)
@@ -214,6 +229,16 @@ architecture or security-critical code (wallet-core, signing, KEK, RASP).
     under an induced failure.
   - CI rollup: an absent context or `conclusion: ""` is pending, not green. Read the
     FTL `OUTCOME` table, not the run status.
+  - A job's custom `if:` implicitly ANDs with `success()` unless it starts with
+    `always()`/`failure()`/`cancelled()`. An unrelated ancestor job skipped for its
+    own reason (e.g. a `workflow_dispatch`-only validation step) silently taints
+    that `success()` for every job downstream of it — independent of whatever the
+    `if:` actually checks. `canary-gate` failed on 100+ consecutive pushes to `main`
+    this way: the first fix attempt (just deleting the custom `if:`) still skipped
+    the job, because the bare default `if:` is `success()` too. The real fix
+    mirrors whatever pattern the job that already escapes the same ancestor uses —
+    `always() && needs.<job>.result == 'success'` — not a guess about which output
+    was empty.
 - **Mutation-check every new test pin**: reintroduce the defect, see it go red, restore.
   Watch for prefix matches, pins matching their own comments, and fixed windows spilling
   into the next function.

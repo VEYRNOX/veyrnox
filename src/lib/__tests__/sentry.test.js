@@ -108,6 +108,37 @@ describe('initSentry guards', () => {
     });
   });
 
+  it('explicitly disables sensitive Sentry 11 data collection', async () => {
+    const Sentry = await import('@sentry/react');
+    await withEnv({ VITE_SENTRY_DSN: 'https://x@y/1' }, async () => {
+      const { initSentry, __TEST_ONLY__ } = await loadFresh();
+      initSentry();
+      expect(Sentry.init).toHaveBeenCalledTimes(1);
+      const [options] = Sentry.init.mock.calls[0];
+      expect(options.dataCollection).toEqual({
+        userInfo: false,
+        cookies: false,
+        httpHeaders: false,
+        httpBodies: [],
+        urlQueryParams: false,
+        graphQL: { document: false, variables: false },
+        genAI: { inputs: false, outputs: false },
+        databaseQueryData: false,
+        queues: false,
+        stackFrameVariables: false,
+        frameContextLines: 0,
+      });
+      expect(options).not.toHaveProperty('sendDefaultPii');
+      expect(options.defaultIntegrations).toBe(false);
+      expect(options.integrations.map(({ name }) => name)).toEqual([
+        'GlobalHandlers', 'Dedupe', 'FunctionToString',
+      ]);
+      expect(options.tracesSampleRate).toBe(0);
+      expect(options.beforeSend).toBe(__TEST_ONLY__.scrub);
+      expect(options.beforeBreadcrumb({ message: 'private input' })).toBeNull();
+    });
+  });
+
   it('reportError is a no-op until init has run', async () => {
     const Sentry = await import('@sentry/react');
     const { reportError } = await loadFresh();
