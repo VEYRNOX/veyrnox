@@ -1,15 +1,14 @@
 # Veyrnox 1.0.3 — release notes and submission state
 
-Owner: Al Jobson. Last updated: 2026-10-02.
+Owner: Al Jobson. Last updated: 2026-10-03.
 
-**STATE: GOOGLE PLAY LIVE ON 1.0.3; APPLE IN REVIEW (2026-10-02).**
+**STATE: LIVE ON BOTH STORES (2026-10-03).** This release is closed.
 - **Google Play: LIVE.** 1.0.3 (59) approved by Google and **published by the owner on
   2026-10-02 at 19:05 BST**, 100% rollout, 178 countries/regions ("Available on Google Play").
-- **Apple:** 1.0.3 (59) `WAITING_FOR_REVIEW`, review submission `41183a06-2fd9-458c-a996-52940304b672`,
-  submitted 2026-10-02T15:00:34Z. Release type MANUAL. The App Store is still on 1.0.2 (build 8).
-
-Update this header in the session that learns each outcome (Apple approved, rejected,
-released).
+- **Apple: LIVE.** 1.0.3 (59) approved on its first review submission
+  (`41183a06-2fd9-458c-a996-52940304b672`, submitted 2026-10-02T15:00:34Z, no rejection) and
+  **released by the owner on 2026-10-03**. ASC API: `READY_FOR_SALE` /
+  `READY_FOR_DISTRIBUTION`, build 59, release type MANUAL.
 
 Status tags follow `CLAUDE.md`: BUILT (in code, tests green), TARGET, PLANNED,
 HONEST-DISABLED. Nothing in this release is **verified** in the strict sense (a real
@@ -139,6 +138,8 @@ non-English listing is uploaded, or the other languages will describe 1.0.2.
 | 2026-10-02 ~15:10 | Crash check (the three reads `asc-crashes.sh` makes, run through the ASC API because the worktree guard refused the script): TestFlight crash submissions for build 59: none (the app's only one is a "Test" report on 1.0.2 build 1, 2026-09-21). Screenshot feedback for build 59: none (two older entries, August). `diagnosticSignatures` for build 59: 200, 0 groups, but the build was about 1.5 h old. **Result: EMPTY, which is unmeasured, not CLEAN.** Owner chose to wait about a day and re-run before submitting. |
 | 2026-10-02 ~16:00 | Owner reversed that: as the only tester, more waiting would not produce data. Crash check **waived**: the walkthrough found no crashes, ASC had no crash or feedback reports for build 59, and its diagnostics stay EMPTY without other users. |
 | 2026-10-02 16:00:34 | **Submitted for review.** 1.0.3 (59) added to the existing empty draft review submission `41183a06-2fd9-458c-a996-52940304b672` (it held 0 items, so nothing stale went with it) and submitted. ASC API: submission `WAITING_FOR_REVIEW`, version `WAITING_FOR_REVIEW`, build 59, release type MANUAL. |
+| 2026-10-03 06:53 | **Approved by Apple** (overnight; the API does not expose the approval time). Read from the ASC API at 2026-10-03T05:53Z: version `PENDING_DEVELOPER_RELEASE`, submission `41183a06-2fd9-458c-a996-52940304b672` `COMPLETE`. First submission, no rejection. |
+| 2026-10-03 ~06:55 | **Released by the owner** in App Store Connect (manual release). Read back through the ASC API: version `fffa15e9-63cb-4f69-a3bc-0706257697da` 1.0.3, `appStoreState: READY_FOR_SALE`, `appVersionState: READY_FOR_DISTRIBUTION`, build 59. Store propagation can lag the state change by a few hours. |
 
 ## Play release record
 

@@ -77,16 +77,16 @@ architecture or security-critical code (wallet-core, signing, KEK, RASP).
 
 ## Current state (pointers; re-derive before relying on any number)
 
-- **Both stores are LIVE on 1.0.2.** App Store 1.0.2 build 8 is `READY_FOR_SALE`
-  (approved on its first review submission, `2af87adc`, 2026-09-24; read from ASC
-  2026-09-26), and Play 1.0.2 is published at 100% (2026-09-23). Read versionCode from
-  `android/app/build.gradle`; never write the current value here. The next iOS
-  archive needs a new ASC version record; 1.0.2 is closed.
+- **Both stores are LIVE on 1.0.3.** App Store 1.0.3 is `READY_FOR_SALE` (approved on its
+  first review submission, `41183a06`, released by the owner 2026-10-03; read from ASC the
+  same day), and Play 1.0.3 is published at 100% (2026-10-02). Record:
+  `docs/RELEASE-v1.0.3.md`. Read versionCode from `android/app/build.gradle`; never write
+  the current value here. The next iOS archive needs a new ASC version record; 1.0.3 is
+  closed.
   **"Submitted" has an outcome: record it in the session that learns it.**
-- **1.0.3: LIVE on Google Play (2026-10-02); Apple in review** (manual release). Ships all
-  of `main`. State, IDs and checklist: `docs/RELEASE-v1.0.3.md`. Record Apple's outcome there.
-- **OTA web-bundle updates are live in production** (no-change canary). iOS takes them;
-  Android 1.0.2 cannot (native bug, fixed by #2816, ships in 1.0.3). Runbook and evidence:
+- **OTA web-bundle updates are live in production** (no-change canary). iOS takes them.
+  Android takes them from 1.0.3 on (native fix #2816, emulator-verified; not yet seen on
+  a physical Android device); Android 1.0.2 cannot. Runbook and evidence:
   `docs/ota-updates.md`. Any production publish needs the owner's YubiKey and explicit go.
 - **Real users exist:** thousands of telemetry devices, 500+ active subscribers, and one
   real full-price production purchase. No promotional offer has ever been exercised by a
