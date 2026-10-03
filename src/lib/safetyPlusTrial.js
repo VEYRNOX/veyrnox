@@ -14,6 +14,24 @@ import { getOfferings, SAFETY_PLUS_ANNUAL_PACKAGE } from '@/lib/purchases';
 import { checkIntroTrialEligibility } from '@/lib/introTrialEligibility';
 import { freeTrialDays } from '@/lib/freeTrial';
 
+// How long a surface will wait for the store before it shows its normal copy.
+export const TRIAL_LOOKUP_BUDGET_MS = 1200;
+
+/**
+ * loadSafetyPlusTrial with a time limit, for a surface that is about to appear:
+ * it must not hold the screen on a slow network, and it must never claim "free"
+ * on an answer that arrives late. Past the budget the answer is null.
+ */
+export function loadSafetyPlusTrialWithin(budgetMs, args) {
+  let timer;
+  const budget = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(null), budgetMs);
+  });
+  return Promise.race([loadSafetyPlusTrial(args), budget])
+    .catch(() => null)
+    .finally(() => clearTimeout(timer));
+}
+
 export async function loadSafetyPlusTrial({ platform, hasReferral }) {
   if (hasReferral) return null;
   try {
