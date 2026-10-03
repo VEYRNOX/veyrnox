@@ -7,21 +7,32 @@
 # biometric-unlock) require real hardware and are expected to fail on an
 # emulator. Real per-suite results are written to
 # test-results/suite-results.txt; nothing is fabricated (I4).
-set -uo pipefail
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+# Let Appium discover the lockfile-installed driver from this npm project.
+unset APPIUM_HOME
 
 mkdir -p test-results
 
-APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+APK_PATH="android/app/build/outputs/apk/google/debug/app-google-debug.apk"
+export APPIUM_APP="$PWD/$APK_PATH"
 echo "=== Installing APK: $APK_PATH ==="
 adb install -r "$APK_PATH"
 adb shell pm list packages | grep veyrnox
 
 echo "=== Starting Appium ==="
-nohup appium --port 4723 > test-results/appium.log 2>&1 &
+npx --no-install appium --address 127.0.0.1 --port 4723 --use-drivers uiautomator2 --log-no-colors --log-level debug > test-results/appium.log 2>&1 &
+appium_pid=$!
+trap 'kill "$appium_pid" 2>/dev/null || true; wait "$appium_pid" 2>/dev/null || true' EXIT
 
 appium_up=0
 for _ in $(seq 1 30); do
-  if curl -fsS http://127.0.0.1:4723/status > /dev/null 2>&1; then
+  if ! kill -0 "$appium_pid" 2>/dev/null; then
+    break
+  fi
+  if curl -fsS http://127.0.0.1:4723/status > /dev/null 2>&1 &&
+      grep -q 'AndroidUiautomator2Driver has been successfully loaded' test-results/appium.log; then
     appium_up=1
     break
   fi
