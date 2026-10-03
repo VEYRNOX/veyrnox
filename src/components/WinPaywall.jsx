@@ -99,9 +99,13 @@ export default function WinPaywall() {
   const offer = currentTier === TIER.FREE ? upsellFor(currentTier) : null;
   // upsellFor returns a new object every render, so effects key on the id.
   const offerId = offer?.id ?? null;
+  const settled = trial !== undefined;
 
   const close = useCallback(() => setWin(null), []);
-  const containerRef = useModalA11y({ active: !!win, onEscape: close });
+  const containerRef = useModalA11y({
+    active: !!win && !!offer && settled && !isDeniabilityOrDemoActive(),
+    onEscape: close,
+  });
 
   useEffect(() => {
     const onWin = (e) => {
@@ -129,7 +133,6 @@ export default function WinPaywall() {
 
   // Counted as shown once the modal is actually on screen, once per win. It used
   // to depend on `offer`, a fresh object each render, so any re-render re-fired it.
-  const settled = trial !== undefined;
   useEffect(() => {
     if (!win || !offerId || !settled) return;
     void trackEvent(EVENT.PAYWALL_SHOWN, { trigger: win, offer: offerId }).catch(() => {});

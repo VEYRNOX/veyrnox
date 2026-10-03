@@ -14,6 +14,11 @@ import { render, screen, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const useModalA11yMock = vi.fn(() => ({ current: null }));
+vi.mock('@/lib/useModalA11y', () => ({
+  useModalA11y: (...args) => useModalA11yMock(...args),
+}));
+
 vi.mock('@/api/trackEvent', () => ({
   trackEvent: vi.fn(() => Promise.resolve()),
   EVENT: { PAYWALL_SHOWN: 'paywall_shown', PAYWALL_DISMISSED: 'paywall_dismissed', PAYWALL_CONVERTED: 'paywall_converted' },
@@ -175,9 +180,11 @@ describe('WinPaywall free-trial wording', () => {
     await fire();
     expect(screen.queryByTestId('win-paywall')).toBeNull();
     expect(shownCount()).toBe(0);
+    expect(useModalA11yMock).toHaveBeenLastCalledWith(expect.objectContaining({ active: false }));
     await act(async () => { settle({ days: 14, priceString: '$49.99' }); });
     expect(screen.getByTestId('win-paywall')).toBeTruthy();
     expect(shownCount()).toBe(1);
+    expect(useModalA11yMock).toHaveBeenLastCalledWith(expect.objectContaining({ active: true }));
   });
 
   it('counts a win as shown exactly once, however often the component re-renders', async () => {

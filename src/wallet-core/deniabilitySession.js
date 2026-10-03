@@ -30,6 +30,8 @@
 // confirmed primary session. Any wallet-core egress that cannot positively
 // confirm a primary session via this marker plus its own checks must refuse.
 
+import { DEMO } from '@/api/demoClient';
+
 let _deniabilityActive = false;
 
 /**
@@ -72,9 +74,10 @@ export function isDeniabilitySessionActive() {
 
 /**
  * LIVE deniability-OR-demo check (issue #972 round-3 P1). Matches the OLD
- * hardware-signer deniabilityActive() semantics verbatim: returns true when EITHER
+ * hardware-signer deniabilityActive() semantics verbatim: returns true when ANY
  *   1. isDeniabilitySessionActive() (in-memory decoy/hidden session), OR
- *   2. `localStorage['veyrnox-demo']` === '1' (persisted demo/tour flag).
+ *   2. DEMO is enabled by build/native-dev configuration, OR
+ *   3. `localStorage['veyrnox-demo']` === '1' (persisted demo/tour flag).
  * The persisted flag is read LIVE on every call, so a flag set AFTER module
  * import is still caught (`api/demoClient.js`'s exported DEMO is a load-time
  * IIFE snapshot and won't catch that case — this helper does). Fail-closed:
@@ -87,6 +90,7 @@ export function isDeniabilitySessionActive() {
  * @returns {boolean}
  */
 export function isDeniabilityOrDemoActive() {
+  if (DEMO) return true;
   try {
     if (isDeniabilitySessionActive()) return true;
   } catch {
