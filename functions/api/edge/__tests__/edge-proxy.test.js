@@ -92,3 +92,20 @@ describe('allowlist', () => {
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 });
+
+describe('function allowlist', () => {
+  it('forwards tip-manifest to the Supabase function of the same name', async () => {
+    const res = await onRequestPost(ctx('tip-manifest', { body: '{}' }));
+    expect(res.status).toBe(200);
+    expect(fetch).toHaveBeenCalledOnce();
+    const [url, init] = fetch.mock.calls[0];
+    expect(url).toBe(`${URL_BASE}/functions/v1/tip-manifest`);
+    expect(init.headers.apikey).toBe('anon-key');
+  });
+
+  it('refuses a function that is not on the list', async () => {
+    const e = await thrown(() => onRequestPost(ctx('tip-manifest-admin')));
+    expect(e.status).toBe(403);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});

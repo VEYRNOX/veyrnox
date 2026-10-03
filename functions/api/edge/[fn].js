@@ -5,7 +5,7 @@
 // injected server-side.
 //
 // Allowlist — only these edge functions are proxied:
-//   first-referral-bonus, tip-screen, tip-chat
+//   first-referral-bonus, tip-screen, tip-chat, tip-manifest
 
 import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
 
@@ -13,6 +13,7 @@ const ALLOWED_FUNCTIONS = new Set([
   'first-referral-bonus',
   'tip-screen',
   'tip-chat',
+  'tip-manifest',
 ]);
 
 function err(status, message) {

@@ -10,9 +10,10 @@
 //   2. Offline → no screening at all.
 //   3. Query patterns → every asked-about address landed in TIP's logs.
 //
-// This module downloads a signed manifest of all IOCs from
-// `${TIP_BASE_URL}/api/v1/manifest`, verifies the Ed25519 signature, and
-// caches the result in IndexedDB. Subsequent screen lookups check the local
+// This module downloads a signed manifest of all IOCs through the app's
+// `/api/edge/tip-manifest` proxy (the TIP route is HMAC-only and the wallet
+// never signs — see supabase/functions/tip-manifest), verifies the Ed25519
+// signature, and caches the result in IndexedDB. Subsequent screen lookups check the local
 // cache first. Deniability sessions read from cache only — never fetch —
 // so I3 stays intact while gaining real screening capability.
 //
@@ -58,6 +59,8 @@ const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 // 8 MiB is ~25x the current manifest (roughly 35k entries) so it is not a
 // ceiling anyone will hit by adding feeds.
 const MAX_MANIFEST_BYTES = 8 * 1024 * 1024;
+
+const FETCH_TIMEOUT_MS = 20_000;
 
 // ─── IndexedDB helpers ─────────────────────────────────────────────────────
 // Tiny promise wrapper — no idb library dep. Only stores the one manifest
@@ -303,12 +306,10 @@ export async function hydrateFromCache() {
 }
 
 /**
- * Fetch the manifest from TIP, verify the signature, cache it.
+ * Fetch the manifest via the tip-manifest proxy, verify the signature, cache it.
  * Rejects if the signature is missing/invalid (I4: never trust unsigned).
- *
- * @param {string} tipBaseUrl - e.g. https://tip.veyrnox.com
  */
-export async function refreshManifest(tipBaseUrl) {
+export async function refreshManifest() {
   // I3 CHOKEPOINT (audit 2026-08-09). This is the module's ONLY egress, so the
   // gate belongs here — not at the caller.
   //
@@ -323,14 +324,35 @@ export async function refreshManifest(tipBaseUrl) {
     throw new Error('I3: no manifest fetch in a deniability or demo session');
   }
 
-  const url = `${String(tipBaseUrl).replace(/\/$/, '')}/api/v1/manifest`;
-  const resp = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!resp.ok) {
-    throw new Error(`manifest fetch failed: HTTP ${resp.status}`);
+  // Same route tip-screen takes: the Pages proxy attaches the Supabase key and
+  // the Edge Function signs the TIP request server-side. The wallet used to
+  // call `${VITE_TIP_BASE_URL}/api/v1/manifest` directly, which has answered
+  // 401 since the Worker made that route HMAC-only (2026-08-10). The request
+  // carries nothing about the user or any address.
+  const url = `${import.meta.env.VITE_EDGE_BASE || ''}/api/edge/tip-manifest`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  let resp;
+  let raw;
+  try {
+    resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: '{}',
+      signal: controller.signal,
+    });
+    if (!resp.ok) {
+      throw new Error(`manifest fetch failed: HTTP ${resp.status}`);
+    }
+
+    // Keep the abort timer alive until the body is consumed. Headers can
+    // arrive promptly while a stalled or trickling response body never ends.
+    raw = await resp.text();
+  } finally {
+    clearTimeout(timer);
   }
 
   // Cap before parse — see MAX_MANIFEST_BYTES.
-  const raw = await resp.text();
   if (raw.length > MAX_MANIFEST_BYTES) {
     throw new Error('manifest too large — refusing to parse');
   }
@@ -393,7 +415,7 @@ export async function refreshManifest(tipBaseUrl) {
  * Best-effort refresh — swallows errors so a bad refresh doesn't crash
  * whatever code is calling this on unlock. Returns whether it succeeded.
  */
-export async function refreshManifestIfDue(tipBaseUrl) {
+export async function refreshManifestIfDue() {
   try {
     const stored = await idbGet(MANIFEST_KEY);
     if (stored && stored.fetched_at) {
@@ -404,7 +426,7 @@ export async function refreshManifestIfDue(tipBaseUrl) {
         return true;
       }
     }
-    await refreshManifest(tipBaseUrl);
+    await refreshManifest();
     return true;
   } catch (err) {
     if (import.meta.env.DEV) console.error('[IOC cache] refresh failed:', err);
