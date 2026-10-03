@@ -5,15 +5,19 @@ staging release (2026-10-02, development build; see "Staging: physical iPhone re
 and earlier on the iOS simulator. **A production release now reaches iOS and Android
 1.0.3.** Android OTA does not work in the 1.0.2 binary (see "Android: the `.well-known`
 asset bug"); the fix (#2816) shipped in 1.0.3, live on Google Play at 100% since
-2026-10-02 (`docs/RELEASE-v1.0.3.md`). That fix is emulator-verified only: **no physical
-Android phone has taken an OTA update yet**, so the first production publish is also the
-first real-device test of the Android path (a failure leaves the phone on its embedded
-bundle). Android installs still on 1.0.2 cannot update. The code-changing production
-bundle `202610031506` is published from `main` at `467c3552` and the host serves its
-signed manifest to both plain and Android-style GET requests (see "Production release
-202610031506 published"). At this point no device has been observed applying it, so the
-production swap remains unconfirmed on both store-signed platforms. The earlier
-no-change canary `202610011706` remains documented in its historical section.
+2026-10-02 (`docs/RELEASE-v1.0.3.md`). Android installs still on 1.0.2 cannot update.
+
+**Production bundle `202610031506` is live (published 2026-10-03 15:32 UTC, built from
+`main` at `467c3552`) and has been seen applied on store-signed binaries on both
+platforms.** The owner reported the Settings "Web bundle" row on their App Store iPhone
+moving from a version ending `322` to `202610031506`, and on a physical Android 1.0.3
+phone from a version ending `536` to `202610031506`, each after full restarts, the same
+afternoon. This is the first physical Android phone to take an OTA update, and the first
+observed swap on a store-signed iPhone. The evidence is the owner's reading of that row,
+not a log or a host-side trace; the Android model and OS version were not recorded, and
+the `322`/`536` starting versions are assumed to be the embedded 1.0.3 store bundles.
+Release record: "Production release 202610031506 published". The earlier no-change
+canary `202610011706` remains documented in its historical section.
 
 **Signing keys are provisioned (2026-09-18).** Two YubiKey 5C NFC tokens, each
 holding a non-extractable P-256 key generated on-token in PIV slot 9c, with
@@ -324,10 +328,12 @@ backup sheet and win modal (#2812). #2812 is a paywall copy change, which sits o
 the "bug and security fixes" line this runbook draws for Apple 2.5.2; it shipped on the
 owner's decision.
 
-**Not verified:** this bundle was not booted on a device or simulator before it went
-live, no device has been seen applying it, and it is the first real-device test of the
-Android 1.0.3 OTA path. `curl -I` (HEAD) on `latest.json` returns 403 from the host; GET
-is what devices send and returns 200.
+**At publish time** this bundle had not been booted on a device or simulator, and it was
+the first real-device test of the Android 1.0.3 OTA path. **Later the same afternoon** the
+owner saw it applied on an App Store iPhone and on a physical Android 1.0.3 phone (see
+the status at the top of this file; owner-reported from the Settings row). `curl -I`
+(HEAD) on `latest.json` returns 403 from the host; GET is what devices send and returns
+200.
 
 ## Staging: physical iPhone result (2026-10-02)
 
