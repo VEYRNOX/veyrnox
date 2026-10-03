@@ -8,11 +8,12 @@ asset bug"); the fix (#2816) shipped in 1.0.3, live on Google Play at 100% since
 2026-10-02 (`docs/RELEASE-v1.0.3.md`). That fix is emulator-verified only: **no physical
 Android phone has taken an OTA update yet**, so the first production publish is also the
 first real-device test of the Android path (a failure leaves the phone on its embedded
-bundle). Android installs still on 1.0.2 cannot update. A
-**no-change canary is live on the production channel** (bundle `202610011706`, see
-"Production canary published"). Not verified end to end with a store-signed binary:
-an App Store iPhone was seen fetching the production manifest and signature, but the
-swap itself was not observed on it.
+bundle). Android installs still on 1.0.2 cannot update. The code-changing production
+bundle `202610031506` is published from `main` at `467c3552` and the host serves its
+signed manifest to both plain and Android-style GET requests (see "Production release
+202610031506 published"). At this point no device has been observed applying it, so the
+production swap remains unconfirmed on both store-signed platforms. The earlier
+no-change canary `202610011706` remains documented in its historical section.
 
 **Signing keys are provisioned (2026-09-18).** Two YubiKey 5C NFC tokens, each
 holding a non-extractable P-256 key generated on-token in PIV slot 9c, with
