@@ -64,7 +64,7 @@
 // Comparison is on JSON.stringify, not toEqual: field ORDER matters as much as
 // field values, because a raw dump inspects bytes, not deep-equality.
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   ensureStealthPool,
   createHiddenWallet,
@@ -235,6 +235,13 @@ const CURRENT_KDF_FINGERPRINT = JSON.stringify({ name: 'argon2id', ...KDF_PARAMS
 
 const V1_KDF_FINGERPRINT = JSON.stringify({ ...V1_KDF });
 
+afterEach(async () => {
+  // A reveal (including createHiddenWallet's self-check) queues a repair.
+  // Settle it before the next test clears and replaces the shared footprint.
+  await awaitStealthRekey();
+  await awaitDuressRekey();
+});
+
 describe('H-2 — writers stamp THIS DEVICE\'S era, so the footprint stays uniform', () => {
   beforeEach(async () => {
     await clearStore();
@@ -368,8 +375,6 @@ describe('H-2 — reveal-time REPAIR toward the footprint era', () => {
     // Note the direction. Under #2103 this test asserted the opposite: that a
     // v1 slot is rekeyed UP to the current profile, which is what created the
     // tell in the first place. Do not "restore" it.
-    await createHiddenWallet('placeholder-secret-12345', 128); // provisions the slot salt
-    await clearStore();
     await seedV1ChaffOnly();
 
     const { slotForSecret } = await import('../stealth.js');
@@ -403,8 +408,8 @@ describe('H-2 — reveal-time REPAIR toward the footprint era', () => {
     // On a device that never ran #2103 the predicate is false and nothing fires.
     // Worth pinning: a rewrite-on-every-reveal would be a write-time observable
     // (see the module header's WRITE-TIME OBSERVATION limitation) for no gain.
-    await createHiddenWallet('placeholder-secret-12345', 128);
-    await clearStore();
+    // slotForSecret provisions the salt itself. A throwaway wallet would queue
+    // a repair that can race this fixture and rewrite a colliding slot.
     await seedV1ChaffOnly();
 
     const { slotForSecret } = await import('../stealth.js');
@@ -415,7 +420,7 @@ describe('H-2 — reveal-time REPAIR toward the footprint era', () => {
     await put(slot, v1Blob);
 
     const before = JSON.stringify(await get(slot));
-    expect(await tryRevealHidden(secret)).not.toBeNull();
+    expect(await tryRevealHidden(secret)).toBe(serializeContainer(container));
     await awaitStealthRekey();
 
     // Byte-identical, not merely same-profile: no re-encrypt happened at all.
@@ -449,8 +454,6 @@ describe('H-2 — reveal-time REPAIR toward the footprint era', () => {
     });
     try {
       const stealth = await import('../stealth.js');
-      await stealth.createHiddenWallet('placeholder-secret-12345', 128);
-      await clearStore();
       await seedV1ChaffOnly();
 
       const secret = 'unreadable-pool-secret-abcd';
@@ -484,9 +487,6 @@ describe('H-2 — reveal-time REPAIR toward the footprint era', () => {
     // guard resolves explicitly before returning; stealth.js's did not. Nothing
     // in production awaits the hook, so the blast radius was tests — but a test
     // that hangs to timeout instead of failing is the worst shape to leave.
-    await createHiddenWallet('placeholder-secret-12345', 128);
-    await clearStore();
-
     const { slotForSecret } = await import('../stealth.js');
     const secret = 'wipe-race-secret-abcd';
     const slot = await slotForSecret(secret);
@@ -569,9 +569,6 @@ describe('H-2 — reveal-time REPAIR toward the footprint era', () => {
   }, 300_000);
 
   it('a WRONG secret does not touch the slot (rekey is gated on successful decrypt)', async () => {
-    await createHiddenWallet('placeholder-secret-12345', 128);
-    await clearStore();
-
     const { slotForSecret } = await import('../stealth.js');
     const secret = 'right-secret-abcd-9876';
     const slot = await slotForSecret(secret);

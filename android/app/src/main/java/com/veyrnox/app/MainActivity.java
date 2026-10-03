@@ -20,11 +20,10 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         // Android 15 (SDK 35+) draws every activity edge-to-edge by default.
-        // targetSdk=36 is subject to that; call EdgeToEdge.enable() so the
-        // WebView renders under the status/nav bars instead of the deprecated
-        // Window.setStatusBarColor / setNavigationBarColor path Play's console
-        // still flags on our pre-1.0.1 releases. Applies to both the normal
-        // path and the RASP-block AlertDialog below — safe on both.
+        // targetSdk=36 is subject to that; enable the compatible window setup.
+        // This does not prove correct WebView insets or remove deprecated calls
+        // inside dependencies. Play still reports those on versionCode 56 (#2749).
+        // Check both the wallet and the RASP-block dialog on a physical device.
         EdgeToEdge.enable(this);
 
         // Pre-WebView RASP gate — must run before plugin registration and
