@@ -41,6 +41,14 @@ architecture or security-critical code (wallet-core, signing, KEK, RASP).
     is the paywall working, not an outage (#2659, #2662).
   - Edge Function `tip-screen`: `/api/v1/screen` only; the `action:'chat'` branch stays
     removed.
+  - Edge Function `tip-manifest` (2026-10-03, #2837): signs `GET /api/v1/manifest`
+    server-side for the wallet's local IOC cache; `verify_jwt: false`. It depends on the
+    `tip_manifest_cache` table and the `tip_manifest_cache_take`/`_put` RPCs
+    (`service_role` only) on both wallet projects. The Worker allows 5 manifest
+    requests/hour for the whole wallet tenant, so the cache TTL (30 min) and refresh
+    lease (15 min) in `sql/tip-manifest-cache.sql` are load-bearing: shortening either
+    gets every wallet a 429. Staging cannot return a real manifest (its TIP upstream is
+    behind Cloudflare Access).
   - Supabase secrets on both projects (`TIP_*`, `SUPABASE_SERVICE_ROLE_KEY`,
     `REVENUECAT_*`). Rotate only when asked. A rotation without the matching Worker D1
     update kills prod chat. `REVENUECAT_V1_SECRET_KEY` is a v2-generation key: it gets
