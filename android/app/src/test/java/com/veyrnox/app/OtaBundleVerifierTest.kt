@@ -174,4 +174,55 @@ class OtaBundleVerifierTest {
         assertEquals(s, OtaBundleVerifier.promote(s, running = 5))
         assertEquals(s, OtaBundleVerifier.promote(s, running = 0))
     }
+
+    // ── prefill: files the APK did not package must be downloaded, not abort prepare ──
+
+    private fun tmp(): File = Files.createTempDirectory("ota-prefill").toFile()
+
+    @Test fun `prefill reports an unreadable embedded file as missing instead of throwing`() {
+        // Android drops dot-files from assets, so the embedded manifest names
+        // .well-known/* that the APK does not hold. That used to throw OTA_IO and
+        // silently stop every Android update.
+        val dir = tmp()
+        val files = mapOf(".well-known/assetlinks.json" to "h1", "index.html" to "h2")
+        val missing = OtaBundleVerifier.prefill(
+            files, dir,
+            fromActive = { null },
+            openEmbedded = { hash -> if (hash == "h2") "<html>".byteInputStream() else null },
+        )
+        assertEquals(listOf(".well-known/assetlinks.json"), missing)
+        assertEquals("<html>", File(dir, "index.html").readText())
+    }
+
+    @Test fun `prefill leaves the parent directory for a missing file`() {
+        // Capacitor Filesystem on Android ignores recursive:true, so the download
+        // only works if the directory already exists.
+        val dir = tmp()
+        OtaBundleVerifier.prefill(mapOf(".well-known/a.json" to "h1"), dir, { null }, { null })
+        assertTrue(File(dir, ".well-known").isDirectory)
+        assertFalse(File(dir, ".well-known/a.json").exists())
+    }
+
+    @Test fun `prefill prefers the active bundle over the embedded one`() {
+        val dir = tmp()
+        val active = File(dir, "active.txt").apply { writeText("from-active") }
+        val missing = OtaBundleVerifier.prefill(
+            mapOf("a.txt" to "h1"), File(dir, "out"),
+            fromActive = { active },
+            openEmbedded = { "from-embedded".byteInputStream() },
+        )
+        assertTrue(missing.isEmpty())
+        assertEquals("from-active", File(dir, "out/a.txt").readText())
+    }
+
+    @Test fun `prefill still throws when copying a file it did open fails`() {
+        // Only an unopenable source means "download it". A broken copy is a real I/O error.
+        val boom = object : java.io.InputStream() { override fun read(): Int = throw java.io.IOException("disk") }
+        try {
+            OtaBundleVerifier.prefill(mapOf("a.txt" to "h1"), tmp(), { null }, { boom })
+            org.junit.Assert.fail("expected IOException")
+        } catch (e: java.io.IOException) {
+            assertEquals("disk", e.message)
+        }
+    }
 }

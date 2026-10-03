@@ -1,6 +1,10 @@
 # Mobile Release Log
 
-Last updated: 2026-09-26
+Last updated: 2026-10-02
+
+**Next: 1.0.3 (59) on both stores — in preparation, not submitted.** Version bump #2821;
+record in `docs/RELEASE-v1.0.3.md`. Add the rows below only when each store has an
+outcome.
 
 **Scope note.** Everything below the 2026-08-19 entries was staging / internal
 testing. This log stopped there and missed both public launches entirely — it

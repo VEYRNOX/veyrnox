@@ -19,6 +19,7 @@ package com.veyrnox.app
 // STATUS: BUILT, INTERNAL — not device-verified, no key provisioned.
 
 import java.io.File
+import java.io.InputStream
 import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.Signature
@@ -159,6 +160,46 @@ object OtaBundleVerifier {
             }
         }
         return md.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    // ── Staging pre-fill ────────────────────────────────────────────────────
+
+    /**
+     * Pre-fill [dir] with every manifest file we already hold (same sha256) and
+     * return the paths that still have to be downloaded. Each path's parent
+     * directory is created either way: the JS downloader (Capacitor Filesystem on
+     * Android ignores `recursive`) only works into a directory that exists.
+     *
+     * A held file whose source cannot be opened is MISSING, not an error. Android
+     * drops dot-files (the `.well-known` directory) from APK assets while the embedded manifest
+     * still lists them, so treating that as fatal made every Android update fail
+     * silently. A missing file is downloaded and sha256-checked by `stage` like any
+     * other, so this widens nothing: a file is only ever trusted by its hash.
+     * A failure while copying a source that DID open still throws.
+     */
+    fun prefill(
+        files: Map<String, String>,
+        dir: File,
+        fromActive: (hash: String) -> File?,
+        openEmbedded: (hash: String) -> InputStream?,
+    ): List<String> {
+        val missing = ArrayList<String>()
+        for ((path, hash) in files) {
+            val dest = File(dir, path)
+            dest.parentFile?.mkdirs()
+            val active = fromActive(hash)
+            if (active != null) {
+                active.copyTo(dest, overwrite = true)
+                continue
+            }
+            val input = openEmbedded(hash)
+            if (input == null) {
+                missing.add(path)
+                continue
+            }
+            input.use { src -> dest.outputStream().use { src.copyTo(it) } }
+        }
+        return missing
     }
 
     // ── Launch state machine ────────────────────────────────────────────────

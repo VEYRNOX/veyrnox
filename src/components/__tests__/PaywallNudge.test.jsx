@@ -12,9 +12,15 @@ vi.mock('@/api/trackEvent', () => ({
 vi.mock('@/lib/TierProvider', () => ({
   useTier: vi.fn(() => ({ currentTier: 'free' })),
 }));
+// The store lookup behind the "free trial" copy. Defaults to "no confirmed
+// trial" so every pre-existing case keeps today's copy.
+vi.mock('@/lib/safetyPlusTrial', () => ({
+  loadSafetyPlusTrial: vi.fn(() => Promise.resolve(null)),
+}));
 
 import PaywallNudge, { shouldShowPaywallNudge, DAY_THRESHOLD, NUDGE_BODY } from '@/components/PaywallNudge';
 import { useTier } from '@/lib/TierProvider';
+import { loadSafetyPlusTrial } from '@/lib/safetyPlusTrial';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 const SESSION_COUNT_KEY = 'veyrnox-session-day-count';
@@ -133,6 +139,33 @@ describe('PaywallNudge render', () => {
   it('free still sees the Safety Plus offer', async () => {
     await show('free');
     expect(screen.getByRole('heading', { name: 'Upgrade to Safety Plus' })).toBeTruthy();
+  });
+
+  it('free + a store-confirmed trial: the nudge says 14 days free, with the price after it', async () => {
+    vi.mocked(loadSafetyPlusTrial).mockResolvedValueOnce({ days: 14, priceString: '$49.99' });
+    await show('free');
+    expect(screen.getByRole('heading', { name: 'Try Safety Plus — 14 days free' })).toBeTruthy();
+    expect(screen.getByText(/14 days free, then \$49\.99\/year/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'See free trial' })).toBeTruthy();
+    expect(screen.queryByText('See plans')).toBeNull();
+  });
+
+  it('a lookup that never answers falls back to today\'s copy within the budget', async () => {
+    vi.mocked(loadSafetyPlusTrial).mockReturnValueOnce(new Promise(() => {}));
+    vi.mocked(useTier).mockReturnValue({ currentTier: 'free' });
+    localStorage.setItem(SESSION_COUNT_KEY, '5');
+    render(<MemoryRouter initialEntries={['/']}><PaywallNudge /></MemoryRouter>);
+    await act(async () => { vi.advanceTimersByTime(2500); });
+    expect(screen.queryByRole('dialog')).toBeNull(); // still waiting on the store
+    await act(async () => { vi.advanceTimersByTime(1300); });
+    expect(screen.getByRole('heading', { name: 'Upgrade to Safety Plus' })).toBeTruthy();
+    expect(screen.queryByText(/free/i)).toBeNull();
+  });
+
+  it('the AI offer for Safety Plus never asks about a trial', async () => {
+    vi.mocked(loadSafetyPlusTrial).mockClear();
+    await show('safety_plus');
+    expect(loadSafetyPlusTrial).not.toHaveBeenCalled();
   });
 });
 

@@ -41,16 +41,18 @@ describe('staging mobile release contract', () => {
     expect(walletEntry).toContain('navigate("/onboarding/restore-shares")');
   });
 
-  it('pins the store numbers of the live 1.0.2 release', () => {
-    // Both numbers are CONSUMED, not "next unused": Play versionCode 57 went live
-    // 2026-09-23 and Apple build 8 was approved 2026-09-24 (READY_FOR_SALE, read
-    // 2026-09-26). Bump both, and this pin, before the next upload — Apple also
-    // needs a new version record, since 1.0.2 is Ready for Distribution.
-    // Matched with the trailing newline so a later bump to 570+ cannot satisfy
-    // this pin by prefix — 'versionCode 57' is a substring of 'versionCode 570'.
-    expect(androidBuild).toContain('versionCode 57\n');
-    expect(androidBuild).toContain('versionName "1.0.2"');
-    expect(iosProject.match(/CURRENT_PROJECT_VERSION = 8;/g)).toHaveLength(2);
-    expect(iosProject.match(/MARKETING_VERSION = 1\.0\.2;/g)).toHaveLength(2);
+  it('pins the store numbers of the 1.0.3 release', () => {
+    // 1.0.2 CONSUMED Play versionCode 57 (live 2026-09-23) and Apple build 8 (approved
+    // 2026-09-24). 1.0.3 started at 58 on both (owner's choice: one number names the
+    // release on both stores). Apple 1.0.3 (58) was CONSUMED by its upload on
+    // 2026-10-02, then the owner held 1.0.3 for the AI Security trial fix (#2823), so
+    // 1.0.3 ships as build 59 / versionCode 59. A number is consumed by its first
+    // successful upload; never reuse one, bump again.
+    // Matched with the trailing newline so a later bump to 590+ cannot satisfy
+    // this pin by prefix — 'versionCode 59' is a substring of 'versionCode 590'.
+    expect(androidBuild).toContain('versionCode 59\n');
+    expect(androidBuild).toContain('versionName "1.0.3"');
+    expect(iosProject.match(/CURRENT_PROJECT_VERSION = 59;/g)).toHaveLength(2);
+    expect(iosProject.match(/MARKETING_VERSION = 1\.0\.3;/g)).toHaveLength(2);
   });
 });

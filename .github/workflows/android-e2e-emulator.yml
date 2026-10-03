@@ -84,6 +84,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check installed Appium dependencies and driver startup
+        run: |
+          node --test scripts/check-appium-dependencies.test.mjs
+          node scripts/check-appium-dependencies.mjs --smoke
+
       # Build the APK before booting the emulator so emulator uptime is spent
       # only on tests.
       - name: Build debug APK
@@ -92,17 +97,6 @@ jobs:
           chmod +x android/gradlew
           cd android
           ./gradlew assembleGoogleDebug --build-cache
-
-      - name: Install Appium + UiAutomator2 driver
-        run: |
-          npm install -g appium
-          # appium@3 postinstall auto-installs uiautomator2 on some runner
-          # images; make this idempotent so the second install doesn't hard-fail.
-          if appium driver list --installed 2>&1 | grep -q uiautomator2; then
-            echo "uiautomator2 already installed; skipping"
-          else
-            appium driver install uiautomator2
-          fi
 
       - name: Run E2E suites on emulator
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
