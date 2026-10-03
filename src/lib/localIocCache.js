@@ -29,6 +29,7 @@
 //   next non-deniability unlock.
 
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
+import { bech32, bech32m } from '@scure/base';
 
 const DB_NAME = 'veyrnox-ioc-cache';
 const DB_VERSION = 1;
@@ -177,21 +178,104 @@ function canonicalStringify(v) {
   return '{' + inner + '}';
 }
 
-// ─── In-memory index ───────────────────────────────────────────────────────
-// After a manifest loads (from network or IDB), we keep a Map<addr, entry>
-// in memory so lookups are O(1) rather than O(n). The map is re-hydrated
-// on demand — first lookup after startup will hit IDB, subsequent are
-// in-memory only.
+// ─── Canonical address form ────────────────────────────────────────────────
+// Base58 addresses (legacy Bitcoin, Solana, Tron) are case-sensitive: two that
+// differ only by letter case are two addresses. EVM addresses are not (EIP-55
+// checksum case is display-only), and neither are bech32 ones (BIP-173).
+//
+// MUST stay identical to TIP's normalizeAddressByShape (veyrnox-tip
+// src/lib/ioc-normalize.ts), which decides the `addr` the manifest publishes.
+// If the two rules drift, an exact comparison silently misses.
 
-let _memoryIndex = null;      // Map<lowercased addr, ManifestEntry>
+const EVM_ADDRESS = /^0x[0-9a-f]{40}$/i;
+function isBitcoinBech32Address(address) {
+  if (!/^(bc1|tb1)/i.test(address)) return false;
+
+  // A prefix and alphabet check is ambiguous with Base58 (including valid
+  // Solana addresses). Requiring a valid bech32/bech32m checksum prevents a
+  // case-sensitive address from being folded into the Bitcoin index.
+  for (const codec of [bech32, bech32m]) {
+    try {
+      const decoded = codec.decode(address, 90);
+      if (decoded.prefix === 'bc' || decoded.prefix === 'tb') return true;
+    } catch {
+      // Try the other Bitcoin checksum variant.
+    }
+  }
+  return false;
+}
+
+const isLowercase = (s) => s === s.toLowerCase();
+
+/**
+ * @param {string} address
+ * @returns {string} EVM and bech32 (bc1/tb1) addresses lowercased; anything
+ *   else exactly as written. Surrounding whitespace is dropped.
+ */
+export function canonicalAddress(address) {
+  const trimmed = address.trim();
+  if (EVM_ADDRESS.test(trimmed) || isBitcoinBech32Address(trimmed)) {
+    return trimmed.toLowerCase();
+  }
+  return trimmed;
+}
+
+// ─── In-memory index ───────────────────────────────────────────────────────
+// After a manifest loads (from network or IDB), we keep it in memory so
+// lookups are O(1) rather than O(n). The index is re-hydrated on demand —
+// first lookup after startup will hit IDB, subsequent are in-memory only.
+//
+// Two maps, because a manifest can carry two kinds of entry:
+//
+//   _memoryIndex      every entry, keyed by its canonical address. An address
+//                     is found here when its own canonical form is that key,
+//                     so a base58 address only in its exact case.
+//
+//   _lowercasedIndex  the entries whose address is entirely lowercase and not
+//                     EVM-shaped, looked up by the LOWERCASED address, i.e.
+//                     case-insensitively. It exists so a sanctioned address is
+//                     never missed: TIP used to publish every address
+//                     lowercased, base58 included, so such an entry may be a
+//                     sanctioned base58 address whose real case we were never
+//                     given — and the address a user screens is the real one.
+//
+// A lowercased entry therefore still matches case-variants of itself, as it
+// always did; that is the price of not missing it. An entry published in its
+// own case (it has an uppercase letter) is in the first map only and is
+// matched exactly.
+//
+// When both maps hit with different entries, a sanctions entry wins: the same
+// address can be listed lowercased by one feed and in its own case by another,
+// and the sanctions listing must not be hidden by the lesser one.
+//
+// Do NOT remove the second map on a date. TIP's own transition ends when its
+// lowercased keys expire, but a manifest cached here before then stays in
+// IndexedDB for as long as this wallet cannot refresh. That is why the choice
+// is made per entry, from the data.
+
+let _memoryIndex = null;      // Map<canonical addr, ManifestEntry>
+let _lowercasedIndex = null;  // Map<lowercase addr, ManifestEntry> — see above
 let _memoryMeta = null;       // { generated_at, ttl_seconds, counts }
 
+// Of two entries for one address, the sanctions one; otherwise the later one.
+function preferSanctions(earlier, later) {
+  if (!later) return earlier;
+  if (earlier?.cat === 'sanctions' && later.cat !== 'sanctions') return earlier;
+  return later;
+}
+
 function buildIndex(payload) {
-  const m = new Map();
+  const exact = new Map();
+  const lowercased = new Map();
   for (const entry of payload.entries) {
-    m.set(entry.addr.toLowerCase(), entry);
+    // The entry itself is left untouched: the payload is stored and re-verified
+    // as received, and the signature is over those bytes.
+    const addr = canonicalAddress(entry.addr);
+    exact.set(addr, preferSanctions(exact.get(addr), entry));
+    if (!EVM_ADDRESS.test(addr) && isLowercase(addr)) lowercased.set(addr, exact.get(addr));
   }
-  _memoryIndex = m;
+  _memoryIndex = exact;
+  _lowercasedIndex = lowercased;
   _memoryMeta = {
     generated_at: payload.generated_at,
     ttl_seconds: payload.ttl_seconds,
@@ -358,7 +442,9 @@ export async function refreshManifestIfDue() {
  * `hydrateFromCache()` or `refreshManifestIfDue()` first to populate the
  * in-memory index.
  *
- * @param {string} address - Case-insensitive; lowercased internally.
+ * @param {string} address - Compared in canonical form (canonicalAddress):
+ *   EVM and bech32 in any letter case, base58 in its exact case. An entry the
+ *   manifest carries lowercased matches in any case (see the index note).
  * @returns {{addr: string, cat: string, src: string, reason?: string} | null}
  */
 export function lookupLocal(address) {
@@ -367,7 +453,11 @@ export function lookupLocal(address) {
   // try (which wraps only hydrateFromCache) and out of screenTransaction.
   // A screening helper must never be the thing that breaks the send flow.
   if (typeof address !== 'string' || !address) return null;
-  return _memoryIndex.get(address.toLowerCase()) ?? null;
+  const canonical = canonicalAddress(address);
+  return preferSanctions(
+    _lowercasedIndex.get(canonical.toLowerCase()),
+    _memoryIndex.get(canonical),
+  ) ?? null;
 }
 
 /**
@@ -383,6 +473,7 @@ export function getCacheMeta() {
  */
 export async function clearLocalIocCache() {
   _memoryIndex = null;
+  _lowercasedIndex = null;
   _memoryMeta = null;
   let db;
   try {
