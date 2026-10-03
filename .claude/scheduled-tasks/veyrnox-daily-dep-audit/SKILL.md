@@ -285,170 +285,55 @@ Two consequences worth carrying:
   is a major *downgrade* and still declares `@ethersproject/*` v5, so it never cleared
   this advisory. Evaluated and rejected 2026-07-19.
 
-### `stream-json` — max severity: moderate — accepted 2026-09-03
+### `braces` — max severity: high — accepted 2026-10-03
 
-- **Candidate remediation, 2026-09-30; not a retirement or merge claim.**
-  Published `jayson@5.0.0` removes `stream-json` entirely. The scoped
-  `@solana/web3.js` override in this candidate selects that exact release and removes
-  the obsolete Jayson UUID override. Solana `1.99.0` still declares `jayson ^4.3.0`,
-  so ordinary resolution cannot select it. Jayson 5 requires Node >=20 and changes
-  server stream framing; Solana uses its browser client, whose request IDs now use
-  Web Crypto (`randomUUID`, falling back to `getRandomValues`). Regression coverage
-  in `src/wallet-core/__tests__/sol-rpc-dependency.test.js` exercises real Connection
-  HTTP single/batch/error paths and WebSocket subscriptions on loopback, plus the
-  browser client's HTTP notifications (Connection has no HTTP notification API).
-  Local candidate evidence: `npm ci` passed; Solana resolves installed Jayson 5.0.0
-  and a recursive installed-manifest scan found no `stream-json`. All nine new
-  compatibility tests passed, including browser-entry `getRandomValues` fallback
-  and missing-crypto failure before transport. The existing Solana suite, core
-  typecheck, targeted lint and `npm run build:release` passed. Only four lockfile
-  package entries change (Jayson, plus removed eyes/stream-chain/stream-json);
-  all bundled entries remain byte-for-byte equivalent as parsed JSON.
-  Keep this residual accepted on main until the change lands and its installed
-  dependency tree is checked. No on-chain transaction, real-device verification,
-  independent audit, or feature-status promotion is claimed. The historical
-  no-fix rationale below describes the Jayson 4 chain; it does not rule out this
-  newly available owner migration. The bundled Appium residuals are unaffected.
-
-- **Advisory:** GHSA-528h-pc64-c93x — `pick`/`ignore`/`filter`/`replace` filters are
-  O(depth²) on nested input, so small crafted JSON blocks the event loop for seconds to
-  minutes (DoS). Vulnerable `<= 3.4.0`; the tree carries `1.9.1`.
-- **Chain:** `@solana/web3.js@1.99.0` → `jayson@4.3.0` → `stream-json@1.9.1`. A production
-  dependency, not dev. The head of the chain read `1.98.4` from acceptance until
-  2026-09-19; `jayson` and `stream-json` have not moved.
-- **`jayson` is not separately vulnerable.** It has no advisory of its own and appears in
-  `npm audit` only as `stream-json`'s `effects` entry. Fixing `stream-json` clears both;
-  there is nothing to do to `jayson` itself.
-- **Why accepted — no reachable fix, and the obvious one is actively harmful.**
-  1. **No backport.** `1.9.1` is the last release on the 1.x line and the fix landed only
-     in `3.5.0`. `jayson` declares `stream-json: ^1.9.1`, so no range resolution reaches a
-     patched version. This is NOT the `brace-expansion` shape, where the fix was
-     backported into the old lines and ordinary resolution picked it up.
-  2. **An `overrides` entry to `^3.6.0` BREAKS `jayson`. Measured 2026-09-03, do not
-     re-derive.** `stream-json` 3.x removed the `streamers/` tree entirely — there is no
-     `StreamValues` file at any path in `3.6.0` — while
-     `jayson/lib/utils.js:3` still does `require('stream-json/streamers/StreamValues')`.
-     Under the override, `require('jayson')` throws
-     `Cannot find module .../stream-json/src/streamers/StreamValues`.
-     **`npm run build` still exits 0 and `npm audit` gets CLEANER (4 moderate → 2), so a
-     green build and a quiet audit are NOT evidence this override is safe.** Same trap as
-     the retired `brace-expansion` entry, which is worth re-reading before touching this.
-  3. **The vulnerable code is not reachable in any build of this app.** Every
-     `@solana/web3.js` entry point — `index.browser.cjs.js`, `index.browser.esm.js`,
-     `index.cjs.js`, `index.esm.js`, `index.native.js` — imports
-     `jayson/lib/client/browser`. That module's complete require closure is two files
-     (`client/browser/index.js`, `generateRequest.js`) plus `uuid`; it never reaches
-     `lib/utils.js`, the only file in `jayson` that touches `stream-json`. Verified
-     empirically as well as by reading: a production build was grepped across all 544
-     `dist/assets/*.js` chunks for `stream-json`, `streamValues`, `makeFilter` and
-     `jsonFilter` — **zero matches for all four**.
-     **Re-verified against `1.99.0` on 2026-09-19, because this whole acceptance rests on
-     it and the chain head moved a minor.** The published `1.99.0` tarball was unpacked and
-     all five entry points still import `jayson/lib/client/browser` and nothing else;
-     `lib/*.js` carries no `require('jayson')` or `from 'jayson'` at any path, so the main
-     entry — the only route to `lib/utils.js` and thus to `stream-json` — is still never
-     loaded. The bundle grep above was NOT re-run; the import-graph check is what was
-     redone. A future minor bump earns the same check rather than inheriting this one.
-- **Accounts for** 3 moderate findings as of 2026-09-19 at `origin/main` `62b46df2`
-  (`stream-json` as the advisory root, plus `jayson` and `@solana/web3.js` as dependents).
-  **It was 2 on 2026-09-03, and the reason the count moved is the only interesting part.**
-  No new advisory and no severity change: `@solana/web3.js` resolved up from `1.98.4` to
-  `1.99.0`, which lands inside npm's flagged-dependent range
-  (`1.99.0-beta.0 - 1.99.0`), so the chain head is now reported as a finding in its own
-  right rather than only as an `effects` entry. Per the `elliptic` entry's rule, a count
-  that moves for an unexplained reason is a revisit trigger — this one is explained, and
-  re-derived from `npm audit --json` rather than assumed.
-- **Revisit trigger:** `jayson` removes `stream-json` (FIRED by 5.0.0; evaluate the
-  major-version compatibility and Solana range before adoption); OR `jayson` widens
-  its `stream-json` range to admit `>= 3.5.0` (then
-  the fix is a plain lockfile update, no override); OR `stream-json` backports the fix to
-  a 1.x release; OR `@solana/web3.js` drops `jayson`; OR any code in `src/` or any new
-  dependency imports `jayson`'s main entry rather than `jayson/lib/client/browser`, which
-  would both make the advisory reachable AND be broken by the override — check the bundle
-  grep above before assuming either still holds.
-- **Tracked:** `veyrnox-stream-json-upstream-watch`, weekly. Added 2026-09-10; this entry
-  said **Not tracked — no watcher** from acceptance until then. Its runbook lands in the
-  same PR as this line; the scheduler registration is separate, because the task resolves
-  its runbook from `origin/main` and registering it first would give it nothing to resolve.
-  **The scheduler registry is not in git, so this line is exactly the kind of claim this
-  file keeps recording as decaying silently** — confirm with `list_scheduled_tasks` (check
-  `enabled`, and check `lastRunAt` against the merge time of any runbook change) rather
-  than trusting it. See the `brace-expansion` entry for a watcher whose "Tracked" claim was
-  false for four weeks because it was registered DISABLED and never ran once, and the
-  `elliptic` entry for one whose `lastRunAt` predated its own re-pointed brief by 34
-  minutes.
-
-### `brace-expansion` (nested, `appium-uiautomator2-driver`) — max severity: high — accepted 2026-09-30
-
-- **Advisory — three GHSAs stacked on the same version:** `GHSA-q2hr-2g5m-vwhr` (moderate,
-  quadratic-time `{a},b}` expansion, patched `>=5.0.12` on this line), `GHSA-qhr7-859c-m2p7`
-  (high, DoS via unbounded recursion on nested brace groups, patched `>=5.0.11`), and
-  `GHSA-6j4f-fj2g-mc7p` (high, DoS via unbounded recursion in `parseCommaParts`, patched
-  `>=5.0.10`). The resolved copy is `5.0.9`, below all three floors, so it carries the
-  worst of the three: high.
-- **Chain — verified 2026-09-30 with `npm ls brace-expansion --all`, entirely inside a
-  bundled devDependency:** `appium-uiautomator2-driver@8.7.0` (bundled) →
-  `appium-adb@16.0.5` (bundled) → `@appium/support@7.2.7` → `glob@13.0.6` →
-  `minimatch@10.2.6` → `brace-expansion@5.0.9`. This is deeper than earlier notes on this
-  same path assumed (they didn't need the full chain because the remediation — a driver
-  bump — doesn't depend on it); recorded here so a future run doesn't have to re-derive it
-  from scratch.
-- **Why accepted — the immobilising mechanism changed, and the practical answer didn't.**
-  Through driver `8.6.1`, this nested subtree was governed by a published
-  `npm-shrinkwrap.json` (see the `appium-uiautomator2-driver` mechanism note under
-  `## Retired residuals` → `shell-quote`, and `package.json`'s
-  `//overrides-audit-notes`). **At `8.7.0` that shrinkwrap is gone — verified 2026-09-30:
-  no `npm-shrinkwrap.json` in the installed tarball, and `hasShrinkwrap` is absent from
-  this lockfile entry.** The driver now ships the same subtree via `bundleDependencies`
-  instead (`@appium/css-locator-to-native`, `appium-adb`, `appium-android-driver`,
-  `appium-uiautomator2-server`, `asyncbox`, `axios`, `io.appium.settings`, `portscanner`,
-  `teen_process`), which is equally immutable from this repo: neither `overrides` nor a
-  `package-lock.json` edit can reach inside a bundled dependency's own `node_modules`.
-  **Tested directly, not assumed:** an `overrides["brace-expansion"] = "^1.1.21"` entry
-  was added and regenerated with `npm install --package-lock-only` — every OTHER copy in
-  the tree moved to `1.1.21`, and this one nested copy stayed at `5.0.9`. The entry was
-  reverted (never committed) once that confirmed it. The remediation is therefore
-  unchanged in shape from the shrinkwrap era — bump the driver — and `8.7.0` is already
-  `latest`, checked 2026-09-30 (`8.6.1` → `8.6.2` → `8.6.3` → `8.6.4` → `8.7.0`, nothing
-  newer published).
-- **Reachability:** dev-only. `appium-uiautomator2-driver` is a devDependency used only by
-  the Android E2E harness (`android:test*` scripts). The whole chain lives inside
-  `node_modules/appium-uiautomator2-driver`'s own bundle and is never imported by `src/`
-  or reached by the production `vite build` — confirmed by the same build that shipped
-  PR #2783 (`npm run build` succeeded with this copy still at `5.0.9`, because it was
-  never in the bundle graph to begin with).
-- **Accounts for** 1 high finding as of 2026-09-30 (single node:
-  `node_modules/appium-uiautomator2-driver/node_modules/brace-expansion`) — the only
-  survivor after PR #2783 cleared the other 10 nested/root `brace-expansion` copies (root,
-  `@eslint/config-array`, `@wdio/config`, `archiver-utils`, `eslint`, `filelist`, `glob`,
-  `mocha`, `readdir-glob`, `webdriverio`) with a plain `npm install --package-lock-only` —
-  every one of those resolved to a patched version already inside its consumer's existing
-  declared range, so none of them needed an override either. Those 10 were a **regression**
-  of the `brace-expansion` entry retired 2026-08-22 under `## Retired residuals`: the
-  lockfile had drifted back to unpatched floors (`1.1.18`, `2.1.4`, `5.0.9`) even though
-  every declared range already permitted the patched version. Per that entry's own "if it
-  comes back" clause, the regression surfaced as a normal unsuppressed finding rather than
-  a silent reinstatement — this entry covers only what's left after fixing it.
-- **Revisit trigger:** a newer `appium-uiautomator2-driver` release ships whose bundle
-  carries `brace-expansion >= 5.0.12`; OR the driver stops bundling this subtree and goes
-  back to a resolvable dependency (shrinkwrapped or plain); OR any of the three advisories
-  is re-rated; OR the chain shortens (`appium-adb` or `@appium/support` drops
-  `glob`/`minimatch`); OR the Android E2E harness is dropped from `devDependencies`
-  entirely. On any of these, re-derive the chain with `npm ls brace-expansion --all`
-  first — per this file's own rule, retire only once the vulnerable package is actually
-  gone from the INSTALLED tree, not merely absent from a version number or a `fixAvailable`
-  flag.
-- **Tracked:** not tracked — no watcher. None of the three existing dep-audit watchers
-  (`elliptic`, `stream-json`, `morgan`) cover this chain, and this audit may not create one
-  (see Constraints) — it reports the gap, the owner decides whether one is worth adding.
-- **Cross-reference:** also noted in `package.json`'s `//overrides-audit-notes` (search
-  `appium-uiautomator2-driver`). That 2026-08-10 note already tracked this exact nested
-  path at `5.0.9` and called it settled — correctly, against the two advisories known at
-  the time (`GHSA-mh99-v99m-4gvg`, `GHSA-rgw5-rvv9-x895`). It stopped being settled when
-  `GHSA-qhr7-859c-m2p7` and `GHSA-6j4f-fj2g-mc7p` were published afterward against the same
-  version. If either file is updated for this chain, update the other in the same
-  commit — see the `shell-quote`/`body-parser` entries under `## Retired residuals` for
-  what three weeks of drift between these two files looks like.
+- **Advisory:** GHSA-vfj7-8cjw-p6xm (CVSS 7.5, CWE-674) — stack-exhaustion Denial of
+  Service through deeply nested brace patterns. Vulnerable `<= 3.0.3`. Published
+  2026-09-18; first reported by this audit on 2026-10-03.
+- **Why accepted — there is no patched release.** `3.0.3` is `latest` and the last
+  published version (checked 2026-10-03), and the GitHub advisory record carries
+  `first_patched_version: null`. No range resolution and no `overrides` entry can reach
+  a fix that does not exist. npm's `fixAvailable` is `true` on every finding and is not
+  a fix on any of them: it offers `tailwindcss` `4.3.3` (a semver-major framework
+  migration), `patch-package` `6.0.7` and `@wdio/mocha-framework` `5.18.6` (both major
+  DOWNGRADES).
+- **Chains — three, all through one root copy, `node_modules/braces@3.0.3`:**
+  1. `tailwindcss@3.4.19` (direct, listed under `dependencies`) → `micromatch@4.0.8` /
+     `fast-glob@3.3.3` / `chokidar@3.6.0` → `braces`.
+  2. `@wdio/mocha-framework@9.32.0` (direct, dev) → `mocha@10.8.2` → `chokidar@3.6.0` →
+     `braces`. `@wdio/mocha-framework` declares `mocha ^10.8.2`; mocha only left
+     `chokidar` 3 in later majors, outside that range.
+  3. `patch-package@8.0.1` (direct, dev; runs as `postinstall`) →
+     `find-yarn-workspace-root@2.0.0` → `micromatch` → `braces`. `8.0.1` is `latest`.
+- **Reachability — build and test tooling only, and the patterns are ours.** npm counts
+  chain 1 as production because `tailwindcss` sits in `dependencies`, but Tailwind runs
+  at build time as a PostCSS plugin. The patterns `braces` expands are the `content`
+  globs in `tailwind.config.js`, mocha's watch globs and `patch-package`'s workspace
+  lookup: all repo-controlled, none attacker-supplied. The realistic impact is a
+  developer crashing their own build.
+  **Measured 2026-10-03 at `origin/main` `238ce2bb`, not assumed:** nothing under `src/`,
+  `functions/` or `supabase/` imports `braces`, `micromatch`, `chokidar` or `fast-glob`;
+  and a production `npm run build` was grepped across all 557 `dist/assets/*.js` chunks
+  for `micromatch`, `fast-glob`, `chokidar`, `picomatch`, `fill-range`, `to-regex-range`
+  and `expandRange` — zero matches for all seven (control: `ethers` matches 12 chunks).
+  The word `braces` matches exactly one chunk, as prose ("belt-and-braces") in a
+  sanctions-source label, not the library.
+- **Accounts for** 9 high findings as of 2026-10-03 at `origin/main` `238ce2bb`:
+  `braces` as the advisory root, plus `micromatch`, `fast-glob`, `chokidar`,
+  `tailwindcss`, `mocha`, `@wdio/mocha-framework`, `find-yarn-workspace-root` and
+  `patch-package` as dependents. A count that moves for an unexplained reason is a
+  revisit trigger.
+- **Revisit trigger:** a patched `braces` release ships (then it is a plain lockfile
+  update: `micromatch` declares `^3.0.3`, `chokidar` `~3.0.2`); OR the advisory is
+  re-rated; OR a chain drops it (Tailwind 4 adoption, `@wdio/mocha-framework` admitting a
+  mocha major that uses `chokidar >= 4`, `patch-package` dropping
+  `find-yarn-workspace-root`); OR any code in `src/`, `functions/` or `supabase/`, or any
+  runtime dependency, starts importing `braces`/`micromatch` on user- or
+  network-supplied patterns — re-run the bundle grep above before assuming it still
+  holds.
+- **Tracked:** not tracked — no watcher. This audit may not create one (see
+  Constraints); the owner decides whether one is worth adding. Until then the only
+  thing that will notice a patched `braces` is someone reading the advisory.
 
 ## Retired residuals
 
@@ -685,6 +570,211 @@ stayed invisible to the daily audit for weeks.
   per this file's own constraint that the daily audit must not create, edit, or trigger
   scheduled tasks) to decide whether it should be disabled or repurposed now that there is
   no more upstream movement left to watch for.
+
+### `stream-json` — max severity: moderate — accepted 2026-09-03, RETIRED 2026-10-03
+
+- **RETIRED 2026-10-03. Everything below this bullet is the acceptance-era record, kept
+  as written; where it says "keep this residual accepted" or "Tracked", read it as
+  history.** The candidate described in the next bullet landed as PR #2799
+  (`f52f7a4e`): `package.json` scopes `@solana/web3.js` to `jayson` `5.0.0`, which has no
+  `stream-json` dependency at all.
+  **Retirement evidence (2026-10-03, `origin/main` `238ce2bb`, `npm ci` in a fresh
+  worktree, per this file's rule that the INSTALLED tree is the evidence):**
+  1. `find node_modules -type d -name stream-json` → no match anywhere.
+  2. Exactly one installed `jayson`, `node_modules/jayson`, version `5.0.0`.
+  3. `npm audit --json` on the installed tree: `stream-json`, `jayson` and
+     `@solana/web3.js` are all absent from `vulnerabilities`; 0 moderate findings.
+  **If it comes back:** the scoped `jayson` override is the only thing holding this —
+  `@solana/web3.js` `1.99.0` still declares `jayson ^4.3.0`. Dropping the override, or a
+  Solana bump that changes how the scope applies, reopens all 3 findings. A reappearance
+  is a NEW finding that surfaces normally, not a reinstatement.
+  **Watcher:** `veyrnox-stream-json-upstream-watch` has nothing left to watch. It was
+  DISABLED in the scheduler on 2026-10-03 by the session that wrote this retirement, on
+  the owner's instruction; its runbook is retained and marked RETIRED. As everywhere in
+  this file, confirm with `list_scheduled_tasks` rather than trusting this line.
+
+- **Candidate remediation, 2026-09-30; not a retirement or merge claim.**
+  Published `jayson@5.0.0` removes `stream-json` entirely. The scoped
+  `@solana/web3.js` override in this candidate selects that exact release and removes
+  the obsolete Jayson UUID override. Solana `1.99.0` still declares `jayson ^4.3.0`,
+  so ordinary resolution cannot select it. Jayson 5 requires Node >=20 and changes
+  server stream framing; Solana uses its browser client, whose request IDs now use
+  Web Crypto (`randomUUID`, falling back to `getRandomValues`). Regression coverage
+  in `src/wallet-core/__tests__/sol-rpc-dependency.test.js` exercises real Connection
+  HTTP single/batch/error paths and WebSocket subscriptions on loopback, plus the
+  browser client's HTTP notifications (Connection has no HTTP notification API).
+  Local candidate evidence: `npm ci` passed; Solana resolves installed Jayson 5.0.0
+  and a recursive installed-manifest scan found no `stream-json`. All nine new
+  compatibility tests passed, including browser-entry `getRandomValues` fallback
+  and missing-crypto failure before transport. The existing Solana suite, core
+  typecheck, targeted lint and `npm run build:release` passed. Only four lockfile
+  package entries change (Jayson, plus removed eyes/stream-chain/stream-json);
+  all bundled entries remain byte-for-byte equivalent as parsed JSON.
+  Keep this residual accepted on main until the change lands and its installed
+  dependency tree is checked. No on-chain transaction, real-device verification,
+  independent audit, or feature-status promotion is claimed. The historical
+  no-fix rationale below describes the Jayson 4 chain; it does not rule out this
+  newly available owner migration. The bundled Appium residuals are unaffected.
+
+- **Advisory:** GHSA-528h-pc64-c93x — `pick`/`ignore`/`filter`/`replace` filters are
+  O(depth²) on nested input, so small crafted JSON blocks the event loop for seconds to
+  minutes (DoS). Vulnerable `<= 3.4.0`; the tree carries `1.9.1`.
+- **Chain:** `@solana/web3.js@1.99.0` → `jayson@4.3.0` → `stream-json@1.9.1`. A production
+  dependency, not dev. The head of the chain read `1.98.4` from acceptance until
+  2026-09-19; `jayson` and `stream-json` have not moved.
+- **`jayson` is not separately vulnerable.** It has no advisory of its own and appears in
+  `npm audit` only as `stream-json`'s `effects` entry. Fixing `stream-json` clears both;
+  there is nothing to do to `jayson` itself.
+- **Why accepted — no reachable fix, and the obvious one is actively harmful.**
+  1. **No backport.** `1.9.1` is the last release on the 1.x line and the fix landed only
+     in `3.5.0`. `jayson` declares `stream-json: ^1.9.1`, so no range resolution reaches a
+     patched version. This is NOT the `brace-expansion` shape, where the fix was
+     backported into the old lines and ordinary resolution picked it up.
+  2. **An `overrides` entry to `^3.6.0` BREAKS `jayson`. Measured 2026-09-03, do not
+     re-derive.** `stream-json` 3.x removed the `streamers/` tree entirely — there is no
+     `StreamValues` file at any path in `3.6.0` — while
+     `jayson/lib/utils.js:3` still does `require('stream-json/streamers/StreamValues')`.
+     Under the override, `require('jayson')` throws
+     `Cannot find module .../stream-json/src/streamers/StreamValues`.
+     **`npm run build` still exits 0 and `npm audit` gets CLEANER (4 moderate → 2), so a
+     green build and a quiet audit are NOT evidence this override is safe.** Same trap as
+     the retired `brace-expansion` entry, which is worth re-reading before touching this.
+  3. **The vulnerable code is not reachable in any build of this app.** Every
+     `@solana/web3.js` entry point — `index.browser.cjs.js`, `index.browser.esm.js`,
+     `index.cjs.js`, `index.esm.js`, `index.native.js` — imports
+     `jayson/lib/client/browser`. That module's complete require closure is two files
+     (`client/browser/index.js`, `generateRequest.js`) plus `uuid`; it never reaches
+     `lib/utils.js`, the only file in `jayson` that touches `stream-json`. Verified
+     empirically as well as by reading: a production build was grepped across all 544
+     `dist/assets/*.js` chunks for `stream-json`, `streamValues`, `makeFilter` and
+     `jsonFilter` — **zero matches for all four**.
+     **Re-verified against `1.99.0` on 2026-09-19, because this whole acceptance rests on
+     it and the chain head moved a minor.** The published `1.99.0` tarball was unpacked and
+     all five entry points still import `jayson/lib/client/browser` and nothing else;
+     `lib/*.js` carries no `require('jayson')` or `from 'jayson'` at any path, so the main
+     entry — the only route to `lib/utils.js` and thus to `stream-json` — is still never
+     loaded. The bundle grep above was NOT re-run; the import-graph check is what was
+     redone. A future minor bump earns the same check rather than inheriting this one.
+- **Accounts for** 3 moderate findings as of 2026-09-19 at `origin/main` `62b46df2`
+  (`stream-json` as the advisory root, plus `jayson` and `@solana/web3.js` as dependents).
+  **It was 2 on 2026-09-03, and the reason the count moved is the only interesting part.**
+  No new advisory and no severity change: `@solana/web3.js` resolved up from `1.98.4` to
+  `1.99.0`, which lands inside npm's flagged-dependent range
+  (`1.99.0-beta.0 - 1.99.0`), so the chain head is now reported as a finding in its own
+  right rather than only as an `effects` entry. Per the `elliptic` entry's rule, a count
+  that moves for an unexplained reason is a revisit trigger — this one is explained, and
+  re-derived from `npm audit --json` rather than assumed.
+- **Revisit trigger:** `jayson` removes `stream-json` (FIRED by 5.0.0; evaluate the
+  major-version compatibility and Solana range before adoption); OR `jayson` widens
+  its `stream-json` range to admit `>= 3.5.0` (then
+  the fix is a plain lockfile update, no override); OR `stream-json` backports the fix to
+  a 1.x release; OR `@solana/web3.js` drops `jayson`; OR any code in `src/` or any new
+  dependency imports `jayson`'s main entry rather than `jayson/lib/client/browser`, which
+  would both make the advisory reachable AND be broken by the override — check the bundle
+  grep above before assuming either still holds.
+- **Tracked:** `veyrnox-stream-json-upstream-watch`, weekly. Added 2026-09-10; this entry
+  said **Not tracked — no watcher** from acceptance until then. Its runbook lands in the
+  same PR as this line; the scheduler registration is separate, because the task resolves
+  its runbook from `origin/main` and registering it first would give it nothing to resolve.
+  **The scheduler registry is not in git, so this line is exactly the kind of claim this
+  file keeps recording as decaying silently** — confirm with `list_scheduled_tasks` (check
+  `enabled`, and check `lastRunAt` against the merge time of any runbook change) rather
+  than trusting it. See the `brace-expansion` entry for a watcher whose "Tracked" claim was
+  false for four weeks because it was registered DISABLED and never ran once, and the
+  `elliptic` entry for one whose `lastRunAt` predated its own re-pointed brief by 34
+  minutes.
+
+### `brace-expansion` (nested, `appium-uiautomator2-driver`) — max severity: high — accepted 2026-09-30, RETIRED 2026-10-03
+
+- **RETIRED 2026-10-03. Everything below this bullet is the acceptance-era record, kept
+  as written.** The nested copy no longer exists. PR #2800 (`2fb40065`) repointed
+  `appium-uiautomator2-driver` from the registry tarball to a pinned git source
+  (`#7a54db007aa8a44f5df21cd0b52afc13c0d277ae`), which is not built with
+  `bundleDependencies`, so the subtree this entry called immutable is resolved by our own
+  lockfile like any other dependency. Same mechanism as the `morgan` retirement below.
+  **Retirement evidence (2026-10-03, `origin/main` `238ce2bb`, `npm ci` in a fresh
+  worktree):**
+  1. `node_modules/appium-uiautomator2-driver/node_modules/` holds 18 entries and none
+     is `brace-expansion`.
+  2. Every installed copy is at or above its line's patched floor: root `1.1.21`;
+     `2.1.7` under `filelist`, `mocha`, `@wdio/config`; `5.0.12` under `glob`, `eslint`,
+     `@eslint/config-array`, `readdir-glob`. No `5.0.9` anywhere.
+  3. `npm audit --json` on the installed tree: `brace-expansion` is absent from
+     `vulnerabilities`.
+  **If it comes back:** reverting the driver from the git source to a registry range
+  brings the bundle, and whatever `brace-expansion` it carries, back with it. A
+  reappearance is a NEW finding that surfaces normally.
+  **Watcher:** none existed, none needed.
+
+- **Advisory — three GHSAs stacked on the same version:** `GHSA-q2hr-2g5m-vwhr` (moderate,
+  quadratic-time `{a},b}` expansion, patched `>=5.0.12` on this line), `GHSA-qhr7-859c-m2p7`
+  (high, DoS via unbounded recursion on nested brace groups, patched `>=5.0.11`), and
+  `GHSA-6j4f-fj2g-mc7p` (high, DoS via unbounded recursion in `parseCommaParts`, patched
+  `>=5.0.10`). The resolved copy is `5.0.9`, below all three floors, so it carries the
+  worst of the three: high.
+- **Chain — verified 2026-09-30 with `npm ls brace-expansion --all`, entirely inside a
+  bundled devDependency:** `appium-uiautomator2-driver@8.7.0` (bundled) →
+  `appium-adb@16.0.5` (bundled) → `@appium/support@7.2.7` → `glob@13.0.6` →
+  `minimatch@10.2.6` → `brace-expansion@5.0.9`. This is deeper than earlier notes on this
+  same path assumed (they didn't need the full chain because the remediation — a driver
+  bump — doesn't depend on it); recorded here so a future run doesn't have to re-derive it
+  from scratch.
+- **Why accepted — the immobilising mechanism changed, and the practical answer didn't.**
+  Through driver `8.6.1`, this nested subtree was governed by a published
+  `npm-shrinkwrap.json` (see the `appium-uiautomator2-driver` mechanism note under
+  `## Retired residuals` → `shell-quote`, and `package.json`'s
+  `//overrides-audit-notes`). **At `8.7.0` that shrinkwrap is gone — verified 2026-09-30:
+  no `npm-shrinkwrap.json` in the installed tarball, and `hasShrinkwrap` is absent from
+  this lockfile entry.** The driver now ships the same subtree via `bundleDependencies`
+  instead (`@appium/css-locator-to-native`, `appium-adb`, `appium-android-driver`,
+  `appium-uiautomator2-server`, `asyncbox`, `axios`, `io.appium.settings`, `portscanner`,
+  `teen_process`), which is equally immutable from this repo: neither `overrides` nor a
+  `package-lock.json` edit can reach inside a bundled dependency's own `node_modules`.
+  **Tested directly, not assumed:** an `overrides["brace-expansion"] = "^1.1.21"` entry
+  was added and regenerated with `npm install --package-lock-only` — every OTHER copy in
+  the tree moved to `1.1.21`, and this one nested copy stayed at `5.0.9`. The entry was
+  reverted (never committed) once that confirmed it. The remediation is therefore
+  unchanged in shape from the shrinkwrap era — bump the driver — and `8.7.0` is already
+  `latest`, checked 2026-09-30 (`8.6.1` → `8.6.2` → `8.6.3` → `8.6.4` → `8.7.0`, nothing
+  newer published).
+- **Reachability:** dev-only. `appium-uiautomator2-driver` is a devDependency used only by
+  the Android E2E harness (`android:test*` scripts). The whole chain lives inside
+  `node_modules/appium-uiautomator2-driver`'s own bundle and is never imported by `src/`
+  or reached by the production `vite build` — confirmed by the same build that shipped
+  PR #2783 (`npm run build` succeeded with this copy still at `5.0.9`, because it was
+  never in the bundle graph to begin with).
+- **Accounts for** 1 high finding as of 2026-09-30 (single node:
+  `node_modules/appium-uiautomator2-driver/node_modules/brace-expansion`) — the only
+  survivor after PR #2783 cleared the other 10 nested/root `brace-expansion` copies (root,
+  `@eslint/config-array`, `@wdio/config`, `archiver-utils`, `eslint`, `filelist`, `glob`,
+  `mocha`, `readdir-glob`, `webdriverio`) with a plain `npm install --package-lock-only` —
+  every one of those resolved to a patched version already inside its consumer's existing
+  declared range, so none of them needed an override either. Those 10 were a **regression**
+  of the `brace-expansion` entry retired 2026-08-22 under `## Retired residuals`: the
+  lockfile had drifted back to unpatched floors (`1.1.18`, `2.1.4`, `5.0.9`) even though
+  every declared range already permitted the patched version. Per that entry's own "if it
+  comes back" clause, the regression surfaced as a normal unsuppressed finding rather than
+  a silent reinstatement — this entry covers only what's left after fixing it.
+- **Revisit trigger:** a newer `appium-uiautomator2-driver` release ships whose bundle
+  carries `brace-expansion >= 5.0.12`; OR the driver stops bundling this subtree and goes
+  back to a resolvable dependency (shrinkwrapped or plain); OR any of the three advisories
+  is re-rated; OR the chain shortens (`appium-adb` or `@appium/support` drops
+  `glob`/`minimatch`); OR the Android E2E harness is dropped from `devDependencies`
+  entirely. On any of these, re-derive the chain with `npm ls brace-expansion --all`
+  first — per this file's own rule, retire only once the vulnerable package is actually
+  gone from the INSTALLED tree, not merely absent from a version number or a `fixAvailable`
+  flag.
+- **Tracked:** not tracked — no watcher. None of the three existing dep-audit watchers
+  (`elliptic`, `stream-json`, `morgan`) cover this chain, and this audit may not create one
+  (see Constraints) — it reports the gap, the owner decides whether one is worth adding.
+- **Cross-reference:** also noted in `package.json`'s `//overrides-audit-notes` (search
+  `appium-uiautomator2-driver`). That 2026-08-10 note already tracked this exact nested
+  path at `5.0.9` and called it settled — correctly, against the two advisories known at
+  the time (`GHSA-mh99-v99m-4gvg`, `GHSA-rgw5-rvv9-x895`). It stopped being settled when
+  `GHSA-qhr7-859c-m2p7` and `GHSA-6j4f-fj2g-mc7p` were published afterward against the same
+  version. If either file is updated for this chain, update the other in the same
+  commit — see the `shell-quote`/`body-parser` entries under `## Retired residuals` for
+  what three weeks of drift between these two files looks like.
 
 ## Constraints
 - Do NOT run `npm audit fix` or modify any files — read-only audit only.
