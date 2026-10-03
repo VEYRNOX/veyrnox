@@ -218,7 +218,8 @@ describe('ProGuard — @CapacitorPlugin keep rule allows private method renaming
   });
 
   it('@PluginMethod bridge methods are still kept', () => {
-    expect(proguard).toContain('@com.getcapacitor.annotation.PluginMethod public *');
+    expect(proguard).toContain('@com.getcapacitor.PluginMethod public *;');
+    expect(proguard).not.toContain('@com.getcapacitor.annotation.PluginMethod');
   });
 });
 
