@@ -46,9 +46,11 @@ architecture or security-critical code (wallet-core, signing, KEK, RASP).
     `tip_manifest_cache` table and the `tip_manifest_cache_take`/`_put` RPCs
     (`service_role` only) on both wallet projects. The Worker allows 5 manifest
     requests/hour for the whole wallet tenant, so the cache TTL (30 min) and refresh
-    lease (15 min) in `sql/tip-manifest-cache.sql` are load-bearing: shortening either
-    gets every wallet a 429. Staging cannot return a real manifest (its TIP upstream is
-    behind Cloudflare Access).
+    lease (15 min) in `sql/tip-manifest-cache.sql` are load-bearing: shortening them
+    enough to exceed the shared budget can make refreshes fail tenant-wide. The function
+    does not forward the upstream 429; it serves stale cache when available or returns
+    502. Staging cannot return a real manifest (its TIP upstream is behind Cloudflare
+    Access).
   - Supabase secrets on both projects (`TIP_*`, `SUPABASE_SERVICE_ROLE_KEY`,
     `REVENUECAT_*`). Rotate only when asked. A rotation without the matching Worker D1
     update kills prod chat. `REVENUECAT_V1_SECRET_KEY` is a v2-generation key: it gets
