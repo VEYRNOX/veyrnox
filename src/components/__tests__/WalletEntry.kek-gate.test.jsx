@@ -44,8 +44,20 @@ vi.mock('@/components/TelemetryConsent', () => ({
 // Native by default; individual tests flip this for the web case.
 const isNativePlatform = vi.fn(() => true);
 vi.mock('@capacitor/core', () => ({
-  Capacitor: { isNativePlatform: () => isNativePlatform() },
+  Capacitor: {
+    isNativePlatform: () => isNativePlatform(),
+    // BackupNagSheet reads the platform to decide whether a store trial can apply.
+    getPlatform: () => (isNativePlatform() ? 'ios' : 'web'),
+  },
   registerPlugin: vi.fn(() => ({})),
+}));
+
+// BackupNagSheet (rendered by WalletEntry once unlocked) asks the store whether a
+// free trial applies. This suite is about the KEK gate, so keep that lookup out of
+// it: no trial, today's copy, and no call into the RevenueCat plugin.
+vi.mock('@/lib/safetyPlusTrial', () => ({
+  TRIAL_LOOKUP_BUDGET_MS: 1200,
+  loadSafetyPlusTrialWithin: () => Promise.resolve(null),
 }));
 
 // Deniability / demo guard.
