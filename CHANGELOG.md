@@ -18,10 +18,10 @@ code), **PLANNED** (roadmap), or **HONEST-DISABLED** (present but off on princip
 > tests green; none of this is **verified** in the strict sense (a real on-chain txid) unless it
 > says so. The independent audit of the full stack is still outstanding.
 
-## [Unreleased] — planned as 1.0.3 (59)
+## [1.0.3] (59) — Google Play 2026-10-02, App Store 2026-10-03
 
-Merged to `main` after 1.0.2 (2026-09-24 onward). **Planned for 1.0.3, versionCode / build 59
-on both stores; not submitted.** It started at 58 (#2821); iOS 1.0.3 (58) was uploaded, then 1.0.3
+Merged to `main` after 1.0.2 (2026-09-24 onward), up to `a5a136f2`. **Live on both stores as
+1.0.3, versionCode / build 59.** It started at 58 (#2821); iOS 1.0.3 (58) was uploaded, then 1.0.3
 was held for the AI Security trial fix (#2823) and moved to 59. Scope is all of `main` (owner
 decision, 2026-10-02). See `docs/RELEASE-v1.0.3.md`.
 
