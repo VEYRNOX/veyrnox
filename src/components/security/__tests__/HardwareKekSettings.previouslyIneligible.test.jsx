@@ -36,6 +36,11 @@ vi.mock('@capacitor/core', () => ({
   Capacitor: { isNativePlatform: () => true },
 }));
 
+// Native development builds intentionally run in demo mode. These tests cover
+// production-native enrollment, where clearing the stale eligibility verdict
+// is allowed after a successful hardware check.
+vi.mock('@/api/demoClient', () => ({ DEMO: false }));
+
 vi.mock('@/lib/WalletProvider', () => ({
   useWallet: () => ({ isDecoy: false, isHidden: false, recordAudit: vi.fn() }),
 }));
