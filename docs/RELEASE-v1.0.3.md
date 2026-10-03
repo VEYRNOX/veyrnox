@@ -109,7 +109,7 @@ non-English listing is uploaded, or the other languages will describe 1.0.2.
 
 | # | Step | Owner | State |
 |---|---|---|---|
-| 1 | #2821 (bump to 58) merged; #2823 (AI trial fix) and the bump to 59 merged | CI | 58 merged; 59 pending |
+| 1 | #2821 (bump to 58) merged; #2823 (AI trial fix) and the bump to 59 merged | CI | **done** — all three merged (#2821, #2823, #2824) |
 | 2 | 1.0.3 version record in App Store Connect | owner | **created** 2026-10-02 (`fffa15e9…`, MANUAL) |
 | 3 | `npm run build && npx cap sync ios` immediately before the iOS archive | build | done for 58; redo for 59 |
 | 4 | `.ipa` dev-flag check prints nothing | build | passed for 58; redo for 59 |
@@ -118,7 +118,7 @@ non-English listing is uploaded, or the other languages will describe 1.0.2.
 | 7 | `bash scripts/asc-crashes.sh` — only `CLEAN` passes | build | **EMPTY (unmeasured), waived by the owner** 2026-10-02: single tester, no crashes in the walkthrough. Not a CLEAN pass. |
 | 8 | `scripts/play-vitals.sh` — an empty result is not a pass | build | **not run** (the worktree guard refuses running the script; not attempted another way). Single tester, so it would be unmeasured too. |
 | 9 | Read the tester feedback comments | owner | read 2026-10-02: none on build 59 (the app's only entries are older builds) |
-| 10 | Submit both; manual release on both so they go live together | owner | **submitted both** 2026-10-02 (Apple MANUAL release; Play managed publishing ON). Release not yet pressed. |
+| 10 | Submit both; manual release on both so they go live together | owner | **submitted both** 2026-10-02 (Apple MANUAL release; Play managed publishing ON). **Released on both**: Play 2026-10-02 19:05 BST, App Store 2026-10-03. They did not go live together. |
 
 ## Apple release record
 

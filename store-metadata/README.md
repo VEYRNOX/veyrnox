@@ -70,6 +70,14 @@ re-review only has to look at `whatsNew`.
 `en` stays `true`: it is the source every sibling is translated from, so there is
 no translation fidelity to vouch for.
 
+**`apple.description` in `en.json` is ahead of App Store Connect (2026-10-03).** The
+description live with 1.0.3 says "BUY CRYPTO IN-APP ... directly from the app" and "An
+on-device security assistant". Both are false (Buy opens a system browser; the Advisor
+posts to `tip-chat`) and were first corrected in #2757. #2826 copied the App Store Connect
+text back into the repo; this file now holds the corrected text again. Apple's description
+is version-scoped, so it reaches the store with the next version record. Do not "sync" it
+back from App Store Connect. Pinned by `src/__tests__/store-copy-honesty.test.js`.
+
 **1.0.3 (2026-10-02): only `en` is updated so far.** `apple.whatsNew` and
 `play.releaseNotes` in `en.json` now carry the 1.0.3 notes; the 43 siblings still
 carry the 1.0.2 text. Re-translate both strings from `en.json` before uploading any
