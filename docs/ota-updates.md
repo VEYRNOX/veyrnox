@@ -8,11 +8,12 @@ asset bug"); the fix (#2816) shipped in 1.0.3, live on Google Play at 100% since
 2026-10-02 (`docs/RELEASE-v1.0.3.md`). That fix is emulator-verified only: **no physical
 Android phone has taken an OTA update yet**, so the first production publish is also the
 first real-device test of the Android path (a failure leaves the phone on its embedded
-bundle). Android installs still on 1.0.2 cannot update. A
-**no-change canary is live on the production channel** (bundle `202610011706`, see
-"Production canary published"). Not verified end to end with a store-signed binary:
-an App Store iPhone was seen fetching the production manifest and signature, but the
-swap itself was not observed on it.
+bundle). Android installs still on 1.0.2 cannot update. The code-changing production
+bundle `202610031506` is published from `main` at `467c3552` and the host serves its
+signed manifest to both plain and Android-style GET requests (see "Production release
+202610031506 published"). At this point no device has been observed applying it, so the
+production swap remains unconfirmed on both store-signed platforms. The earlier
+no-change canary `202610011706` remains documented in its historical section.
 
 **Signing keys are provisioned (2026-09-18).** Two YubiKey 5C NFC tokens, each
 holding a non-extractable P-256 key generated on-token in PIV slot 9c, with
@@ -299,6 +300,34 @@ Security Analytics, sampled):
   agent. Request volume is far below the subscriber count; the reason is not known.
 
 **To roll back,** see "Rolling back".
+
+## Production release 202610031506 published (2026-10-03)
+
+The **first production bundle that changes code**. Built from `main`, not a no-change
+canary. Owner decision: ship all of `main` rather than a cherry-picked IOC-only bundle.
+
+| | |
+|---|---|
+| Source | `main` at `467c3552`, clean worktree (no `.env.local`; `VITE_BYPASS_RASP`, `VITE_DEV_UNGATE_SEND`, `VITE_DEMO_MODE` all unset in `ota-build-flags.json`) |
+| Build | `npm run build`, version from build time |
+| Channel / version | `production` / `202610031506`, `minNativeApi` 1 |
+| Files | 1073 in the manifest; 1075 objects including the manifest and signature |
+| Manifest sha256 | `dc45a99f23c702fe7f83ed7c79f062369651e24b141316be656c8690d0b5f26a` |
+| Signed with | token A (39744850), PIN and touch by the owner; `seal` and `verify` passed against the pinned keys |
+| Upload order | files, manifest and signature, `verify-live` (`live copy OK: 1075 objects match`), then `latest.json` last with `no-cache` |
+| Live | `latest.json` published 2026-10-03 15:32 UTC; a plain GET and an Android-style GET both return 200 with `{"bundleVersion":202610031506}` and `cache-control: no-cache` |
+
+**What it carries beyond the 1.0.3 store builds (`a5a136f2`):** the IOC manifest fetch
+through the signing Edge Function (#2837), canonical IOC address comparison (#2834),
+the backup share-recovery fixes (#2792, #2835), and the "14 days free" copy on the
+backup sheet and win modal (#2812). #2812 is a paywall copy change, which sits outside
+the "bug and security fixes" line this runbook draws for Apple 2.5.2; it shipped on the
+owner's decision.
+
+**Not verified:** this bundle was not booted on a device or simulator before it went
+live, no device has been seen applying it, and it is the first real-device test of the
+Android 1.0.3 OTA path. `curl -I` (HEAD) on `latest.json` returns 403 from the host; GET
+is what devices send and returns 200.
 
 ## Staging: physical iPhone result (2026-10-02)
 
