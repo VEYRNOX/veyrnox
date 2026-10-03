@@ -3,6 +3,14 @@ name: veyrnox-stream-json-upstream-watch
 description: Weekly watch for upstream resolution of the Veyrnox stream-json moderate residual (a widened jayson range, a 1.x backport, or @solana/web3.js dropping jayson)
 ---
 
+> **RETIRED 2026-10-03.** The residual this task watched is gone: PR #2799 scoped
+> `@solana/web3.js` to `jayson` `5.0.0`, which has no `stream-json` dependency, and a clean
+> `npm ci` at `origin/main` `238ce2bb` has no installed `stream-json`. The scheduler entry
+> was disabled the same day. Evidence is in the retired `stream-json` entry of
+> `.claude/scheduled-tasks/veyrnox-daily-dep-audit/SKILL.md`. This runbook is kept, as the
+> `brace-expansion` and `shell-quote` watchers' were, in case the residual returns; the
+> daily audit is what would surface that.
+
 Upstream watcher for the Veyrnox wallet's accepted `stream-json` security residual
 (GHSA-528h-pc64-c93x). Signals come from read-only `npm view` registry queries and one read
 of `origin/main`'s committed lockfile. Do NOT modify files, run `npm install`, add an
