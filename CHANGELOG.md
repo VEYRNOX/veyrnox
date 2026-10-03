@@ -18,24 +18,43 @@ code), **PLANNED** (roadmap), or **HONEST-DISABLED** (present but off on princip
 > tests green; none of this is **verified** in the strict sense (a real on-chain txid) unless it
 > says so. The independent audit of the full stack is still outstanding.
 
-## [Unreleased]
+## [Unreleased] — planned as 1.0.3 (59)
 
-Merged to `main` after 1.0.2 (2026-09-24 onward). Not confirmed to be in any store build.
+Merged to `main` after 1.0.2 (2026-09-24 onward). **Planned for 1.0.3, versionCode / build 59
+on both stores; not submitted.** It started at 58 (#2821); iOS 1.0.3 (58) was uploaded, then 1.0.3
+was held for the AI Security trial fix (#2823) and moved to 59. Scope is all of `main` (owner
+decision, 2026-10-02). See `docs/RELEASE-v1.0.3.md`.
 
 ### Added
 - Paywall: cancellation assurance copy, tier comparison, and a recovery-gating fix (#2781);
   subscription lifecycle status and expiry (#2782); Android `free-trial-14d` offer routed to
-  the purchase call (#2794).
+  the purchase call (#2794); the 14-day free trial shown on the plans card and the nudge (#2805).
+- Settings: a read-only "Web bundle" row showing the running OTA bundle version and whether an
+  update is staged. Local status only, hidden on web and in decoy/demo (#2818). BUILT; seen
+  working on a physical iPhone (development build), 2026-10-02.
+- OTA tooling (not in the app): `scripts/ota/verify-live.mjs` proves the update host serves
+  exactly what was signed (#2807), and also checks each object the way Android requests it,
+  which catches a Cloudflare rewrite only Android received (#2817).
 
 ### Fixed
-- Wallet idle lock is paused during Transak checkout so the hand-off no longer relocks (#2763).
+- Android OTA: `prepare` now downloads a file the APK did not package (Android drops the
+  `.well-known` dot-files) instead of aborting, which made every Android update fail silently on
+  1.0.2 (#2816). BUILT; emulator-verified end to end, not on a physical Android phone. Reaches
+  users only with the 1.0.3 store release.
+- Wallet idle lock is paused during Transak checkout, and the hand-off no longer relocks
+  (#2756, #2763).
+- Referral: opening a second referral link now says only the first code can be applied (#2766).
 - CI: `canary-smoke` was skipped on every push because a skipped ancestor job tainted
   `success()` for downstream jobs (#2789).
+
+### Changed
+- `@sentry/react` 10 → 11, a major version (#2776).
 
 ### Security
 - Dependency advisories: undici and brace-expansion high-severity advisories resolved (#2783);
   vulnerable `stream-json` removed from the Solana RPC tree (#2799); vulnerable Appium bundle
-  replaced with pinned upstream source (#2800).
+  replaced with pinned upstream source (#2800); rubyzip patched on Android and bumped on iOS
+  (#2798, #2785); dompurify, axios and a group of minor and patch updates (#2795, #2793, #2787).
 
 ## [1.0.2] — 2026-09-23 (Play) / 2026-09-24 (App Store)
 

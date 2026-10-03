@@ -15,7 +15,8 @@ touched on the dates shown and some predate the current state (see "Known stale"
 
 ## Where Veyrnox is now
 
-- iOS and Android 1.0.2 are published to both stores. Mainnet has been unlocked since
+- iOS and Android 1.0.2 are published to both stores. 1.0.3 (59), which makes over-the-air
+  updates work on Android, is in preparation for both (`docs/RELEASE-v1.0.3.md`). Mainnet has been unlocked since
   2026-06-17 (ETH, BTC, SOL, all 10 assets live).
 - The internal audit is complete. The independent third-party audit of the full stack
   is **still outstanding** and "internal" is never presented as "independent" (invariant I4).

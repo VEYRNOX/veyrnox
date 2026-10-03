@@ -70,6 +70,13 @@ re-review only has to look at `whatsNew`.
 `en` stays `true`: it is the source every sibling is translated from, so there is
 no translation fidelity to vouch for.
 
+**1.0.3 (2026-10-02): only `en` is updated so far.** `apple.whatsNew` and
+`play.releaseNotes` in `en.json` now carry the 1.0.3 notes; the 43 siblings still
+carry the 1.0.2 text. Re-translate both strings from `en.json` before uploading any
+non-English listing, or those languages will describe the previous release. The
+Apple string names no other platform (Guideline 2.3.10) and does not mention
+over-the-air updates; keep that in the translations.
+
 The flag doesn't change what gets uploaded by default, but the upload script
 supports `--require-reviewed` if you want to gate strictly.
 

@@ -495,6 +495,28 @@ export default function Subscription() {
           iosEligible: iosTrialEligible[selectedProductId] === true,
         });
 
+  // Same rule for AI Security Protection. Its products carry the same 2-week
+  // free-trial introductory offer (ASC, read 2026-10-02) and purchaseAndRefresh
+  // already applies it, but the card only ever showed the price. Apple answers
+  // eligibility per subscription group, so the AI product is asked separately.
+  const selectedAiProductId = selectedAiPackage?.product?.identifier ?? null;
+  useEffect(() => {
+    if (platform !== "ios" || isHuawei || !selectedAiProductId) return undefined;
+    if (selectedAiProductId in iosTrialEligible) return undefined;
+    let cancelled = false;
+    checkIntroTrialEligibility(selectedAiPackage).then((eligible) => {
+      if (!cancelled) setIosTrialEligible((prev) => ({ ...prev, [selectedAiProductId]: eligible }));
+    });
+    return () => { cancelled = true; };
+  }, [platform, selectedAiProductId]);
+  const aiTrialDays =
+    isHuawei || aiActiveOfferTag
+      ? null
+      : freeTrialDays(selectedAiPackage, {
+          platform,
+          iosEligible: iosTrialEligible[selectedAiProductId] === true,
+        });
+
   // A discounted package still reports the BASE price in product.priceString —
   // it wraps the same store product as the full-price package. The offer price
   // has to come from the offer itself (see purchases.js offerPriceInfo), or the
@@ -1175,6 +1197,14 @@ export default function Subscription() {
                         <span className="text-xs text-muted-foreground line-through mono-value">{aiSelectedRegularPrice}</span>
                       )}
                     </div>
+                    {aiTrialDays != null && (
+                      <p className="text-sm font-semibold text-primary" data-testid="ai-free-trial-line">
+                        {trialHeadline(aiTrialDays)}
+                        <span className="font-normal text-muted-foreground">
+                          {" "}— then {aiSelectedPriceString ?? "the store price"}/{billing === "annual" ? "year" : "month"}
+                        </span>
+                      </p>
+                    )}
                     <p className="text-sm text-muted-foreground">{TIER_DESCRIPTIONS.ai_security_protection}</p>
                     <WhySubscription />
                     <CancellationAssurance showAgentLimits />
@@ -1197,6 +1227,8 @@ export default function Subscription() {
                         ? <Loader2 className="h-4 w-4 animate-spin" />
                         : !isNative
                           ? `Subscribe to AI Security Protection — mobile only`
+                          : aiPurchaseAvailable && aiTrialDays != null && aiSelectedPriceString
+                            ? trialCtaLabel(aiTrialDays)
                           : aiPurchaseAvailable
                             ? `Subscribe to AI Security Protection${aiSelectedPriceString ? ` — ${aiSelectedPriceString}` : ''}`
                             : pricingRetryLabel(aiCtaRetry, aiOfferingsSettled)
@@ -1206,11 +1238,24 @@ export default function Subscription() {
                     {isNative && (
                       <>
                         <p className="text-xs text-muted-foreground text-center">
-                          <span className="font-semibold text-foreground">Cancel anytime.</span>{" "}
-                          Renews {billing === "annual" ? "yearly" : "monthly"} at{" "}
-                          {aiSelectedPriceString ?? "the store price"} until cancelled — billed as an in-app
-                          subscription through the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"};
-                          manage or cancel in your account settings.
+                          {aiTrialDays != null ? (
+                            <>
+                              <span className="font-semibold text-foreground" data-testid="ai-free-trial-terms">
+                                {trialRenewalLine({ days: aiTrialDays, priceString: aiSelectedPriceString, billing })}
+                              </span>{" "}
+                              Renews {billing === "annual" ? "yearly" : "monthly"} until cancelled — billed as an in-app
+                              subscription through the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"};
+                              manage or cancel in your account settings.
+                            </>
+                          ) : (
+                            <>
+                              <span className="font-semibold text-foreground">Cancel anytime.</span>{" "}
+                              Renews {billing === "annual" ? "yearly" : "monthly"} at{" "}
+                              {aiSelectedPriceString ?? "the store price"} until cancelled — billed as an in-app
+                              subscription through the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"};
+                              manage or cancel in your account settings.
+                            </>
+                          )}
                         </p>
                         <button
                           type="button"

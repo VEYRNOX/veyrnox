@@ -14,6 +14,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
+import { toast } from '@/lib/toast';
 import { extractWcUri, setPendingWcUri } from '@/lib/deepLinkPairing';
 import { isBuyEnabled } from '@/lib/buy/useBuyEnabled';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
@@ -42,7 +43,10 @@ export default function DeepLinkHandler() {
         // gate itself (no write in a decoy/demo session). No navigation — the
         // user lands wherever they were going, with the code waiting.
         if (u.hostname === 'veyrnox.com' && u.pathname.startsWith('/r/')) {
-          captureReferralFromUrl(u, 'universal_link');
+          const result = captureReferralFromUrl(u, 'universal_link');
+          if (result === 'already_pending') {
+            toast.info('A referral code is already saved for this setup. Only the first code can be applied.');
+          }
           return;
         }
         if (u.hostname === 'veyrnox.com' && u.pathname === '/buy/return') {

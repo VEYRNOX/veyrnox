@@ -1313,3 +1313,97 @@ describe('Subscription page — free trial copy', () => {
     expect(screen.queryByText(/free trial/i)).toBeNull();
   });
 });
+
+// The AI Security Protection products carry the same 2-week free-trial
+// introductory offer as Safety Plus (App Store Connect, read 2026-10-02), but the
+// card only ever showed a price: the trial lookup ran for the Safety Plus
+// package alone. Same rule as Safety Plus: claim the trial only when the store
+// verifiably reports it for the package being bought and the user is eligible.
+describe('Subscription page — AI Security Protection free trial copy', () => {
+  const playFreePhase = { billingPeriod: { unit: 'DAY', value: 14 }, price: { amountMicros: 0 } };
+  const iosIntro = { price: 0, cycles: 1, periodUnit: 'DAY', periodNumberOfUnits: 14 };
+  const plain = (identifier, priceString) => ({
+    identifier,
+    product: { identifier: `sp_${identifier}`, priceString, subscriptionOptions: [] },
+  });
+  const aiPlay = (identifier, priceString, withTrial = true) => ({
+    identifier,
+    product: {
+      identifier: `ai_${identifier}`,
+      priceString,
+      subscriptionOptions: withTrial ? [{ tags: ['free-trial-14d'], freePhase: playFreePhase }] : [],
+    },
+  });
+  const aiIos = (identifier, priceString) => ({
+    identifier,
+    product: { identifier: `ai_${identifier}`, priceString, introPrice: iosIntro },
+  });
+
+  beforeEach(() => {
+    isNativePlatform.mockReturnValue(true);
+    getAiSecurityProtectionOfferingId.mockReturnValue('ai-security-protection');
+    // Safety Plus offers no trial here, so any trial copy must come from the AI card.
+    getOfferings.mockResolvedValue({ availablePackages: [plain('$rc_monthly', '$5.99'), plain('$rc_annual', '$49.99')] });
+  });
+  afterEach(() => {
+    getPlatform.mockReturnValue('ios');
+  });
+
+  it('Android, trial offered: the AI card shows the headline, terms and a trial CTA', async () => {
+    getPlatform.mockReturnValue('android');
+    getTierOffering.mockResolvedValue({ availablePackages: [aiPlay('$rc_monthly', '$19.99'), aiPlay('$rc_annual', '$159.99')] });
+    renderPage();
+    const card = await screen.findByTestId('ai-security-protection-card');
+    const line = await within(card).findByTestId('ai-free-trial-line');
+    expect(line).toHaveTextContent('14 days free');
+    expect(line).toHaveTextContent('then $159.99/year');
+    expect(within(card).getByRole('button', { name: 'Start 14-day free trial' })).toBeEnabled();
+    expect(within(card).getByTestId('ai-free-trial-terms')).toHaveTextContent(/before the trial ends/i);
+    // The Safety Plus card, which has no trial here, still makes no claim.
+    expect(screen.queryByTestId('free-trial-line')).toBeNull();
+  });
+
+  it('Android, no trial option exposed: price-only copy on the AI card', async () => {
+    getPlatform.mockReturnValue('android');
+    getTierOffering.mockResolvedValue({
+      availablePackages: [aiPlay('$rc_monthly', '$19.99', false), aiPlay('$rc_annual', '$159.99', false)],
+    });
+    renderPage();
+    const card = await screen.findByTestId('ai-security-protection-card');
+    await waitFor(() => expect(within(card).getAllByText(/\$159\.99/).length).toBeGreaterThan(0));
+    expect(within(card).queryByTestId('ai-free-trial-line')).toBeNull();
+    expect(within(card).queryByText(/free trial/i)).toBeNull();
+  });
+
+  it('iOS, eligible: the AI card shows the trial once eligibility is confirmed for the AI product', async () => {
+    getPlatform.mockReturnValue('ios');
+    checkIntroTrialEligibility.mockImplementation(async (pkg) => Boolean(pkg?.product?.identifier?.startsWith('ai_')));
+    getTierOffering.mockResolvedValue({ availablePackages: [aiIos('$rc_monthly', '$19.99'), aiIos('$rc_annual', '$159.99')] });
+    renderPage();
+    const card = await screen.findByTestId('ai-security-protection-card');
+    expect(await within(card).findByTestId('ai-free-trial-line')).toHaveTextContent('14 days free');
+    expect(within(card).getByRole('button', { name: 'Start 14-day free trial' })).toBeTruthy();
+  });
+
+  it('iOS, NOT eligible: no AI trial claim even though the product carries an intro price', async () => {
+    getPlatform.mockReturnValue('ios');
+    checkIntroTrialEligibility.mockResolvedValue(false);
+    getTierOffering.mockResolvedValue({ availablePackages: [aiIos('$rc_monthly', '$19.99'), aiIos('$rc_annual', '$159.99')] });
+    renderPage();
+    const card = await screen.findByTestId('ai-security-protection-card');
+    await waitFor(() => expect(checkIntroTrialEligibility).toHaveBeenCalledWith(
+      expect.objectContaining({ product: expect.objectContaining({ identifier: 'ai_$rc_annual' }) }),
+    ));
+    expect(within(card).queryByTestId('ai-free-trial-line')).toBeNull();
+  });
+
+  it('iOS, eligibility still pending: no AI trial claim until it resolves', async () => {
+    getPlatform.mockReturnValue('ios');
+    checkIntroTrialEligibility.mockReturnValue(new Promise(() => {}));
+    getTierOffering.mockResolvedValue({ availablePackages: [aiIos('$rc_monthly', '$19.99'), aiIos('$rc_annual', '$159.99')] });
+    renderPage();
+    const card = await screen.findByTestId('ai-security-protection-card');
+    await waitFor(() => expect(within(card).getAllByText(/\$159\.99/).length).toBeGreaterThan(0));
+    expect(within(card).queryByTestId('ai-free-trial-line')).toBeNull();
+  });
+});

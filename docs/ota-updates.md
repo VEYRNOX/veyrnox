@@ -1,6 +1,15 @@
 # OTA web-bundle updates
 
-**Status: BUILT, INTERNAL.** Not device-verified.
+**Status: BUILT, INTERNAL.** Verified end to end on a **physical iPhone** against a
+staging release (2026-10-02, development build; see "Staging: physical iPhone result"),
+and earlier on the iOS simulator. **Android OTA does not work in the shipped 1.0.2
+binary** (see "Android: the `.well-known` asset bug"; fixed on `main` by #2816, which
+ships in the 1.0.3 store release, in preparation — `docs/RELEASE-v1.0.3.md`), so a
+production release reaches iOS only until then. A
+**no-change canary is live on the production channel** (bundle `202610011706`, see
+"Production canary published"). Not verified end to end with a store-signed binary:
+an App Store iPhone was seen fetching the production manifest and signature, but the
+swap itself was not observed on it.
 
 **Signing keys are provisioned (2026-09-18).** Two YubiKey 5C NFC tokens, each
 holding a non-extractable P-256 key generated on-token in PIV slot 9c, with
@@ -18,8 +27,8 @@ evidence, not device evidence.
 ## Staging canary published (2026-10-01)
 
 The first real release went to the **staging** channel, as a harmless canary. It is
-the first bundle ever on `updates.veyrnox.com`; production still has none
-(`production/latest.json` is a 404).
+the first bundle ever on `updates.veyrnox.com`; at that time production had none
+(`production/latest.json` was a 404; see "Production canary published").
 
 | | |
 |---|---|
@@ -29,10 +38,10 @@ the first bundle ever on `updates.veyrnox.com`; production still has none
 | Files | 1071 files, all fetched back from the live host and matched to the manifest sha256 before `latest.json` went up |
 | Pointer | `staging/latest.json`, uploaded last, `Cache-Control: no-cache` |
 
-**Not device-verified.** No device has picked it up. It is `channel: staging`, so the
-store apps (production channel) refuse it by design; only a `--mode staging` build
-installed from an older binary can take it. Until a device does, treat everything
-below as tooling evidence.
+**Picked up by one iOS simulator, and nothing else** (see the next section). It is
+`channel: staging`, so the store apps (production channel) refuse it by design; only
+a `--mode staging` build whose own version is older than the release can take it.
+Everything outside that one run is still tooling evidence.
 
 What the canary taught, each fixed in the procedure below:
 
@@ -41,6 +50,294 @@ What the canary taught, each fixed in the procedure below:
   "What it does NOT guarantee").
 - Neither PIN was recorded where it was needed, and two tokens came within one wrong
   guess of locking (see "If a PIN is lost").
+
+## Staging canary: iOS simulator result (2026-10-01)
+
+**The canary downloaded, booted and was promoted on an iOS simulator.** The whole
+chain ran: the signature check, the per-file sha256 check, promotion on first render,
+and the version floor moving up. No PIN was entered and no wallet was created during
+the test itself: both cold starts landed on the welcome screen, and the state was read
+from the app's files.
+A wallet was created in that simulator by hand afterwards, once the canary was already
+active, so that simulator is no longer a clean first-run state. To repeat the
+first-run case, use a fresh simulator or erase this one (detach the live panel first,
+or the shutdown and erase silently do nothing).
+
+| | |
+|---|---|
+| Device | iPhone 17 Pro simulator, iOS 26.5, Xcode 27.0 |
+| Binary | web code identical to `main` at `c086d1fd`; `OTA_BUNDLE_VERSION=202610010000 npm run build:staging`, then `npx cap sync ios`, then a signed simulator build (`DEVELOPMENT_TEAM=R54268MWFV`) |
+| Embedded manifest | `staging` / `202610010000`, no dev flags set |
+| First cold start | the app fetched the release into `Library/VeyrnoxOTA/202610010509`: 1073 files, the 1071 bundle files plus the manifest and signature. State: `pending = 202610010509` |
+| Second cold start | `active = 202610010509`, `floor = 202610010509`, `pending = 0` |
+
+The update check ran on the very first cold start, on the welcome screen, before any
+wallet existed, which is what the design says (see the I3 and I2 bullet under "What it does NOT
+guarantee", below).
+
+**Test procedure, in case you repeat it:**
+
+1. **Pin the test binary's version below the release's.** A binary's embedded version
+   is its build time, and a store build newer than an OTA bundle wins and deletes
+   it. A binary built *after* the canary would therefore carry a newer version and
+   ignore the canary. Build the test binary with `OTA_BUNDLE_VERSION` set to a value
+   older than the release. (This follows the "a store update newer than the OTA bundle
+   wins" row in the table under "Why this is dangerous"; the ignored-canary case
+   itself was avoided, not run.)
+2. Build with `--mode staging`, since a staging bundle is refused by a production
+   binary. Run `npx cap sync ios` immediately before the build, because
+   `ios/App/App/public` is gitignored and `xcodebuild` does not rebuild it.
+3. Cold start the app twice: terminate it, then launch it again. The first start
+   stages the update; the second boots it.
+4. Read the result without touching the wallet. Find the data folder with
+   `xcrun simctl get_app_container <udid> com.veyrnox.app data`, list
+   `Library/VeyrnoxOTA`, and read `veyrnoxOta.active`, `.pending`, `.pendingBooted`
+   and `.floor` from `Library/Preferences/com.veyrnox.app.plist` with `plutil -p`.
+   The plist can lag the app by a few seconds, because UserDefaults are written
+   behind a cache: a read taken right after the second launch still showed
+   `pending`, and a read a few seconds later showed `active`. `simctl spawn ...
+   defaults read` cannot see this app's domain, so read the file.
+
+**What this does not show:**
+
+- **A physical device or Android.** Nothing here runs on Android, and the simulator is
+  not hardware.
+- **The production channel or a store-signed binary.** At that point production had no release, and
+  the simulator ran a debug build, so the pinned-key and channel checks ran against a
+  staging manifest only.
+- **Any failure path.** A bad signature, a hash mismatch, a bundle that boots but never
+  reports ready, and the rollback were not exercised on a device; they are covered
+  by unit tests.
+- **That the new code is what rendered.** The canary's web code was built from an
+  older commit than the binary's, so after promotion the simulator is running that
+  older code. The proof is the state values above, not anything on screen.
+
+## Staging canary: Android emulator result (2026-10-01)
+
+**The canary was never downloaded on Android.** The update check was blocked at the
+host. This is the only Android run so far, and it was on an emulator, not a phone, so
+it does not say whether real Android devices are blocked too.
+
+| | |
+|---|---|
+| Device | fresh emulator, Android 14 (API 34, `google_apis`, arm64), WebView Chrome 113 |
+| Binary | the exact shipped 1.0.2 web code (`a4559997`; iOS build 8 `dbb7f135` differs only in a Gradle file and a test), `OTA_BUNDLE_VERSION=202610010000 npm run build:staging`, `npx cap sync android`, then `assembleGoogleDebug` (`com.veyrnox.app.debug`) |
+| Native side | fine. The OTA plugin reported `enabled: true`, channel `staging`, `nativeApi: 1`, `runningVersion` and `newestKnownVersion` both `202610010000`, and wrote its state file with all zeros |
+| Web side | **blocked.** Every request from the WebView to `updates.veyrnox.com` (`latest.json` on both channels, a file under a release) returned **HTTP 403, the Cloudflare "Sorry, you have been blocked" page**. The same WebView read `www.veyrnox.com/robots.txt` with 200, so the zone is not blocking it wholesale |
+| Result | `VeyrnoxOTA` never appeared in the app's data, so there was no second cold start to run |
+
+**What Cloudflare says** (Security, Events, zone `veyrnox.com`, last 24 hours, filtered
+to host `updates.veyrnox.com` and action Block): 19 blocks, all by **managed rules**,
+none by a custom rule.
+
+- **Ruleset:** Cloudflare OWASP Core Ruleset.
+- **Rule:** `920274: Invalid character in request headers (outside of very strict set)`,
+  rule id `ac090cd641d742b3adba4ece7f4d7e64`, 15 of the 19.
+- Seven of the 19 came from the test machine, with the emulator WebView's exact user
+  agent and `Referer: localhost`, on `/staging/latest.json` (5) and
+  `/production/latest.json` (3). The event shows `HTTP/1.1` and method `GET`.
+- The other four blocks were by different managed rules (`Drupal - Anomaly:Header:X-Forwarded-For`
+  twice, a missing or empty `Accept`, and a non-GET/POST method, which was a `HEAD`).
+  They were not attributed to any source here.
+- The zone's nine custom rules are all about `tip.veyrnox.com` and `tip-staging.veyrnox.com`.
+  None mentions the updates host, so the managed OWASP rules apply to it in full.
+- The event list also accepts filters in the URL, for example
+  `.../security/analytics/events?action=block&host=updates.veyrnox.com`.
+
+**What is NOT known.** Which header trips rule 920274. Plain `curl` to the same URL gets
+200 with each of these tried on its own: `Origin: https://localhost` and
+`capacitor://localhost`, the emulator's exact user agent, a modern Pixel user agent,
+`X-Requested-With: com.veyrnox.app.debug`, browser-style `Sec-Fetch-*` and `Referer`,
+and a quoted `sec-ch-ua`. It also is not known whether a real phone, whose WebView is
+current, sends anything that trips the rule. The emulator image's WebView is Chrome 113
+from 2023.
+
+**Failure mode.** A blocked update check fails closed: the app stays on its current
+bundle and nothing unsafe happens. But if real Android devices are blocked the same
+way, **Android OTA would silently never apply**, and a production release would reach
+iOS only.
+
+**A fix has been considered and NOT applied.** A custom rule on the `veyrnox.com` zone
+with the expression `(http.host eq "updates.veyrnox.com")`, action Skip, scoped to rule
+`920274` of the OWASP ruleset only. It matches the zone's existing "Skip WAF on staging"
+pattern. It was started and deliberately not saved: it lowers protection on that hostname,
+so it needs an explicit owner decision, and the physical-phone result may show it is
+unnecessary. The reasoning for it, if it is made: the host serves public, signed files
+that the app verifies against pinned keys and per-file hashes, so its security does not
+depend on the WAF. If skipping that single rule is not enough, other OWASP rules may
+also trip, and the next step would be skipping managed rules for the host. The cost of
+either is less generic scanning protection on `updates.veyrnox.com`.
+
+**Consequence for releasing.** Superseded: the rule was skipped for the host (see
+"Cloudflare: the managed-rule exception") and a second, separate Android failure was
+found (see "Android: the `.well-known` asset bug").
+
+**Android test procedure and traps**, so the next run does not repeat them:
+
+1. **Use Java 21 for Gradle**, to match CI. The default `openjdk` formula is Java 25 and
+   Gradle 8.14 fails at once with `Unsupported class file major version 69`.
+2. **A locked emulator cannot launch the app.** One existing AVD had a device lock; its
+   user stayed `RUNNING_LOCKED`, the app was "partially direct-boot aware", and
+   `am start` returned `-92` (`START_CLASS_NOT_FOUND`) with `monkey` finding no launcher.
+   Check `dumpsys user` for `RUNNING_UNLOCKED`, or create a fresh AVD
+   (`avdmanager create avd -n <name> -k "system-images;android-34;google_apis;arm64-v8a" -d pixel_7`).
+   Do not wipe an AVD that holds other installs.
+3. **Launch with** `am start -n com.veyrnox.app.debug/com.veyrnox.app.MainActivity`.
+4. **Screenshots come back empty**: the wallet blocks screen capture (`FLAG_SECURE`).
+   Debug builds expose the WebView over DevTools instead:
+   `adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>`, then
+   `curl localhost:9222/json` lists the page and its websocket, and a `Runtime.evaluate`
+   over that websocket can run `fetch(...)` or call
+   `Capacitor.Plugins.VeyrnoxOta.status()`. It touches no wallet state.
+5. **Read the OTA state** with `adb shell run-as com.veyrnox.app.debug cat shared_prefs/VeyrnoxOta.xml`
+   (`active`, `pending`, `pendingBooted`, `floor`) and
+   `... ls files/VeyrnoxOTA` for the staged versions.
+
+## Cloudflare: the managed-rule exception (2026-10-01)
+
+After the finding above, the owner added a **Managed rules exception** (Security, Security
+rules, Create rule, Managed rules exception) on zone `veyrnox.com`:
+
+- **Expression:** `(http.host eq "updates.veyrnox.com")`
+- **Skip:** the OWASP Core Ruleset rule `920274` only (the form allows a per-rule skip;
+  the custom-rule form only offers broad skips, so use this one).
+- **Order matters: it must be FIRST.** Managed-rule exceptions run before the
+  Execute rows that apply the managed rulesets. The first deploy was placed after them
+  and changed nothing (36 of 46 requests still blocked). Use Place at, First, then re-test.
+
+After that the emulator and a Pixel WebView got 200s from `updates.veyrnox.com`, and
+Security Events showed no new blocks for the emulator. Other managed rules and the
+host's `HEAD` / empty-`Accept` blocks are unchanged. The host serves public, signed
+files verified against pinned keys and per-file hashes, so its security does not depend
+on the WAF; the cost is less generic scanning protection on that hostname.
+
+## Android: the `.well-known` asset bug (2026-10-01)
+
+With the network path open, the Android emulator downloaded `ota-manifest.json` and
+`ota-manifest.sig` and then stopped: no bundle file, no `pending`, no error shown.
+
+**Root cause.** The embedded manifest lists 1070 files, including
+`.well-known/README.md`, `.well-known/apple-app-site-association` and
+`.well-known/assetlinks.json`. Android's asset packaging drops files whose names start
+with a dot, so the debug APK has **zero** entries under `assets/public/.well-known/`
+(1070 `assets/public/` entries in all, counted with `unzip -l`).
+`OtaUpdatePlugin.kt` `prepare()` reuses an unchanged file by opening it from
+`context.assets`; that open throws for the first `.well-known` file, `prepare` fails
+with `OTA_IO`, and `src/lib/otaUpdate.js` swallows the error outside DEV.
+
+**Consequences.**
+
+- **Android OTA is broken in every shipped 1.0.2 binary**, in a way OTA itself cannot
+  fix: the code that fails is native. It fails closed and silently; the app stays on its
+  embedded bundle.
+- It needs a store release (Android 1.0.3): either make `prepare()` treat an asset it
+  cannot open as `missing` so it is downloaded, or stop dot-files being dropped
+  (`androidResources.ignoreAssetsPattern`) or exclude them from the manifest.
+- **Not checked:** whether the underscore-prefixed manifest entries (`_headers`,
+  `_redirects`, `assets/_esm-*.js`, `assets/_u64-*.js`) are in the APK. Check with
+  `unzip -l` before assuming the fix above is complete.
+- iOS is not affected: it reads the file straight from the app bundle.
+
+**Fix (this branch, ships with the next Android release; not in 1.0.2).**
+`OtaBundleVerifier.prefill` now reports a held file whose source cannot be opened as
+`missing` instead of throwing, so it is downloaded and sha256-checked by `stage` like
+any other file (nothing is trusted without its hash). Pinned by four JVM tests;
+reintroducing the throw turns two of them red. **Verified on the emulator** against the
+staging canary: manifest, `.well-known/*` and every other file downloaded, `stage`
+accepted it, the second cold start promoted it, and `status()` reported
+`runningVersion 202610010509`. Not yet verified on a physical phone.
+
+**A second Android-only failure, found while verifying the fix.** After `prepare` passed,
+`stage` returned `OTA_VERIFY_FAILED`: Cloudflare had injected its Web Analytics beacon
+into `index.html` (22325 bytes, not the signed 21964). Android's HTTP client sends
+`Accept: text/html, ...`, and the staging canary's HTML files were served as
+`text/html`, so Cloudflare rewrote them; `curl` (`Accept: */*`) and iOS never saw it.
+Re-uploading `index.html` as `application/octet-stream` fixed it. **Production was not
+affected**, because every object there was uploaded as `octet-stream`. Check it with
+`curl -H 'Accept: text/html'` as well as plain `curl`. `verify-live` now does this itself:
+it requests every object a second time with Android's `Accept`, so a rewrite that only
+Android would receive fails the check (reported as `[android client]`).
+
+## Production canary published (2026-10-01)
+
+A **no-change canary** went to the production channel: the exact shipped 1.0.2 web
+code, rebuilt with a newer version number, so it changes nothing a user sees. It is not
+built from `main`.
+
+| | |
+|---|---|
+| Source | `a4559997`, in a clean worktree (`.env.production` is tracked, so no `.env.local` and no dev flags) |
+| Build | `OTA_BUNDLE_VERSION=202610011706 npm run build` |
+| Channel / version | `production` / `202610011706` |
+| Files | 1070 in the manifest; 1072 objects including the manifest and signature |
+| Manifest sha256 | `e116e6e206faebc27d00ebd63289405302576ee5bd6aaec2a69d1f7e69befaf9` |
+| Signed with | token B (39744871), PIN and touch by the owner; `seal` and `verify` passed against the pinned keys |
+| Upload order | files, manifest and signature, `verify-live`, then `latest.json` last with `no-cache` |
+
+**Caught by `verify-live`:** the parallel upload reported two lines containing
+"error"/"fail" and `_redirects` was missing from the host (HTTP 404). It was re-uploaded
+and `verify-live` re-run (`live copy OK: 1072 objects match`) before `latest.json` was
+published. Do not trust the exit code of the `xargs` upload; run `verify-live` every time.
+
+**Reach.** iOS 1.0.2 installs only. **What has been seen from real devices** (Cloudflare
+Security Analytics, sampled):
+
+- **An App Store iPhone** (the owner's, 1.0.2 build 8) fetched `production/latest.json`,
+  then `production/202610011706/ota-manifest.json` and `ota-manifest.sig`, at 06:26 BST
+  on 2026-10-02, right after a cold start. It fetched no files, which is expected for a
+  no-change bundle: every file hash matches the embedded bundle, so `prepare` returns
+  nothing missing. Whether it then staged and booted the bundle cannot be seen from the
+  host, and 1.0.2 has no screen that shows it.
+- **A real Android 1.0.2 phone** (Android 11, TECNO) fetched the production manifest at
+  22:47 BST on 2026-10-01 and no files after it: the first real-device sighting of the
+  `.well-known` bug.
+- Traffic is low: about 300 `production/latest.json` requests in the 7 days to
+  2026-10-02, many of them from Microsoft-owned addresses with an iPhone WebView user
+  agent. Request volume is far below the subscriber count; the reason is not known.
+
+**To roll back,** see "Rolling back".
+
+## Staging: physical iPhone result (2026-10-02)
+
+**OTA works end to end on a real iPhone.** The running web bundle changed on screen from
+the embedded `202610020000` to the downloaded `202610020712`.
+
+| | |
+|---|---|
+| Device | iPhone 17 Pro Max (the owner's; its Veyrnox held no funds), cabled, Developer Mode on |
+| Binary | `main` at `efd1063f`, which includes the Settings "Web bundle" row (#2818). `OTA_BUNDLE_VERSION=202610020000 npm run build:staging`, `npx cap sync ios`, `xcodebuild -configuration Debug` signed for team `R54268MWFV`, installed with `xcrun devicectl device install app` |
+| Release | staging `202610020712`, the same code rebuilt, 1072 files, signed with token B, `seal` and `verify` passed, `verify-live` (both client profiles) `1074 objects match` before `latest.json` |
+| Production | untouched (`production/latest.json` stayed `202610011706`) |
+
+What the owner saw in Settings, "Web bundle":
+
+1. Before `latest.json` changed: `202610020000`, "The app code this device is running".
+2. After a full close and reopen: `202610020000`, "An update is staged and applies after
+   you fully close and reopen the app".
+3. After a second full close and reopen: **`202610020712`**.
+
+**What this proves and what it does not.** Real hardware ran the whole flow on the
+staging channel: the update check, download, signature check against the pinned keys,
+per-file hashes, staging and the swap on a cold start. It was a **development-signed**
+build, so it says nothing new about the App Store binary; that build's update check is
+covered only by the 06:26 host log above.
+
+**Traps from this run:**
+
+- **A development build replaces the App Store app.** Debug and Release share the app ID
+  `com.veyrnox.app`, so installing from Xcode overwrites the store install, and the
+  wallet's Keychain items (including the hardware KEK) may not be readable afterwards.
+  Use a phone with no real funds, or one whose seed is backed up. To go back, delete the
+  app and reinstall it from the App Store.
+- **A staging device build needs `.env.staging.local`.** The tracked `.env.staging` has
+  no `VITE_EDGE_BASE`, so on a phone every `/api/*` call fails closed: market news, for
+  one, does not load. This run built from a clean checkout on purpose and lost those
+  features; it did not affect the update, which only talks to `updates.veyrnox.com`.
+- **Uploading 1072 files with `xargs -P 8` took over 20 minutes** for a quarter of them,
+  because every file starts a new `npx wrangler` (13–25 s each). `-P 24` finished the
+  rest in about 15 minutes. `verify-live` is what proves the upload complete, whatever
+  the concurrency.
+
 
 ## ARMED for 1.0.2 (2026-09-19, owner decision — reverses the #2627 disarm)
 
@@ -356,7 +653,11 @@ signed: the live `ota-manifest.json` and `ota-manifest.sig` must be byte-identic
 your local, sealed copies, and every file in the manifest must hash to its manifest
 sha256. It requests the exact URLs a device does (`<base>/<channel>/<version>/files/<path>`,
 raw path, `cache: 'no-store'`), with the channel and version taken from the manifest
-itself, so it cannot check the wrong release. The base URL defaults to
+itself, so it cannot check the wrong release. Each object is fetched twice: once with
+a plain request (what iOS and `fetch` send) and once with Android's `Accept: text/html,
+…` and a Dalvik user agent. Cloudflare rewrites a `text/html` response only for the
+second kind, which is how an injected analytics script reached Android alone (see
+"Android: the `.well-known` asset bug"). The base URL defaults to
 `https://updates.veyrnox.com`; pass another as a second argument. Plain `http` is
 refused except to `localhost`.
 
