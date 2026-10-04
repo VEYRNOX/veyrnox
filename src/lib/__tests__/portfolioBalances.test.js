@@ -234,6 +234,33 @@ describe('live-price injection (optional, default-preserving)', () => {
     expect(pricesUpdatedAt).toBeNull();
   });
 
+  it('stays live when the only symbol missing a live price has a zero balance', async () => {
+    getBalanceEth.mockResolvedValue(2);
+    getBalanceSol.mockResolvedValue(0);
+    const { grandTotal, priceBasis, pricesUpdatedAt } = await computePortfolio(
+      [{ id: 'w1', enabledAssets: ['ETH', 'SOL'] }],
+      { w1: { evm: '0xabc', sol: 'So1' } },
+      { ETH: 1000 },
+      12345,
+    );
+    expect(grandTotal).toBe(2000);
+    expect(priceBasis).toBe('live');
+    expect(pricesUpdatedAt).toBe(12345);
+  });
+
+  it('stays live when the only symbol missing a live price failed to read', async () => {
+    getBalanceEth.mockResolvedValue(2);
+    getBalanceSol.mockRejectedValue(new Error('RPC down'));
+    const { priceBasis, indeterminate } = await computePortfolio(
+      [{ id: 'w1', enabledAssets: ['ETH', 'SOL'] }],
+      { w1: { evm: '0xabc', sol: 'So1' } },
+      { ETH: 1000 },
+      12345,
+    );
+    expect(indeterminate).toBe(true);
+    expect(priceBasis).toBe('live');
+  });
+
   it('marks reference-rate results approximate', async () => {
     getBalanceEth.mockResolvedValue(1);
     const result = await computePortfolio(

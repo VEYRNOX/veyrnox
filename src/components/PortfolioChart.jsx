@@ -6,6 +6,7 @@ import {
 } from "@/lib/recharts";
 import { format, subWeeks, subDays, addDays, startOfWeek } from "date-fns";
 import { USD_RATES } from "@/lib/cryptos";
+import ReferenceRateNote from "@/components/ReferenceRateNote";
 
 const PERIODS = [
   { key: "7d",  label: "7D",  days: 7,   unit: "days",  fmt: "MMM d",   tickCount: 7  },
@@ -191,6 +192,10 @@ export default function PortfolioChart({ transactions, currentBalance }) {
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      {/* The history is walked back from the current balance using USD_RATES
+          deltas (buildDayMap), whatever basis the balance itself was priced
+          on — so the chart always carries the reference-rate disclosure. */}
+      <ReferenceRateNote className="text-center" />
     </div>
   );
 }

@@ -3,7 +3,12 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recha
 import { USD_RATES } from "@/lib/cryptos";
 import { formatUsd, resolveLocale } from "@/lib/locale";
 
-const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
+// Data-series tokens only (index.css --chart-1..5), assigned by slice rank so
+// the largest holding is always teal. A sixth-plus slice reuses the ramp at
+// reduced opacity rather than introducing an off-palette colour.
+const SERIES_TOKENS = ["--chart-1", "--chart-2", "--chart-3", "--chart-4", "--chart-5"];
+export const sliceFill = (i) => `hsl(var(${SERIES_TOKENS[i % SERIES_TOKENS.length]}))`;
+export const sliceOpacity = (i) => (i < SERIES_TOKENS.length ? 1 : 0.55);
 
 function CustomTooltip({ active = undefined, payload = undefined }) {
   if (!active || !payload?.length) return null;
@@ -11,8 +16,8 @@ function CustomTooltip({ active = undefined, payload = undefined }) {
   return (
     <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-xl text-xs">
       <p className="font-semibold">{d.name}</p>
-      <p className="text-muted-foreground">{formatUsd(d.usd, resolveLocale(), { maximumFractionDigits: 2 })}</p>
-      <p className="text-muted-foreground">{d.percent}%</p>
+      <p className="mono-value text-muted-foreground">{formatUsd(d.usd, resolveLocale(), { maximumFractionDigits: 2 })}</p>
+      <p className="mono-value text-muted-foreground">{d.percent}%</p>
     </div>
   );
 }
@@ -22,7 +27,7 @@ function CustomLegend({ payload = undefined }) {
     <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-2">
       {payload.map((entry, i) => (
         <div key={i} className="flex items-center gap-1.5 text-xs">
-          <div className="h-2.5 w-2.5 rounded-full" style={{ background: entry.color }} />
+          <div className="h-2.5 w-2.5 rounded-full" style={{ background: entry.color, opacity: sliceOpacity(i) }} />
           <span className="text-muted-foreground">{entry.value}</span>
         </div>
       ))}
@@ -78,7 +83,7 @@ export default function AssetDistributionChart({ slices = undefined, wallets = [
             strokeWidth={0}
           >
             {data.map((entry, i) => (
-              <Cell key={i} fill={CURRENCY_COLORS[entry.name] || "#888"} />
+              <Cell key={i} fill={sliceFill(i)} fillOpacity={sliceOpacity(i)} />
             ))}
           </Pie>
           <Tooltip content={<CustomTooltip />} />
