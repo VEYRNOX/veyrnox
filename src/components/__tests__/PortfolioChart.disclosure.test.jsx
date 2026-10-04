@@ -14,9 +14,9 @@ vi.mock("@/lib/recharts", () => {
 import PortfolioChart from "../PortfolioChart";
 import { USD_REFERENCE_NOTE } from "@/lib/cryptos";
 
-test("renders the reference-rate disclosure with the chart", () => {
+test("omits the reference-rate disclosure for a balance-only flat chart", () => {
   render(<PortfolioChart transactions={[]} currentBalance={1234} />);
-  expect(screen.getByText(USD_REFERENCE_NOTE)).toBeInTheDocument();
+  expect(screen.queryByText(USD_REFERENCE_NOTE)).not.toBeInTheDocument();
 });
 
 test("still discloses when there is transaction history to price", () => {

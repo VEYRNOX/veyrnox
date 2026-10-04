@@ -336,10 +336,9 @@ export function usePortfolio(wallets, walletAddresses) {
       // about now. It reads approximate until this session's first compute.
       return cached ? { ...cached.data, priceBasis: 'approx', pricesUpdatedAt: null } : undefined;
     },
-    initialDataUpdatedAt: () => {
-      const cached = loadPortfolioCache(key);
-      return cached ? cached.ts : 0;
-    },
+    // Hydration is display-only. Always mark it stale so even a cache written
+    // moments ago cannot suppress this session's first real computation.
+    initialDataUpdatedAt: 1,
   });
   // "Live" needs BOTH: the values on screen were priced live (placeholder data
   // may predate a live refetch) AND live prices are available right now (an
