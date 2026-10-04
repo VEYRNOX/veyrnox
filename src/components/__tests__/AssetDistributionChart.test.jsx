@@ -16,7 +16,18 @@ vi.mock("recharts", () => ({
   Legend: () => null,
 }));
 
-import AssetDistributionChart from "../AssetDistributionChart";
+import AssetDistributionChart, { sliceFill, sliceOpacity } from "../AssetDistributionChart";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+test("slices are coloured from the chart tokens, never a hardcoded hex", () => {
+  for (let i = 0; i < 12; i++) expect(sliceFill(i)).toMatch(/^hsl\(var\(--chart-[1-5]\)\)$/);
+  expect(sliceFill(0)).toBe("hsl(var(--chart-1))");
+  expect(sliceOpacity(4)).toBe(1);
+  expect(sliceOpacity(5)).toBeLessThan(1);
+  const src = readFileSync(resolve(process.cwd(), "src/components/AssetDistributionChart.jsx"), "utf8");
+  expect(src).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+});
 
 test("renders the precomputed slices as given — no re-pricing through the static table", () => {
   render(<AssetDistributionChart slices={[{ name: "BTC", usd: 75000 }, { name: "ETH", usd: 25000 }]} />);

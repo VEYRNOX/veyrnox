@@ -21,6 +21,7 @@
 // to it, so a decoy session can never reach a real-set address (Finding 1).
 
 import { Contract, formatUnits } from 'ethers';
+import { useCallback, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ASSETS, getAsset, getAssetById } from '@/wallet-core/assets.js';
 import { isAssetIdString } from '@/wallet-core/assetId.js';
@@ -191,7 +192,10 @@ export async function computePortfolio(wallets, walletAddresses, livePrices, pri
     // priceSymbol lets a row use a different price feed than its own symbol
     // (ARB/OP rows hold native ETH on their L2, so priceSymbol='ETH').
     const resolvedRate = resolveUsdRate(priceSymbol, livePrices);
-    if (resolvedRate.basis !== 'live') priceBasis = 'approx';
+    // Only a row that puts dollars into the total can downgrade its basis: a
+    // failed read (usd null) or an empty balance contributes nothing, so a
+    // missing live price for it leaves every summed dollar live-priced.
+    if (resolvedRate.basis !== 'live' && !indeterminate && amount > 0) priceBasis = 'approx';
     const usd = indeterminate ? null : amount * resolvedRate.rate;
     byWallet[walletId].assets.push({ id, symbol, amount, usd, indeterminate });
     if (!assetTotals[id]) assetTotals[id] = { symbol, amount: 0, usd: 0, indeterminate: false };
@@ -327,17 +331,37 @@ export function usePortfolio(wallets, walletAddresses) {
     // gates), matching the "no shared-state read" I3 contract.
     initialData: () => {
       const cached = loadPortfolioCache(key);
-      return cached ? cached.data : undefined;
+      // A hydrated result never carries a live label: the cache key has no
+      // price basis and entries live up to 24h, so its provenance says nothing
+      // about now. It reads approximate until this session's first compute.
+      return cached ? { ...cached.data, priceBasis: 'approx', pricesUpdatedAt: null } : undefined;
     },
-    initialDataUpdatedAt: () => {
-      const cached = loadPortfolioCache(key);
-      return cached ? cached.ts : 0;
-    },
+    // Hydration is display-only. Always mark it stale so even a cache written
+    // moments ago cannot suppress this session's first real computation.
+    initialDataUpdatedAt: 1,
   });
-  // Render the provenance of the values actually on screen, not the current
-  // price-query state. Placeholder/persisted data may predate a live refetch,
-  // and old cache entries have no provenance; both fail honest to approximate.
-  const priceBasis = query.data?.priceBasis === 'live' ? 'live' : 'approx';
+  // "Live" needs BOTH: the values on screen were priced live (placeholder data
+  // may predate a live refetch) AND live prices are available right now (an
+  // opt-out or price error drops the label at once, even while a live-priced
+  // placeholder is still showing). Anything else fails honest to approximate.
+  const priceBasis = liveOk && query.data?.priceBasis === 'live' ? 'live' : 'approx';
   const displayedPricesUpdatedAt = priceBasis === 'live' ? (query.data?.pricesUpdatedAt ?? null) : null;
-  return { ...query, priceBasis, pricesUpdatedAt: displayedPricesUpdatedAt, refetchPrices };
+
+  // Manual refresh: fetch prices, then re-price the portfolio with them. The
+  // recompute waits for the render that carries the new prices (the queryFn
+  // closes over them), so it is driven from an effect rather than chained here.
+  const refreshPending = useRef(false);
+  const refetchPortfolio = query.refetch;
+  useEffect(() => {
+    if (!refreshPending.current) return;
+    refreshPending.current = false;
+    refetchPortfolio();
+  }, [updatedAt, refetchPortfolio]);
+  const refreshPrices = useCallback(async () => {
+    refreshPending.current = true;
+    const res = await refetchPrices();
+    if (res?.isError) refreshPending.current = false;
+    return res;
+  }, [refetchPrices]);
+  return { ...query, priceBasis, pricesUpdatedAt: displayedPricesUpdatedAt, refetchPrices: refreshPrices };
 }

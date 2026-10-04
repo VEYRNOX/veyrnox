@@ -132,8 +132,15 @@ const fmtAmount = (n) =>
     : n < 0.0001 ? n.toExponential(2)
     : n.toLocaleString(undefined, { maximumFractionDigits: 6 });
 
-// "12:04" local time for the live-price freshness stamp.
-const fmtPriceTime = (ts) => (ts ? new Date(ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "");
+// "12:04" local time for the live-price freshness stamp. A stamp from another
+// day carries its date ("3 Oct, 12:04") so it can't read as today's.
+export const fmtPriceTime = (ts, now = Date.now()) => {
+  if (!ts) return "";
+  const d = new Date(ts);
+  const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === new Date(now).toDateString()) return time;
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + ", " + time;
+};
 
 // Price-basis line under the portfolio total. Live: refresh control + fetch time.
 // Otherwise the total was priced from the static USD_RATES table, so it is
@@ -142,6 +149,7 @@ const fmtPriceTime = (ts) => (ts ? new Date(ts).toLocaleTimeString(undefined, { 
 export function PriceBasisNote({ priceBasis, pricesUpdatedAt, onRefresh }) {
   const { t } = useTranslation("wallet");
   if (priceBasis === "live") {
+    const liveLabel = t("portfolio.live") + (pricesUpdatedAt ? " · " + fmtPriceTime(pricesUpdatedAt) : "");
     return (
       <div className="mt-1 flex justify-center">
         <button
@@ -149,9 +157,10 @@ export function PriceBasisNote({ priceBasis, pricesUpdatedAt, onRefresh }) {
           onClick={onRefresh}
           className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           title={t("portfolio.refreshPricesTooltip")}
+          aria-label={`${t("portfolio.refreshPricesTooltip")} (${liveLabel})`}
         >
-          <RefreshCw className="h-3 w-3" />
-          {t("portfolio.live")}{pricesUpdatedAt ? " · " + fmtPriceTime(pricesUpdatedAt) : ""}
+          <RefreshCw className="h-3 w-3" aria-hidden="true" />
+          {liveLabel}
         </button>
       </div>
     );

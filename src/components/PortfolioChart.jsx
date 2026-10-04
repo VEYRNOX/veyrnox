@@ -6,6 +6,7 @@ import {
 } from "@/lib/recharts";
 import { format, subWeeks, subDays, addDays, startOfWeek } from "date-fns";
 import { USD_RATES } from "@/lib/cryptos";
+import ReferenceRateNote from "@/components/ReferenceRateNote";
 
 const PERIODS = [
   { key: "7d",  label: "7D",  days: 7,   unit: "days",  fmt: "MMM d",   tickCount: 7  },
@@ -191,6 +192,9 @@ export default function PortfolioChart({ transactions, currentBalance }) {
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      {/* Transaction deltas are converted with USD_RATES. A balance-only flat
+          line inherits the current balance's basis and needs no extra note. */}
+      {transactions.length > 0 && <ReferenceRateNote className="text-center" />}
     </div>
   );
 }

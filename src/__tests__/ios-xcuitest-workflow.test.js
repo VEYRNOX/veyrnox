@@ -30,4 +30,12 @@ describe('iOS XCUITest smoke workflow', () => {
     expect(code).not.toMatch(/simctl launch "\$IOS_SIMULATOR_UDID"/);
     expect(code).not.toContain('warmup-after-120s.png');
   });
+
+  it('leaves enough per-test time for the import terminal assertion after slow AX input', () => {
+    // Run 37155168000 reached Restore / Import at 563s. A 600s XCTest limit
+    // interrupted the fail-closed assertion even though the workflow's stricter
+    // aggregate watchdog still had hundreds of seconds left.
+    expect(workflow).toContain('-default-test-execution-time-allowance 750');
+    expect(workflow).toContain("' 1000 \\");
+  });
 });
