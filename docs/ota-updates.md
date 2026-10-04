@@ -19,6 +19,10 @@ the `322`/`536` starting versions are assumed to be the embedded 1.0.3 store bun
 Release record: "Production release 202610031506 published". The earlier no-change
 canary `202610011706` remains documented in its historical section.
 
+**Production bundle `202610041308` superseded it on 2026-10-04 13:26 UTC** (built from
+`main` at `689e2e42`). At the time of writing it has **not** been seen applied on a
+device. Release record: "Production release 202610041308 published".
+
 **Signing keys are provisioned (2026-09-18).** Two YubiKey 5C NFC tokens, each
 holding a non-extractable P-256 key generated on-token in PIV slot 9c, with
 touch required per signature:
@@ -334,6 +338,41 @@ owner saw it applied on an App Store iPhone and on a physical Android 1.0.3 phon
 the status at the top of this file; owner-reported from the Settings row). `curl -I`
 (HEAD) on `latest.json` returns 403 from the host; GET is what devices send and returns
 200.
+
+## Production release 202610041308 published (2026-10-04)
+
+Carries the price-display fixes to native. Owner go given in session after signing.
+
+| | |
+|---|---|
+| Source | `main` at `689e2e42`, clean worktree (no `.env.local`; `VITE_BYPASS_RASP`, `VITE_DEV_UNGATE_SEND`, `VITE_DEMO_MODE` all unset in `ota-build-flags.json`) |
+| Build | `npm run build`, version from build time |
+| Channel / version | `production` / `202610041308`, `minNativeApi` 1 |
+| Files | 1073 in the manifest; 1075 objects including the manifest and signature |
+| Manifest sha256 | `fd98b20bd860ffb6683127be9974648bdbd38ec73c0f984368a181099a8a0f6f` |
+| Signed with | token B (39744871), PIN and touch by the owner; `seal` and `verify` passed against the pinned keys |
+| Upload order | files (1073 ok, 0 failed), manifest and signature, `verify-live` (`live copy OK: 1075 objects match`), then `latest.json` last with `no-cache` |
+| Live | `latest.json` published 2026-10-04 13:26 UTC; a plain GET and an Android-style GET both return 200 with `{"bundleVersion":202610041308}` and `cache-control: no-cache` |
+
+**What it carries beyond `202610031506` (`467c3552`):** the asset-page header price from
+the live feed instead of the hardcoded `TOP_CRYPTOS` constant, with ARB/OP priced and
+charted from the ETH feed (#2843); the home asset-distribution chart built from the
+portfolio's own values, and the reference-rate note shown only on the approximate basis
+(#2844, with its review follow-ups in #2847); and the `braces` recursion-depth guard
+(#2842). The only native file changed in that range is `AppUITests.swift`, which is test
+code and not in the app binary.
+
+**Not verified.** At publish time this bundle had not been booted on a device or
+simulator, and none of #2843 / #2844 / #2847 had been seen in a real unlocked session;
+they are covered by unit tests only. Before publish the owner's iPhone still showed the
+bundle ending `506`, which is the expected pre-publish state, not evidence about this
+release.
+
+**An earlier bundle the same day was signed but never published.** `202610040621`
+(built from `main` at `6dabb5aa`, manifest sha256
+`e9fbacd35571bf53a20a8ee24b8dd8f5a986df7fc059af0e1492a304494a7886`, signed with token A
+and sealed) was not uploaded: no go was given before #2847 landed with fixes to the
+portfolio change it carried. Nothing under `production/202610040621/` exists on the host.
 
 ## Staging: physical iPhone result (2026-10-02)
 
