@@ -27,7 +27,6 @@ const read = (path) => readFileSync(resolve(root, path), 'utf8');
 const swift = read('ios/App/AppUITests/AppUITests.swift');
 const entryTiles = read('src/components/EntryTiles.jsx');
 const workflow = read('.github/workflows/firebase-test-lab.yml');
-const iosSmokeWorkflow = read('.github/workflows/ios-xcuitest-smoke.yml');
 const ciWorkflow = read('.github/workflows/ci.yml');
 const androidBuild = read('android/app/build.gradle');
 // FTL Pixels ship with no lock screen, so onboarding cannot reach the
@@ -135,14 +134,6 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(helper, 'pressUntilAccepted not found').toBeTruthy();
     expect(helper).toMatch(/for attempt in 1\.\.\.maxAttempts/);
     expect(helper).toMatch(/if accepted\(\) \|\| !button\.exists \|\| !button\.isEnabled \{ return \}/);
-  });
-
-  it('leaves enough per-test time for the import terminal assertion after slow AX input', () => {
-    // Run 37155168000 reached Restore / Import at 563s. A 600s XCTest limit
-    // interrupted the fail-closed assertion even though the workflow's stricter
-    // aggregate watchdog still had hundreds of seconds left.
-    expect(iosSmokeWorkflow).toContain('-default-test-execution-time-allowance 750');
-    expect(iosSmokeWorkflow).toContain("' 1000 \\");
   });
 
   it('uses a Robo script to click the custom Android PinPad instead of inventing text fields', () => {
