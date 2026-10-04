@@ -230,7 +230,16 @@ jobs:
           # xcodebuild process group, which can keep the step alive after the
           # watchdog kills xcodebuild. Format the completed log afterwards.
           set +e
-          # Per-test allowance is 600s, raised from 300s after #2246. The PIN
+          # Per-test allowance is 750s, raised from 600s after run 37155168000.
+          # That run reached the import submit at 563s after several WebKit AX
+          # snapshot stalls, leaving only 37s for provisioning and the terminal
+          # fail-closed assertion. XCTest fired its allowance while that assertion
+          # was still polling, then spent another ~128s collecting diagnostics.
+          # The workflow's 1000s process-group watchdog remains the aggregate
+          # bound across both tests, so this only stops XCTest from pre-empting a
+          # live test before the stricter outer budget does.
+          #
+          # The allowance was originally raised from 300s after #2246. The PIN
           # ceremony retries once on a confirm desync (setPinCeremony in
           # AppUITests.swift) and 300s could not fit two attempts: run
           # 33623177119 was KILLED at the 5-minute allowance mid-retry, which
@@ -238,9 +247,9 @@ jobs:
           # strictly less informative than the failure it replaced.
           # Budget, from run 33617705223's measured timeline: first ceremony
           # ~280s (most of it one-time — 12s launch, first keypad key at 85s),
-          # second ~140s, so worst case ~420s. 600s leaves headroom without
-          # crowding the 1000s watchdog below (non-test overhead measured ~150s,
-          # so ~750s worst case against that 1000s kill). Run 34496100453
+          # second ~140s, so the normal retry path is ~420s. The larger per-test
+          # ceiling covers pathological AX stalls without extending the 1000s
+          # aggregate kill. Run 34496100453
           # completed both tests in 751s but needed additional teardown time;
           # the extra margin preserves its result instead of misreporting a pass
           # as a watchdog timeout.
@@ -271,7 +280,7 @@ jobs:
             -clonedSourcePackagesDirPath SourcePackages \
             -derivedDataPath DerivedData \
             -test-timeouts-enabled YES \
-            -default-test-execution-time-allowance 600 \
+            -default-test-execution-time-allowance 750 \
             CODE_SIGNING_ALLOWED=NO \
             > xcodebuild.log 2>&1
           status=$?

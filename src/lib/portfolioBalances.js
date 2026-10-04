@@ -25,6 +25,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ASSETS, getAsset, getAssetById } from '@/wallet-core/assets.js';
 import { isAssetIdString } from '@/wallet-core/assetId.js';
 import { USD_RATES } from '@/lib/cryptos.js';
+import { assetDisplaySymbol } from '@/lib/assetLabel.js';
 import { getProvider, getBalanceEth } from '@/wallet-core/evm/provider.js';
 import { getToken, ERC20_ABI } from '@/wallet-core/evm/tokens.js';
 import { getBalanceSats } from '@/wallet-core/btc/provider.js';
@@ -37,9 +38,18 @@ import { loadPortfolioCache, savePortfolioCache } from '@/lib/portfolioCacheStor
  * back to USD_RATES (mock rates, display only). Stablecoins ≈ 1. The optional
  * livePrices argument is additive — omitting it reproduces previous behaviour. */
 export function usdRate(symbol, livePrices) {
+  return resolveUsdRate(symbol, livePrices).rate;
+}
+
+function resolveUsdRate(symbol, livePrices) {
   const live = livePrices && livePrices[symbol];
-  if (typeof live === 'number' && Number.isFinite(live)) return live;
-  return USD_RATES[symbol] ?? (symbol === 'USDC' || symbol === 'USDT' ? 1 : 0);
+  if (typeof live === 'number' && Number.isFinite(live)) {
+    return { rate: live, basis: 'live' };
+  }
+  return {
+    rate: USD_RATES[symbol] ?? (symbol === 'USDC' || symbol === 'USDT' ? 1 : 0),
+    basis: 'approx',
+  };
 }
 
 /**
@@ -123,7 +133,7 @@ export async function fetchAssetAmount(asset, addr) {
  *   composite "{symbol}:{chain}" ids (a legacy bare-symbol entry is tolerated).
  * @param {Object.<string,{evm:any,btc:any,sol:any}>} walletAddresses
  */
-export async function computePortfolio(wallets, walletAddresses, livePrices) {
+export async function computePortfolio(wallets, walletAddresses, livePrices, pricesUpdatedAt = null) {
   // I3 zero-egress choke-point: in a deniability (decoy/hidden) session the whole
   // portfolio aggregation must make ZERO backend calls. Return a clean empty
   // shape per wallet (callers render 0 balances) instead of relying solely on
@@ -134,6 +144,7 @@ export async function computePortfolio(wallets, walletAddresses, livePrices) {
   const assetTotals = {};
   let grandTotal = 0;
   let anyIndeterminate = false;
+  let priceBasis = livePrices ? 'live' : 'approx';
 
   // Flatten every (wallet, enabled asset) pair, fetch all in parallel. Each
   // enabledAssets entry is normally a composite id (getAssetById); a wallet not
@@ -179,7 +190,9 @@ export async function computePortfolio(wallets, walletAddresses, livePrices) {
     const indeterminate = amount === null; // read FAILED, not an empty wallet
     // priceSymbol lets a row use a different price feed than its own symbol
     // (ARB/OP rows hold native ETH on their L2, so priceSymbol='ETH').
-    const usd = indeterminate ? null : amount * usdRate(priceSymbol, livePrices);
+    const resolvedRate = resolveUsdRate(priceSymbol, livePrices);
+    if (resolvedRate.basis !== 'live') priceBasis = 'approx';
+    const usd = indeterminate ? null : amount * resolvedRate.rate;
     byWallet[walletId].assets.push({ id, symbol, amount, usd, indeterminate });
     if (!assetTotals[id]) assetTotals[id] = { symbol, amount: 0, usd: 0, indeterminate: false };
     if (indeterminate) {
@@ -198,7 +211,14 @@ export async function computePortfolio(wallets, walletAddresses, livePrices) {
   for (const walletId of Object.keys(byWallet)) {
     byWallet[walletId].assets.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
   }
-  return { byWallet, grandTotal, assetTotals, indeterminate: anyIndeterminate };
+  return {
+    byWallet,
+    grandTotal,
+    assetTotals,
+    indeterminate: anyIndeterminate,
+    priceBasis,
+    pricesUpdatedAt: priceBasis === 'live' ? pricesUpdatedAt : null,
+  };
 }
 
 /**
@@ -222,6 +242,32 @@ export function sumPortfolioTotal(pfWallets, byWallet) {
     if (entry.indeterminate) indeterminate = true;
   }
   return { total, indeterminate };
+}
+
+/**
+ * Per-asset USD split for a set of wallets, for the distribution chart. Sums the
+ * SAME `usd` values sumPortfolioTotal() adds up (live or reference basis — whatever
+ * computePortfolio priced them at), so the chart can never disagree with the total
+ * above it. Grouped by display symbol (ARB/OP rows are native ETH → 'ETH').
+ * Failed reads (usd null) and zero rows are skipped. Largest first.
+ *
+ * @param {Array<{id:string}>} pfWallets
+ * @param {Object.<string,{assets?:Array<{id?:string, symbol:string, usd:number|null}>}>} byWallet
+ * @returns {Array<{name:string, usd:number}>}
+ */
+export function assetDistribution(pfWallets, byWallet) {
+  /** @type {Record<string, number>} */
+  const totals = {};
+  for (const w of pfWallets) {
+    for (const a of byWallet[w.id]?.assets ?? []) {
+      if (!Number.isFinite(a.usd) || a.usd <= 0) continue;
+      const name = assetDisplaySymbol((a.id && getAssetById(a.id)) || a.symbol);
+      totals[name] = (totals[name] || 0) + a.usd;
+    }
+  }
+  return Object.entries(totals)
+    .map(([name, usd]) => ({ name, usd }))
+    .sort((x, y) => y.usd - x.usd);
 }
 
 // Stable cache key: which wallets, which addresses, which enabled assets. When
@@ -262,7 +308,7 @@ export function usePortfolio(wallets, walletAddresses) {
     // Key includes a live/approx marker so flipping the basis refetches the total.
     queryKey: ['portfolio', liveOk ? 'live' : 'approx', key],
     queryFn: async () => {
-      const result = await computePortfolio(wallets, walletAddresses || {}, livePrices);
+      const result = await computePortfolio(wallets, walletAddresses || {}, livePrices, updatedAt);
       // Only cache real-session, fully-resolved results. `computePortfolio`
       // returns null in a deniable session (I3 chokepoint upstream), so this
       // never persists decoy state — and savePortfolioCache double-checks.
@@ -288,5 +334,10 @@ export function usePortfolio(wallets, walletAddresses) {
       return cached ? cached.ts : 0;
     },
   });
-  return { ...query, priceBasis: liveOk ? 'live' : 'approx', pricesUpdatedAt: updatedAt, refetchPrices };
+  // Render the provenance of the values actually on screen, not the current
+  // price-query state. Placeholder/persisted data may predate a live refetch,
+  // and old cache entries have no provenance; both fail honest to approximate.
+  const priceBasis = query.data?.priceBasis === 'live' ? 'live' : 'approx';
+  const displayedPricesUpdatedAt = priceBasis === 'live' ? (query.data?.pricesUpdatedAt ?? null) : null;
+  return { ...query, priceBasis, pricesUpdatedAt: displayedPricesUpdatedAt, refetchPrices };
 }
