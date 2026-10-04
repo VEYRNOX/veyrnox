@@ -28,6 +28,7 @@ import {
   markBackupCompletedFromConfirmation,
 } from "@/lib/backupNag";
 import { toast } from "@/lib/toast";
+import { recordMilestone, triggerReviewPromptIfEligible } from "@/lib/reviewPrompt";
 import { useTier } from "@/lib/TierProvider";
 import BackButton from "@/components/BackButton";
 import { Link } from "react-router";
@@ -220,7 +221,19 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
               </p>
               <div className="mt-3 flex gap-2">
                 <button
-                  onClick={() => { markBackupCompletedFromConfirmation(); setAwaitingConfirmation(false); toast.success("Backup confirmed."); }}
+                  onClick={() => {
+                    markBackupCompletedFromConfirmation();
+                    setAwaitingConfirmation(false);
+                    toast.success("Backup confirmed.");
+                    // Smart nudge — a confirmed Shamir backup is a genuine
+                    // high-water moment: the user has just secured their seed
+                    // and said so. Same pattern as the first-inbound milestone
+                    // in tracking-integration. Both calls are I3-gated inside
+                    // the reviewPrompt module, so a decoy/demo session neither
+                    // advances the counter nor shows a prompt.
+                    recordMilestone();
+                    triggerReviewPromptIfEligible().catch(() => {});
+                  }}
                   className="flex-1 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
                 >
                   Yes, I saved it
