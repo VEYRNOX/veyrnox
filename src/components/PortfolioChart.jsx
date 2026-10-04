@@ -192,10 +192,9 @@ export default function PortfolioChart({ transactions, currentBalance }) {
           </AreaChart>
         </ResponsiveContainer>
       </div>
-      {/* The history is walked back from the current balance using USD_RATES
-          deltas (buildDayMap), whatever basis the balance itself was priced
-          on — so the chart always carries the reference-rate disclosure. */}
-      <ReferenceRateNote className="text-center" />
+      {/* Transaction deltas are converted with USD_RATES. A balance-only flat
+          line inherits the current balance's basis and needs no extra note. */}
+      {transactions.length > 0 && <ReferenceRateNote className="text-center" />}
     </div>
   );
 }

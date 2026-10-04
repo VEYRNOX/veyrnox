@@ -53,6 +53,19 @@ describe('usePortfolio price basis', () => {
     expect(result.current.pricesUpdatedAt).toBeNull();
   });
 
+  it('recomputes a freshly written cache entry on the first session render', async () => {
+    loadPortfolioCache.mockReturnValue({ ts: Date.now(), data: LIVE_RESULT });
+    useLivePrices.mockReturnValue(livePrices());
+    getBalanceEth.mockResolvedValue(3);
+    const { result } = setup();
+
+    expect(result.current.data.grandTotal).toBe(2000);
+    expect(result.current.priceBasis).toBe('approx');
+    await waitFor(() => expect(result.current.data.grandTotal).toBe(3000));
+    expect(getBalanceEth).toHaveBeenCalled();
+    expect(result.current.priceBasis).toBe('live');
+  });
+
   it('a legacy cache entry with no provenance is approximate', () => {
     const { priceBasis: _b, pricesUpdatedAt: _t, ...legacy } = LIVE_RESULT;
     loadPortfolioCache.mockReturnValue({ ts: Date.now(), data: legacy });
