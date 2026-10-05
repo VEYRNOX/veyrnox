@@ -12,6 +12,7 @@
 // Local counters are also not incremented under coercion, so a decoy can
 // never advance the real user's trigger state.
 
+import { Capacitor } from '@capacitor/core';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 const SEND_COUNT_KEY = 'veyrnox-review-send-count';
@@ -84,9 +85,13 @@ function getFallbackStoreUrl() {
 // send if the OS decides to display it now.
 export async function triggerReviewPromptIfEligible() {
   if (!shouldPromptForReview()) return false;
-  markAsked();
+  // The in-app review plugin is native-only. On web nothing can be shown, so
+  // starting the 90-day cooldown there would silently burn the user's window.
+  if (!Capacitor.isNativePlatform()) return false;
   try {
     const mod = await import('@capacitor-community/in-app-review');
+    // Mark only once the plugin has loaded, but still before requestReview().
+    markAsked();
     await mod.InAppReview.requestReview();
     return true;
   } catch {

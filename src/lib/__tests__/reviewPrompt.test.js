@@ -10,6 +10,11 @@ vi.mock('@capacitor-community/in-app-review', () => ({
   InAppReview: { requestReview: vi.fn(async () => {}) },
 }));
 
+const isNativePlatform = vi.fn(() => true);
+vi.mock('@capacitor/core', () => ({
+  Capacitor: { isNativePlatform: () => isNativePlatform() },
+}));
+
 const browserOpen = vi.fn(async () => {});
 vi.mock('@capacitor/browser', () => ({
   Browser: { open: (...args) => browserOpen(...args) },
@@ -39,6 +44,7 @@ const KEYS = [
 beforeEach(() => {
   KEYS.forEach((k) => localStorage.removeItem(k));
   isDeniabilityOrDemoActive.mockReturnValue(false);
+  isNativePlatform.mockReturnValue(true);
 });
 
 afterEach(() => {
@@ -109,6 +115,17 @@ describe('reviewPrompt I3 (deniability/demo)', () => {
     const fired = await triggerReviewPromptIfEligible();
     expect(fired).toBe(false);
     expect(localStorage.getItem('veyrnox-review-last-asked-ts')).toBeNull();
+  });
+});
+
+describe('reviewPrompt native gate', () => {
+  it('does not fire or start the cooldown on web', async () => {
+    for (let i = 0; i < MIN_SENDS_BEFORE_PROMPT; i += 1) recordSuccessfulSend();
+    isNativePlatform.mockReturnValue(false);
+    const fired = await triggerReviewPromptIfEligible();
+    expect(fired).toBe(false);
+    expect(localStorage.getItem('veyrnox-review-last-asked-ts')).toBeNull();
+    expect(shouldPromptForReview()).toBe(true);
   });
 });
 
