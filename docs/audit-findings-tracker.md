@@ -1,6 +1,6 @@
 # Audit Findings Tracker
-Last updated: 2026-09-28
-Analysed against: origin/main @ `b3a8c58ca7df704c439cbd12bbbb818c21208eeb`
+Last updated: 2026-10-05
+Analysed against: origin/main @ `87e868b6233098c7fe02d83b1165203343ae582f`
 (clean branch worktree cut from `origin/main` per Step 0 — not the live checkout,
 not a `git show` fallback. macOS/zsh.)
 
@@ -13,85 +13,93 @@ not a `git show` fallback. macOS/zsh.)
 
 ## Window since last run
 
-Previous run analysed `cc1cc4eb` (2026-09-21). `main` has moved **70 commits** since (all
-non-merge). This is the biggest single-window jump in this tracker's history: a new **weekly
-internal audit landed this window** (2026-09-28, PR #2777, merged 06:51 UTC today — inside
-the pin), the first in two weeks (the 09-21 weekly this tracker expected never appeared as a
-doc; #2731's commit message cites "the independent security audit of 2026-09-21" but no
-report for it is checked in — the 09-28 audit itself flags this contradiction as unresolved
-INFO). Five daily diffs also landed (`diff-2026-09-21.md` … `diff-2026-09-24.md`,
-`diff-2026-09-27.md`; no report for 09-25/09-26).
+Previous run analysed `b3a8c58c` (2026-09-28). `main` has moved **75 commits** since. Almost
+none are security-relevant: release/OTA/paywall/portfolio work, dependency bumps, and eight
+daily diffs (`diff-2026-09-28.md`, `09-30` … `10-05`). **No weekly internal audit landed in
+this window** (the next is due today; none is on `main` at this pin), so the 09-28 weekly's 25
+new findings and carried set were re-checked here, not re-audited.
+
+**The headline: nothing from the 09-28 weekly has been fixed.** Re-verified against source at
+this pin: H-1 (EIP-3009/SafeTx typed-data gap), H-3 (KEK stamp-on-fallback regression), M-1
+(`'sign'` in `blockedActions` read by no signing chokepoint), M-3 (v3 reseal stamp, still
+latent behind `AAD_V3_MIGRATION_ENABLED = false`), M-5, M-7 and the carried WC-queue
+regression are all still present, unchanged file:line. No issue has been filed for any of
+them (`gh issue list --state open` is empty at this run). The one that matters most for
+release posture: **M-7 (SceneDelegate `NSLog` of the WalletConnect pairing key,
+`QA-INSTRUMENT-TEMP: remove before commit`) is still on `main`** (`SceneDelegate.swift:67-73`,
+last touched by `d4af8d9d`/#2751, 2026-09-23), and `main` carries it through every 1.0.3
+commit — so the iOS 1.0.3 build that went `READY_FOR_SALE` on 2026-10-03 was cut from a tree
+that contains it (inference from the unchanged file; the shipped binary was not inspected).
+This is now the fifth consecutive audit window in which an audit-found item stayed unfiled.
 
 ## Sources synthesised
 
-Carried from prior runs, unchanged: the 06-26 through 09-14 corpus, `docs/audit-triage/`
-(29 files), `docs/security-audits/` (11 files), `docs/honesty-check-2026-08-31.md`,
+Carried: the 06-26 through 09-28 corpus, `docs/audit-triage/` (29 files),
+`docs/security-audits/` (11 files), `docs/honesty-check-2026-08-31.md`,
 `docs/audit-gemini-sweep-2026-09-13.md`.
 
-**New this run:**
-
-- **`docs/audit-2026-09-28-weekly.md`** — the first full weekly internal audit since 09-14.
-  Four specialist agents on RASP / WalletConnect / Hardware KEK / Auth gates, pinned to
-  `e92d72db` (an ancestor of the 1.0.2 live build commits). **4 new HIGH, 5 carried HIGH
-  (all STILL PRESENT), 7 new MEDIUM, 6 carried MEDIUM, 14 new LOW, 10 carried LOW.** One of
-  the new HIGHs is a regression from last week's own audit-remediation commit (#2731).
-- **`docs/security-diffs/diff-2026-09-21.md` … `diff-2026-09-24.md`, `diff-2026-09-27.md`**
-  — 5 daily scans. One regression found and fixed within the window (dormancy-reminder
-  panic residue); one regression found and **not yet fixed or filed** (iOS SceneDelegate
-  NSLog of the WalletConnect pairing key — independently re-confirmed by the weekly audit
-  as M-7). No report for 09-25/09-26 — the scan's own "missed-run gap" note proposes
-  computing the window from the last `diff-*.md` on `main` rather than a fixed 24h; not
-  applied yet.
-- **Issues filed in-window**: #2739/#2741 (WC calldata scoring gaps — both fixed same day),
-  #2713 (chaff-provisioning wipe race — fixed in code by #2725, **issue still open on
-  GitHub**), #2714/#2715 (iOS CI test-validity gaps), #2749/#2750 (Play/R8 build hygiene,
-  non-security), #2639 (referral pending-code overwrite, carried, still open). **No issue
-  was filed for anything in the 09-28 weekly audit** (checked: no issue after #2750 as of
-  this pin) — the fourth consecutive audit whose findings entered only as a doc.
-- No new files in `docs/audit-triage/`, `docs/security-audits/`, or
-  `docs/dependency-audits/` this window. (A same-day dependency-audit scheduled-task run
-  is recorded in session context as flagging an untracked `stream-json` CVE, but nothing
-  under `docs/dependency-audits/` reflects it at this pin — not counted below.)
+**New this run:** `docs/security-diffs/diff-2026-09-28.md`, `09-30`, `10-01`, `10-02`,
+`10-03`, `10-04`, `10-05` (the 09-29 report does not exist; 09-30's window covers it). No
+new files in `docs/audit-triage/`, `docs/security-audits/` or `docs/dependency-audits/` (the
+last report there is `dep-audit-2026-09-01.md`; dependency residuals this window are recorded
+in commit messages #2784, #2811, #2832 and a CLAUDE.md pointer, not in a report file).
 
 ## Summary
 
-- Total findings catalogued: **~390** (dedup across the corpus; MEDIUM/LOW grouped — the
-  count is approximate by construction and the delta matters more than the absolute)
-- Fixed (code-confirmed): **~308** — **11 closed this run**: 2 carried opens from the 09-14
-  weekly (M-2, M-3) plus 9 found *and* fixed inside this single window (dormancy-notification
-  panic residue, two WC calldata-scoring gaps, session-revocation lock-on-self-revoke,
-  two panic-residue sweeps, printed-seed DOM residue, a long-carried decoy-read leak
-  (`GEM-0913-NEWS`), and the `process.version` regression that has sat unfiled since 09-11)
-- Still open / accepted-residual: **~85** — up sharply. **25 new findings** from the 09-28
-  weekly audit (4 HIGH, 7 MEDIUM, 14 LOW) against 3 closures from the standing corpus
-- **Regressed: 2** — unchanged count, but the *composition* changed: the `process.version`
-  regression closed (see Fixed); a **new** regression opened in its place — last week's own
-  audit-remediation commit (#2731) broke the unlock-timing equalizer for a whole vault
-  cohort (09-28 H-3). The WC refused-request-stays-queued regression is now in its **third**
-  week unfiled (09-14 H-3 → 09-28 H-5)
-- Needs on-device / on-chain / live-backend verification: **~34** (three new: the KEK-stamp
-  regression's timing magnitude, the RASP primary/decoy tier-diff's device prevalence, and
-  the dashboard-attestation heartbeat's Android egress volume — all explicitly [AGENT] in
-  the source audit)
-
-**The headline is a new audit surfaced four new HIGHs in code this tracker had never seen,
-and one of them exists because last week's audit-remediation commit introduced it.** #2731
-(2026-09-21, "remediate all findings") fixed a real vault-bricking bug in the KEK
-profile-fallback walk, but the stamp-on-success logic it added only fires when a legacy
-fallback actually ran — so every vault enrolled at the *current* profile during a four-week
-window is silently never stamped, and every unlock on it now pays (or dodges) an extra
-Argon2id cost that a stamped vault does not. That is the same real/decoy timing-oracle shape
-the 09-14 audit already flagged (then as H-1), reopened by the commit that was supposed to
-be fixing other things. Two structurally similar stories repeat from prior weeks: a
-fail-closed-looking `blockedActions` change (`'sign'` appended on RASP degrade) that no
-signing chokepoint actually reads, so the "fix" changes nothing on the path it names; and a
-debug `NSLog` block marked "remove before commit" that shipped anyway and writes the
-WalletConnect pairing symmetric key to the iOS unified log — found by the daily scan on
-09-24, still unfiled four days later, and independently re-found by the weekly audit as M-7.
+- Total findings catalogued: **~395** (approximate by construction — MEDIUM/LOW grouped)
+- Fixed (code-confirmed): **~309** — 1 closed this run (the 10-03 App Store description
+  honesty REGRESSION, fixed by `fc2a1c4d`/#2833 within one day, **grep** below)
+- Still open / accepted-residual: **~89** — the 09-28 set unchanged, plus 4 new daily-diff
+  items (below)
+- **Regressed: 2** — both from the 09-28 run, both **re-verified still present (grep)**:
+  the KEK-stamp unlock-timing regression (09-28 H-3) and the WC refused-request-stays-queued
+  regression (09-28 H-5, fourth week unfiled)
+- Needs on-device / on-chain / live-backend verification: **~35** (one new: R8 optimization,
+  below)
 
 ---
 
-## What changed this run
+## What changed this run (2026-10-05)
+
+### Fixed this run
+
+| ID | Sev | Finding | Fixed by | Confirmed by |
+|---|---|---|---|---|
+| **10-03 REGRESSION: App Store description** | I4 honesty | `92f50bbf` (#2826) re-introduced two claims the repo had recorded as false ("BUY CRYPTO IN-APP", "on-device security assistant") and dropped the Advisor server-call disclosure; 1.0.3 went live with it on 2026-10-03 | `fc2a1c4d` (#2833), pinned by new `src/__tests__/store-copy-honesty.test.js` | (doc) diff-2026-10-04 "SAFE — resolves yesterday's REGRESSION in the repo". **The repo is fixed; whether App Store Connect carries the corrected text is not checked by this tracker** |
+| **#2713 bookkeeping gap** | — | The chaff-provisioning wipe race was fixed in code by #2725 (tracked last run) but its GitHub issue stayed open | issue now **CLOSED** | **grep**: `gh issue view 2713 --json state` = `CLOSED` |
+| **IOC manifest fetch** | — | (not a prior finding) Wallet now fetches the IOC manifest through the `tip-manifest` Edge Function instead of from the client | #2837 | (doc) diff-2026-10-04 SAFE, with `src/wallet-core/deniabilitySession.js:93` listed as a control added |
+
+### New this run — daily diffs 09-28 … 10-05
+
+| ID | Sev | Finding | File:Line | Evidence |
+|---|---|---|---|---|
+| **DIFF-1004-BACKUP-DECOY** | NEEDS-REVIEW (I3) | #2792/#2835 made the Backup → Advanced recovery-share tab render on every tier. In a decoy/hidden session it now shows "Recovery shares are unavailable in this session." — a string no real session can show. Someone with the unlocked phone who knows the app can tell decoy from a real free wallet. Before the window the tab needed Safety Plus, and a decoy is always free | `src/pages/PersonalBackup.jsx:802-809,1223` | **grep**: `isDecoy \|\| isHidden` branch present at `:802` |
+| **DIFF-0930-PANICWIPE-GATE** | NEEDS-REVIEW (owner decision) | `/panic-wipe` is still a route-level `SAFETY_PLUS_ROUTES` gate, so a lapsed subscriber loses the page itself, while Emergency PIN removal and backup restore were made free. Pre-existing, not introduced this window; the subscription-entitlement doc names it as an open owner decision. A coercion-resistance control behind a paywall is in tension with the spirit of I3/I4 | `src/lib/safetyPlusRoutes.js` | (doc) diff-2026-09-30 |
+| **DIFF-1001-CHANGELOG** | NEEDS-REVIEW (honesty) | `CHANGELOG.md:94` still says the 2026-09-21 audit remediation "addressed all findings (#2731)". The 09-28 weekly found four HIGH items in that very remediation's wake, one a direct regression from #2731 (H-3) | `CHANGELOG.md:94` | **grep**: line present, unchanged |
+| **DIFF-1004-R8** | NEEDS-REVIEW (low) | Release builds switched to `proguard-android-optimize.txt`; the bridge keep rule was corrected to the real `com.getcapacitor.PluginMethod` package. R8 optimization is a classic way to strip a Capacitor plugin method — including the RASP and KEK plugins — and nothing in the repo shows a release AAB exercised on a device | `android/app/build.gradle:176`, `proguard-rules.pro:21-25` | (doc) diff-2026-10-04; 1.0.3 Play rollout is recorded as published, but this tracker has no device evidence for these plugins under R8 |
+| **DIFF-1004-BRACES** | NEEDS-REVIEW (supply chain, low) | `braces` replaced by a vendored fork (`vendor/braces`, `3.0.4-veyrnox.1`) with a nesting cap. Build/test-only, not in the wallet bundle, but "identical to upstream apart from the guard" is the PR's claim; the scan did not diff against the 3.0.3 tarball | `vendor/braces/**`, `package.json` overrides | (doc) diff-2026-10-04 O-1 |
+
+The daily diffs also recorded SAFE for: the paywall/free-trial and subscription-lifecycle
+changes, `OtaVersionRow`/`otaStatus` (OTA version made visible), `verify-live.mjs`, the
+Android OTA prepare fix, `sentry.js` (I2-preserving), and the portfolio price-basis fixes.
+
+### Re-verified this run — carried 09-28 findings (all grep, all STILL OPEN)
+
+| ID | Check at `87e868b6` |
+|---|---|
+| **09-28 H-1** | `typed-data.js` has no `TransferWithAuthorization`/`ReceiveWithAuthorization` entry; `SafeTx` appears only in unrelated comments (count 2). Still open |
+| **09-28 H-3** | `kekProfiles.js` still returns `usedFallback: !stamped && i > 0` — no stamp on a current-profile vault. Still regressed |
+| **09-28 M-1** | `degrade.js:136` still appends `'sign'` only at call time; `grep -c blockedActions` over `sign-gate/compose.js` and `sign-gate/presign.js` = **0 and 0**. Inert on the sign path. Still open |
+| **09-28 M-3** | `vault.js:323` `AAD_V3_MIGRATION_ENABLED = false`. Latent; must land before Phase 0b |
+| **09-28 M-5** | `WalletEntry.jsx` calls `clearPinAttempts()` at `:1089` and `:1218`, unchanged |
+| **09-28 M-7** | `SceneDelegate.swift:67-73` `QA-INSTRUMENT-TEMP` `NSLog` block present |
+| **09-28 H-5 (WC queue)** | `WalletConnectProvider.jsx:1078,1103,1122` still filter `pendingRequests` after the handler, outside any `finally` |
+
+---
+
+## Carried from the 2026-09-28 run (reference; items above supersede where they overlap)
+
+### What changed in the 2026-09-28 run
 
 ### Fixed this run
 
@@ -159,8 +167,12 @@ comments, extended into 09-28 L-14), INFO (`handleSendTransaction` deps omit
 
 ## ⚠️ Checklist drift — standing Step-2 checks
 
-All re-verified at `b3a8c58c` this run (grep), no drift found beyond what the last three
-runs already corrected:
+All re-verified at `87e868b6` this run (grep). File paths corrected where earlier runs
+used wrong ones: `degrade.js` is `src/rasp/`, `compose.js`/`presign.js` are `src/sign-gate/`,
+`WalletConnectProvider.jsx`/`copySecret.js`/`twoFactorGate.js` are `src/lib/`, `vault.js` is
+`src/wallet-core/vault.js`, `WalletEntry.jsx` is `src/components/`. `ColdSign.jsx` and
+`PRIMARY_UNLOCK_EQUALIZER_MS` were **not found** by name this run (H11/H3 checks not
+re-verified; carried from the prior run as (doc)). No drift otherwise:
 
 | Check | Result |
 |---|---|
@@ -172,7 +184,7 @@ runs already corrected:
 | `H-NEW-3: copySecret.js` wipe sentinel | Non-empty `WIPE_REPLACEMENT = '•'.repeat(24)` at `:65`, `visibilitychange` listener at `:170` (grep) |
 | `M20/H-NEW-4: kek.js combineKek` zeroes ikm | `zero(ikm)` at `:248` and `:280` (grep) |
 | `H-NEW-1: EXPECTED_CERT_SHA256` | `RaspIntegrityPlugin.kt:765` reads `BuildConfig.RELEASE_CERT_SHA256`; blank ⇒ fail-closed at `:769-770` (grep) |
-| `H10: pinning.js placeholders` | Still **16** `PLACEHOLDER_*_REPLACE_ON_DEVICE` entries — **open**, unchanged count (grep) |
+| `H10: pinning.js placeholders` | Still **16** (re-counted this run) `PLACEHOLDER_*_REPLACE_ON_DEVICE` entries — **open**, unchanged count (grep) |
 | `RASP-A2: SendCrypto.jsx` fallback | `:1299` and `:1492` both `?? TIER.BLOCK`; no `?? TIER.ALLOW` anywhere (grep) |
 | `H15/H16: HardwareKekPlugin.kt` | `setIsStrongBoxBacked(true)` best-effort at `:246`; `AUTH_DEVICE_CREDENTIAL` only in removal comments (grep) |
 
@@ -226,12 +238,13 @@ All items from `cc1cc4eb` carry forward unchanged (see prior tracker for the ful
 ~31 items: Theft Protection end-to-end, OTA first armed build, 09-16 surface #5 REVOKEs,
 tip-chat staging gate, WC refusal-retry broadcast, #2537 decoy-session exercise, the
 `process.version` reproduction question — **now moot, the underlying bug is fixed** — and
-the rest). Three new items from the 09-28 weekly audit:
+the rest). Three items from the 09-28 weekly audit, plus one new this run (R8):
 
 | ID | Finding | Why verification is needed |
 |---|---|---|
 | **09-28 H-3 timing magnitude** | **New.** The extra unlock cost for an unstamped current-profile vault is "likely seconds on a mid-range phone" per the audit — not benchmarked. Needs an actual timed unlock on a real device with a vault enrolled in the affected window (2026-08-24 → 2026-09-21) |
 | **09-28 H-4 prevalence** | **New.** The primary/decoy RASP-tier distinguisher exists only where a primary device actually reaches ALLOW. On devices where #2276's pin posture already yields WARN for everyone, both sets look alike — device population data would settle how exposed this really is |
+| **R8 optimization (#2765)** | **New.** Release builds now run R8 with optimization on. Needs a release-AAB exercise on a real Android device confirming the RASP-integrity and Hardware-KEK plugin methods are still reachable (unlock, send, attestation) |
 | **09-28 H-2 egress volume** | **New.** [AGENT]: the 60s-heartbeat attestation call is mainly an Android cost (`requestIntegrityToken`); iOS after the first `attestKey` is local. A network capture on both platforms would confirm the asymmetry and the actual call volume |
 
 Note: `DIFF-0911-N-4` / `process.version` is removed from this list — the fix is now
