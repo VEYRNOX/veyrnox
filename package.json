@@ -255,6 +255,7 @@
   "overrides": {
     "braces": "$braces",
     "serialize-javascript": "^7.0.0",
+    "shell-quote": "^1.11.0",
     "axios": "^1.20.0",
     "ethers": {
       "ws": "^8.21.0"
