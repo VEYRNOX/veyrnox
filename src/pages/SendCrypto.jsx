@@ -2624,7 +2624,7 @@ export default function SendCrypto() {
                 mid-review can jump to the dashboard without losing their
                 place in the flow (the confirm step re-derives state on
                 remount, so navigating away is intentional, not costly). */}
-            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
+            <div className="p-5 rounded-2xl border border-primary/25 text-center bg-[radial-gradient(100%_80%_at_50%_0%,hsl(var(--primary)/0.14),transparent_70%)]">
               <p className="text-xs text-muted-foreground mb-1">{tw("send.verify.summary_label")}</p>
               <p className="text-3xl font-bold mono-value break-all">
                 {amount}{' '}
@@ -2816,7 +2816,7 @@ export default function SendCrypto() {
                 blockedByBtcRisk;
               return (
                 <Button
-                  className="w-full gap-2"
+                  className="w-full gap-2 h-12 rounded-2xl text-base"
                   disabled={advanceDisabled}
                   onClick={() => { actionHaptic(); setStep("confirm"); }}
                 >
@@ -2841,7 +2841,7 @@ export default function SendCrypto() {
         {step === "confirm" && (
           <div className="space-y-3">
             {/* Compact recap — same summary card the review step opens with. */}
-            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
+            <div className="p-5 rounded-2xl border border-primary/25 text-center bg-[radial-gradient(100%_80%_at_50%_0%,hsl(var(--primary)/0.14),transparent_70%)]">
               <p className="text-xs text-muted-foreground mb-1">{tw("send.verify.summary_label")}</p>
               <p className="text-3xl font-bold mono-value break-all">{amount} {selectedWallet?.currency}</p>
               {amountUsd != null && <p className="text-xs text-muted-foreground mono-value">{approxUsd(amountUsd)}</p>}
@@ -2863,7 +2863,7 @@ export default function SendCrypto() {
                   type="button"
                   data-testid="fee-row"
                   onClick={() => setFeeSheetOpen(true)}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border hover:bg-secondary/40 text-start"
+                  className="w-full flex items-center gap-2 px-3 py-3 rounded-2xl border border-border/50 bg-secondary/40 hover:bg-secondary/70 transition-colors text-start"
                 >
                   <Fuel className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   <span className="text-xs font-medium flex-1">Network fee</span>
@@ -3008,7 +3008,7 @@ export default function SendCrypto() {
                   digitalShieldBusy;
                 return (
                   <Button
-                    className="w-full gap-2"
+                    className="w-full gap-2 h-12 rounded-2xl text-base"
                     disabled={confirmSendDisabled}
                     onClick={() => {
                       // Re-check freshness at click time (isSendReauthRequired reads a ref, always
@@ -3051,7 +3051,7 @@ export default function SendCrypto() {
                         onKeyDown={(e) => { if (e.key === "Enter" && reauthValue && !reauthPending) submitReauth(reauthValue); }}
                       />
                       <Button
-                        className="w-full gap-2"
+                        className="w-full gap-2 h-12 rounded-2xl text-base"
                         disabled={!reauthValue || reauthPending || sendTx.isPending || digitalShieldBusy || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
                         onClick={() => submitReauth(reauthValue)}
                       >
