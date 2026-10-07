@@ -21,6 +21,7 @@ const DECLINED_KEY = 'veyrnox-review-declined';
 
 export const MIN_SENDS_BEFORE_PROMPT = 3;
 export const MIN_INTERVAL_MS = 90 * 24 * 60 * 60 * 1000;
+let reviewRequestInFlight = false;
 
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.veyrnox.app';
 // Apple App Store product page — app went live 2026-07-28 as id6790188660,
@@ -84,18 +85,24 @@ function getFallbackStoreUrl() {
 // (by design), so a shown-and-dismissed prompt must not re-fire on the next
 // send if the OS decides to display it now.
 export async function triggerReviewPromptIfEligible() {
+  if (reviewRequestInFlight) return false;
   if (!shouldPromptForReview()) return false;
   // The in-app review plugin is native-only. On web nothing can be shown, so
   // starting the 90-day cooldown there would silently burn the user's window.
   if (!Capacitor.isNativePlatform()) return false;
+  // Reserve the request before the asynchronous plugin import can yield.
+  reviewRequestInFlight = true;
   try {
     const mod = await import('@capacitor-community/in-app-review');
+    if (!shouldPromptForReview() || !Capacitor.isNativePlatform()) return false;
     // Mark only once the plugin has loaded, but still before requestReview().
     markAsked();
     await mod.InAppReview.requestReview();
     return true;
   } catch {
     return false;
+  } finally {
+    reviewRequestInFlight = false;
   }
 }
 
