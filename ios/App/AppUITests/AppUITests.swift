@@ -19,6 +19,7 @@
 // pre-submission catcher for the reviewer-tap failure mode.
 
 import XCTest
+import UIKit
 
 final class AppUITests: XCTestCase {
     override func setUpWithError() throws {
@@ -175,12 +176,7 @@ final class AppUITests: XCTestCase {
             "abandon", "abandon", "abandon", "abandon",
             "abandon", "abandon", "abandon", "about",
         ]
-        for (index, word) in words.enumerated() {
-            let field = app.textFields["Recovery phrase entry \(index + 1)"]
-            XCTAssertTrue(field.waitForExistence(timeout: index == 0 ? 15 : 3), "Seed word box \(index + 1) never appeared.")
-            focusTextField(app: app, field: field, name: "Seed word box \(index + 1)")
-            field.typeText(word)
-        }
+        pasteImportPhrase(app: app, phrase: words.joined(separator: " "))
         // Confirmed press, not a single tap (#2543, run 34825618785): one press
         // with the keyboard still focused on word 12 never submitted. The
         // failure screenshot + AX tree showed the filled form, no banner and no
@@ -193,6 +189,30 @@ final class AppUITests: XCTestCase {
     }
 
     // MARK: - helpers
+
+    /// Exercise SeedInputGrid's real paste handler using only the public test
+    /// mnemonic. Avoid twelve WKWebView focus/query handoffs, which exhausted
+    /// run 37592083462 before import submission. No vault state is injected.
+    private func pasteImportPhrase(app: XCUIApplication, phrase: String) {
+        UIPasteboard.general.string = phrase
+        defer { UIPasteboard.general.items = [] }
+
+        let field = app.textFields["Recovery phrase entry 1"].firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 15), "First seed word box never appeared.")
+        focusTextField(app: app, field: field, name: "First seed word box")
+        field.press(forDuration: 1.0)
+        let menuItem = app.menuItems["Paste"].firstMatch
+        let paste = menuItem.waitForExistence(timeout: 3) ? menuItem : app.buttons["Paste"].firstMatch
+        XCTAssertTrue(paste.waitForExistence(timeout: 5), "Native Paste action never appeared.")
+        paste.tap()
+
+        let allowPaste = app.alerts.buttons["Allow Paste"].firstMatch
+        if allowPaste.waitForExistence(timeout: 2) { allowPaste.tap() }
+
+        let submit = app.buttons["Restore / Import"].firstMatch
+        let filled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: submit)
+        XCTAssertEqual(XCTWaiter.wait(for: [filled], timeout: 10), .completed, "Pasting did not fill the recovery phrase grid.")
+    }
 
     /// Run PinSetup's two-stage ceremony — set, then confirm — and re-run the
     /// whole thing if the confirm stage came back mismatched.

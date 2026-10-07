@@ -136,6 +136,21 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(helper).toMatch(/if accepted\(\) \|\| !button\.exists \|\| !button\.isEnabled \{ return \}/);
   });
 
+  it('pastes the public import fixture through the UI without twelve AX focus handoffs', () => {
+    const code = swift.split('\n').filter((line) => !/^\s*\/\//.test(line)).join('\n');
+    const importTest = code.match(/func test_unsignedBuildImportKeychainWriteFailsClosed\([\s\S]*?\n {4}\}/)?.[0];
+    expect(importTest).toContain('pasteImportPhrase(app: app, phrase: words.joined(separator: " "))');
+    expect(importTest).not.toContain('words.enumerated()');
+    const helper = code.match(/private func pasteImportPhrase\([\s\S]*?\n {4}\}/)?.[0];
+    expect(helper).toContain('UIPasteboard.general.string = phrase');
+    expect(helper).toContain('defer { UIPasteboard.general.items = [] }');
+    expect(helper).toContain('app.textFields["Recovery phrase entry 1"].firstMatch');
+    expect(helper).toContain('"Paste"');
+    expect(helper).toContain('"Allow Paste"');
+    expect(helper).toContain('NSPredicate(format: "enabled == true")');
+    expect(importTest).toContain('assertFailedClosed(app: app, action: "import")');
+  });
+
   it('uses a Robo script to click the custom Android PinPad instead of inventing text fields', () => {
     expect(workflow).toContain(`--robo-script ${roboScriptPath}`);
     expect(workflow).not.toContain('--robo-directives');

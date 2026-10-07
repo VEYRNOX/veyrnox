@@ -94,10 +94,11 @@ architecture or security-critical code (wallet-core, signing, KEK, RASP).
   the current value here. The next iOS archive needs a new ASC version record; 1.0.3 is
   closed.
   **"Submitted" has an outcome: record it in the session that learns it.**
-- **OTA web-bundle updates are live in production.** Bundle `202610031506` (all of
-  `main` at `467c3552`) was published 2026-10-03 and the owner saw it applied on a store
-  iPhone and on a physical Android 1.0.3 phone the same day (Settings "Web bundle" row;
-  owner-reported). Android 1.0.2 cannot take OTA. Runbook and evidence:
+- **OTA web-bundle updates are live in production.** The current bundle is
+  `202610041308` (all of `main` at `689e2e42`), published 2026-10-04; it has not yet been
+  seen applied on a device. Its predecessor `202610031506` (`467c3552`, 2026-10-03) was
+  seen applied by the owner on a store iPhone and a physical Android 1.0.3 phone
+  (Settings "Web bundle" row; owner-reported). Android 1.0.2 cannot take OTA. Runbook and evidence:
   `docs/ota-updates.md`. Any production publish needs the owner's YubiKey and explicit go.
 - **Real users exist:** thousands of telemetry devices, 500+ active subscribers, and one
   real full-price production purchase. No promotional offer has ever been exercised by a

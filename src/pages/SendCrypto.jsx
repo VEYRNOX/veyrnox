@@ -306,7 +306,7 @@ function SendDoneView({ amount, currency, txResult, onSendAnother }) {
 
   // Native store-review prompt. No branching UI (Apple 1.1.7 / Play policy
   // forbid sentiment-gated reviews). OS enforces its own caps; our local
-  // gate (≥3 sends, 90-day cooldown, declined-flag, I3-suppressed) prevents
+  // gate (one milestone, 90-day cooldown, declined-flag, I3-suppressed) prevents
   // asking too early or after a decline. Both send paths land here via
   // SendDoneView, so one mount-effect covers both.
   useEffect(() => {
