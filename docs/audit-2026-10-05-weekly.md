@@ -14,8 +14,9 @@ Status: **Findings only — nothing fixed. Do not mark anything verified without
 
 ## How to read this report
 
-- **[VERIFIED]** — the audit author independently re-read the decisive lines at the pin.
-- **[AGENT]** — reported on agent evidence with citations, not independently re-read.
+- **[AUTHOR-READ]** — the internal audit author re-read the decisive lines at the pin;
+  this is static source evidence, not device verification or an independent audit.
+- **[AGENT]** — reported on agent evidence with citations, not re-read by the author.
 
 `file:line` references are against `87e868b6`. Re-read before acting. Finding IDs
 for carried items keep the numbering of `docs/audit-2026-09-28-weekly.md`. IDs
@@ -86,7 +87,7 @@ No new HIGH. Carried HIGHs, all **STILL PRESENT** (unchanged code):
 
 ### New this run
 
-- **N-A1 — [RASP · Android] Package-based detections are probably inert on targetSdk 36 — [AGENT]; manifest facts [VERIFIED]**
+- **N-A1 — [RASP · Android] Package-based detections are probably inert on targetSdk 36 — [AGENT]; manifest facts [AUTHOR-READ]**
   `AndroidManifest.xml` has no `<queries>` element and no `QUERY_ALL_PACKAGES`;
   `android/variables.gradle:4` sets `targetSdkVersion = 36`. `checkXposed` (`RaspIntegrityPlugin.kt:419`),
   `checkSuspiciousPackages` (`:753`, Magisk/LSPosed/KernelFlasher/SuperSU),
@@ -96,8 +97,12 @@ No new HIGH. Carried HIGHs, all **STILL PRESENT** (unchanged code):
   helpers swallow into "not detected". The comment at `:741` presents these as the
   un-spoofable answer to Magisk Hide. About a dozen `/data/adb/*` path probes
   (`checkMagiskPaths` `:214`, `checkRootBinaries`) are also unreachable by an
-  `untrusted_app`. What remains operative on Android is `checkDangerousProps` (`:293`),
-  spoofable with resetprop-style modules, plus remote attestation.
+  `untrusted_app`. This inference concerns those package/path probes only, not all
+  local root/hook detection. Other signals remain in `detectRoot`, including
+  `checkSystemWritable`, `checkBuildTags`, and `checkLocalSocketConnect`, alongside
+  `checkDangerousProps` (`:293`, spoofable with resetprop-style modules).
+  `detectHook` also retains non-package probes; remote attestation is separate.
+  Their effectiveness against a prepared device was not exercised here.
   *Not confirmed:* a library manifest may merge in `<queries>`; no device test run.
   *Fix:* read the merged manifest in a build; add `<queries>` for the named packages or
   state the loss honestly; correct the `:741` comment. Treat Android root detection
@@ -107,7 +112,7 @@ No new HIGH. Carried HIGHs, all **STILL PRESENT** (unchanged code):
   and any struct with `to`/`recipient`/`receiver` plus an amount fall through
   `typed-data.js:75`/`:34` to `LEVEL.OK`. Chain binding does not help. UniswapX witness
   types are covered. Fold into H-1's fix: a deny-by-shape rule, not a field-name list.
-- **N-B2 — [WC · UI griefing, fails closed] Garbage `value` crashes the approval modal render — [VERIFIED]**
+- **N-B2 — [WC · UI griefing, fails closed] Garbage `value` crashes the approval modal render — [AUTHOR-READ]**
   `RequestApprovalModal.jsx:89` runs `BigInt(reqParams[0].value)` outside any
   try/catch. The pre-modal filter (`WalletConnectProvider.jsx:914-938`) checks only
   `from` and chain, so the request is queued and re-crashes the WC page on every remount
@@ -131,7 +136,7 @@ No new HIGH. Carried HIGHs, all **STILL PRESENT** (unchanged code):
   - **M-6 [Auth · I3]** Decoy Settings shows a placeholder (`Settings.jsx:425-431`). The
     new Subscription row (`:518-519`) and OTA row (`:656`) add further primary/decoy
     asymmetry around it.
-  - **M-7 [iOS]** `QA-INSTRUMENT-TEMP` `NSLog` block, `SceneDelegate.swift:67-73` **[VERIFIED
+  - **M-7 [iOS]** `QA-INSTRUMENT-TEMP` `NSLog` block, `SceneDelegate.swift:67-73` **[AUTHOR-READ
     still present]**. See N-A4 for reach.
   - Carried M items from 09-14 not re-derived (Android biometric-cache alias auth-binding,
     TP, WC daily cap, fast-path attestation on unlock `native.js:645`, `:1328`):
@@ -156,8 +161,10 @@ No new HIGH. Carried HIGHs, all **STILL PRESENT** (unchanged code):
   `URLContext`, including URLs the allowlist rejects, so a `wc:` / `veyrnox://wc?uri=`
   pairing URI (WalletConnect symKey and topic) is logged unredacted. One-line delete.
 - **N-B3 — [WC]** A tx that fails gas estimation is still broadcast at the 1M gas cap
-  (`WalletConnectProvider.jsx:797-800`). Bounded by the per-chain fee ceiling and the
-  user's Approve tap. Fix: refuse instead of defaulting.
+  (`WalletConnectProvider.jsx:797-800`). The fee ceiling is not unconditional:
+  malformed/unparseable fee data or a failed `getFeeData` call can skip it.
+  The user's Approve tap does not establish a fee bound. Fix: refuse instead of
+  defaulting, and fail closed when fee validation cannot establish the ceiling.
 - **N-B4 — [WC]** A flagged dApp domain is banner-only at sign time and tier-gated
   (`RequestApprovalModal.jsx:233-239`, `:254-256`). The session-approval block
   (`session.js:225-233`) is not tier-gated.
@@ -173,8 +180,11 @@ No new HIGH. Carried HIGHs, all **STILL PRESENT** (unchanged code):
 - **N-D2 — [Auth, info]** `deniabilitySession.js` now imports `@/api/demoClient`
   (load-time side effect). Fail-closed direction; no practical issue found.
 - **N-C1 — [KEK/Android, info]** R8 optimisation (#2765) has no release-APK KEK
-  enroll/unlock device test. Static read: all `@PluginMethod`s are public and kept,
-  no reflection or JNI. BUILT-level only.
+  enroll/unlock device test. Static read: all `@PluginMethod`s are public and kept;
+  keep rules also retain plugin constructors and annotations for Capacitor's
+  reflective discovery. This is not proof of reflection-free behavior or release
+  compatibility. An optimized signed release and physical plugin/KEK/RASP/store
+  exercises remain required. BUILT-level only.
 - Carried LOWs, all **STILL PRESENT**: L-4 Argon2id OOM counted as a wrong PIN
   (`kekProfiles.js:102-105`); L-5 tampered `kekKdf` throws uncoded (`:49-55`);
   L-6 (WC) literal-`to` check late and non-rejecting (`WalletConnectProvider.jsx:713-715`);
