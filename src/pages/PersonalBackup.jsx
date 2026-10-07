@@ -225,9 +225,9 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
                     markBackupCompletedFromConfirmation();
                     setAwaitingConfirmation(false);
                     toast.success("Backup confirmed.");
-                    // Smart nudge — a confirmed Shamir backup is a genuine
-                    // high-water moment: the user has just secured their seed
-                    // and said so. Same pattern as the first-inbound milestone
+                    // Smart nudge after user confirmation of the encrypted
+                    // backup file, not proof of restoration or Shamir recovery.
+                    // Same pattern as the first-inbound milestone
                     // in tracking-integration. Both calls are I3-gated inside
                     // the reviewPrompt module, so a decoy/demo session neither
                     // advances the counter nor shows a prompt.

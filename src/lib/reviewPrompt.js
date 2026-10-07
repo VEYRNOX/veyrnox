@@ -53,7 +53,7 @@ export function recordSuccessfulSend() {
 // Semantic alias — the counter tracks any high-water moment ("smart nudge"),
 // not only sends. Callers on the receive / first-inbound path use this name;
 // storage key stays `veyrnox-review-send-count` to preserve existing users'
-// progress. Threshold + cooldown unchanged; the OS still enforces its own
+// progress. One milestone reaches the threshold; the 90-day cooldown and OS
 // caps on top.
 export const recordMilestone = recordSuccessfulSend;
 
