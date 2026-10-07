@@ -24,6 +24,7 @@ import QuickLock from "../components/QuickLock";
 import GasTracker from "../components/GasTracker";
 import ExportTransactions from "../components/ExportTransactions";
 import PortfolioHealthScore from "../components/PortfolioHealthScore";
+import ActionTile from "../components/ActionTile";
 import WatchlistWidget from "../components/WatchlistWidget";
 import DashboardWidgetSettings, { DEFAULT_WIDGETS } from "../components/DashboardWidgetSettings";
 import TransactionFilters from "../components/TransactionFilters";
@@ -328,31 +329,13 @@ function DemoDashboard() {
       )}
 
       {/* Action Buttons */}
-      <div className="grid grid-cols-5 gap-2">
-        <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/buy")}>
-          <ShoppingCart className="h-5 w-5" />
-          <span className="text-xs">{t("dashboard.actions.buy", "Buy")}</span>
-        </Button>
-        {/* Send is THE primary action of a wallet, so it carries the primary
-            variant while the other four stay secondary. Previously all five
-            tiles were `secondary` — five equal-weight choices and nothing
-            telling a new user where to start. Keep exactly one primary here. */}
-        <Button className="flex-col h-16 gap-1" onClick={() => navigate("/send")}>
-          <ArrowUpRight className="h-5 w-5" />
-          <span className="text-xs">{t("dashboard.actions.send")}</span>
-        </Button>
-        <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/receive")}>
-          <ArrowDownLeft className="h-5 w-5" />
-          <span className="text-xs">{t("dashboard.actions.receive")}</span>
-        </Button>
-        <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/recurring")}>
-          <CalendarClock className="h-5 w-5" />
-          <span className="text-xs">{t("dashboard.actions.schedule")}</span>
-        </Button>
-        <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => setOpen(true)}>
-          <Plus className="h-5 w-5" />
-          <span className="text-xs">{t("dashboard.actions.add")}</span>
-        </Button>
+      <div className="grid grid-cols-5 gap-1">
+        <ActionTile icon={ShoppingCart} label={t("dashboard.actions.buy", "Buy")} onClick={() => navigate("/buy")} />
+        {/* Send is THE primary action of a wallet: exactly one primary tile. */}
+        <ActionTile primary icon={ArrowUpRight} label={t("dashboard.actions.send")} onClick={() => navigate("/send")} />
+        <ActionTile icon={ArrowDownLeft} label={t("dashboard.actions.receive")} onClick={() => navigate("/receive")} />
+        <ActionTile icon={CalendarClock} label={t("dashboard.actions.schedule")} onClick={() => navigate("/recurring")} />
+        <ActionTile icon={Plus} label={t("dashboard.actions.add")} onClick={() => setOpen(true)} />
       </div>
 
       {/* Portfolio Health Score — demo mode with mock portfolio data */}
