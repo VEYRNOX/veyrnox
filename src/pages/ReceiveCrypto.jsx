@@ -211,7 +211,7 @@ export default function ReceiveCrypto() {
         <p className="text-sm text-muted-foreground mt-0.5">{t("receive.subheading")}</p>
       </div>
 
-      <div className="space-y-4 p-5 rounded-xl border border-border bg-card">
+      <div className="space-y-5 p-5 rounded-3xl border border-border/40 bg-card bg-[radial-gradient(120%_70%_at_50%_0%,hsl(var(--primary)/0.10),transparent_60%)]">
         <div>
           <Label id="receive-asset-label">{t("receive.asset_label")}</Label>
           <Select value={symbol} onValueChange={(v) => { setSymbol(v); setCopied(false); }}>
@@ -278,10 +278,10 @@ export default function ReceiveCrypto() {
                 consistent affordance. */}
             <div className="text-center space-y-1.5">
               <Link to="/" className="inline-flex items-center justify-center gap-2 hover:text-primary transition-colors" aria-label={t("receive.locked.open_hd_wallet")}>
-                <CoinLogo symbol={r.asset.symbol} size={22} />
-                <p className="text-sm font-semibold">{t("receive.your_address", { asset: r.asset.name })}</p>
+                <CoinLogo symbol={r.asset.symbol} size={28} />
+                <p className="text-base font-semibold">{t("receive.your_address", { asset: r.asset.name })}</p>
               </Link>
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-2.5 py-1">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1">
                 <span className="text-xs font-medium">{r.network?.name || r.asset.chain}</span>
                 {r.network?.isTestnet && (
                   <span className="text-xs uppercase tracking-wide font-semibold text-caution">{t("receive.testnet_badge")}</span>
@@ -306,7 +306,9 @@ export default function ReceiveCrypto() {
               transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 220, damping: 22 }}
               className="flex justify-center"
             >
-              <QRCodeDisplay address={r.address} size={200} />
+              <div className="rounded-3xl [&>div>div:first-child]:shadow-[0_16px_48px_-16px_hsl(var(--primary)/0.45)] [&>div>div:first-child]:rounded-3xl">
+                <QRCodeDisplay address={r.address} size={208} />
+              </div>
             </motion.div>
 
             <motion.div
@@ -315,13 +317,19 @@ export default function ReceiveCrypto() {
               transition={reduceMotion ? { duration: 0 } : { duration: 0.28, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
             >
               <p className="text-xs text-muted-foreground text-center mb-1">{t("receive.receive_address_label", { symbol: r.asset.symbol })}</p>
-              <div className="bg-secondary rounded-lg px-3 py-2.5">
-                <code className="mono-value text-xs block break-all text-center">{r.address}</code>
-              </div>
+              {/* Tapping the address copies it — same handler as the Copy button. */}
+              <button
+                type="button"
+                onClick={copyAddress}
+                aria-label={copied ? t("receive.copy.copied_aria") : t("receive.copy.copy_aria")}
+                className="w-full bg-secondary/70 hover:bg-secondary rounded-2xl px-4 py-3 border border-border/40 transition-colors focus-visible:ring-2 focus-visible:ring-ring outline-none"
+              >
+                <code className="mono-value text-xs block break-all text-center leading-relaxed">{r.address}</code>
+              </button>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
-                  className="h-12 gap-2"
+                  className="h-12 gap-2 rounded-2xl"
                   onClick={shareAddress}
                   aria-label={t("receive.actions.share")}
                 >
@@ -329,7 +337,7 @@ export default function ReceiveCrypto() {
                   {t("receive.actions.share")}
                 </Button>
                 <Button
-                  className="h-12 gap-2"
+                  className="h-12 gap-2 rounded-2xl"
                   onClick={copyAddress}
                   aria-label={copied ? t("receive.copy.copied_aria") : t("receive.copy.copy_aria")}
                 >
