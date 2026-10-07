@@ -77,3 +77,25 @@ describe('computePortfolio — Phase 1a composite-id tolerance', () => {
     expect(byWallet.w1.assets[0].id).toBe('ETH:mainnet');
   });
 });
+
+describe('computePortfolio — one quick retry on a failed read', () => {
+  it('a single transient failure is retried and the row resolves (not indeterminate)', async () => {
+    getBalanceEth.mockRejectedValueOnce(new Error('429')).mockResolvedValue(2);
+    const r = await computePortfolio(
+      [{ id: 'w1', enabledAssets: ['ETH:mainnet'] }],
+      { w1: { evm: '0xabc' } },
+    );
+    expect(r.indeterminate).toBe(false);
+    expect(r.byWallet.w1.assets[0].amount).toBe(2);
+  });
+
+  it('a persistent outage stays indeterminate — never folded to 0 (I4)', async () => {
+    getBalanceEth.mockRejectedValue(new Error('down'));
+    const r = await computePortfolio(
+      [{ id: 'w1', enabledAssets: ['ETH:mainnet'] }],
+      { w1: { evm: '0xabc' } },
+    );
+    expect(r.indeterminate).toBe(true);
+    expect(r.byWallet.w1.assets[0].amount).toBeNull();
+  });
+});

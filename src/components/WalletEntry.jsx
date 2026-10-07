@@ -1978,6 +1978,20 @@ export default function WalletEntry() {
           <ShakeOnKey shakeKey={pinShakeKey}>
             <PinPad value={unlockPin} onChange={setUnlockPin} onComplete={runPinUnlock} disabled={busy} submitLabel="Unlock" />
           </ShakeOnKey>
+          {/* The key-stretching that protects your PIN takes a few seconds on purpose.
+              Show that work is happening instead of a dead, disabled keypad. Identical
+              for every outcome (real / decoy / wrong PIN), so it is not a tell (I3). */}
+          {busy && (
+            <div
+              data-testid="unlock-progress"
+              role="status"
+              aria-live="polite"
+              className="flex items-center justify-center gap-2 text-xs text-muted-foreground"
+            >
+              <RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden="true" />
+              <span>Unlocking — securing your keys on this device…</span>
+            </div>
+          )}
         </div>
 
         {/* HONEST recovery: no custodial reset. A forgotten PIN is recovered ONLY by

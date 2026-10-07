@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { PARTIAL_TOTAL_NOTE } from '@/lib/balanceDisplay';
 import PortfolioHealthScore, {
@@ -244,6 +244,18 @@ describe('<PortfolioHealthScore />', () => {
     expect(screen.getByText(PARTIAL_TOTAL_NOTE)).toBeTruthy();
     expect(screen.queryByText('Excellent')).toBeNull();
     expect(screen.queryByText('Diversification')).toBeNull();
+  });
+
+  it('indeterminate portfolio → still shows the Security factor and a Retry action', () => {
+    let retried = 0;
+    renderScore({
+      wallets: [{ backedUp: true }],
+      portfolio: { indeterminate: true, grandTotal: 0, assetTotals: {} },
+      onRetry: () => { retried += 1; },
+    });
+    expect(screen.getByText('Security')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    expect(retried).toBe(1);
   });
 
   it('deniability session → "unavailable in this session", no factor breakdown (I3)', () => {

@@ -68,6 +68,7 @@ import SpendingPatternsCard from "@/components/SpendingPatternsCard";
 import HiddenWallet2faGate from "@/components/security/HiddenWallet2faGate";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import PortfolioHealthScore from "@/components/PortfolioHealthScore";
+import ActionTile from "@/components/ActionTile";
 import { usePortfolioHealthInputs } from "@/lib/usePortfolioHealthInputs";
 import WatchlistWidget from "@/components/WatchlistWidget";
 import SecurityPosture from "@/components/SecurityPosture";
@@ -686,7 +687,7 @@ export default function WalletPortfolioPage() {
   // only the seeds THIS unlock decrypted (decoy unlock → decoy seeds, real →
   // real). So "across ALL wallets" is already scoped to the unlocked set — the
   // provider never decrypted another set, and usePortfolio cannot reach one.
-  const { data: portfolio, isLoading: portfolioLoading, priceBasis, pricesUpdatedAt, refetchPrices } = usePortfolio(wallets, walletAddresses);
+  const { data: portfolio, isLoading: portfolioLoading, priceBasis, pricesUpdatedAt, refetchPrices, refetch: refetchPortfolio } = usePortfolio(wallets, walletAddresses);
   const byWallet = /** @type {any} */ (portfolio?.byWallet || {});
   // I3: `isDecoy`/`isHidden` are React state and LAG the module-level deniability
   // flag, so a panic/stealth transition leaves a window in which this query can
@@ -991,7 +992,7 @@ export default function WalletPortfolioPage() {
       </div>
 
       {/* Active-portfolio total */}
-      <div className="text-center py-3">
+      <div className="relative overflow-hidden rounded-3xl border border-border/40 bg-card text-center px-4 py-6 bg-[radial-gradient(120%_90%_at_50%_0%,hsl(var(--primary)/0.14),transparent_60%)]">
         <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{t("portfolio.totalValueHeading", { name: activePortfolioName })}</p>
         {/* byWallet defaults to {} while the portfolio query is in flight, so
             pfTotal falls back to 0 and this rendered a confident "$0.00" for a
@@ -1000,7 +1001,7 @@ export default function WalletPortfolioPage() {
             keeps the block from reflowing when the number lands. */}
         {portfolioLoading
           ? <div className="h-10 w-40 mx-auto rounded-lg bg-secondary animate-pulse" role="status" aria-label="Loading total value" />
-          : <p className="text-4xl font-bold">{fmtFiat(pfTotal)}</p>}
+          : <p className="text-5xl font-semibold tracking-tight mono-value">{fmtFiat(pfTotal)}</p>}
         {/* I4 fail-closed: when a balance read failed, the total is incomplete —
             say so rather than presenting a silently-understated figure as fact.
             Same copy in decoy and real sessions (no isDecoy branch). */}
@@ -1070,12 +1071,12 @@ export default function WalletPortfolioPage() {
       {/* Actions — Buy sits next to Send when the ship gate is on (useBuyEnabled).
           Grid columns adapt so the row stays balanced whether Buy is present or not. */}
       <div className={`grid gap-2 ${buyEnabled ? "grid-cols-4" : "grid-cols-3"}`}>
-        <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => { const asset = defaultAssetSymbol(activeWallet?.enabledAssets ?? ["ETH"], ""); navigate(`/send?asset=${asset || "ETH"}`); }}><Send className="h-5 w-5" /><span className="text-xs">{t("portfolio.actions.send")}</span></Button>
+        <ActionTile primary icon={Send} label={t("portfolio.actions.send")} onClick={() => { const asset = defaultAssetSymbol(activeWallet?.enabledAssets ?? ["ETH"], ""); navigate(`/send?asset=${asset || "ETH"}`); }} />
         {buyEnabled && (
-          <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/buy")}><CreditCard className="h-5 w-5" /><span className="text-xs">{t("nav.tab_buy")}</span></Button>
+          <ActionTile icon={CreditCard} label={t("nav.tab_buy")} onClick={() => navigate("/buy")} />
         )}
-        <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/receive")}><Download className="h-5 w-5" /><span className="text-xs">{t("portfolio.actions.receive")}</span></Button>
-        <Button variant="secondary" className="flex-col h-16 gap-1" disabled={!canManage} onClick={() => setAddOpen(true)}><Plus className="h-5 w-5" /><span className="text-xs">{t("portfolio.actions.addWallet")}</span></Button>
+        <ActionTile icon={Download} label={t("portfolio.actions.receive")} onClick={() => navigate("/receive")} />
+        <ActionTile icon={Plus} label={t("portfolio.actions.addWallet")} disabled={!canManage} onClick={() => setAddOpen(true)} />
       </div>
       {activeWallet && (
         <p className="text-xs text-center text-muted-foreground">
@@ -1090,6 +1091,7 @@ export default function WalletPortfolioPage() {
         isVaultKekEnrolled={healthInputs.isVaultKekEnrolled}
         hasPasskeyOrBiometric={healthInputs.hasPasskeyOrBiometric}
         isDeniability={healthInputs.isDeniability}
+        onRetry={() => { refetchPortfolio(); }}
       />
       <WatchlistWidget />
       {/* Personal Backup Phase 5 — feed the Recovery-dimension inputs into
