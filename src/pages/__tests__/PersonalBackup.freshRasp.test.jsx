@@ -14,8 +14,8 @@ const createBackup = vi.fn(async () => ({ env: true }));
 const recordMilestone = vi.fn();
 const triggerReviewPromptIfEligible = vi.fn(async () => false);
 vi.mock('@/lib/reviewPrompt', () => ({
-  recordMilestone: (...a) => recordMilestone(...a),
-  triggerReviewPromptIfEligible: (...a) => triggerReviewPromptIfEligible(...a),
+  recordMilestone: () => recordMilestone(),
+  triggerReviewPromptIfEligible: () => triggerReviewPromptIfEligible(),
 }));
 vi.mock('@/lib/WalletProvider', () => ({
   useWallet: () => ({
