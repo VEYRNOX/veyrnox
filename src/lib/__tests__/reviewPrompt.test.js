@@ -46,6 +46,12 @@ afterEach(() => {
 });
 
 describe('reviewPrompt.shouldPromptForReview', () => {
+  it('becomes eligible after exactly one successful send', () => {
+    expect(shouldPromptForReview()).toBe(false);
+    recordSuccessfulSend();
+    expect(shouldPromptForReview()).toBe(true);
+  });
+
   it('is false before the send threshold', () => {
     for (let i = 0; i < MIN_SENDS_BEFORE_PROMPT - 1; i += 1) recordSuccessfulSend();
     expect(shouldPromptForReview()).toBe(false);

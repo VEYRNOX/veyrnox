@@ -18,7 +18,14 @@ const SEND_COUNT_KEY = 'veyrnox-review-send-count';
 const LAST_ASKED_KEY = 'veyrnox-review-last-asked-ts';
 const DECLINED_KEY = 'veyrnox-review-declined';
 
-export const MIN_SENDS_BEFORE_PROMPT = 3;
+// Lowered 3 -> 1 on 2026-10-04. At 41 lifetime downloads nobody had reached
+// three sends, so the prompt had never fired once and the App Store listing
+// carried 0 ratings — which is itself a conversion problem in a category where
+// a wallet with no stars reads as untrustworthy. One completed send is already
+// a strong signal: the user funded a wallet and moved real money. The OS still
+// caps display (SKStoreReviewController <=3/year), and MIN_INTERVAL_MS below
+// still applies, so lowering this cannot produce repeated nagging.
+export const MIN_SENDS_BEFORE_PROMPT = 1;
 export const MIN_INTERVAL_MS = 90 * 24 * 60 * 60 * 1000;
 
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.veyrnox.app';
@@ -46,7 +53,7 @@ export function recordSuccessfulSend() {
 // Semantic alias — the counter tracks any high-water moment ("smart nudge"),
 // not only sends. Callers on the receive / first-inbound path use this name;
 // storage key stays `veyrnox-review-send-count` to preserve existing users'
-// progress. Threshold + cooldown unchanged; the OS still enforces its own
+// progress. One milestone reaches the threshold; the 90-day cooldown and OS
 // caps on top.
 export const recordMilestone = recordSuccessfulSend;
 
