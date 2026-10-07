@@ -306,7 +306,7 @@ function SendDoneView({ amount, currency, txResult, onSendAnother }) {
 
   // Native store-review prompt. No branching UI (Apple 1.1.7 / Play policy
   // forbid sentiment-gated reviews). OS enforces its own caps; our local
-  // gate (≥3 sends, 90-day cooldown, declined-flag, I3-suppressed) prevents
+  // gate (one milestone, 90-day cooldown, declined-flag, I3-suppressed) prevents
   // asking too early or after a decline. Both send paths land here via
   // SendDoneView, so one mount-effect covers both.
   useEffect(() => {
@@ -2100,12 +2100,12 @@ export default function SendCrypto() {
             {[0, 1, 2].map((i) => (
               <div key={i} className="flex items-center gap-2">
                 <div
-                  className={`h-1.5 rounded-full transition-all ${
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
                     i === stepIndex
-                      ? "w-8 bg-primary"
+                      ? "w-10 bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.6)]"
                       : i < stepIndex
-                        ? "w-4 bg-primary/60"
-                        : "w-4 bg-border"
+                        ? "w-5 bg-primary/60"
+                        : "w-5 bg-border/60"
                   }`}
                   aria-hidden="true"
                 />
@@ -2118,7 +2118,7 @@ export default function SendCrypto() {
         );
       })()}
 
-      <div className="space-y-4 p-5 rounded-xl border border-border bg-card">
+      <div className="space-y-5 p-5 rounded-3xl border border-border/40 bg-card bg-[radial-gradient(120%_50%_at_50%_0%,hsl(var(--primary)/0.08),transparent_60%)]">
         {fromDetail ? (
           <div className="flex items-center gap-3 pb-3 border-b border-border">
             <CoinLogo symbol={assetSymbol} size={36} />
@@ -2154,7 +2154,7 @@ export default function SendCrypto() {
             type="button"
             data-testid="wallet-asset-chip"
             onClick={() => setWalletAssetSheetOpen(true)}
-            className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border hover:bg-secondary/40 text-start"
+            className="w-full flex items-center gap-3 p-3 rounded-2xl border border-border/50 bg-secondary/40 hover:bg-secondary/70 hover:border-primary/40 transition-colors text-start"
             aria-label="Change wallet or asset"
           >
             {assetSymbol ? <CoinLogo symbol={assetSymbol} size={32} /> : (
@@ -2170,7 +2170,7 @@ export default function SendCrypto() {
                 {selectedWalletName || tw("send.wallet_picker.placeholder")}
               </p>
             </div>
-            <span className="text-xs uppercase tracking-widest text-muted-foreground">Change</span>
+            <span className="text-xs font-medium text-primary">Change</span>
           </button>
         )}
         <div>
@@ -2193,12 +2193,12 @@ export default function SendCrypto() {
               // Malformed shows the red border LIVE as you type (deliberately not
               // gated on blur — visual feedback is not disruptive the way an
               // assertive announcement is); missing only after a submit attempt.
-              className={`mono-value text-sm ${!addressFormatValid || addressErrorKind === 'missing' ? 'border-destructive' : ''}`}
+              className={`mono-value text-sm h-12 rounded-xl ${!addressFormatValid || addressErrorKind === 'missing' ? 'border-destructive' : ''}`}
               aria-invalid={addressInvalid || undefined}
               aria-describedby={addressInvalid ? "send-address-error" : undefined}
             />
             {ensResolving && <Loader2 className="h-4 w-4 motion-safe:animate-spin self-center shrink-0 text-muted-foreground" />}
-            <Button type="button" variant="outline" size="icon" className="shrink-0" aria-label={tw("send.recipient.scan_qr")} title={tw("send.recipient.scan_qr")} onClick={() => setShowScanner(true)}>
+            <Button type="button" variant="outline" size="icon" className="shrink-0 h-12 w-12 rounded-xl" aria-label={tw("send.recipient.scan_qr")} title={tw("send.recipient.scan_qr")} onClick={() => setShowScanner(true)}>
               <ScanLine className="h-4 w-4" />
             </Button>
           </div>

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { Shield, TrendingUp, Layers, ChevronRight } from "lucide-react";
+import { Shield, TrendingUp, Layers, ChevronRight, RefreshCw } from "lucide-react";
 import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
 import { calculatePortfolioHealth, calculateSecurityScore, calculateDiversificationScore, calculateGrowthScore } from "@/lib/portfolioHealthCalc";
 export { calculateSecurityScore, calculateDiversificationScore, calculateGrowthScore, calculatePortfolioHealth };
@@ -36,6 +36,7 @@ export default function PortfolioHealthScore({
   isVaultKekEnrolled = false,
   hasPasskeyOrBiometric = false,
   isDeniability = false,
+  onRetry = undefined,
 }) {
   const navigate = useNavigate();
 
@@ -63,14 +64,38 @@ export default function PortfolioHealthScore({
   }
 
   if (health.isIncomplete) {
+    // I4: the overall score stays withheld (balance-based factors would be
+    // understated), but the Security factor does not depend on balances, so show
+    // it rather than a dead "Incomplete Data" card, and offer a retry.
+    const security = calculateSecurityScore(wallets, isVaultKekEnrolled, hasPasskeyOrBiometric);
     return (
-      <div className="rounded-2xl border border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-3">
+      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+        <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Portfolio Health</p>
-            <p className="text-sm font-bold mt-0.5 text-destructive">Incomplete Data</p>
+            <p className="text-sm font-bold mt-0.5 text-caution">Waiting for balances</p>
           </div>
+          {typeof onRetry === "function" && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-secondary transition-colors"
+            >
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Retry
+            </button>
+          )}
         </div>
+        <button
+          type="button"
+          onClick={() => navigate("/security")}
+          className="w-full flex items-center gap-2.5 group hover:bg-secondary rounded-lg px-2 py-1.5 transition-colors"
+        >
+          <Shield className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <span className="flex-1 text-start text-xs text-muted-foreground">Security</span>
+          <span className="text-xs text-muted-foreground">{security}/40</span>
+          <ChevronRight className="h-3 w-3 text-muted-foreground/50 group-hover:text-muted-foreground rtl:-scale-x-100" />
+        </button>
+        <p className="text-xs text-muted-foreground px-2">Diversification and Growth appear once every balance has loaded.</p>
         <IncompleteBalanceNote />
       </div>
     );
