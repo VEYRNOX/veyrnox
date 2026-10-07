@@ -190,12 +190,12 @@ export default function Settings() {
         </p>
       </div>
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-2">Appearance</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Appearance</h2>
       {/* Theme Toggle */}
-      <div className="p-5 rounded-xl border border-border bg-card">
+      <div className="p-5 rounded-2xl border border-border/40 bg-card">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
               {isDark ? <Moon className="h-5 w-5 text-primary" /> : <Sun className="h-5 w-5 text-primary" />}
             </div>
             <div>
@@ -212,12 +212,12 @@ export default function Settings() {
       </div>
 
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-2">Privacy</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Privacy</h2>
       {/* Activity log (opt-in, off by default — deniability-safe S4) */}
-      <div className="p-5 rounded-xl border border-border bg-card">
+      <div className="p-5 rounded-2xl border border-border/40 bg-card">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <ScrollText className="h-5 w-5 text-primary" />
             </div>
             <div>
@@ -280,10 +280,10 @@ export default function Settings() {
           A wallet that never blind-signs arbitrary messages is safer against
           signature-phishing, so the capability is present only when the user
           explicitly enables it. */}
-      <div className="p-5 rounded-xl border border-border bg-card">
+      <div className="p-5 rounded-2xl border border-border/40 bg-card">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <FileSignature className="h-5 w-5 text-primary" />
             </div>
             <div>
@@ -312,10 +312,10 @@ export default function Settings() {
           delivers is exactly the kind of claim the honesty bar forbids.
           Turning it off stops all egress immediately — trackEvent() re-reads
           consent on every call, so there is nothing to flush or restart. */}
-      <div className="p-5 rounded-xl border border-border bg-card">
+      <div className="p-5 rounded-2xl border border-border/40 bg-card">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <BarChart3 className="h-5 w-5 text-primary" aria-hidden="true" />
             </div>
             <div>
@@ -361,10 +361,10 @@ export default function Settings() {
 
           Both writers are I3-gated inside lib/advisorConsent.js, so a decoy or
           demo session moves the switch without touching the shared key. */}
-      <div className="p-5 rounded-xl border border-border bg-card">
+      <div className="p-5 rounded-2xl border border-border/40 bg-card">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
             </div>
             <div>
@@ -390,18 +390,18 @@ export default function Settings() {
         </p>
       </div>
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-2">Language</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Language</h2>
       {/* Language — Phase 2 slice 1. Writes route through lib/locale.js setLocale
           which is I3-gated (no-op in decoy/duress/stealth/demo), so a coerced
           tap cannot flip the real user's stored language or leave a "someone
           changed the language" tell. Non-English catalogs are machine-
           translated and the switcher renders an MT-pending banner until human
           review (see i18n/index.js MACHINE_TRANSLATED). */}
-      <div className="p-5 rounded-xl border border-border bg-card">
+      <div className="p-5 rounded-2xl border border-border/40 bg-card">
         <LanguageSwitcher />
       </div>
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-2">Security</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Security</h2>
       {/* Security settings — shown on all platforms.
           TwoFactorSettings now handles native biometric 2FA (Face ID) via
           BiometricAuth, so it is no longer WebAuthn-only and can render on native.
@@ -425,14 +425,14 @@ export default function Settings() {
           settings block in deniable, leaving a neutral one-liner. Same
           pattern the /login-activity page uses. */}
       {isDeniabilityOrDemoActive() ? (
-        <div className="p-5 rounded-xl border border-border bg-card">
+        <div className="p-5 rounded-2xl border border-border/40 bg-card">
           <p className="text-sm text-muted-foreground">
             Security settings are managed from your unlocked wallet.
           </p>
         </div>
       ) : (
         <>
-          <div className="p-5 rounded-xl border border-border bg-card space-y-5">
+          <div className="p-5 rounded-2xl border border-border/40 bg-card space-y-5">
             <div className="flex items-center gap-2">
               <Fingerprint className="h-5 w-5 text-primary" />
               <h3 className="font-semibold">
@@ -493,11 +493,11 @@ export default function Settings() {
         </div>
       )}
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-2">Plan</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Plan</h2>
       {/* Current plan — reflects the real entitlement from TierProvider (useTier). */}
-      <Link to="/plans" className="flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
+      <Link to="/plans" className="flex items-center justify-between gap-4 p-5 rounded-2xl border border-border/40 bg-card hover:border-primary/40 transition-colors min-h-[44px]">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
             <Sparkles className="h-5 w-5 text-primary" />
           </div>
           <div>
@@ -518,9 +518,9 @@ export default function Settings() {
       {/* Status + expiry: cancelled, billing retry and expired are all visible here. */}
       <SubscriptionStatus subscription={subscription} />
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-2">Wallet</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Wallet</h2>
       {/* Withdrawal Address Whitelist */}
-      <div className="p-5 rounded-xl border border-border bg-card">
+      <div className="p-5 rounded-2xl border border-border/40 bg-card">
         <WhitelistManager />
       </div>
 
@@ -571,12 +571,12 @@ export default function Settings() {
         </Link>
       </div>
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-2">Help & legal</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Help & legal</h2>
       {/* Terms & legal — ordinary nav row to the static reference screen. No
           badge, no status, no count (deniability framing: nothing to read here). */}
-      <Link to="/terms-legal" className="flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
+      <Link to="/terms-legal" className="flex items-center justify-between gap-4 p-5 rounded-2xl border border-border/40 bg-card hover:border-primary/40 transition-colors min-h-[44px]">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
             <Scale className="h-5 w-5 text-primary" />
           </div>
           <div>
@@ -602,10 +602,10 @@ export default function Settings() {
               type="button"
               onClick={() => { openStoreForRating().catch(() => {}); }}
               data-testid="rate-app-button"
-              className="w-full flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px] text-start"
+              className="w-full flex items-center justify-between gap-4 p-5 rounded-2xl border border-border/40 bg-card hover:border-primary/40 transition-colors min-h-[44px] text-start"
             >
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                   <Star className="h-5 w-5 text-primary" />
                 </div>
                 <div>
@@ -620,10 +620,10 @@ export default function Settings() {
             type="button"
             onClick={openFeedback}
             data-testid="send-feedback-button"
-            className="w-full flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px] text-start"
+            className="w-full flex items-center justify-between gap-4 p-5 rounded-2xl border border-border/40 bg-card hover:border-primary/40 transition-colors min-h-[44px] text-start"
           >
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <MessageSquare className="h-5 w-5 text-primary" />
               </div>
               <div>
@@ -637,10 +637,10 @@ export default function Settings() {
             type="button"
             onClick={() => { requestFeature().catch(() => {}); }}
             data-testid="request-feature-button"
-            className="w-full flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px] text-start"
+            className="w-full flex items-center justify-between gap-4 p-5 rounded-2xl border border-border/40 bg-card hover:border-primary/40 transition-colors min-h-[44px] text-start"
           >
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <Lightbulb className="h-5 w-5 text-primary" />
               </div>
               <div>
@@ -657,7 +657,7 @@ export default function Settings() {
           hides itself on web and in decoy/demo (I3). */}
       <OtaVersionRow />
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-2">Danger zone</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Danger zone</h2>
       {/* Danger Zone */}
       <div className="p-5 rounded-xl border border-destructive/30 bg-destructive/5 space-y-3">
         <div className="flex items-center gap-2 text-destructive">
