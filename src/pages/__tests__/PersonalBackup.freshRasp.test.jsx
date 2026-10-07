@@ -11,6 +11,12 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { MemoryRouter } from 'react-router';
 
 const createBackup = vi.fn(async () => ({ env: true }));
+const recordMilestone = vi.fn();
+const triggerReviewPromptIfEligible = vi.fn(async () => false);
+vi.mock('@/lib/reviewPrompt', () => ({
+  recordMilestone: () => recordMilestone(),
+  triggerReviewPromptIfEligible: () => triggerReviewPromptIfEligible(),
+}));
 vi.mock('@/lib/WalletProvider', () => ({
   useWallet: () => ({
     createBackup,
@@ -73,6 +79,8 @@ beforeEach(() => {
   getFreshLocalRaspArtifact.mockClear();
   createBackup.mockClear();
   toastError.mockClear();
+  recordMilestone.mockClear();
+  triggerReviewPromptIfEligible.mockClear();
 });
 afterEach(() => cleanup());
 
@@ -95,6 +103,27 @@ function fillExportForm() {
 }
 
 describe('PersonalBackup ExportTab — fresh-at-confirm RASP probe (L-6)', () => {
+  it('records and prompts only after Yes, I saved it', async () => {
+    render(<MemoryRouter><PersonalBackup /></MemoryRouter>);
+    fillExportForm();
+    fireEvent.click(screen.getByRole('button', { name: /save backup/i }));
+    const confirm = await screen.findByRole('button', { name: /yes, i saved it/i });
+    expect(recordMilestone).not.toHaveBeenCalled();
+    expect(triggerReviewPromptIfEligible).not.toHaveBeenCalled();
+    fireEvent.click(confirm);
+    expect(recordMilestone).toHaveBeenCalledTimes(1);
+    expect(triggerReviewPromptIfEligible).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not record or prompt after Not yet', async () => {
+    render(<MemoryRouter><PersonalBackup /></MemoryRouter>);
+    fillExportForm();
+    fireEvent.click(screen.getByRole('button', { name: /save backup/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /not yet/i }));
+    expect(recordMilestone).not.toHaveBeenCalled();
+    expect(triggerReviewPromptIfEligible).not.toHaveBeenCalled();
+  });
+
   it('awaits getFreshLocalRaspArtifact on export', async () => {
     render(<MemoryRouter><PersonalBackup /></MemoryRouter>);
     fillExportForm();

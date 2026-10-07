@@ -173,6 +173,17 @@ export async function computePortfolio(wallets, walletAddresses, livePrices, pri
     p,
     new Promise((resolve) => setTimeout(() => resolve(null), PER_JOB_TIMEOUT_MS)),
   ]);
+  // A failed read (null) gets ONE quick retry before it is reported indeterminate:
+  // a transient 429/blip from a public RPC or indexer is the common cause of the
+  // whole portfolio showing "incomplete". The retry sits INSIDE the per-job timeout,
+  // so the worst case is unchanged. A genuine outage still resolves to null (I4).
+  const RETRY_DELAY_MS = 350;
+  const readWithRetry = async (asset, addr) => {
+    const first = await fetchAssetAmount(asset, addr);
+    if (first !== null) return first;
+    await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    return fetchAssetAmount(asset, addr);
+  };
   const jobs = [];
   for (const w of wallets) {
     byWallet[w.id] = { assets: [], total: 0, indeterminate: false };
@@ -180,7 +191,7 @@ export async function computePortfolio(wallets, walletAddresses, livePrices, pri
       const asset = getAssetById(entry) || (!isAssetIdString(entry) ? getAsset(entry) : null);
       if (!asset) continue;
       jobs.push(
-        withPerJobTimeout(fetchAssetAmount(asset, walletAddresses[w.id] || {})).then((amount) => ({
+        withPerJobTimeout(readWithRetry(asset, walletAddresses[w.id] || {})).then((amount) => ({
           walletId: w.id, id: asset.id, symbol: asset.symbol, priceSymbol: asset.priceSymbol || asset.symbol, amount,
         })),
       );
