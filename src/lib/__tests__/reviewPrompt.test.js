@@ -10,6 +10,11 @@ vi.mock('@capacitor-community/in-app-review', () => ({
   InAppReview: { requestReview: vi.fn(async () => {}) },
 }));
 
+const isNativePlatform = vi.fn(() => true);
+vi.mock('@capacitor/core', () => ({
+  Capacitor: { isNativePlatform: () => isNativePlatform() },
+}));
+
 const browserOpen = vi.fn(async () => {});
 vi.mock('@capacitor/browser', () => ({
   Browser: { open: (...args) => browserOpen(...args) },
@@ -39,6 +44,7 @@ const KEYS = [
 beforeEach(() => {
   KEYS.forEach((k) => localStorage.removeItem(k));
   isDeniabilityOrDemoActive.mockReturnValue(false);
+  isNativePlatform.mockReturnValue(true);
 });
 
 afterEach(() => {
@@ -115,6 +121,17 @@ describe('reviewPrompt I3 (deniability/demo)', () => {
     const fired = await triggerReviewPromptIfEligible();
     expect(fired).toBe(false);
     expect(localStorage.getItem('veyrnox-review-last-asked-ts')).toBeNull();
+  });
+});
+
+describe('reviewPrompt native gate', () => {
+  it('does not fire or start the cooldown on web', async () => {
+    for (let i = 0; i < MIN_SENDS_BEFORE_PROMPT; i += 1) recordSuccessfulSend();
+    isNativePlatform.mockReturnValue(false);
+    const fired = await triggerReviewPromptIfEligible();
+    expect(fired).toBe(false);
+    expect(localStorage.getItem('veyrnox-review-last-asked-ts')).toBeNull();
+    expect(shouldPromptForReview()).toBe(true);
   });
 });
 
@@ -206,6 +223,25 @@ describe('reviewPrompt.openStoreForRating (manual)', () => {
 });
 
 describe('reviewPrompt.triggerReviewPromptIfEligible', () => {
+  it('coalesces concurrent eligible requests while the plugin loads', async () => {
+    for (let i = 0; i < MIN_SENDS_BEFORE_PROMPT; i += 1) recordSuccessfulSend();
+    const inApp = await import('@capacitor-community/in-app-review');
+    const results = await Promise.all([
+      triggerReviewPromptIfEligible(),
+      triggerReviewPromptIfEligible(),
+    ]);
+    expect(results).toEqual([true, false]);
+    expect(inApp.InAppReview.requestReview).toHaveBeenCalledTimes(1);
+  });
+
+  it('rechecks deniability after the asynchronous import', async () => {
+    for (let i = 0; i < MIN_SENDS_BEFORE_PROMPT; i += 1) recordSuccessfulSend();
+    const pending = triggerReviewPromptIfEligible();
+    isDeniabilityOrDemoActive.mockReturnValue(true);
+    expect(await pending).toBe(false);
+    expect(localStorage.getItem('veyrnox-review-last-asked-ts')).toBeNull();
+  });
+
   it('marks asked-ts before calling the plugin (fire-and-forget safety)', async () => {
     for (let i = 0; i < MIN_SENDS_BEFORE_PROMPT; i += 1) recordSuccessfulSend();
     const fired = await triggerReviewPromptIfEligible();
