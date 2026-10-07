@@ -358,8 +358,10 @@ Carries the price-display fixes to native. Owner go given in session after signi
 the live feed instead of the hardcoded `TOP_CRYPTOS` constant, with ARB/OP priced and
 charted from the ETH feed (#2843); the home asset-distribution chart built from the
 portfolio's own values, and the reference-rate note shown only on the approximate basis
-(#2844, with its review follow-ups in #2847); and the `braces` recursion-depth guard
-(#2842). The only native file changed in that range is `AppUITests.swift`, which is test
+(#2844, with its review follow-ups in #2847). The source range also includes the
+`braces` recursion-depth guard (#2842), but `braces` is a build/test-only dependency
+and is not shipped in the wallet OTA payload; this release does not deliver that
+guard to devices. The only native file changed in that range is `AppUITests.swift`, which is test
 code and not in the app binary.
 
 **Not verified.** At publish time this bundle had not been booted on a device or
