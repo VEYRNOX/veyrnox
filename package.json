@@ -198,6 +198,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@capacitor/cli": "^8.5.2",
+    "@e2e-dev/web": "0.13.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
     "@rollup/plugin-inject": "^5.0.5",
@@ -221,6 +222,7 @@
     "braces": "file:vendor/braces",
     "cross-env": "^10.1.0",
     "dotenv": "^18.0.4",
+    "e2e": "0.18.0",
     "esbuild": "^0.28.2",
     "eslint": "^10.11.0",
     "eslint-plugin-react": "^7.37.4",
