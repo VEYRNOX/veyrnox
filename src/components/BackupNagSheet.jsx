@@ -18,6 +18,7 @@ import { hasRedeemed } from "@/lib/referral";
 import { loadSafetyPlusTrialWithin, TRIAL_LOOKUP_BUDGET_MS } from "@/lib/safetyPlusTrial";
 import { trialRenewalLine } from "@/lib/freeTrial";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { claimUpsellSlot, upsellSlotFreeFor } from "@/lib/upsellSlot";
 
 const BODY =
   "Your wallet only lives on this device. Safety Plus adds encrypted backups so you can recover it if anything happens.";
@@ -46,8 +47,16 @@ export default function BackupNagSheet({ publicAddresses }) {
     return () => { cancelled = true; };
   }, [due, trial]);
 
-  if (isDeniabilityOrDemoActive() || !shouldShow) return null;
-  if (trial === undefined) return null;
+  const visible = !isDeniabilityOrDemoActive() && shouldShow && trial !== undefined
+    && upsellSlotFreeFor("backup-nag");
+  // Hold the slot while on screen so PaywallNudge stands down. If PaywallNudge
+  // took it during the trial lookup, claiming fails and this re-renders hidden.
+  const [, setSlotLost] = useState(false);
+  useEffect(() => {
+    if (visible && !claimUpsellSlot("backup-nag")) setSlotLost(true);
+  }, [visible]);
+
+  if (!visible) return null;
 
   return (
     // Below md the Layout bottom nav is on screen (md:hidden, ~4rem tall plus
