@@ -33,6 +33,7 @@ import { useTier } from '@/lib/TierProvider';
 import { TIER } from '@/lib/tier';
 import { upsellFor } from '@/components/WinPaywall';
 import { winFiredThisSession } from '@/lib/winPaywall';
+import { claimUpsellSlot, upsellSlotFreeFor } from '@/lib/upsellSlot';
 import { Capacitor } from '@capacitor/core';
 import { hasRedeemed } from '@/lib/referral';
 import { loadSafetyPlusTrialWithin, TRIAL_LOOKUP_BUDGET_MS } from '@/lib/safetyPlusTrial';
@@ -105,6 +106,8 @@ export function shouldShowPaywallNudge(currentTier) {
     if (isDeniabilityOrDemoActive()) return false;
     // One upsell per app session: the WIN modal already sold this session.
     if (winFiredThisSession()) return false;
+    // ...and one card at a time: BackupNagSheet may already be on screen.
+    if (!upsellSlotFreeFor('paywall-nudge')) return false;
     const key = dismissKeyFor(currentTier);
     if (!key) return false;
     if (localStorage.getItem(key)) return false;
@@ -177,6 +180,8 @@ export default function PaywallNudge() {
       if (cancelled || trackedRef.current) return;
       // The lookup can outlive a win or a mid-session deniability flip.
       if (!shouldShowPaywallNudge(currentTier)) return;
+      // Claim after the last await so the check and the claim cannot be split.
+      if (!claimUpsellSlot('paywall-nudge')) return;
       trackedRef.current = true;
       setTrial(confirmedTrial);
       setVisible(true);
