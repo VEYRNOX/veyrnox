@@ -95,10 +95,10 @@ architecture or security-critical code (wallet-core, signing, KEK, RASP).
   closed.
   **"Submitted" has an outcome: record it in the session that learns it.**
 - **OTA web-bundle updates are live in production.** The current bundle is
-  `202610041308` (all of `main` at `689e2e42`), published 2026-10-04; it has not yet been
-  seen applied on a device. Its predecessor `202610031506` (`467c3552`, 2026-10-03) was
-  seen applied by the owner on a store iPhone and a physical Android 1.0.3 phone
-  (Settings "Web bundle" row; owner-reported). Android 1.0.2 cannot take OTA. Runbook and evidence:
+  `202610080743` (`main` at `2538bbac`), published 2026-10-08 11:38 UTC; neither it nor
+  its predecessor `202610072247` has been seen applied on a device. `202610031506`
+  (`467c3552`, 2026-10-03) was seen applied by the owner on a store iPhone and a
+  physical Android 1.0.3 phone (Settings "Web bundle" row; owner-reported). Android 1.0.2 cannot take OTA. Runbook and evidence:
   `docs/ota-updates.md`. Any production publish needs the owner's YubiKey and explicit go.
 - **Real users exist:** thousands of telemetry devices, 500+ active subscribers, and one
   real full-price production purchase. No promotional offer has ever been exercised by a
