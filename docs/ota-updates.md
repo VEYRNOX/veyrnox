@@ -20,8 +20,14 @@ Release record: "Production release 202610031506 published". The earlier no-chan
 canary `202610011706` remains documented in its historical section.
 
 **Production bundle `202610041308` superseded it on 2026-10-04 13:26 UTC** (built from
-`main` at `689e2e42`). At the time of writing it has **not** been seen applied on a
-device. Release record: "Production release 202610041308 published".
+`main` at `689e2e42`). It was not seen applied on a device before it was superseded.
+Release record: "Production release 202610041308 published".
+
+**Production bundle `202610072247` superseded that on 2026-10-08** (built from `main` at
+`3fac975d`), and **`202610080743` superseded it the same day at 11:38 UTC** (built from
+`main` at `2538bbac`), which is the current bundle. Neither has been seen applied on a
+device. Release records: "Production release 202610072247 published" and "Production
+release 202610080743 published".
 
 **Signing keys are provisioned (2026-09-18).** Two YubiKey 5C NFC tokens, each
 holding a non-extractable P-256 key generated on-token in PIV slot 9c, with
@@ -375,6 +381,74 @@ release.
 `e9fbacd35571bf53a20a8ee24b8dd8f5a986df7fc059af0e1492a304494a7886`, signed with token A
 and sealed) was not uploaded: no go was given before #2847 landed with fixes to the
 portfolio change it carried. Nothing under `production/202610040621/` exists on the host.
+
+## Production release 202610072247 published (2026-10-08)
+
+Carries the Home, Receive, Send and Settings restyles to native. Owner go given in session
+after signing.
+
+| | |
+|---|---|
+| Source | `main` at `3fac975d`, clean worktree (no `.env.local`; `VITE_BYPASS_RASP`, `VITE_DEV_UNGATE_SEND`, `VITE_DEMO_MODE` all unset in `ota-build-flags.json`) |
+| Build | `npm run build`, version from build time |
+| Channel / version | `production` / `202610072247`, `minNativeApi` 1 |
+| Files | 1073 in the manifest; 1075 objects including the manifest and signature |
+| Manifest sha256 | `0c0812475127912f67264b7e12f08d2a46e5e063eaee37a85f6ea48a96db75c8` |
+| Signed with | token B (39744871), PIN and touch by the owner; `seal` and `verify` passed against the pinned keys |
+| Upload order | files (0 failed), manifest and signature, `verify-live` (`live copy OK: 1075 objects match`), then `latest.json` last with `no-cache` |
+| Live | a plain GET and an Android-style GET of `latest.json` both returned `{"bundleVersion":202610072247}`; a plain GET showed 200 with `cache-control: no-cache`. A `HEAD` request returned 403, so check with GET |
+
+**What it carries beyond `202610041308` (`689e2e42`):** 16 commits. User-visible: Home
+unlock progress, resilient portfolio health and round action tiles (#2858), the Receive
+redesign (#2859), the Send step 1 and review/confirm restyles (#2860, #2862), the Settings
+card restyle (#2863), and the review prompt changes (#2850, #2851). The rest are docs, a
+test framework (#2857) and dependency bumps (#2861, #2865).
+
+**A dependency range worth knowing about.** #2865 moved runtime dependencies that ship in
+the bundle: `@sentry/react` 11.0.0 to 11.4.0, `@tanstack/react-query` 5.104.0 to 5.104.1,
+`lucide-react` 1.48.0 to 1.51.0, `react-resizable-panels` 4.14.1 to 4.14.2 and
+`@revenuecat/purchases-capacitor` 13.6.1 to 13.7.0. The last is a Capacitor plugin: its
+JavaScript wrapper is in the OTA bundle, but its native half is in the store binary, and
+the 1.0.3 binaries were built with the older release. The 13.7.0 release notes list
+additive JavaScript options (external purchase custom links on iOS, a `purchaseTime`
+argument to `syncAmazonPurchase`) plus native-side fixes and SDK bumps that an OTA
+cannot deliver. This repo does not call the new options, so a mismatch is not expected to
+matter, but nobody has run the 13.7.0 wrapper against the 13.6.x native code. The rule
+"any native dependency change needs a store release" applies to the native half; the next
+store build picks it up.
+
+**Not verified.** At publish time this bundle had not been booted on a device or
+simulator. The restyled screens are covered by unit tests only.
+
+## Production release 202610080743 published (2026-10-08)
+
+Carries the one-Safety-Plus-card-per-session fix. Owner go given in session before
+signing; the release was built from the exact `main` commit below.
+
+| | |
+|---|---|
+| Source | `main` at `2538bbac`, clean worktree (no `.env.local`; `VITE_BYPASS_RASP`, `VITE_DEV_UNGATE_SEND`, `VITE_DEMO_MODE` all unset in `ota-build-flags.json`) |
+| Build | `npm run build`, version from build time |
+| Channel / version | `production` / `202610080743`, `minNativeApi` 1 |
+| Files | 1073 in the manifest; 1075 objects including the manifest and signature |
+| Manifest sha256 | `4ea11a83292a2f5d9c874e31f2abb82843bbec3c56128513a10a031efa1eb207` |
+| Signed with | token B (39744871), PIN and touch by the owner; `seal` and `verify` passed against the pinned keys |
+| Upload order | files (0 failed), manifest and signature, `verify-live` (`live copy OK: 1075 objects match`), then `latest.json` last with `no-cache` |
+| Live | `latest.json` published 2026-10-08 11:38 UTC; a plain GET returned 200 with `cache-control: no-cache`, and a plain GET and an Android-style GET both returned `{"bundleVersion":202610080743}` |
+
+**What it carries beyond `202610072247` (`3fac975d`):** #2867 only. `PaywallNudge` (the
+first-unlock-day modal) and `BackupNagSheet` (the backup card) gated on unrelated state,
+so a free user could get both Safety Plus cards on one unlock. A shared in-memory slot
+(`src/lib/upsellSlot.js`) lets whichever shows first hold it for the app session; the
+other stands down and is not marked dismissed. No storage key, so no I3 residue. The
+other commit in the range (#2868) is a docs-only security-diff scan.
+
+**Not verified.** At publish time this bundle had not been booted on a device or
+simulator, and the fix has not been seen in a real first-run session; it is covered by
+unit tests, including a mutation check of the slot in both components. The signing token
+reported a low PIN counter (2 of 3) before this release; one wrong entry had happened at
+an unknown time, and a correct PIN resets it. Check it with `ykman --device 39744871 piv
+info` before the next release.
 
 ## Staging: physical iPhone result (2026-10-02)
 
