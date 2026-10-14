@@ -78,7 +78,10 @@
     "demo_reset": "重置演示（删除所有钱包数据 + 隐藏钱包）",
     "non_demo_hint": "锁定你的钱包，然后输入紧急 PIN 试用。切勿分享。忘记了？在使用你的真实 PIN 解锁时在此移除。",
     "network_default_name": "测试网络",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "设置新的紧急 PIN 属于 Safety Plus 的一部分",
+    "setup_locked_body": "创建或更改紧急 PIN 需要有效的 Safety Plus 订阅。移除紧急 PIN 则无需订阅，你可以随时在下方操作。",
+    "setup_locked_cta": "查看方案"
   },
   "stealth": {
     "heading": "隐匿 / 隐藏钱包",
@@ -213,7 +216,8 @@
       "trust_warning": "只连接你信任的 dApp。连接后此钱包将对该 dApp 可见。",
       "reject": "拒绝",
       "connect_busy": "连接中…",
-      "connect": "连接"
+      "connect": "连接",
+      "risk_blocked": "与此 dApp 的连接已被阻止。请拒绝，并改为打开可信的 URL。"
     },
     "request_approval": {
       "blocked_title": "请求已阻止",
@@ -248,7 +252,20 @@
       "sending_busy": "发送中…",
       "signing_busy": "签名中…",
       "unknown_network_with_id": "未知网络（链 {{id}}）",
-      "unknown_network": "未知网络"
+      "unknown_network": "未知网络",
+      "typed_contract_row_label": "合约",
+      "typed_chain_row_label": "链 ID",
+      "typed_contract_hint": "上方的名称由网站自行选择。你的签名实际授权的是这个合约地址 — 请将其与你预期的代币进行核对。",
+      "permit_unapprovable": "此签名授权某个支出方（spender）转移你的代币，而 Veyrnox 不会通过 WalletConnect 批准此类签名。请在应用内的发送页面完成，在那里可以查看并确认风险。",
+      "token_amount_row_label": "代币数量",
+      "token_recipient_row_label": "代币接收方",
+      "unknown_token_title": "⚠ 未知代币",
+      "unknown_token_body": "无法从此请求中读取金额。除非你确切知道它会发送什么，否则不要批准。",
+      "max_fee_row_label": "最高手续费",
+      "max_fee_row_value": "最多 {{amount}} {{symbol}}",
+      "max_fee_note": "这是网络手续费最多可能花费的金额，需加在上方金额之外。它是上限，而不是估算值 — 实际手续费通常要低得多。",
+      "remote_screening_notice": "此请求已启用在线威胁情报筛查。批准之前，Veyrnox 可能会将收款地址、金额和调用数据发送到其 TIP 筛查服务。",
+      "remote_screening_unavailable": "你的偏好设置中已启用在线筛查，但此版本未配置任何 TIP 提供方。此请求将仅在本地进行筛查。"
     },
     "active_sessions": {
       "empty": "尚未连接任何 dApp。在上方配对一个以开始。",
@@ -293,6 +310,23 @@
       "biometric": "使用你的 PIN + 生物识别授权此笔转账",
       "passkey": "使用你的 PIN + 密钥授权此笔转账",
       "password": "使用你的 PIN + 操作密码授权此笔转账"
+    },
+    "sentinel": {
+      "speaker": "Sentinel：",
+      "detail": "{{note}} — 来源：{{source}}。",
+      "note_fallback": "在本地威胁情报列表中被标记",
+      "critical_footer": "此项被标记为严重。你仍可继续，但请在继续之前了解风险。",
+      "headline": {
+        "sanctioned": "此地址在制裁名单上。",
+        "drainer": "这是已知的钱包盗取程序（drainer）。",
+        "phishing": "此地址与网络钓鱼有关。",
+        "exploit": "此地址与已知的漏洞利用（exploit）有关。",
+        "scam": "此地址被标记为诈骗。",
+        "malicious_contract": "此合约已被标记为恶意。",
+        "mixer": "这是混币服务（mixer）。",
+        "burn": "这是销毁（burn）地址。",
+        "default": "Sentinel 已标记此地址。"
+      }
     }
   }
 }

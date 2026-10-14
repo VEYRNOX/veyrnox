@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Fanya mazoezi ya ukanushaji",
       "description": "Ona dashibodi kama vile mtu anayeshikilia simu yako iliyofunguliwa angeiona."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — majibu ya mtandaoni",
+      "description": "Hiari · maswali unayoandika yanaondoka kwenye kifaa",
+      "help": "Ikiwa imewashwa, maswali unayoandika kwenye Mshauri hutumwa kwa proksi yetu na kujibiwa na modeli ya AI ya mtu wa tatu, pamoja na skrini uliyopo, mnyororo uliochaguliwa, na kitambulisho cha usakinishaji cha nasibu kinachotumika tu kutekeleza kikomo cha kila siku cha maswali kwa kila kifaa. Kuizima husimamisha hili mara moja; Mshauri bado hujibu kutoka kwa maarifa yake yaliyojengewa ndani. Kuiwasha tena huonyesha tena maelezo kamili ili ukubali ukiwa na maelezo mbele yako.",
+      "enable_aria": "Kagua na uwashe majibu ya mtandaoni ya Mshauri wa Usalama wa AI",
+      "disable_aria": "Zima majibu ya mtandaoni ya Mshauri wa Usalama wa AI"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Nyumbani",
     "tab_send": "Tuma",
     "tab_receive": "Pokea",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Utahitaji PIN yako ili kuingia tena.",
+    "lock_confirm_cancel": "Ghairi"
   },
   "back": {
     "default_label": "Rudi"
@@ -381,7 +390,8 @@
       "local_disclosure": "Wapokeaji wanaangaliwa kwenye kifaa chako kwa anwani za udanganyifu dhidi ya historia yako mwenyewe — hakuna kinachotoka kwenye kifaa chako.",
       "remote_opt_in": "Pia angalia dhidi ya hifadhidata ya vitisho mtandaoni (inatuma anwani hii kwa mtu wa tatu)",
       "remote_unavailable": "Uangalizi mtandaoni umewashwa, lakini hakuna mtoa huduma aliyesanidiwa katika toleo hili — uangalizi unabaki wa ndani, kwa hivyo hatukuweza kuthibitisha hii dhidi ya orodha ya nje.",
-      "demo_poison_button": "Onyesho: bandika anwani inayofanana"
+      "demo_poison_button": "Onyesho: bandika anwani inayofanana",
+      "remote_enabled": "Uchunguzi wa taarifa za kijasusi za vitisho mtandaoni umewashwa. Katika hatua ya uthibitishaji, hii hutuma anwani ya mpokeaji, anwani yako ya kutuma, kiasi, na — kwa uhamisho wa tokeni — anwani ya mkataba na data ya wito kwa huduma ya TIP."
     },
     "simulation": {
       "title": "Uigaji wa Muamala",
@@ -407,7 +417,13 @@
       "balance_prefix": "Salio:",
       "demo_suffix": "(onyesho)",
       "live_suffix": "(moja kwa moja)",
-      "reading_from_network": "inasoma kutoka kwenye mtandao…"
+      "reading_from_network": "inasoma kutoka kwenye mtandao…",
+      "mode_crypto_aria": "Weka kiasi katika {{currency}}",
+      "mode_fiat_aria": "Weka kiasi katika USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Kiwango cha juu",
+      "max_chip_aria": "Tumia salio lako lote la {{currency}}"
     },
     "errors": {
       "amount_missing": "Kiasi kinahitajika",
@@ -433,7 +449,8 @@
       "back": "Rudi"
     },
     "verify": {
-      "summary_label": "Unatuma"
+      "summary_label": "Unatuma",
+      "finality": "Kutuma ni kwa mwisho. Mara uhamisho unapothibitishwa kwenye mtandao, hauwezi kutenguliwa wala kurejeshewa pesa — hakikisha mpokeaji na kiasi."
     },
     "fee": {
       "automatic": "Ada ya mtandao imewekwa kiotomatiki kwa {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Utumaji haukukamilika — tafadhali thibitisha tena ili kujaribu tena.",
       "send_failed_fallback": "Utumaji umeshindwa",
       "unconfirmed": "Imeshindwa kuthibitisha muamala huu kwenye mtandao bado — huenda bado unasubiri. Angalia kivinjari."
+    },
+    "wizard": {
+      "step_recipient": "Mpokeaji na kiasi",
+      "step_review": "Kagua",
+      "step_confirm": "Thibitisha"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Tuma tu Solana kwenye {{network}} kwenye anwani hii."
     },
     "select_asset_prompt": "Chagua rasilimali ya kupokea.",
-    "unlock_footer_note": "Anwani zinatoka kwenye pochi yako ya ndani na zinaonekana tu ikiwa imefunguliwa."
+    "unlock_footer_note": "Anwani zinatoka kwenye pochi yako ya ndani na zinaonekana tu ikiwa imefunguliwa.",
+    "actions": {
+      "copy": "Nakili",
+      "copied": "Imenakiliwa",
+      "share": "Shiriki",
+      "share_dialog_title": "Shiriki anwani",
+      "share_failed_toast": "Imeshindwa kufungua karatasi ya kushiriki"
+    }
   },
   "dashboard": {
     "portfolioValue": "Thamani ya Portfolio",

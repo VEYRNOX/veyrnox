@@ -78,7 +78,10 @@
     "demo_reset": "Atkurti demonstraciją (ištrinti visus piniginės duomenis + paslėptą piniginę)",
     "non_demo_hint": "Užrakinkite piniginę ir įveskite Avarinį PIN kodą, kad išbandytumėte. Niekada juo nesidalykite. Pamiršote? Pašalinkite jį čia, kol esate atrakinę su tikruoju PIN kodu.",
     "network_default_name": "testinis tinklas",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Naujo AVARINIO PIN nustatymas yra Safety Plus dalis",
+    "setup_locked_body": "Norint sukurti ar pakeisti avarinį PIN, reikia aktyvios Safety Plus prenumeratos. Jį pašalinti prenumeratos nereikia — tai galite padaryti žemiau bet kada.",
+    "setup_locked_cta": "Peržiūrėti planus"
   },
   "stealth": {
     "heading": "Slaptos / Paslėptos piniginės",
@@ -213,7 +216,8 @@
       "trust_warning": "Jungtis tik prie dApp, kuriomis pasitikite. Prisijungus ši piniginė bus matoma dApp.",
       "reject": "Atmesti",
       "connect_busy": "Jungiamasi…",
-      "connect": "Prisijungti"
+      "connect": "Prisijungti",
+      "risk_blocked": "Ryšys su šia dApp užblokuotas. Atmeskite ir vietoj to atidarykite patikimą URL."
     },
     "request_approval": {
       "blocked_title": "Užklausa užblokuota",
@@ -248,7 +252,20 @@
       "sending_busy": "Siunčiama…",
       "signing_busy": "Pasirašoma…",
       "unknown_network_with_id": "Nežinomas tinklas (grandinė {{id}})",
-      "unknown_network": "Nežinomas tinklas"
+      "unknown_network": "Nežinomas tinklas",
+      "typed_contract_row_label": "Sutartis",
+      "typed_chain_row_label": "Tinklo ID",
+      "typed_contract_hint": "Aukščiau pateiktą pavadinimą pasirinko svetainė. Šis sutarties adresas yra tai, ką jūsų parašas iš tikrųjų įgalioja — palyginkite jį su tikėtinu žetonu.",
+      "permit_unapprovable": "Šis parašas įgalioja išlaidautoją perkelti jūsų žetonus, o Veyrnox tokių įgaliojimų per WalletConnect nepatvirtina. Užbaikite tai programos ekrane Siųsti, kur riziką galima peržiūrėti ir patvirtinti, kad ją suprantate.",
+      "token_amount_row_label": "Žetonų kiekis",
+      "token_recipient_row_label": "Žetonų gavėjas",
+      "unknown_token_title": "⚠ Nežinomas žetonas",
+      "unknown_token_body": "Iš šios užklausos suma nenuskaitoma. Nepatvirtinkite, nebent tiksliai žinote, ką tai siunčia.",
+      "max_fee_row_label": "Maks. mokestis",
+      "max_fee_row_value": "iki {{amount}} {{symbol}}",
+      "max_fee_note": "Tai didžiausia tinklo mokesčio suma, papildomai prie aukščiau nurodytos vertės. Tai viršutinė riba, o ne įvertis — faktinis mokestis paprastai yra gerokai mažesnis.",
+      "remote_screening_notice": "Šiai užklausai aktyvus grėsmių žvalgybos patikrinimas internetu. Prieš patvirtinant Veyrnox gali nusiųsti gavėjo adresą, sumą ir iškvietimo duomenis savo TIP patikros paslaugai.",
+      "remote_screening_unavailable": "Patikra internetu įjungta jūsų nustatymuose, tačiau šiame leidime TIP teikėjas nesukonfigūruotas. Ši užklausa bus tikrinama tik vietoje."
     },
     "active_sessions": {
       "empty": "Kol kas neprijungta jokių dApp. Susiekite vieną aukščiau, kad pradėtumėte.",
@@ -293,6 +310,23 @@
       "biometric": "Patvirtinkite šį siuntimą PIN kodu + biometrija",
       "passkey": "Patvirtinkite šį siuntimą PIN kodu + prieigos raktu",
       "password": "Patvirtinkite šį siuntimą PIN kodu + veiksmo slaptažodžiu"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Šaltinis: {{source}}.",
+      "note_fallback": "Pažymėta vietiniame grėsmių žvalgybos sąraše",
+      "critical_footer": "Tai pažymėta kaip kritinė rizika. Vis tiek galite tęsti, bet prieš tai įsitikinkite, kad suprantate riziką.",
+      "headline": {
+        "sanctioned": "Šis adresas yra sankcijų sąraše.",
+        "drainer": "Tai žinomas piniginių ištuštintojas (drainer).",
+        "phishing": "Šis adresas susijęs su phishing.",
+        "exploit": "Šis adresas susijęs su žinomu išnaudojimu (exploit).",
+        "scam": "Šis adresas pažymėtas kaip sukčiavimas.",
+        "malicious_contract": "Ši sutartis pažymėta kaip kenkėjiška.",
+        "mixer": "Tai maišymo paslauga.",
+        "burn": "Tai sudeginimo adresas.",
+        "default": "Sentinel pažymėjo šį adresą."
+      }
     }
   }
 }

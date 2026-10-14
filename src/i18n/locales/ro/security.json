@@ -78,7 +78,10 @@
     "demo_reset": "Resetează demo-ul (șterge toate datele portofelului + portofelul ascuns)",
     "non_demo_hint": "Blochează-ți portofelul și introdu PIN-ul de urgență pentru a încerca. Nu-l dezvălui niciodată nimănui. L-ai uitat? Elimină-l aici cât ești deblocat cu PIN-ul tău real.",
     "network_default_name": "rețeaua de test",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Setarea unui nou PIN DE URGENȚĂ face parte din Safety Plus",
+    "setup_locked_body": "Crearea sau schimbarea unui PIN de urgență necesită un abonament Safety Plus activ. Eliminarea unuia nu îl cere niciodată, iar o poți face mai jos oricând.",
+    "setup_locked_cta": "Vezi planurile"
   },
   "stealth": {
     "heading": "Portofele ascunse / secrete",
@@ -213,7 +216,8 @@
       "trust_warning": "Conectează-te doar la dApp-uri în care ai încredere. Acest portofel va fi vizibil pentru dApp odată conectat.",
       "reject": "Respinge",
       "connect_busy": "Se conectează…",
-      "connect": "Conectează"
+      "connect": "Conectează",
+      "risk_blocked": "Conexiunea la acest dApp este blocată. Respinge și deschide în schimb un URL de încredere."
     },
     "request_approval": {
       "blocked_title": "Cerere blocată",
@@ -248,7 +252,20 @@
       "sending_busy": "Se trimite…",
       "signing_busy": "Se semnează…",
       "unknown_network_with_id": "Rețea necunoscută (lanțul {{id}})",
-      "unknown_network": "Rețea necunoscută"
+      "unknown_network": "Rețea necunoscută",
+      "typed_contract_row_label": "Contract",
+      "typed_chain_row_label": "ID rețea",
+      "typed_contract_hint": "Numele de mai sus este ales de site. Această adresă de contract este ceea ce semnătura ta autorizează de fapt — verific-o față de tokenul pe care îl aștepți.",
+      "permit_unapprovable": "Această semnătură autorizează un beneficiar de cheltuieli (spender) să-ți mute tokenurile, iar Veyrnox nu aprobă astfel de operațiuni prin WalletConnect. Finalizează din ecranul Trimite din aplicație, unde riscul poate fi examinat și confirmat.",
+      "token_amount_row_label": "Cantitate token",
+      "token_recipient_row_label": "Destinatar token",
+      "unknown_token_title": "⚠ Token necunoscut",
+      "unknown_token_body": "Suma nu poate fi citită din această solicitare. Nu aproba decât dacă știi exact ce se trimite.",
+      "max_fee_row_label": "Comision max.",
+      "max_fee_row_value": "până la {{amount}} {{symbol}}",
+      "max_fee_note": "Aceasta este valoarea maximă pe care o poate costa comisionul de rețea, pe lângă valoarea de mai sus. Este un plafon, nu o estimare — comisionul real este de obicei mult mai mic.",
+      "remote_screening_notice": "Screeningul online de informații despre amenințări este activ pentru această solicitare. Înainte de aprobare, Veyrnox poate trimite adresa destinatarului, suma și datele apelului către serviciul său de screening TIP.",
+      "remote_screening_unavailable": "Screeningul online este activat în preferințele tale, dar în această versiune nu este configurat niciun furnizor TIP. Această solicitare va fi verificată doar local."
     },
     "active_sessions": {
       "empty": "Nicio dApp conectată încă. Asociază una mai sus pentru a începe.",
@@ -293,6 +310,23 @@
       "biometric": "Autorizează această trimitere cu PIN-ul tău + biometrie",
       "passkey": "Autorizează această trimitere cu PIN-ul tău + passkey",
       "password": "Autorizează această trimitere cu PIN-ul tău + Parola de acțiune"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Sursă: {{source}}.",
+      "note_fallback": "Marcat în lista locală de informații despre amenințări",
+      "critical_footer": "Acest lucru este marcat ca fiind critic. Poți continua în continuare, dar înțelege riscul înainte de a o face.",
+      "headline": {
+        "sanctioned": "Această adresă se află pe o listă de sancțiuni.",
+        "drainer": "Acesta este un drainer de portofele cunoscut.",
+        "phishing": "Această adresă este asociată cu phishing.",
+        "exploit": "Această adresă este asociată cu un exploit cunoscut.",
+        "scam": "Această adresă este marcată ca escrocherie.",
+        "malicious_contract": "Acest contract a fost marcat ca fiind rău intenționat.",
+        "mixer": "Acesta este un serviciu de mixare.",
+        "burn": "Aceasta este o adresă de ardere (burn).",
+        "default": "Sentinel a marcat această adresă."
+      }
     }
   }
 }

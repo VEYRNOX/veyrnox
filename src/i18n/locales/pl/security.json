@@ -78,7 +78,10 @@
     "demo_reset": "Zresetuj demo (usuń wszystkie dane portfela + portfel ukryty)",
     "non_demo_hint": "Zablokuj swój portfel i wpisz PIN awaryjny, aby to wypróbować. Nigdy go nie udostępniaj. Zapomniałeś go? Usuń go tutaj po odblokowaniu prawdziwym PIN-em.",
     "network_default_name": "sieć testowa",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Ustawienie nowego PIN-u AWARYJNEGO jest częścią Safety Plus",
+    "setup_locked_body": "Utworzenie lub zmiana PIN-u awaryjnego wymaga aktywnej subskrypcji Safety Plus. Jego usunięcie nigdy jej nie wymaga i możesz to zrobić poniżej w dowolnym momencie.",
+    "setup_locked_cta": "Zobacz plany"
   },
   "stealth": {
     "heading": "Portfele ukryte / Stealth",
@@ -213,7 +216,8 @@
       "trust_warning": "Łącz się wyłącznie z dApp, którym ufasz. Ten portfel będzie widoczny dla dApp po połączeniu.",
       "reject": "Odrzuć",
       "connect_busy": "Łączenie…",
-      "connect": "Połącz"
+      "connect": "Połącz",
+      "risk_blocked": "Połączenie z tą dApp jest zablokowane. Odrzuć i zamiast tego otwórz zaufany adres URL."
     },
     "request_approval": {
       "blocked_title": "Żądanie zablokowane",
@@ -248,7 +252,20 @@
       "sending_busy": "Wysyłanie…",
       "signing_busy": "Podpisywanie…",
       "unknown_network_with_id": "Nieznana sieć (chain {{id}})",
-      "unknown_network": "Nieznana sieć"
+      "unknown_network": "Nieznana sieć",
+      "typed_contract_row_label": "Kontrakt",
+      "typed_chain_row_label": "ID łańcucha",
+      "typed_contract_hint": "Nazwa powyżej została wybrana przez stronę. Ten adres kontraktu jest tym, co Twój podpis faktycznie autoryzuje — porównaj go z oczekiwanym tokenem.",
+      "permit_unapprovable": "Ten podpis autoryzuje podmiot wydający (spender) do przenoszenia Twoich tokenów, a Veyrnox nie zatwierdza takich operacji przez WalletConnect. Dokończ to na ekranie Wyślij w aplikacji, gdzie można przejrzeć ryzyko i je potwierdzić.",
+      "token_amount_row_label": "Ilość tokenów",
+      "token_recipient_row_label": "Odbiorca tokenów",
+      "unknown_token_title": "⚠ Nieznany token",
+      "unknown_token_body": "Nie można odczytać kwoty z tego żądania. Nie zatwierdzaj, jeśli nie wiesz dokładnie, co to wysyła.",
+      "max_fee_row_label": "Maks. opłata",
+      "max_fee_row_value": "do {{amount}} {{symbol}}",
+      "max_fee_note": "To maksymalny koszt opłaty sieciowej, doliczany do wartości powyżej. Jest to górny limit, a nie szacunek — faktyczna opłata jest zwykle znacznie niższa.",
+      "remote_screening_notice": "Weryfikacja online w oparciu o wywiad o zagrożeniach jest aktywna dla tego żądania. Przed zatwierdzeniem Veyrnox może wysłać adres odbiorcy, kwotę i dane wywołania do swojej usługi weryfikacji TIP.",
+      "remote_screening_unavailable": "Weryfikacja online jest włączona w Twoich preferencjach, ale w tej wersji nie skonfigurowano żadnego dostawcy TIP. To żądanie zostanie zweryfikowane tylko lokalnie."
     },
     "active_sessions": {
       "empty": "Żadna dApp nie jest jeszcze połączona. Sparuj jedną powyżej, aby zacząć.",
@@ -293,6 +310,23 @@
       "biometric": "Autoryzuj tę wysyłkę swoim PIN-em + biometrią",
       "passkey": "Autoryzuj tę wysyłkę swoim PIN-em + kluczem dostępu (passkey)",
       "password": "Autoryzuj tę wysyłkę swoim PIN-em + hasłem czynności"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Źródło: {{source}}.",
+      "note_fallback": "Oznaczono na lokalnej liście wywiadu o zagrożeniach",
+      "critical_footer": "Oznaczono to jako krytyczne. Nadal możesz kontynuować, ale zanim to zrobisz, zrozum ryzyko.",
+      "headline": {
+        "sanctioned": "Ten adres znajduje się na liście sankcyjnej.",
+        "drainer": "To znany drainer portfeli.",
+        "phishing": "Ten adres jest powiązany z phishingiem.",
+        "exploit": "Ten adres jest powiązany ze znanym exploitem.",
+        "scam": "Ten adres został oznaczony jako oszustwo.",
+        "malicious_contract": "Ten kontrakt został oznaczony jako złośliwy.",
+        "mixer": "To usługa miksowania.",
+        "burn": "To adres spalania (burn).",
+        "default": "Sentinel oznaczył ten adres."
+      }
     }
   }
 }

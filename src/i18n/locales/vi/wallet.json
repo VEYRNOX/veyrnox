@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Diễn tập chối bỏ",
       "description": "Xem bảng điều khiển đúng như cách một người đang cầm điện thoại đã mở khóa của bạn sẽ thấy."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — câu trả lời trực tuyến",
+      "description": "Tùy chọn bật · các câu hỏi bạn nhập sẽ rời khỏi thiết bị",
+      "help": "Khi bật, các câu hỏi bạn nhập trong Cố vấn sẽ được gửi đến proxy của chúng tôi và được một mô hình AI của bên thứ ba trả lời, kèm theo màn hình bạn đang xem, chuỗi đã chọn và một ID cài đặt ngẫu nhiên chỉ dùng để áp dụng giới hạn câu hỏi hằng ngày trên mỗi thiết bị. Tắt đi sẽ dừng việc này ngay lập tức; Cố vấn vẫn trả lời từ kiến thức tích hợp sẵn. Bật lại sẽ hiển thị lại toàn bộ phần giải thích để bạn đồng ý khi đã có đầy đủ chi tiết trước mắt.",
+      "enable_aria": "Xem lại và bật câu trả lời trực tuyến của Cố vấn bảo mật AI",
+      "disable_aria": "Tắt câu trả lời trực tuyến của Cố vấn bảo mật AI"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Trang chủ",
     "tab_send": "Gửi",
     "tab_receive": "Nhận",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Bạn sẽ cần PIN để vào lại.",
+    "lock_confirm_cancel": "Hủy"
   },
   "back": {
     "default_label": "Quay lại"
@@ -381,7 +390,8 @@
       "local_disclosure": "Người nhận được kiểm tra trên thiết bị của bạn để phát hiện địa chỉ lừa đảo dựa trên lịch sử của chính bạn — không có gì rời khỏi thiết bị của bạn.",
       "remote_opt_in": "Cũng kiểm tra với một cơ sở dữ liệu mối đe dọa trực tuyến (gửi địa chỉ này cho bên thứ ba)",
       "remote_unavailable": "Kiểm tra trực tuyến đã được bật, nhưng không có nhà cung cấp nào được cấu hình trong bản dựng này — việc kiểm tra vẫn diễn ra cục bộ, vì vậy chúng tôi không thể xác minh địa chỉ này với danh sách bên ngoài.",
-      "demo_poison_button": "Demo: dán một địa chỉ giả mạo giống hệt"
+      "demo_poison_button": "Demo: dán một địa chỉ giả mạo giống hệt",
+      "remote_enabled": "Tính năng sàng lọc thông tin tình báo mối đe dọa trực tuyến đang hoạt động. Ở bước xác minh, tính năng này gửi địa chỉ người nhận, địa chỉ gửi của chính bạn, số tiền và — với giao dịch chuyển token — địa chỉ hợp đồng cùng dữ liệu lệnh gọi đến dịch vụ TIP."
     },
     "simulation": {
       "title": "Mô phỏng giao dịch",
@@ -407,7 +417,13 @@
       "balance_prefix": "Số dư:",
       "demo_suffix": "(demo)",
       "live_suffix": "(trực tiếp)",
-      "reading_from_network": "đang đọc từ mạng…"
+      "reading_from_network": "đang đọc từ mạng…",
+      "mode_crypto_aria": "Nhập số tiền bằng {{currency}}",
+      "mode_fiat_aria": "Nhập số tiền bằng USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Tối đa",
+      "max_chip_aria": "Dùng toàn bộ số dư {{currency}} của bạn"
     },
     "errors": {
       "amount_missing": "Cần nhập số tiền",
@@ -433,7 +449,8 @@
       "back": "Quay lại"
     },
     "verify": {
-      "summary_label": "Bạn đang gửi"
+      "summary_label": "Bạn đang gửi",
+      "finality": "Việc gửi là cuối cùng. Khi giao dịch chuyển này được xác nhận trên mạng, nó không thể đảo ngược hay hoàn tiền — hãy kiểm tra người nhận và số tiền."
     },
     "fee": {
       "automatic": "Phí mạng được đặt tự động cho {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Không thể hoàn tất lệnh gửi — vui lòng xác minh lại để thử lại.",
       "send_failed_fallback": "Gửi thất bại",
       "unconfirmed": "Chưa thể xác nhận giao dịch này trên mạng — nó có thể vẫn đang chờ xử lý. Kiểm tra trình khám phá."
+    },
+    "wizard": {
+      "step_recipient": "Người nhận & số tiền",
+      "step_review": "Xem lại",
+      "step_confirm": "Xác nhận"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Chỉ gửi Solana trên {{network}} đến địa chỉ này."
     },
     "select_asset_prompt": "Chọn một tài sản để nhận.",
-    "unlock_footer_note": "Địa chỉ đến từ ví trên thiết bị của bạn và chỉ xuất hiện khi ví đã được mở khóa."
+    "unlock_footer_note": "Địa chỉ đến từ ví trên thiết bị của bạn và chỉ xuất hiện khi ví đã được mở khóa.",
+    "actions": {
+      "copy": "Sao chép",
+      "copied": "Đã sao chép",
+      "share": "Chia sẻ",
+      "share_dialog_title": "Chia sẻ địa chỉ",
+      "share_failed_toast": "Không thể mở bảng chia sẻ"
+    }
   },
   "dashboard": {
     "portfolioValue": "Giá trị danh mục",

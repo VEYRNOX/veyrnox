@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Izmēģināt noliedzamību",
       "description": "Apskatiet informācijas paneli tieši tā, kā to redzētu kāds, kuram rokās ir jūsu atbloķētais tālrunis."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — atbildes tiešsaistē",
+      "description": "Pēc izvēles · jūsu ierakstītie jautājumi tiek nosūtīti ārpus ierīces",
+      "help": "Kad ieslēgts, Padomdevējā ierakstītie jautājumi kopā ar ekrānu, kurā atrodaties, izvēlēto tīklu un nejaušu instalācijas ID, ko izmanto tikai ierīces dienas jautājumu limita ievērošanai, tiek nosūtīti uz mūsu starpniekserveri, un atbildi sniedz trešās puses AI modelis. Izslēdzot sūtīšana tiek apturēta nekavējoties; Padomdevējs turpina atbildēt, izmantojot savas iebūvētās zināšanas. Atkārtoti ieslēdzot, pilns skaidrojums tiek parādīts vēlreiz, lai varētu piekrist, redzot visu informāciju.",
+      "enable_aria": "Pārskatīt un ieslēgt AI drošības padomdevēja atbildes tiešsaistē",
+      "disable_aria": "Izslēgt AI drošības padomdevēja atbildes tiešsaistē"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Sākums",
     "tab_send": "Sūtīt",
     "tab_receive": "Saņemt",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Lai atgrieztos, būs nepieciešams jūsu PIN.",
+    "lock_confirm_cancel": "Atcelt"
   },
   "back": {
     "default_label": "Atpakaļ"
@@ -381,7 +390,8 @@
       "local_disclosure": "Saņēmēji jūsu ierīcē tiek pārbaudīti pret krāpšanas adresēm no jūsu paša vēstures — nekas neatstāj jūsu ierīci.",
       "remote_opt_in": "Pārbaudīt arī pret tiešsaistes apdraudējumu datubāzi (nosūta šo adresi trešajai pusei)",
       "remote_unavailable": "Tiešsaistes pārbaude ir iespējota, bet šajā versijā nav konfigurēts neviens pakalpojumu sniedzējs — pārbaude paliek vietēja, tāpēc mēs nevarējām pārbaudīt šo pret ārēju sarakstu.",
-      "demo_poison_button": "Demo: ielīmēt līdzīgu adresi"
+      "demo_poison_button": "Demo: ielīmēt līdzīgu adresi",
+      "remote_enabled": "Ir aktīva tiešsaistes draudu izlūkdatu pārbaude. Apstiprināšanas solī TIP pakalpojumam tiek nosūtīta saņēmēja adrese, jūsu sūtīšanas adrese, summa un — žetonu pārskaitījumiem — arī līguma adrese un izsaukuma dati."
     },
     "simulation": {
       "title": "Darījuma simulācija",
@@ -407,7 +417,13 @@
       "balance_prefix": "Atlikums:",
       "demo_suffix": "(demo)",
       "live_suffix": "(tiešraidē)",
-      "reading_from_network": "nolasa no tīkla…"
+      "reading_from_network": "nolasa no tīkla…",
+      "mode_crypto_aria": "Ievadiet summu {{currency}}",
+      "mode_fiat_aria": "Ievadiet summu USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Maks.",
+      "max_chip_aria": "Izmantot visu {{currency}} atlikumu"
     },
     "errors": {
       "amount_missing": "Nepieciešama summa",
@@ -433,7 +449,8 @@
       "back": "Atpakaļ"
     },
     "verify": {
-      "summary_label": "Jūs sūtāt"
+      "summary_label": "Jūs sūtāt",
+      "finality": "Sūtīšana ir galīga. Kad tā tīklā tiek apstiprināta, šo pārskaitījumu nevar atcelt vai atgūt — pārbaudiet saņēmēju un summu."
     },
     "fee": {
       "automatic": "Tīkla maksa tiek iestatīta automātiski {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Sūtījumu neizdevās pabeigt — lūdzu, pārbaudiet vēlreiz, lai mēģinātu vēlreiz.",
       "send_failed_fallback": "Sūtīšana neizdevās",
       "unconfirmed": "Neizdevās apstiprināt šo darījumu tīklā vēl — tas var joprojām gaidīt. Pārbaudiet pārlūkā."
+    },
+    "wizard": {
+      "step_recipient": "Saņēmējs un summa",
+      "step_review": "Pārskats",
+      "step_confirm": "Apstiprināt"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Sūtiet Solana uz šo adresi tikai tīklā {{network}}."
     },
     "select_asset_prompt": "Izvēlieties aktīvu, ko saņemt.",
-    "unlock_footer_note": "Adreses nāk no jūsu ierīcē esošā maka un parādās tikai tad, kad tas ir atbloķēts."
+    "unlock_footer_note": "Adreses nāk no jūsu ierīcē esošā maka un parādās tikai tad, kad tas ir atbloķēts.",
+    "actions": {
+      "copy": "Kopēt",
+      "copied": "Nokopēts",
+      "share": "Kopīgot",
+      "share_dialog_title": "Kopīgot adresi",
+      "share_failed_toast": "Neizdevās atvērt kopīgošanas lapu"
+    }
   },
   "dashboard": {
     "portfolioValue": "Portfeļa vērtība",

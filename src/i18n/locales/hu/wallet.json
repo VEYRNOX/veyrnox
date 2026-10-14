@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Elutasíthatóság próbája",
       "description": "Nézze meg a vezérlőpultot pontosan úgy, ahogy azt látná, aki az Ön feloldott telefonját tartja."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — online válaszok",
+      "description": "Opcionális · a beírt kérdései elhagyják az eszközt",
+      "help": "Bekapcsolt állapotban az Advisorba beírt kérdései a proxynkra kerülnek, és egy külső AI-modell válaszol rájuk, a képernyővel, amelyen éppen tartózkodik, a kiválasztott lánccal és egy véletlenszerű telepítési azonosítóval együtt, amelyet kizárólag az eszközönkénti napi kérdéskorlát érvényesítésére használunk. A kikapcsolás azonnal leállítja ezt; az Advisor továbbra is a beépített tudásából válaszol. Az újbóli bekapcsoláskor a teljes magyarázat ismét megjelenik, hogy a részletek ismeretében fogadhassa el.",
+      "enable_aria": "Az AI Security Advisor online válaszainak áttekintése és bekapcsolása",
+      "disable_aria": "Az AI Security Advisor online válaszainak kikapcsolása"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Kezdőlap",
     "tab_send": "Küldés",
     "tab_receive": "Fogadás",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "A visszatéréshez szüksége lesz a PIN-kódjára.",
+    "lock_confirm_cancel": "Mégse"
   },
   "back": {
     "default_label": "Vissza"
@@ -381,7 +390,8 @@
       "local_disclosure": "A címzetteket az eszközén ellenőrizzük csaló címekre a saját előzményei alapján — semmi nem hagyja el az eszközét.",
       "remote_opt_in": "Online fenyegetésadatbázis ellen is ellenőrzés (elküldi ezt a címet egy harmadik félnek)",
       "remote_unavailable": "Az online ellenőrzés engedélyezve van, de ebben az összeállításban nincs beállítva szolgáltató — az ellenőrzés helyi marad, így ezt nem tudtuk külső listával összevetni.",
-      "demo_poison_button": "Demó: hasonló megjelenésű cím beillesztése"
+      "demo_poison_button": "Demó: hasonló megjelenésű cím beillesztése",
+      "remote_enabled": "Az online fenyegetésfelderítési szűrés aktív. Az ellenőrzési lépésnél a TIP szolgáltatásnak elküldi a címzett címét, az Ön saját küldő címét, az összeget, token-átutalás esetén pedig a szerződés címét és a hívás adatait."
     },
     "simulation": {
       "title": "Tranzakciószimuláció",
@@ -407,7 +417,13 @@
       "balance_prefix": "Egyenleg:",
       "demo_suffix": "(demó)",
       "live_suffix": "(élő)",
-      "reading_from_network": "beolvasás a hálózatról…"
+      "reading_from_network": "beolvasás a hálózatról…",
+      "mode_crypto_aria": "Összeg megadása ({{currency}})",
+      "mode_fiat_aria": "Összeg megadása USD-ben",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Max",
+      "max_chip_aria": "A teljes {{currency}}-egyenleg használata"
     },
     "errors": {
       "amount_missing": "Az összeg megadása kötelező",
@@ -433,7 +449,8 @@
       "back": "Vissza"
     },
     "verify": {
-      "summary_label": "Ön a következőt küldi"
+      "summary_label": "Ön a következőt küldi",
+      "finality": "A küldés végleges. Amint a hálózaton megerősítést nyer, az átutalás nem vonható vissza és nem téríthető meg — ellenőrizze a címzettet és az összeget."
     },
     "fee": {
       "automatic": "A hálózati díj automatikusan van beállítva a(z) {{currency}} ({{network}}) esetében.",
@@ -482,6 +499,11 @@
       "two_factor_retry": "A küldés nem fejeződött be — az újrapróbálkozáshoz ellenőrizze magát ismét.",
       "send_failed_fallback": "A küldés sikertelen",
       "unconfirmed": "Ezt a tranzakciót még nem sikerült megerősíteni a hálózaton — lehet, hogy még függőben van. Ellenőrizze az exploreren."
+    },
+    "wizard": {
+      "step_recipient": "Címzett és összeg",
+      "step_review": "Áttekintés",
+      "step_confirm": "Megerősítés"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Csak Solanát küldjön erre a címre a(z) {{network}} hálózaton."
     },
     "select_asset_prompt": "Válasszon egy fogadandó eszközt.",
-    "unlock_footer_note": "A címek az eszközön lévő pénztárcájából származnak, és csak feloldott állapotban jelennek meg."
+    "unlock_footer_note": "A címek az eszközön lévő pénztárcájából származnak, és csak feloldott állapotban jelennek meg.",
+    "actions": {
+      "copy": "Másolás",
+      "copied": "Másolva",
+      "share": "Megosztás",
+      "share_dialog_title": "Cím megosztása",
+      "share_failed_toast": "A megosztási lap nem nyitható meg"
+    }
   },
   "dashboard": {
     "portfolioValue": "Portfólió értéke",

@@ -78,7 +78,10 @@
     "demo_reset": "Resetovať demo (vymazať všetky údaje peňaženky + skrytú peňaženku)",
     "non_demo_hint": "Uzamknite peňaženku a zadajte núdzový PIN, aby ste to vyskúšali. Nikdy ho nezdieľajte. Zabudli ste ho? Odstráňte ho tu, kým ste odomknutí skutočným PIN-om.",
     "network_default_name": "testovacia sieť",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Nastavenie nového núdzového PIN je súčasťou Safety Plus",
+    "setup_locked_body": "Vytvorenie alebo zmena núdzového PIN vyžaduje aktívne predplatné Safety Plus. Odstránenie ho nikdy nevyžaduje a môžete ho vykonať nižšie kedykoľvek.",
+    "setup_locked_cta": "Zobraziť plány"
   },
   "stealth": {
     "heading": "Skryté peňaženky",
@@ -213,7 +216,8 @@
       "trust_warning": "Pripájajte sa len k dApps, ktorým dôverujete. Po pripojení bude táto peňaženka pre dApp viditeľná.",
       "reject": "Odmietnuť",
       "connect_busy": "Pripája sa…",
-      "connect": "Pripojiť"
+      "connect": "Pripojiť",
+      "risk_blocked": "Pripojenie k tejto dApp je zablokované. Odmietnite ho a otvorte dôveryhodnú URL."
     },
     "request_approval": {
       "blocked_title": "Požiadavka zablokovaná",
@@ -248,7 +252,20 @@
       "sending_busy": "Odosiela sa…",
       "signing_busy": "Podpisuje sa…",
       "unknown_network_with_id": "Neznáma sieť (chain {{id}})",
-      "unknown_network": "Neznáma sieť"
+      "unknown_network": "Neznáma sieť",
+      "typed_contract_row_label": "Kontrakt",
+      "typed_chain_row_label": "ID reťazca",
+      "typed_contract_hint": "Názov vyššie si volí stránka. Táto adresa kontraktu je to, čo váš podpis skutočne oprávňuje — porovnajte ju s tokenom, ktorý očakávate.",
+      "permit_unapprovable": "Tento podpis oprávňuje spendera presúvať vaše tokeny a Veyrnox takéto podpisy cez WalletConnect neschvaľuje. Dokončite ho na obrazovke Odoslať v aplikácii, kde možno riziko posúdiť a potvrdiť.",
+      "token_amount_row_label": "Suma tokenov",
+      "token_recipient_row_label": "Príjemca tokenov",
+      "unknown_token_title": "⚠ Neznámy token",
+      "unknown_token_body": "Sumu sa z tejto požiadavky nepodarilo prečítať. Neschvaľujte, pokiaľ presne neviete, čo sa odošle.",
+      "max_fee_row_label": "Max. poplatok",
+      "max_fee_row_value": "až {{amount}} {{symbol}}",
+      "max_fee_note": "Toto je najviac, koľko môže sieťový poplatok stáť, navyše k hodnote vyššie. Je to strop, nie odhad — skutočný poplatok je zvyčajne oveľa nižší.",
+      "remote_screening_notice": "Online preverovanie pomocou threat intelligence je pre túto požiadavku aktívne. Pred schválením môže Veyrnox odoslať adresu príjemcu, sumu a údaje volania svojej preverovacej službe TIP.",
+      "remote_screening_unavailable": "Online preverovanie je zapnuté vo vašich nastaveniach, ale v tomto zostavení nie je nakonfigurovaný žiadny poskytovateľ TIP. Táto požiadavka sa preverí iba lokálne."
     },
     "active_sessions": {
       "empty": "Zatiaľ žiadne pripojené dApps. Spárujte niektorú vyššie a začnite.",
@@ -293,6 +310,23 @@
       "biometric": "Autorizujte túto platbu svojím PIN-om + biometriou",
       "passkey": "Autorizujte túto platbu svojím PIN-om + prístupovým kľúčom",
       "password": "Autorizujte túto platbu svojím PIN-om + akčným heslom"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Zdroj: {{source}}.",
+      "note_fallback": "Označené v lokálnom zozname threat intelligence",
+      "critical_footer": "Toto je označené ako kritické. Stále môžete pokračovať, ale predtým pochopte riziko.",
+      "headline": {
+        "sanctioned": "Táto adresa je na sankčnom zozname.",
+        "drainer": "Toto je známy drainer peňaženiek.",
+        "phishing": "Táto adresa je spojená s phishingom.",
+        "exploit": "Táto adresa je spojená so známym exploitom.",
+        "scam": "Táto adresa je označená ako podvod.",
+        "malicious_contract": "Tento kontrakt bol označený ako škodlivý.",
+        "mixer": "Toto je miešacia služba.",
+        "burn": "Toto je adresa na spálenie.",
+        "default": "Sentinel označil túto adresu."
+      }
     }
   }
 }

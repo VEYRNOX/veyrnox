@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Repetuoti neatpažįstamumą",
       "description": "Pamatykite skydelį tiksliai taip, kaip jį matytų jūsų atrakintą telefoną laikantis asmuo."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — atsakymai internetu",
+      "description": "Pasirinktinai · jūsų įvesti klausimai paliekami įrenginį",
+      "help": "Kai įjungta, Patarėjui įvesti klausimai kartu su ekranu, kuriame esate, pasirinktu tinklu ir atsitiktiniu diegimo ID, naudojamu tik kasdieniam klausimų limitui įrenginiui taikyti, siunčiami į mūsų tarpinį serverį, o atsakymą pateikia trečiosios šalies AI modelis. Išjungus siuntimas sustoja nedelsiant; Patarėjas ir toliau atsako pagal savo integruotas žinias. Vėl įjungus, pilnas paaiškinimas rodomas iš naujo, kad galėtumėte sutikti matydami visą informaciją.",
+      "enable_aria": "Peržiūrėti ir įjungti AI saugumo patarėjo atsakymus internetu",
+      "disable_aria": "Išjungti AI saugumo patarėjo atsakymus internetu"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Pradžia",
     "tab_send": "Siųsti",
     "tab_receive": "Gauti",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Norėdami grįžti, turėsite įvesti savo PIN kodą.",
+    "lock_confirm_cancel": "Atšaukti"
   },
   "back": {
     "default_label": "Atgal"
@@ -381,7 +390,8 @@
       "local_disclosure": "Gavėjai tikrinami jūsų įrenginyje pagal jūsų pačių istoriją dėl sukčiavimo adresų — niekas nepalieka jūsų įrenginio.",
       "remote_opt_in": "Taip pat tikrinti pagal internetinę grėsmių duomenų bazę (šis adresas siunčiamas trečiajai šaliai)",
       "remote_unavailable": "Internetinis tikrinimas įjungtas, bet šioje versijoje nenurodytas joks tiekėjas — tikrinimas lieka vietinis, todėl negalėjome patikrinti pagal išorinį sąrašą.",
-      "demo_poison_button": "Demonstracija: įklijuoti panašiai atrodantį adresą"
+      "demo_poison_button": "Demonstracija: įklijuoti panašiai atrodantį adresą",
+      "remote_enabled": "Aktyvus grėsmių žvalgybos patikrinimas internetu. Patvirtinimo žingsnyje TIP paslaugai siunčiamas gavėjo adresas, jūsų siuntimo adresas, suma, o žetonų pervedimų atveju — ir sutarties adresas bei iškvietimo duomenys."
     },
     "simulation": {
       "title": "Transakcijos simuliacija",
@@ -407,7 +417,13 @@
       "balance_prefix": "Likutis:",
       "demo_suffix": "(demonstracinis)",
       "live_suffix": "(tiesioginis)",
-      "reading_from_network": "skaitoma iš tinklo…"
+      "reading_from_network": "skaitoma iš tinklo…",
+      "mode_crypto_aria": "Įveskite sumą {{currency}}",
+      "mode_fiat_aria": "Įveskite sumą USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Maks.",
+      "max_chip_aria": "Naudoti visą {{currency}} likutį"
     },
     "errors": {
       "amount_missing": "Būtina nurodyti sumą",
@@ -433,7 +449,8 @@
       "back": "Atgal"
     },
     "verify": {
-      "summary_label": "Siunčiate"
+      "summary_label": "Siunčiate",
+      "finality": "Siuntimas yra galutinis. Kai tinkle jis patvirtinamas, šio pervedimo atšaukti ar susigrąžinti negalima — patikrinkite gavėją ir sumą."
     },
     "fee": {
       "automatic": "Tinklo mokestis {{currency}} ({{network}}) nustatomas automatiškai.",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Siuntimas nepavyko — patvirtinkite dar kartą, kad bandytumėte iš naujo.",
       "send_failed_fallback": "Siuntimas nepavyko",
       "unconfirmed": "Nepavyko patvirtinti šios transakcijos tinkle — ji gali dar vykdytis. Patikrinkite naršyklėje."
+    },
+    "wizard": {
+      "step_recipient": "Gavėjas ir suma",
+      "step_review": "Peržiūra",
+      "step_confirm": "Patvirtinti"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Siųskite Solana šiuo adresu tik tinkle {{network}}."
     },
     "select_asset_prompt": "Pasirinkite turtą, kurį norite gauti.",
-    "unlock_footer_note": "Adresai gaunami iš jūsų įrenginio piniginės ir rodomi tik kol ji atrakinta."
+    "unlock_footer_note": "Adresai gaunami iš jūsų įrenginio piniginės ir rodomi tik kol ji atrakinta.",
+    "actions": {
+      "copy": "Kopijuoti",
+      "copied": "Nukopijuota",
+      "share": "Bendrinti",
+      "share_dialog_title": "Bendrinti adresą",
+      "share_failed_toast": "Nepavyko atidaryti bendrinimo lango"
+    }
   },
   "dashboard": {
     "portfolioValue": "Portfelio vertė",

@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Przećwicz zaprzeczalność",
       "description": "Zobacz panel dokładnie tak, jak zobaczyłaby go osoba trzymająca Twój odblokowany telefon."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — odpowiedzi online",
+      "description": "Opcja dobrowolna · wpisywane pytania opuszczają urządzenie",
+      "help": "Gdy ta opcja jest włączona, pytania wpisywane w Doradcy są wysyłane do naszego proxy i odpowiada na nie model AI strony trzeciej — razem z ekranem, na którym się znajdujesz, wybranym łańcuchem oraz losowym identyfikatorem instalacji używanym wyłącznie do egzekwowania dziennego limitu pytań na urządzenie. Wyłączenie natychmiast to zatrzymuje; Doradca nadal odpowiada na podstawie wbudowanej wiedzy. Ponowne włączenie ponownie wyświetla pełne wyjaśnienie, abyś mógł wyrazić zgodę, mając wszystkie szczegóły przed oczami.",
+      "enable_aria": "Przejrzyj i włącz odpowiedzi online Doradcy bezpieczeństwa AI",
+      "disable_aria": "Wyłącz odpowiedzi online Doradcy bezpieczeństwa AI"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Start",
     "tab_send": "Wyślij",
     "tab_receive": "Odbierz",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Aby wrócić, będziesz potrzebować swojego PIN-u.",
+    "lock_confirm_cancel": "Anuluj"
   },
   "back": {
     "default_label": "Wstecz"
@@ -381,7 +390,8 @@
       "local_disclosure": "Odbiorcy są sprawdzani na Twoim urządzeniu pod kątem adresów oszustw względem Twojej własnej historii — nic nie opuszcza Twojego urządzenia.",
       "remote_opt_in": "Sprawdzaj też w internetowej bazie zagrożeń (wysyła ten adres do strony trzeciej)",
       "remote_unavailable": "Sprawdzanie online jest włączone, ale w tej wersji nie skonfigurowano dostawcy — sprawdzanie pozostaje lokalne, więc nie mogliśmy zweryfikować tego adresu na liście zewnętrznej.",
-      "demo_poison_button": "Demo: wklej podobny adres"
+      "demo_poison_button": "Demo: wklej podobny adres",
+      "remote_enabled": "Weryfikacja online w oparciu o wywiad o zagrożeniach jest aktywna. Na etapie weryfikacji do usługi TIP wysyłany jest adres odbiorcy, Twój adres nadawcy, kwota oraz — w przypadku transferów tokenów — adres kontraktu i dane wywołania."
     },
     "simulation": {
       "title": "Symulacja transakcji",
@@ -407,7 +417,13 @@
       "balance_prefix": "Saldo:",
       "demo_suffix": "(demo)",
       "live_suffix": "(na żywo)",
-      "reading_from_network": "odczytywanie z sieci…"
+      "reading_from_network": "odczytywanie z sieci…",
+      "mode_crypto_aria": "Wpisz kwotę w {{currency}}",
+      "mode_fiat_aria": "Wpisz kwotę w USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Maks.",
+      "max_chip_aria": "Użyj całego salda {{currency}}"
     },
     "errors": {
       "amount_missing": "Kwota jest wymagana",
@@ -433,7 +449,8 @@
       "back": "Wstecz"
     },
     "verify": {
-      "summary_label": "Wysyłasz"
+      "summary_label": "Wysyłasz",
+      "finality": "Wysyłka jest ostateczna. Po potwierdzeniu w sieci ten transfer nie może zostać cofnięty ani zwrócony — sprawdź odbiorcę i kwotę."
     },
     "fee": {
       "automatic": "Opłata sieciowa jest ustawiana automatycznie dla {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Wysyłka nie została zakończona — zweryfikuj się ponownie, aby spróbować jeszcze raz.",
       "send_failed_fallback": "Wysyłka nie powiodła się",
       "unconfirmed": "Nie udało się jeszcze potwierdzić tej transakcji w sieci — może nadal oczekiwać. Sprawdź w eksploratorze."
+    },
+    "wizard": {
+      "step_recipient": "Odbiorca i kwota",
+      "step_review": "Przegląd",
+      "step_confirm": "Potwierdź"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Wysyłaj na ten adres wyłącznie Solana w sieci {{network}}."
     },
     "select_asset_prompt": "Wybierz aktywo do odebrania.",
-    "unlock_footer_note": "Adresy pochodzą z Twojego portfela na urządzeniu i pojawiają się wyłącznie, gdy jest on odblokowany."
+    "unlock_footer_note": "Adresy pochodzą z Twojego portfela na urządzeniu i pojawiają się wyłącznie, gdy jest on odblokowany.",
+    "actions": {
+      "copy": "Kopiuj",
+      "copied": "Skopiowano",
+      "share": "Udostępnij",
+      "share_dialog_title": "Udostępnij adres",
+      "share_failed_toast": "Nie udało się otworzyć arkusza udostępniania"
+    }
   },
   "dashboard": {
     "portfolioValue": "Wartość portfela",

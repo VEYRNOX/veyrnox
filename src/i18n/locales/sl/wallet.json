@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Vadite zanikljivost",
       "description": "Oglejte si nadzorno ploščo natanko tako, kot bi jo videl nekdo, ki drži vaš odklenjen telefon."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — spletni odgovori",
+      "description": "Izbirno · vaša vpisana vprašanja zapustijo napravo",
+      "help": "Ko je vklopljeno, se vprašanja, ki jih vpišete v svetovalca, pošljejo našemu posredniku (proxy), nanje pa odgovori AI model tretje osebe, skupaj z zaslonom, na katerem ste, izbrano verigo in naključnim ID-jem namestitve, ki se uporablja le za uveljavljanje dnevne omejitve vprašanj na napravo. Z izklopom se to takoj ustavi; svetovalec še naprej odgovarja iz svojega vgrajenega znanja. Ob ponovnem vklopu se znova prikaže celotna razlaga, da lahko privolite z vsemi podrobnostmi pred seboj.",
+      "enable_aria": "Preglejte in vklopite spletne odgovore AI varnostnega svetovalca",
+      "disable_aria": "Izklopite spletne odgovore AI varnostnega svetovalca"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Domov",
     "tab_send": "Pošlji",
     "tab_receive": "Prejmi",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Za ponoven vstop boste potrebovali svoj PIN.",
+    "lock_confirm_cancel": "Prekliči"
   },
   "back": {
     "default_label": "Nazaj"
@@ -381,7 +390,8 @@
       "local_disclosure": "Prejemniki so preverjeni na vaši napravi glede prevarantskih naslovov v primerjavi z vašo lastno zgodovino — nič ne zapusti vaše naprave.",
       "remote_opt_in": "Preveri tudi glede na spletno bazo groženj (pošlje ta naslov tretji osebi)",
       "remote_unavailable": "Spletno preverjanje je omogočeno, vendar v tej različici ni konfiguriranega ponudnika — preverjanje ostane lokalno, zato tega nismo mogli preveriti glede na zunanji seznam.",
-      "demo_poison_button": "Demo: prilepi podoben naslov"
+      "demo_poison_button": "Demo: prilepi podoben naslov",
+      "remote_enabled": "Spletno preverjanje groženj je aktivno. V koraku preverjanja se storitvi TIP pošljejo naslov prejemnika, vaš pošiljateljski naslov, znesek in — pri prenosih žetonov — naslov pogodbe ter podatki klica."
     },
     "simulation": {
       "title": "Simulacija transakcije",
@@ -407,7 +417,13 @@
       "balance_prefix": "Stanje:",
       "demo_suffix": "(demo)",
       "live_suffix": "(v živo)",
-      "reading_from_network": "branje iz omrežja …"
+      "reading_from_network": "branje iz omrežja …",
+      "mode_crypto_aria": "Vnesite znesek v {{currency}}",
+      "mode_fiat_aria": "Vnesite znesek v USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Maks.",
+      "max_chip_aria": "Uporabi celotno stanje {{currency}}"
     },
     "errors": {
       "amount_missing": "Znesek je obvezen",
@@ -433,7 +449,8 @@
       "back": "Nazaj"
     },
     "verify": {
-      "summary_label": "Pošiljate"
+      "summary_label": "Pošiljate",
+      "finality": "Pošiljanje je dokončno. Ko je prenos potrjen v omrežju, ga ni mogoče razveljaviti ali povrniti — preverite prejemnika in znesek."
     },
     "fee": {
       "automatic": "Omrežna provizija je samodejno nastavljena za {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Pošiljanje ni bilo dokončano — za ponovni poskus se znova preverite.",
       "send_failed_fallback": "Pošiljanje ni uspelo",
       "unconfirmed": "Te transakcije v omrežju še ni bilo mogoče potrditi — morda še čaka na obdelavo. Preverite na raziskovalcu."
+    },
+    "wizard": {
+      "step_recipient": "Prejemnik in znesek",
+      "step_review": "Pregled",
+      "step_confirm": "Potrdi"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Na ta naslov pošiljajte samo Solano na omrežju {{network}}."
     },
     "select_asset_prompt": "Izberite sredstvo za prejem.",
-    "unlock_footer_note": "Naslovi izvirajo iz vaše denarnice na napravi in se prikažejo le, ko je odklenjena."
+    "unlock_footer_note": "Naslovi izvirajo iz vaše denarnice na napravi in se prikažejo le, ko je odklenjena.",
+    "actions": {
+      "copy": "Kopiraj",
+      "copied": "Kopirano",
+      "share": "Deli",
+      "share_dialog_title": "Deli naslov",
+      "share_failed_toast": "Lista za deljenje se ni odprla"
+    }
   },
   "dashboard": {
     "portfolioValue": "Vrednost portfelja",

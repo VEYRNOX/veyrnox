@@ -78,7 +78,10 @@
     "demo_reset": "Redefinir demonstração (apaga todos os dados da carteira + carteira oculta)",
     "non_demo_hint": "Bloqueie sua carteira e digite o PIN de emergência para testar. Nunca o compartilhe. Esqueceu? Remova-o aqui enquanto estiver desbloqueado com seu PIN real.",
     "network_default_name": "a rede de teste",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Definir um novo PIN de Emergência faz parte do Safety Plus",
+    "setup_locked_body": "Criar ou alterar um PIN de Emergência exige uma assinatura ativa do Safety Plus. Removê-lo nunca exige, e você pode fazer isso abaixo a qualquer momento.",
+    "setup_locked_cta": "Ver planos"
   },
   "stealth": {
     "heading": "Carteiras furtivas / ocultas",
@@ -213,7 +216,8 @@
       "trust_warning": "Conecte-se apenas a dApps em que confia. Esta carteira ficará visível para o dApp assim que conectada.",
       "reject": "Rejeitar",
       "connect_busy": "Conectando…",
-      "connect": "Conectar"
+      "connect": "Conectar",
+      "risk_blocked": "A conexão com este dApp está bloqueada. Rejeite e abra uma URL confiável."
     },
     "request_approval": {
       "blocked_title": "Solicitação bloqueada",
@@ -248,7 +252,20 @@
       "sending_busy": "Enviando…",
       "signing_busy": "Assinando…",
       "unknown_network_with_id": "Rede desconhecida (rede {{id}})",
-      "unknown_network": "Rede desconhecida"
+      "unknown_network": "Rede desconhecida",
+      "typed_contract_row_label": "Contrato",
+      "typed_chain_row_label": "ID da rede",
+      "typed_contract_hint": "O nome acima é escolhido pelo site. Este endereço de contrato é o que sua assinatura de fato autoriza — confira-o com o token que você espera.",
+      "permit_unapprovable": "Esta assinatura autoriza um gastador (spender) a movimentar seus tokens, e o Veyrnox não aprova isso via WalletConnect. Conclua pela tela Enviar do app, onde o risco pode ser revisado e reconhecido.",
+      "token_amount_row_label": "Quantidade de tokens",
+      "token_recipient_row_label": "Destinatário dos tokens",
+      "unknown_token_title": "⚠ Token desconhecido",
+      "unknown_token_body": "Não foi possível ler o valor desta solicitação. Não aprove a menos que saiba exatamente o que isto envia.",
+      "max_fee_row_label": "Taxa máx.",
+      "max_fee_row_value": "até {{amount}} {{symbol}}",
+      "max_fee_note": "Este é o máximo que a taxa de rede pode custar, além do valor acima. É um teto, não uma estimativa — a taxa real costuma ser bem menor.",
+      "remote_screening_notice": "A verificação online de inteligência de ameaças está ativa para esta solicitação. Antes da aprovação, o Veyrnox pode enviar o endereço do destinatário, o valor e os dados da chamada ao seu serviço de verificação TIP.",
+      "remote_screening_unavailable": "A verificação online está ativada nas suas preferências, mas nenhum provedor TIP está configurado nesta versão. Esta solicitação será verificada apenas localmente."
     },
     "active_sessions": {
       "empty": "Nenhum dApp conectado ainda. Pareie um acima para começar.",
@@ -293,6 +310,23 @@
       "biometric": "Autorize este envio com seu PIN + biometria",
       "passkey": "Autorize este envio com seu PIN + chave de acesso",
       "password": "Autorize este envio com seu PIN + senha de ação"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Fonte: {{source}}.",
+      "note_fallback": "Sinalizado na lista local de inteligência de ameaças",
+      "critical_footer": "Isto foi sinalizado como crítico. Você ainda pode prosseguir, mas entenda o risco antes de fazê-lo.",
+      "headline": {
+        "sanctioned": "Este endereço está em uma lista de sanções.",
+        "drainer": "Este é um drainer de carteiras conhecido.",
+        "phishing": "Este endereço está associado a phishing.",
+        "exploit": "Este endereço está associado a um exploit conhecido.",
+        "scam": "Este endereço foi sinalizado como golpe.",
+        "malicious_contract": "Este contrato foi sinalizado como malicioso.",
+        "mixer": "Este é um serviço de mixagem.",
+        "burn": "Este é um endereço de queima.",
+        "default": "O Sentinel sinalizou este endereço."
+      }
     }
   }
 }

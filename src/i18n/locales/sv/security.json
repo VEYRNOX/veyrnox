@@ -78,7 +78,10 @@
     "demo_reset": "Återställ demo (radera all plånboksdata + dold plånbok)",
     "non_demo_hint": "Lås din plånbok och ange nödläges-PIN för att prova. Dela den aldrig med någon. Glömt den? Ta bort den här medan du är upplåst med din riktiga PIN.",
     "network_default_name": "testnätverket",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Att ange en ny nödläges-PIN ingår i Safety Plus",
+    "setup_locked_body": "Att skapa eller ändra en nödläges-PIN kräver en aktiv Safety Plus-prenumeration. Att ta bort en kräver det aldrig, och du kan göra det nedan när som helst.",
+    "setup_locked_cta": "Visa planer"
   },
   "stealth": {
     "heading": "Stealth / dolda plånböcker",
@@ -213,7 +216,8 @@
       "trust_warning": "Anslut bara till dApp:er du litar på. Den här plånboken blir synlig för dApp:en så snart den ansluts.",
       "reject": "Avvisa",
       "connect_busy": "Ansluter …",
-      "connect": "Anslut"
+      "connect": "Anslut",
+      "risk_blocked": "Anslutningen till denna dApp är blockerad. Avvisa den och öppna en betrodd URL i stället."
     },
     "request_approval": {
       "blocked_title": "Begäran blockerad",
@@ -248,7 +252,20 @@
       "sending_busy": "Skickar …",
       "signing_busy": "Signerar …",
       "unknown_network_with_id": "Okänt nätverk (kedje-ID {{id}})",
-      "unknown_network": "Okänt nätverk"
+      "unknown_network": "Okänt nätverk",
+      "typed_contract_row_label": "Kontrakt",
+      "typed_chain_row_label": "Kedje-ID",
+      "typed_contract_hint": "Namnet ovan väljs av webbplatsen. Den här kontraktsadressen är vad din signatur faktiskt godkänner — kontrollera den mot den token du förväntar dig.",
+      "permit_unapprovable": "Den här signaturen ger en spenderare (spender) behörighet att flytta dina tokens, och Veyrnox godkänner inte sådana via WalletConnect. Slutför den från skärmen Skicka i appen, där risken kan granskas och bekräftas.",
+      "token_amount_row_label": "Tokenbelopp",
+      "token_recipient_row_label": "Tokenmottagare",
+      "unknown_token_title": "⚠ Okänd token",
+      "unknown_token_body": "Beloppet går inte att läsa ur den här begäran. Godkänn inte om du inte vet exakt vad den skickar.",
+      "max_fee_row_label": "Maxavgift",
+      "max_fee_row_value": "upp till {{amount}} {{symbol}}",
+      "max_fee_note": "Detta är det mesta nätverksavgiften kan kosta, utöver värdet ovan. Det är ett tak, inte en uppskattning — den faktiska avgiften är oftast betydligt lägre.",
+      "remote_screening_notice": "Skanning av hotunderrättelser online är aktiv för den här begäran. Före godkännandet kan Veyrnox skicka mottagaradressen, beloppet och anropsdata till sin TIP-skanningstjänst.",
+      "remote_screening_unavailable": "Skanning online är aktiverad i dina inställningar, men ingen TIP-leverantör är konfigurerad i den här versionen. Den här begäran kommer endast att skannas lokalt."
     },
     "active_sessions": {
       "empty": "Inga dApp:er anslutna ännu. Para ihop en ovan för att komma igång.",
@@ -293,6 +310,23 @@
       "biometric": "Godkänn den här sändningen med din PIN + biometri",
       "passkey": "Godkänn den här sändningen med din PIN + passkey",
       "password": "Godkänn den här sändningen med din PIN + åtgärdslösenord"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Källa: {{source}}.",
+      "note_fallback": "Flaggad i den lokala hotunderrättelselistan",
+      "critical_footer": "Detta är flaggat som kritiskt. Du kan fortfarande gå vidare, men förstå risken innan du gör det.",
+      "headline": {
+        "sanctioned": "Den här adressen finns på en sanktionslista.",
+        "drainer": "Det här är en känd plånboksdrainer.",
+        "phishing": "Den här adressen är kopplad till nätfiske (phishing).",
+        "exploit": "Den här adressen är kopplad till ett känt exploit.",
+        "scam": "Den här adressen är flaggad som bedrägeri.",
+        "malicious_contract": "Det här kontraktet har flaggats som skadligt.",
+        "mixer": "Det här är en blandartjänst (mixer).",
+        "burn": "Det här är en bränningsadress (burn).",
+        "default": "Sentinel har flaggat den här adressen."
+      }
     }
   }
 }

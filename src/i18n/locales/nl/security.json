@@ -78,7 +78,10 @@
     "demo_reset": "Demo resetten (alle walletgegevens + verborgen wallet verwijderen)",
     "non_demo_hint": "Vergrendel je wallet en voer de noodpincode in om het te proberen. Deel hem nooit. Vergeten? Verwijder hem hier terwijl je ontgrendeld bent met je echte pincode.",
     "network_default_name": "het testnetwerk",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Een nieuwe noodpincode instellen hoort bij Safety Plus",
+    "setup_locked_body": "Voor het aanmaken of wijzigen van een noodpincode is een actief Safety Plus-abonnement nodig. Verwijderen vereist dat nooit, en dat kun je hieronder op elk moment doen.",
+    "setup_locked_cta": "Abonnementen bekijken"
   },
   "stealth": {
     "heading": "Stealth / verborgen wallets",
@@ -213,7 +216,8 @@
       "trust_warning": "Verbind alleen met dApps die je vertrouwt. Deze wallet wordt zichtbaar voor de dApp zodra je verbonden bent.",
       "reject": "Afwijzen",
       "connect_busy": "Bezig met verbinden…",
-      "connect": "Verbinden"
+      "connect": "Verbinden",
+      "risk_blocked": "De verbinding met deze dApp is geblokkeerd. Weiger en open in plaats daarvan een vertrouwde URL."
     },
     "request_approval": {
       "blocked_title": "Aanvraag geblokkeerd",
@@ -248,7 +252,20 @@
       "sending_busy": "Bezig met versturen…",
       "signing_busy": "Bezig met ondertekenen…",
       "unknown_network_with_id": "Onbekend netwerk (chain {{id}})",
-      "unknown_network": "Onbekend netwerk"
+      "unknown_network": "Onbekend netwerk",
+      "typed_contract_row_label": "Contract",
+      "typed_chain_row_label": "Chain-ID",
+      "typed_contract_hint": "De naam hierboven is gekozen door de site. Dit contractadres is wat je handtekening daadwerkelijk machtigt — vergelijk het met de token die je verwacht.",
+      "permit_unapprovable": "Deze handtekening machtigt een spender om je tokens te verplaatsen, en Veyrnox keurt dat niet goed via WalletConnect. Voltooi het vanuit het Verzenden-scherm in de app, waar het risico kan worden bekeken en bevestigd.",
+      "token_amount_row_label": "Tokenbedrag",
+      "token_recipient_row_label": "Tokenontvanger",
+      "unknown_token_title": "⚠ Onbekende token",
+      "unknown_token_body": "Bedrag niet leesbaar uit dit verzoek. Keur niet goed tenzij je precies weet wat dit verstuurt.",
+      "max_fee_row_label": "Maximale kosten",
+      "max_fee_row_value": "tot {{amount}} {{symbol}}",
+      "max_fee_note": "Dit is het maximum dat de netwerkkosten kunnen bedragen, bovenop de waarde hierboven. Het is een plafond, geen schatting — de werkelijke kosten zijn meestal veel lager.",
+      "remote_screening_notice": "Online threat-intelligence-screening is actief voor dit verzoek. Vóór goedkeuring kan Veyrnox het adres van de ontvanger, het bedrag en de aanroepdata naar de TIP-screeningservice sturen.",
+      "remote_screening_unavailable": "Online screening staat aan in je voorkeuren, maar in deze build is geen TIP-provider geconfigureerd. Dit verzoek wordt alleen lokaal gescreend."
     },
     "active_sessions": {
       "empty": "Nog geen dApps verbonden. Koppel er hierboven een om te beginnen.",
@@ -293,6 +310,23 @@
       "biometric": "Autoriseer deze verzending met je pincode + biometrie",
       "passkey": "Autoriseer deze verzending met je pincode + passkey",
       "password": "Autoriseer deze verzending met je pincode + actiewachtwoord"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Bron: {{source}}.",
+      "note_fallback": "Gemarkeerd in de lokale threat-intelligence-lijst",
+      "critical_footer": "Dit is als kritiek gemarkeerd. Je kunt nog steeds doorgaan, maar begrijp het risico voordat je dat doet.",
+      "headline": {
+        "sanctioned": "Dit adres staat op een sanctielijst.",
+        "drainer": "Dit is een bekende wallet-drainer.",
+        "phishing": "Dit adres is gekoppeld aan phishing.",
+        "exploit": "Dit adres is gekoppeld aan een bekende exploit.",
+        "scam": "Dit adres is als scam gemarkeerd.",
+        "malicious_contract": "Dit contract is als kwaadaardig gemarkeerd.",
+        "mixer": "Dit is een mixingservice.",
+        "burn": "Dit is een burn-adres.",
+        "default": "Sentinel heeft dit adres gemarkeerd."
+      }
     }
   }
 }

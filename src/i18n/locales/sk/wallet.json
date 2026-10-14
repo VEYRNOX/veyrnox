@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Nacvičiť popretie",
       "description": "Pozrite si dashboard presne tak, ako by ho videl niekto, kto drží váš odomknutý telefón."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — online odpovede",
+      "description": "Voliteľné · vaše napísané otázky opúšťajú zariadenie",
+      "help": "Keď je zapnuté, otázky, ktoré napíšete poradcovi, sa odosielajú nášmu proxy serveru a odpovedá na ne AI model tretej strany, spolu s obrazovkou, na ktorej sa nachádzate, vybraným reťazcom a náhodným ID inštalácie, ktoré sa používa len na vynútenie denného limitu otázok na zariadenie. Vypnutím sa to okamžite zastaví; poradca ďalej odpovedá zo svojich vstavaných znalostí. Opätovným zapnutím sa znova zobrazí celé vysvetlenie, aby ste mohli súhlasiť s podrobnosťami pred očami.",
+      "enable_aria": "Skontrolovať a zapnúť online odpovede AI bezpečnostného poradcu",
+      "disable_aria": "Vypnúť online odpovede AI bezpečnostného poradcu"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Domov",
     "tab_send": "Poslať",
     "tab_receive": "Prijať",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Na opätovný vstup budete potrebovať svoj PIN.",
+    "lock_confirm_cancel": "Zrušiť"
   },
   "back": {
     "default_label": "Späť"
@@ -381,7 +390,8 @@
       "local_disclosure": "Príjemcovia sa kontrolujú na vašom zariadení voči podvodným adresám z vašej vlastnej histórie — nič neopúšťa vaše zariadenie.",
       "remote_opt_in": "Tiež overiť voči online databáze hrozieb (odošle túto adresu tretej strane)",
       "remote_unavailable": "Online overovanie je zapnuté, ale v tejto zostave nie je nakonfigurovaný žiadny poskytovateľ — overovanie zostáva lokálne, takže sme to nemohli overiť voči externému zoznamu.",
-      "demo_poison_button": "Demo: vložiť podobne vyzerajúcu adresu"
+      "demo_poison_button": "Demo: vložiť podobne vyzerajúcu adresu",
+      "remote_enabled": "Online preverovanie hrozieb je aktívne. V kroku overenia sa službe TIP odosiela adresa príjemcu, vaša odosielajúca adresa, suma a — pri prevodoch tokenov — adresa kontraktu a údaje volania."
     },
     "simulation": {
       "title": "Simulácia transakcie",
@@ -407,7 +417,13 @@
       "balance_prefix": "Zostatok:",
       "demo_suffix": "(demo)",
       "live_suffix": "(naživo)",
-      "reading_from_network": "načítava sa zo siete…"
+      "reading_from_network": "načítava sa zo siete…",
+      "mode_crypto_aria": "Zadajte sumu v {{currency}}",
+      "mode_fiat_aria": "Zadajte sumu v USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Max",
+      "max_chip_aria": "Použiť celý zostatok {{currency}}"
     },
     "errors": {
       "amount_missing": "Suma je povinná",
@@ -433,7 +449,8 @@
       "back": "Späť"
     },
     "verify": {
-      "summary_label": "Posielate"
+      "summary_label": "Posielate",
+      "finality": "Odoslanie je konečné. Keď sa prevod potvrdí v sieti, nemožno ho vrátiť ani refundovať — skontrolujte príjemcu a sumu."
     },
     "fee": {
       "automatic": "Sieťový poplatok pre {{currency}} ({{network}}) sa nastavuje automaticky.",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Odoslanie sa nepodarilo dokončiť — na opakovanie sa prosím znova overte.",
       "send_failed_fallback": "Odoslanie zlyhalo",
       "unconfirmed": "Túto transakciu sa zatiaľ nepodarilo potvrdiť v sieti — môže ešte čakať na spracovanie. Skontrolujte prehliadač."
+    },
+    "wizard": {
+      "step_recipient": "Príjemca a suma",
+      "step_review": "Kontrola",
+      "step_confirm": "Potvrdiť"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Na túto adresu posielajte Solana iba v sieti {{network}}."
     },
     "select_asset_prompt": "Vyberte aktívum na prijatie.",
-    "unlock_footer_note": "Adresy pochádzajú z vašej peňaženky v zariadení a zobrazujú sa iba počas jej odomknutia."
+    "unlock_footer_note": "Adresy pochádzajú z vašej peňaženky v zariadení a zobrazujú sa iba počas jej odomknutia.",
+    "actions": {
+      "copy": "Kopírovať",
+      "copied": "Skopírované",
+      "share": "Zdieľať",
+      "share_dialog_title": "Zdieľať adresu",
+      "share_failed_toast": "Hárok zdieľania sa nepodarilo otvoriť"
+    }
   },
   "dashboard": {
     "portfolioValue": "Hodnota portfólia",

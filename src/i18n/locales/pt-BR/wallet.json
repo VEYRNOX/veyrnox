@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Ensaiar a negabilidade",
       "description": "Veja o painel exatamente como alguém segurando seu celular desbloqueado veria."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — respostas online",
+      "description": "Opcional · as perguntas que você digita saem do dispositivo",
+      "help": "Quando ativado, as perguntas que você digita no Consultor são enviadas ao nosso proxy e respondidas por um modelo de IA de terceiros, junto com a tela em que você está, a rede selecionada e um ID de instalação aleatório usado apenas para aplicar um limite diário de perguntas por dispositivo. Desativar interrompe isso imediatamente; o Consultor continua respondendo com seu conhecimento integrado. Ativar novamente exibe a explicação completa de novo, para que você possa concordar com todos os detalhes à sua frente.",
+      "enable_aria": "Revisar e ativar as respostas online do Consultor de Segurança com IA",
+      "disable_aria": "Desativar as respostas online do Consultor de Segurança com IA"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Início",
     "tab_send": "Enviar",
     "tab_receive": "Receber",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Você precisará do seu PIN para entrar novamente.",
+    "lock_confirm_cancel": "Cancelar"
   },
   "back": {
     "default_label": "Voltar"
@@ -381,7 +390,8 @@
       "local_disclosure": "Os destinatários são verificados no seu dispositivo em busca de endereços fraudulentos no seu próprio histórico — nada sai do seu dispositivo.",
       "remote_opt_in": "Também verificar em uma base de dados de ameaças on-line (envia este endereço a terceiros)",
       "remote_unavailable": "A verificação on-line está ativada, mas nenhum provedor está configurado nesta versão — a verificação continua local, então não conseguimos verificar isso em uma lista externa.",
-      "demo_poison_button": "Demonstração: colar um endereço parecido"
+      "demo_poison_button": "Demonstração: colar um endereço parecido",
+      "remote_enabled": "A verificação online de inteligência de ameaças está ativa. Na etapa de verificação, isso envia ao serviço TIP o endereço do destinatário, seu próprio endereço de envio, o valor e — em transferências de tokens — o endereço do contrato e os dados da chamada."
     },
     "simulation": {
       "title": "Simulação de transação",
@@ -407,7 +417,13 @@
       "balance_prefix": "Saldo:",
       "demo_suffix": "(demonstração)",
       "live_suffix": "(ao vivo)",
-      "reading_from_network": "lendo da rede…"
+      "reading_from_network": "lendo da rede…",
+      "mode_crypto_aria": "Digite o valor em {{currency}}",
+      "mode_fiat_aria": "Digite o valor em USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Máx.",
+      "max_chip_aria": "Usar todo o seu saldo de {{currency}}"
     },
     "errors": {
       "amount_missing": "O valor é obrigatório",
@@ -433,7 +449,8 @@
       "back": "Voltar"
     },
     "verify": {
-      "summary_label": "Você está enviando"
+      "summary_label": "Você está enviando",
+      "finality": "O envio é definitivo. Depois de confirmada na rede, esta transferência não pode ser revertida nem reembolsada — confira o destinatário e o valor."
     },
     "fee": {
       "automatic": "A taxa de rede é definida automaticamente para {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "O envio não pôde ser concluído — verifique novamente para tentar de novo.",
       "send_failed_fallback": "Falha no envio",
       "unconfirmed": "Não foi possível confirmar esta transação na rede ainda — ela pode estar pendente. Verifique no explorador."
+    },
+    "wizard": {
+      "step_recipient": "Destinatário e valor",
+      "step_review": "Revisar",
+      "step_confirm": "Confirmar"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Envie Solana apenas na {{network}} para este endereço."
     },
     "select_asset_prompt": "Selecione um ativo para receber.",
-    "unlock_footer_note": "Os endereços vêm da sua carteira no dispositivo e só aparecem enquanto ela estiver desbloqueada."
+    "unlock_footer_note": "Os endereços vêm da sua carteira no dispositivo e só aparecem enquanto ela estiver desbloqueada.",
+    "actions": {
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "share": "Compartilhar",
+      "share_dialog_title": "Compartilhar endereço",
+      "share_failed_toast": "Não foi possível abrir a folha de compartilhamento"
+    }
   },
   "dashboard": {
     "portfolioValue": "Valor do portfólio",

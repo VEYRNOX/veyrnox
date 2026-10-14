@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Uvježbaj poricanje",
       "description": "Pogledajte nadzornu ploču točno onako kako bi je vidio netko tko drži vaš otključani telefon."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — online odgovori",
+      "description": "Po izboru · pitanja koja upišete napuštaju uređaj",
+      "help": "Kada je uključeno, pitanja koja upišete u Advisor šalju se našem proxyju, a odgovara ih AI model treće strane, zajedno sa zaslonom na kojem se nalazite, odabranim lancem i nasumičnim ID-om instalacije koji se koristi samo za provedbu dnevnog ograničenja broja pitanja po uređaju. Isključivanje to odmah zaustavlja; Advisor i dalje odgovara iz ugrađenog znanja. Ponovno uključivanje opet prikazuje cijelo objašnjenje kako biste pristali uz sve podatke pred sobom.",
+      "enable_aria": "Pregledajte i uključite online odgovore AI Security Advisora",
+      "disable_aria": "Isključite online odgovore AI Security Advisora"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Početna",
     "tab_send": "Pošalji",
     "tab_receive": "Primi",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Trebat će vam PIN za povratak.",
+    "lock_confirm_cancel": "Odustani"
   },
   "back": {
     "default_label": "Natrag"
@@ -381,7 +390,8 @@
       "local_disclosure": "Primatelji se provjeravaju na vašem uređaju radi prevarantskih adresa u odnosu na vašu vlastitu povijest — ništa ne napušta vaš uređaj.",
       "remote_opt_in": "Također provjeri prema online bazi prijetnji (šalje ovu adresu trećoj strani)",
       "remote_unavailable": "Online provjera je omogućena, ali nijedan davatelj usluge nije konfiguriran u ovoj verziji — provjera ostaje lokalna, pa ovo nismo mogli provjeriti prema vanjskom popisu.",
-      "demo_poison_button": "Demo: zalijepi sličnu adresu"
+      "demo_poison_button": "Demo: zalijepi sličnu adresu",
+      "remote_enabled": "Online provjera prema obavještajnim podacima o prijetnjama je aktivna. U koraku provjere TIP usluzi šalje adresu primatelja, vašu adresu pošiljatelja, iznos i — za prijenose tokena — adresu ugovora i podatke poziva."
     },
     "simulation": {
       "title": "Simulacija transakcije",
@@ -407,7 +417,13 @@
       "balance_prefix": "Stanje:",
       "demo_suffix": "(demo)",
       "live_suffix": "(uživo)",
-      "reading_from_network": "čitanje s mreže…"
+      "reading_from_network": "čitanje s mreže…",
+      "mode_crypto_aria": "Unesite iznos u {{currency}}",
+      "mode_fiat_aria": "Unesite iznos u USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Maks.",
+      "max_chip_aria": "Upotrijebi cijelo stanje {{currency}}"
     },
     "errors": {
       "amount_missing": "Iznos je obavezan",
@@ -433,7 +449,8 @@
       "back": "Natrag"
     },
     "verify": {
-      "summary_label": "Šaljete"
+      "summary_label": "Šaljete",
+      "finality": "Slanje je konačno. Nakon potvrde na mreži ovaj se prijenos ne može poništiti niti vratiti — provjerite primatelja i iznos."
     },
     "fee": {
       "automatic": "Mrežna naknada se postavlja automatski za {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Slanje nije dovršeno — molimo ponovno se potvrdite za ponovni pokušaj.",
       "send_failed_fallback": "Slanje nije uspjelo",
       "unconfirmed": "Nije moguće potvrditi ovu transakciju na mreži još — možda je i dalje u tijeku. Provjerite explorer."
+    },
+    "wizard": {
+      "step_recipient": "Primatelj i iznos",
+      "step_review": "Pregled",
+      "step_confirm": "Potvrda"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Šaljite Solanu samo na mreži {{network}} na ovu adresu."
     },
     "select_asset_prompt": "Odaberite imovinu za primanje.",
-    "unlock_footer_note": "Adrese dolaze iz vašeg novčanika na uređaju i pojavljuju se samo dok je otključan."
+    "unlock_footer_note": "Adrese dolaze iz vašeg novčanika na uređaju i pojavljuju se samo dok je otključan.",
+    "actions": {
+      "copy": "Kopiraj",
+      "copied": "Kopirano",
+      "share": "Podijeli",
+      "share_dialog_title": "Podijeli adresu",
+      "share_failed_toast": "Nije moguće otvoriti izbornik za dijeljenje"
+    }
   },
   "dashboard": {
     "portfolioValue": "Vrijednost portfelja",

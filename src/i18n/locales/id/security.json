@@ -78,7 +78,10 @@
     "demo_reset": "Atur ulang demo (hapus semua data wallet + wallet tersembunyi)",
     "non_demo_hint": "Kunci wallet Anda dan masukkan PIN Darurat untuk mencobanya. Jangan pernah membagikannya. Lupa? Hapus di sini saat terbuka kunci dengan PIN asli Anda.",
     "network_default_name": "jaringan uji coba",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Mengatur PIN Darurat baru adalah bagian dari Safety Plus",
+    "setup_locked_body": "Membuat atau mengubah PIN Darurat memerlukan langganan Safety Plus yang aktif. Menghapusnya tidak pernah memerlukannya, dan Anda dapat melakukannya di bawah kapan saja.",
+    "setup_locked_cta": "Lihat paket"
   },
   "stealth": {
     "heading": "Wallet Tersembunyi / Stealth",
@@ -213,7 +216,8 @@
       "trust_warning": "Hanya terhubung ke dApp yang Anda percayai. Wallet ini akan terlihat oleh dApp setelah terhubung.",
       "reject": "Tolak",
       "connect_busy": "Menghubungkan…",
-      "connect": "Hubungkan"
+      "connect": "Hubungkan",
+      "risk_blocked": "Koneksi ke dApp ini diblokir. Tolak dan buka URL tepercaya sebagai gantinya."
     },
     "request_approval": {
       "blocked_title": "Permintaan diblokir",
@@ -248,7 +252,20 @@
       "sending_busy": "Mengirim…",
       "signing_busy": "Menanda tangani…",
       "unknown_network_with_id": "Jaringan tidak dikenal (chain {{id}})",
-      "unknown_network": "Jaringan tidak dikenal"
+      "unknown_network": "Jaringan tidak dikenal",
+      "typed_contract_row_label": "Kontrak",
+      "typed_chain_row_label": "ID chain",
+      "typed_contract_hint": "Nama di atas dipilih oleh situs. Alamat kontrak ini adalah yang sebenarnya diberi otorisasi oleh tanda tangan Anda — cocokkan dengan token yang Anda harapkan.",
+      "permit_unapprovable": "Tanda tangan ini memberi otorisasi kepada spender untuk memindahkan token Anda, dan Veyrnox tidak menyetujui permintaan semacam itu melalui WalletConnect. Selesaikan dari layar Kirim di dalam aplikasi, tempat risikonya dapat ditinjau dan diakui.",
+      "token_amount_row_label": "Jumlah token",
+      "token_recipient_row_label": "Penerima token",
+      "unknown_token_title": "⚠ Token tidak dikenal",
+      "unknown_token_body": "Jumlah tidak terbaca dari permintaan ini. Jangan setujui kecuali Anda tahu persis apa yang dikirim.",
+      "max_fee_row_label": "Biaya maks",
+      "max_fee_row_value": "hingga {{amount}} {{symbol}}",
+      "max_fee_note": "Ini adalah biaya jaringan paling besar yang mungkin dikenakan, di luar nilai di atas. Ini batas atas, bukan perkiraan — biaya sebenarnya biasanya jauh lebih rendah.",
+      "remote_screening_notice": "Penyaringan threat intelligence online aktif untuk permintaan ini. Sebelum persetujuan, Veyrnox dapat mengirim alamat penerima, jumlah, dan data panggilan ke layanan penyaringan TIP-nya.",
+      "remote_screening_unavailable": "Penyaringan online diaktifkan di preferensi Anda, tetapi tidak ada penyedia TIP yang dikonfigurasi di build ini. Permintaan ini hanya akan disaring secara lokal."
     },
     "active_sessions": {
       "empty": "Belum ada dApp yang terhubung. Pasangkan satu di atas untuk memulai.",
@@ -293,6 +310,23 @@
       "biometric": "Otorisasi pengiriman ini dengan PIN + biometrik Anda",
       "passkey": "Otorisasi pengiriman ini dengan PIN + passkey Anda",
       "password": "Otorisasi pengiriman ini dengan PIN + Kata Sandi Tindakan Anda"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Sumber: {{source}}.",
+      "note_fallback": "Ditandai di daftar threat intelligence lokal",
+      "critical_footer": "Ini ditandai sebagai kritis. Anda tetap dapat melanjutkan, tetapi pahami risikonya sebelum melakukannya.",
+      "headline": {
+        "sanctioned": "Alamat ini ada dalam daftar sanksi.",
+        "drainer": "Ini adalah wallet drainer yang dikenal.",
+        "phishing": "Alamat ini terkait dengan phishing.",
+        "exploit": "Alamat ini terkait dengan exploit yang dikenal.",
+        "scam": "Alamat ini ditandai sebagai penipuan.",
+        "malicious_contract": "Kontrak ini telah ditandai sebagai berbahaya.",
+        "mixer": "Ini adalah layanan mixing.",
+        "burn": "Ini adalah alamat burn.",
+        "default": "Sentinel telah menandai alamat ini."
+      }
     }
   }
 }

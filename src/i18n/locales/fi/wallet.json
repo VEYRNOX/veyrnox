@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Harjoittele kiistettävyyttä",
       "description": "Katso koontinäyttö juuri sellaisena, kuin sen näkisi henkilö, joka pitelee avattua puhelintasi."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — verkkovastaukset",
+      "description": "Valinnainen · kirjoittamasi kysymykset poistuvat laitteelta",
+      "help": "Kun tämä on päällä, Advisoriin kirjoittamasi kysymykset lähetetään välityspalvelimellemme ja kolmannen osapuolen tekoälymalli vastaa niihin. Mukana lähetetään näkymä, jossa olet, valittu ketju ja satunnainen asennustunniste, jota käytetään vain laitekohtaisen päivittäisen kysymysrajan valvontaan. Kytkeminen pois päältä pysäyttää tämän heti; Advisor vastaa silti sisäänrakennetun tietonsa pohjalta. Uudelleen päälle kytkettäessä koko selitys näytetään uudelleen, jotta voit hyväksyä sen tiedot edessäsi.",
+      "enable_aria": "Tarkista ja ota käyttöön AI Security Advisorin verkkovastaukset",
+      "disable_aria": "Poista AI Security Advisorin verkkovastaukset käytöstä"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Koti",
     "tab_send": "Lähetä",
     "tab_receive": "Vastaanota",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Tarvitset PIN-koodisi päästäksesi takaisin sisään.",
+    "lock_confirm_cancel": "Peruuta"
   },
   "back": {
     "default_label": "Takaisin"
@@ -381,7 +390,8 @@
       "local_disclosure": "Vastaanottajat tarkistetaan laitteellasi huijausosoitteiden varalta omaa historiaasi vasten — mitään ei lähetetä laitteestasi.",
       "remote_opt_in": "Seulo myös verkossa olevaa uhkatietokantaa vasten (lähettää tämän osoitteen kolmannelle osapuolelle)",
       "remote_unavailable": "Verkkoseulonta on käytössä, mutta tähän versioon ei ole määritetty palveluntarjoajaa — seulonta pysyy paikallisena, joten emme voineet vahvistaa tätä ulkoista listaa vasten.",
-      "demo_poison_button": "Demo: liitä samannäköinen osoite"
+      "demo_poison_button": "Demo: liitä samannäköinen osoite",
+      "remote_enabled": "Verkossa tehtävä uhkatietoseulonta on käytössä. Vahvistusvaiheessa TIP-palveluun lähetetään vastaanottajan osoite, oma lähetysosoitteesi, summa sekä token-siirroissa sopimusosoite ja kutsun data."
     },
     "simulation": {
       "title": "Siirron simulointi",
@@ -407,7 +417,13 @@
       "balance_prefix": "Saldo:",
       "demo_suffix": "(demo)",
       "live_suffix": "(live)",
-      "reading_from_network": "luetaan verkosta…"
+      "reading_from_network": "luetaan verkosta…",
+      "mode_crypto_aria": "Syötä summa valuutassa {{currency}}",
+      "mode_fiat_aria": "Syötä summa USD:na",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Maks.",
+      "max_chip_aria": "Käytä koko {{currency}}-saldosi"
     },
     "errors": {
       "amount_missing": "Summa vaaditaan",
@@ -433,7 +449,8 @@
       "back": "Takaisin"
     },
     "verify": {
-      "summary_label": "Olet lähettämässä"
+      "summary_label": "Olet lähettämässä",
+      "finality": "Lähetys on lopullinen. Kun siirto on vahvistettu verkossa, sitä ei voi peruuttaa eikä saada takaisin — tarkista vastaanottaja ja summa."
     },
     "fee": {
       "automatic": "Verkkomaksu asetetaan automaattisesti valuutalle {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Lähetystä ei voitu suorittaa loppuun — vahvista uudelleen yrittääksesi uudelleen.",
       "send_failed_fallback": "Lähetys epäonnistui",
       "unconfirmed": "Emme voineet vielä vahvistaa tätä siirtoa verkossa — se saattaa olla yhä odottamassa. Tarkista selaimesta."
+    },
+    "wizard": {
+      "step_recipient": "Vastaanottaja ja summa",
+      "step_review": "Tarkistus",
+      "step_confirm": "Vahvista"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Lähetä Solanaa vain verkossa {{network}} tähän osoitteeseen."
     },
     "select_asset_prompt": "Valitse vastaanotettava omaisuuserä.",
-    "unlock_footer_note": "Osoitteet tulevat laitteesi lompakosta ja näkyvät vain sen ollessa avattuna."
+    "unlock_footer_note": "Osoitteet tulevat laitteesi lompakosta ja näkyvät vain sen ollessa avattuna.",
+    "actions": {
+      "copy": "Kopioi",
+      "copied": "Kopioitu",
+      "share": "Jaa",
+      "share_dialog_title": "Jaa osoite",
+      "share_failed_toast": "Jakovalikkoa ei voitu avata"
+    }
   },
   "dashboard": {
     "portfolioValue": "Salkun arvo",

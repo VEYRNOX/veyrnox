@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Deniability proben",
       "description": "Sieh das Dashboard genau so, wie jemand, der dein entsperrtes Telefon in der Hand hält, es sehen würde."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — Online-Antworten",
+      "description": "Optional · Ihre eingegebenen Fragen verlassen das Gerät",
+      "help": "Wenn aktiviert, werden die Fragen, die Sie im Advisor eingeben, an unseren Proxy gesendet und von einem KI-Modell eines Drittanbieters beantwortet – zusammen mit dem Bildschirm, auf dem Sie sich befinden, der ausgewählten Chain und einer zufälligen Installations-ID, die nur dazu dient, ein tägliches Fragenlimit pro Gerät durchzusetzen. Das Deaktivieren stoppt dies sofort; der Advisor antwortet weiterhin aus seinem integrierten Wissen. Beim erneuten Aktivieren wird die vollständige Erklärung wieder angezeigt, damit Sie ihr mit allen Details vor Augen zustimmen können.",
+      "enable_aria": "Online-Antworten des AI Security Advisor prüfen und aktivieren",
+      "disable_aria": "Online-Antworten des AI Security Advisor deaktivieren"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Start",
     "tab_send": "Senden",
     "tab_receive": "Empfangen",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Sie benötigen Ihre PIN, um wieder hineinzukommen.",
+    "lock_confirm_cancel": "Abbrechen"
   },
   "back": {
     "default_label": "Zurück"
@@ -381,7 +390,8 @@
       "local_disclosure": "Empfänger werden auf deinem Gerät anhand deines eigenen Verlaufs auf Scam-Adressen geprüft – nichts verlässt dein Gerät.",
       "remote_opt_in": "Zusätzlich gegen eine Online-Bedrohungsdatenbank prüfen (sendet diese Adresse an Dritte)",
       "remote_unavailable": "Online-Screening ist aktiviert, aber in diesem Build ist kein Anbieter konfiguriert – die Prüfung bleibt lokal, daher konnten wir dies nicht mit einer externen Liste abgleichen.",
-      "demo_poison_button": "Demo: Ähnlich aussehende Adresse einfügen"
+      "demo_poison_button": "Demo: Ähnlich aussehende Adresse einfügen",
+      "remote_enabled": "Das Online-Screening mit Bedrohungsinformationen ist aktiv. Im Verifizierungsschritt sendet es die Empfängeradresse, Ihre eigene Absenderadresse, den Betrag und – bei Token-Überweisungen – die Vertragsadresse und die Aufrufdaten an den TIP-Dienst."
     },
     "simulation": {
       "title": "Transaktions-Simulation",
@@ -407,7 +417,13 @@
       "balance_prefix": "Guthaben:",
       "demo_suffix": "(Demo)",
       "live_suffix": "(live)",
-      "reading_from_network": "wird aus dem Netzwerk gelesen …"
+      "reading_from_network": "wird aus dem Netzwerk gelesen …",
+      "mode_crypto_aria": "Betrag in {{currency}} eingeben",
+      "mode_fiat_aria": "Betrag in USD eingeben",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Max.",
+      "max_chip_aria": "Gesamtes {{currency}}-Guthaben verwenden"
     },
     "errors": {
       "amount_missing": "Betrag ist erforderlich",
@@ -433,7 +449,8 @@
       "back": "Zurück"
     },
     "verify": {
-      "summary_label": "Du sendest"
+      "summary_label": "Du sendest",
+      "finality": "Das Senden ist endgültig. Sobald die Überweisung im Netzwerk bestätigt ist, kann sie nicht rückgängig gemacht oder erstattet werden – prüfen Sie Empfänger und Betrag."
     },
     "fee": {
       "automatic": "Die Netzwerkgebühr wird für {{currency}} ({{network}}) automatisch festgelegt.",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Senden konnte nicht abgeschlossen werden – bitte erneut verifizieren, um es erneut zu versuchen.",
       "send_failed_fallback": "Senden fehlgeschlagen",
       "unconfirmed": "Diese Transaktion konnte im Netzwerk noch nicht bestätigt werden – sie kann weiterhin ausstehen. Prüfe den Explorer."
+    },
+    "wizard": {
+      "step_recipient": "Empfänger und Betrag",
+      "step_review": "Prüfen",
+      "step_confirm": "Bestätigen"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Sende Solana nur auf {{network}} an diese Adresse."
     },
     "select_asset_prompt": "Wähle ein Asset zum Empfangen.",
-    "unlock_footer_note": "Adressen stammen aus deiner Wallet auf dem Gerät und erscheinen nur, während sie entsperrt ist."
+    "unlock_footer_note": "Adressen stammen aus deiner Wallet auf dem Gerät und erscheinen nur, während sie entsperrt ist.",
+    "actions": {
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "share": "Teilen",
+      "share_dialog_title": "Adresse teilen",
+      "share_failed_toast": "Das Teilen-Menü konnte nicht geöffnet werden"
+    }
   },
   "dashboard": {
     "portfolioValue": "Portfoliowert",

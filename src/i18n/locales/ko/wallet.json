@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "은닉 상태 리허설",
       "description": "잠금 해제된 휴대폰을 들고 있는 사람에게 보이는 것과 똑같은 화면을 확인하세요."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — 온라인 답변",
+      "description": "선택 사항 · 입력한 질문이 기기 밖으로 전송됩니다",
+      "help": "켜면 어드바이저에 입력한 질문이 현재 보고 있는 화면, 선택한 체인, 기기별 일일 질문 한도를 적용하는 데에만 사용되는 무작위 설치 ID와 함께 당사 프록시로 전송되어 제3자 AI 모델이 답변합니다. 끄면 즉시 전송이 중단되며, 어드바이저는 내장된 지식으로 계속 답변합니다. 다시 켜면 전체 설명이 다시 표시되므로 세부 내용을 확인한 후 동의하실 수 있습니다.",
+      "enable_aria": "온라인 AI 보안 어드바이저 답변을 검토하고 켜기",
+      "disable_aria": "온라인 AI 보안 어드바이저 답변 끄기"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "홈",
     "tab_send": "보내기",
     "tab_receive": "받기",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "다시 들어오려면 PIN이 필요합니다.",
+    "lock_confirm_cancel": "취소"
   },
   "back": {
     "default_label": "뒤로"
@@ -381,7 +390,8 @@
       "local_disclosure": "받는 주소는 회원님 자신의 내역을 기준으로 이 기기에서 사기 주소인지 확인됩니다 — 아무것도 기기 밖으로 나가지 않습니다.",
       "remote_opt_in": "온라인 위협 데이터베이스와도 대조 확인 (이 주소를 제3자에게 전송함)",
       "remote_unavailable": "온라인 확인이 켜져 있지만 이 빌드에는 설정된 제공업체가 없습니다 — 확인은 로컬에만 머무르므로 외부 목록과 대조할 수 없었습니다.",
-      "demo_poison_button": "데모: 비슷한 주소 붙여넣기"
+      "demo_poison_button": "데모: 비슷한 주소 붙여넣기",
+      "remote_enabled": "온라인 위협 인텔리전스 검증이 활성화되어 있습니다. 확인 단계에서 받는 사람 주소, 본인의 보내는 주소, 금액, 그리고 토큰 전송의 경우 컨트랙트 주소와 호출 데이터가 TIP 서비스로 전송됩니다."
     },
     "simulation": {
       "title": "거래 시뮬레이션",
@@ -407,7 +417,13 @@
       "balance_prefix": "잔액:",
       "demo_suffix": "(데모)",
       "live_suffix": "(실시간)",
-      "reading_from_network": "네트워크에서 조회 중…"
+      "reading_from_network": "네트워크에서 조회 중…",
+      "mode_crypto_aria": "{{currency}} 단위로 금액 입력",
+      "mode_fiat_aria": "USD 단위로 금액 입력",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "최대",
+      "max_chip_aria": "{{currency}} 전체 잔액 사용"
     },
     "errors": {
       "amount_missing": "금액은 필수입니다",
@@ -433,7 +449,8 @@
       "back": "뒤로"
     },
     "verify": {
-      "summary_label": "전송 내용"
+      "summary_label": "전송 내용",
+      "finality": "전송은 되돌릴 수 없습니다. 네트워크에서 확정되면 이 전송은 취소하거나 환불할 수 없으니 받는 사람과 금액을 확인하세요."
     },
     "fee": {
       "automatic": "{{currency}} ({{network}})의 네트워크 수수료는 자동으로 설정됩니다.",
@@ -482,6 +499,11 @@
       "two_factor_retry": "전송을 완료할 수 없습니다 — 다시 확인한 후 재시도하세요.",
       "send_failed_fallback": "전송 실패",
       "unconfirmed": "아직 네트워크에서 이 거래를 확정할 수 없었습니다 — 여전히 대기 중일 수 있습니다. 익스플로러에서 확인하세요."
+    },
+    "wizard": {
+      "step_recipient": "받는 사람 및 금액",
+      "step_review": "검토",
+      "step_confirm": "확인"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "이 주소로는 {{network}}에서 솔라나만 보내세요."
     },
     "select_asset_prompt": "받을 자산을 선택하세요.",
-    "unlock_footer_note": "주소는 기기 내 지갑에서 생성되며 잠금이 해제되어 있을 때만 표시됩니다."
+    "unlock_footer_note": "주소는 기기 내 지갑에서 생성되며 잠금이 해제되어 있을 때만 표시됩니다.",
+    "actions": {
+      "copy": "복사",
+      "copied": "복사됨",
+      "share": "공유",
+      "share_dialog_title": "주소 공유",
+      "share_failed_toast": "공유 시트를 열 수 없습니다"
+    }
   },
   "dashboard": {
     "portfolioValue": "포트폴리오 가치",

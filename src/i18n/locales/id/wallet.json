@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Latihan penyangkalan",
       "description": "Lihat dashboard persis seperti yang akan dilihat seseorang yang memegang ponsel Anda yang terbuka kuncinya."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — jawaban online",
+      "description": "Opsional · pertanyaan yang Anda ketik keluar dari perangkat",
+      "help": "Saat aktif, pertanyaan yang Anda ketik di Advisor dikirim ke proxy kami dan dijawab oleh model AI pihak ketiga, bersama layar yang sedang Anda buka, chain yang dipilih, dan ID instalasi acak yang hanya digunakan untuk menegakkan batas pertanyaan harian per perangkat. Menonaktifkannya langsung menghentikan hal ini; Advisor tetap menjawab dari pengetahuan bawaannya. Mengaktifkannya kembali akan menampilkan ulang penjelasan lengkap agar Anda dapat menyetujuinya dengan rincian di depan mata.",
+      "enable_aria": "Tinjau dan aktifkan jawaban online AI Security Advisor",
+      "disable_aria": "Nonaktifkan jawaban online AI Security Advisor"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Beranda",
     "tab_send": "Kirim",
     "tab_receive": "Terima",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Anda memerlukan PIN untuk masuk kembali.",
+    "lock_confirm_cancel": "Batal"
   },
   "back": {
     "default_label": "Kembali"
@@ -381,7 +390,8 @@
       "local_disclosure": "Penerima diperiksa di perangkat Anda untuk alamat penipuan terhadap riwayat Anda sendiri — tidak ada yang meninggalkan perangkat Anda.",
       "remote_opt_in": "Juga periksa terhadap basis data ancaman online (mengirim alamat ini ke pihak ketiga)",
       "remote_unavailable": "Pemeriksaan online diaktifkan, tetapi tidak ada penyedia yang dikonfigurasi dalam build ini — pemeriksaan tetap lokal, jadi kami tidak dapat memverifikasi ini terhadap daftar eksternal.",
-      "demo_poison_button": "Demo: tempel alamat serupa"
+      "demo_poison_button": "Demo: tempel alamat serupa",
+      "remote_enabled": "Penyaringan threat intelligence online sedang aktif. Pada langkah verifikasi, ini mengirim alamat penerima, alamat pengirim Anda sendiri, jumlah, dan — untuk transfer token — alamat kontrak serta data panggilan ke layanan TIP."
     },
     "simulation": {
       "title": "Simulasi Transaksi",
@@ -407,7 +417,13 @@
       "balance_prefix": "Saldo:",
       "demo_suffix": "(demo)",
       "live_suffix": "(langsung)",
-      "reading_from_network": "membaca dari jaringan…"
+      "reading_from_network": "membaca dari jaringan…",
+      "mode_crypto_aria": "Masukkan jumlah dalam {{currency}}",
+      "mode_fiat_aria": "Masukkan jumlah dalam USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Maks",
+      "max_chip_aria": "Gunakan seluruh saldo {{currency}} Anda"
     },
     "errors": {
       "amount_missing": "Jumlah diperlukan",
@@ -433,7 +449,8 @@
       "back": "Kembali"
     },
     "verify": {
-      "summary_label": "Anda mengirim"
+      "summary_label": "Anda mengirim",
+      "finality": "Pengiriman bersifat final. Setelah terkonfirmasi di jaringan, transfer ini tidak dapat dibatalkan atau dikembalikan — periksa penerima dan jumlahnya."
     },
     "fee": {
       "automatic": "Biaya jaringan diatur secara otomatis untuk {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Pengiriman tidak dapat diselesaikan — silakan verifikasi lagi untuk mencoba ulang.",
       "send_failed_fallback": "Pengiriman gagal",
       "unconfirmed": "Tidak dapat mengonfirmasi transaksi ini di jaringan — mungkin masih tertunda. Periksa explorer."
+    },
+    "wizard": {
+      "step_recipient": "Penerima & jumlah",
+      "step_review": "Tinjau",
+      "step_confirm": "Konfirmasi"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Hanya kirim Solana di {{network}} ke alamat ini."
     },
     "select_asset_prompt": "Pilih aset untuk diterima.",
-    "unlock_footer_note": "Alamat berasal dari wallet di perangkat Anda dan hanya muncul saat terbuka kuncinya."
+    "unlock_footer_note": "Alamat berasal dari wallet di perangkat Anda dan hanya muncul saat terbuka kuncinya.",
+    "actions": {
+      "copy": "Salin",
+      "copied": "Tersalin",
+      "share": "Bagikan",
+      "share_dialog_title": "Bagikan alamat",
+      "share_failed_toast": "Tidak dapat membuka lembar berbagi"
+    }
   },
   "dashboard": {
     "portfolioValue": "Nilai Portofolio",

@@ -78,7 +78,10 @@
     "demo_reset": "Herstel demo (verwyder alle beursiedata + verskuilde beursie)",
     "non_demo_hint": "Sluit jou beursie en voer die Noodgeval-PIN in om dit te probeer. Deel dit nooit nie. Vergeet? Verwyder dit hier terwyl ontsluit met jou werklike PIN.",
     "network_default_name": "die toetsnetwerk",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Om 'n nuwe Noodgeval-PIN te stel is deel van Safety Plus",
+    "setup_locked_body": "Om 'n Noodgeval-PIN te skep of te verander vereis 'n aktiewe Safety Plus-intekening. Om een te verwyder vereis dit nooit nie, en jy kan dit enige tyd hieronder doen.",
+    "setup_locked_cta": "Bekyk planne"
   },
   "stealth": {
     "heading": "Verskuilde / Versteekte Beursies",
@@ -213,7 +216,8 @@
       "trust_warning": "Verbind slegs met dApps wat jy vertrou. Hierdie beursie sal sigbaar wees vir die dApp sodra dit verbind is.",
       "reject": "Verwerp",
       "connect_busy": "Word verbind…",
-      "connect": "Verbind"
+      "connect": "Verbind",
+      "risk_blocked": "Verbinding met hierdie dApp is geblokkeer. Weier en maak eerder 'n vertroude URL oop."
     },
     "request_approval": {
       "blocked_title": "Versoek geblokkeer",
@@ -248,7 +252,20 @@
       "sending_busy": "Word gestuur…",
       "signing_busy": "Word onderteken…",
       "unknown_network_with_id": "Onbekende netwerk (ketting {{id}})",
-      "unknown_network": "Onbekende netwerk"
+      "unknown_network": "Onbekende netwerk",
+      "typed_contract_row_label": "Kontrak",
+      "typed_chain_row_label": "Ketting-ID",
+      "typed_contract_hint": "Die naam hierbo word deur die werf gekies. Hierdie kontrakadres is wat jou handtekening werklik magtig — kontroleer dit teen die token wat jy verwag.",
+      "permit_unapprovable": "Hierdie handtekening magtig 'n spandeerder om jou tokens te skuif, en Veyrnox keur dit nie oor WalletConnect goed nie. Voltooi dit vanaf die Stuur-skerm in die app, waar die risiko hersien en erken kan word.",
+      "token_amount_row_label": "Tokenbedrag",
+      "token_recipient_row_label": "Tokenontvanger",
+      "unknown_token_title": "⚠ Onbekende token",
+      "unknown_token_body": "Bedrag nie leesbaar uit hierdie versoek nie. Moenie goedkeur tensy jy presies weet wat dit stuur nie.",
+      "max_fee_row_label": "Maks. fooi",
+      "max_fee_row_value": "tot {{amount}} {{symbol}}",
+      "max_fee_note": "Dit is die meeste wat die netwerkfooi kan kos, bo-op die waarde hierbo. Dit is 'n plafon, nie 'n skatting nie — die werklike fooi is gewoonlik baie laer.",
+      "remote_screening_notice": "Aanlyn bedreigingsintelligensie-sifting is vir hierdie versoek aktief. Voor goedkeuring kan Veyrnox die ontvangeradres, bedrag en oproepdata na sy TIP-siftingsdiens stuur.",
+      "remote_screening_unavailable": "Aanlyn sifting is in jou voorkeure aangeskakel, maar geen TIP-verskaffer is in hierdie weergawe opgestel nie. Hierdie versoek sal slegs plaaslik gesif word."
     },
     "active_sessions": {
       "empty": "Nog geen dApps verbind nie. Koppel een hierbo om te begin.",
@@ -293,6 +310,23 @@
       "biometric": "Magtig hierdie stuurbedrag met jou PIN + biometrie",
       "passkey": "Magtig hierdie stuurbedrag met jou PIN + toegangsleutel",
       "password": "Magtig hierdie stuurbedrag met jou PIN + Aksiewagwoord"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Bron: {{source}}.",
+      "note_fallback": "In die plaaslike bedreigingsintelligensielys gemerk",
+      "critical_footer": "Dit is as kritiek gemerk. Jy kan steeds voortgaan, maar verstaan asseblief die risiko voordat jy dit doen.",
+      "headline": {
+        "sanctioned": "Hierdie adres is op 'n sanksielys.",
+        "drainer": "Dit is 'n bekende beursie-leegmaker.",
+        "phishing": "Hierdie adres is aan uitvissing gekoppel.",
+        "exploit": "Hierdie adres is aan 'n bekende uitbuiting gekoppel.",
+        "scam": "Hierdie adres is as 'n bedrogspul gemerk.",
+        "malicious_contract": "Hierdie kontrak is as kwaadwillig gemerk.",
+        "mixer": "Dit is 'n mengdiens.",
+        "burn": "Dit is 'n brandadres.",
+        "default": "Sentinel het hierdie adres gemerk."
+      }
     }
   }
 }

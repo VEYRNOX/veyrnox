@@ -78,7 +78,10 @@
     "demo_reset": "Tetapkan semula demo (padam semua data dompet + dompet tersembunyi)",
     "non_demo_hint": "Kunci dompet anda dan masukkan PIN Kecemasan untuk mencubanya. Jangan sekali-kali kongsikannya. Terlupa? Buang di sini semasa terbuka kunci dengan PIN sebenar anda.",
     "network_default_name": "rangkaian ujian",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Menetapkan PIN Kecemasan baharu ialah sebahagian daripada Safety Plus",
+    "setup_locked_body": "Mencipta atau menukar PIN Kecemasan memerlukan langganan Safety Plus yang aktif. Mengalih keluarnya tidak pernah memerlukannya, dan anda boleh berbuat demikian di bawah pada bila-bila masa.",
+    "setup_locked_cta": "Lihat pelan"
   },
   "stealth": {
     "heading": "Dompet Tersembunyi / Stealth",
@@ -213,7 +216,8 @@
       "trust_warning": "Hanya sambung ke dApp yang anda percayai. Dompet ini akan kelihatan kepada dApp sebaik sahaja disambungkan.",
       "reject": "Tolak",
       "connect_busy": "Menyambung…",
-      "connect": "Sambung"
+      "connect": "Sambung",
+      "risk_blocked": "Sambungan ke dApp ini disekat. Tolak dan buka URL yang dipercayai sebaliknya."
     },
     "request_approval": {
       "blocked_title": "Permintaan disekat",
@@ -248,7 +252,20 @@
       "sending_busy": "Menghantar…",
       "signing_busy": "Menandatangani…",
       "unknown_network_with_id": "Rangkaian tidak dikenali (chain {{id}})",
-      "unknown_network": "Rangkaian tidak dikenali"
+      "unknown_network": "Rangkaian tidak dikenali",
+      "typed_contract_row_label": "Kontrak",
+      "typed_chain_row_label": "ID Rantaian",
+      "typed_contract_hint": "Nama di atas dipilih oleh laman web. Alamat kontrak ini ialah apa yang sebenarnya diberi kuasa oleh tandatangan anda — semaknya dengan token yang anda jangkakan.",
+      "permit_unapprovable": "Tandatangan ini memberi kuasa kepada pembelanja untuk memindahkan token anda, dan Veyrnox tidak meluluskan perkara ini melalui WalletConnect. Selesaikannya daripada skrin Hantar dalam apl, di mana risikonya boleh disemak dan diakui.",
+      "token_amount_row_label": "Jumlah token",
+      "token_recipient_row_label": "Penerima token",
+      "unknown_token_title": "⚠ Token tidak dikenali",
+      "unknown_token_body": "Jumlah tidak dapat dibaca daripada permintaan ini. Jangan luluskan melainkan anda tahu dengan tepat apa yang dihantar.",
+      "max_fee_row_label": "Yuran maks.",
+      "max_fee_row_value": "sehingga {{amount}} {{symbol}}",
+      "max_fee_note": "Ini ialah kos maksimum yuran rangkaian, selain nilai di atas. Ia adalah had atas, bukan anggaran — yuran sebenar biasanya jauh lebih rendah.",
+      "remote_screening_notice": "Saringan risikan ancaman dalam talian aktif untuk permintaan ini. Sebelum kelulusan, Veyrnox mungkin menghantar alamat penerima, jumlah dan data panggilan kepada perkhidmatan saringan TIP-nya.",
+      "remote_screening_unavailable": "Saringan dalam talian dihidupkan dalam keutamaan anda, tetapi tiada penyedia TIP dikonfigurasikan dalam binaan ini. Permintaan ini hanya akan disaring secara setempat."
     },
     "active_sessions": {
       "empty": "Belum ada dApp yang disambungkan. Pasangkan satu di atas untuk bermula.",
@@ -293,6 +310,23 @@
       "biometric": "Sahkan hantaran ini dengan PIN + biometrik anda",
       "passkey": "Sahkan hantaran ini dengan PIN + passkey anda",
       "password": "Sahkan hantaran ini dengan PIN + Kata Laluan Tindakan anda"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Sumber: {{source}}.",
+      "note_fallback": "Ditandakan dalam senarai risikan ancaman setempat",
+      "critical_footer": "Ini ditandakan sebagai kritikal. Anda masih boleh meneruskan, tetapi sila fahami risikonya sebelum berbuat demikian.",
+      "headline": {
+        "sanctioned": "Alamat ini berada dalam senarai sekatan.",
+        "drainer": "Ini ialah penyedut dompet (drainer) yang dikenali.",
+        "phishing": "Alamat ini dikaitkan dengan pancingan data.",
+        "exploit": "Alamat ini dikaitkan dengan eksploitasi yang dikenali.",
+        "scam": "Alamat ini ditandakan sebagai penipuan.",
+        "malicious_contract": "Kontrak ini telah ditandakan sebagai berniat jahat.",
+        "mixer": "Ini ialah perkhidmatan pencampuran.",
+        "burn": "Ini ialah alamat pembakaran.",
+        "default": "Sentinel telah menandakan alamat ini."
+      }
     }
   }
 }
