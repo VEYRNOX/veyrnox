@@ -27,8 +27,8 @@ describe('critical route first paint', () => {
 
   it('renders settings chrome before wallet-passkey data resolves', () => {
     expect(settings).not.toContain('return <Spinner className="h-64" label="Loading settings…" />');
-    expect(settings).toContain('label="Loading wallet passkeys…"');
-    expect(settings).toMatch(/isLoading\s*\?\s*\(\s*<Spinner[^>]+Loading wallet passkeys/);
+    expect(settings).toContain('label={t("settings.page.wallet_passkeys_loading")}');
+    expect(settings).toMatch(/isLoading\s*\?\s*\(\s*<Spinner[^>]+wallet_passkeys_loading/);
   });
 
   it('loads the portfolio-backed rehearsal only after the Settings row opens', () => {
