@@ -78,7 +78,10 @@
     "demo_reset": "Ponastavi demonstracijo (izbriši vse podatke denarnice + skrito denarnico)",
     "non_demo_hint": "Zaklenite denarnico in vnesite Izredni PIN, da ga preizkusite. Nikoli ga ne delite. Ste ga pozabili? Odstranite ga tukaj, medtem ko je denarnica odklenjena s pravim PIN-om.",
     "network_default_name": "testno omrežje",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Nastavitev novega izrednega PIN je del Safety Plus",
+    "setup_locked_body": "Ustvarjanje ali spreminjanje izrednega PIN zahteva aktivno naročnino na Safety Plus. Odstranitev je nikoli ne zahteva in jo lahko kadar koli opravite spodaj.",
+    "setup_locked_cta": "Poglej načrte"
   },
   "stealth": {
     "heading": "Prikrite / Skrite denarnice",
@@ -213,7 +216,8 @@
       "trust_warning": "Povežite se le z dApp-i, ki jim zaupate. Ta denarnica bo po povezavi vidna dApp-u.",
       "reject": "Zavrni",
       "connect_busy": "Povezovanje …",
-      "connect": "Poveži"
+      "connect": "Poveži",
+      "risk_blocked": "Povezava s to dApp je blokirana. Zavrnite jo in odprite zaupanja vreden URL."
     },
     "request_approval": {
       "blocked_title": "Zahteva blokirana",
@@ -248,7 +252,20 @@
       "sending_busy": "Pošiljanje …",
       "signing_busy": "Podpisovanje …",
       "unknown_network_with_id": "Neznano omrežje (veriga {{id}})",
-      "unknown_network": "Neznano omrežje"
+      "unknown_network": "Neznano omrežje",
+      "typed_contract_row_label": "Pogodba",
+      "typed_chain_row_label": "ID verige",
+      "typed_contract_hint": "Ime zgoraj izbere spletno mesto. Ta naslov pogodbe je tisto, kar vaš podpis dejansko pooblašča — primerjajte ga z žetonom, ki ga pričakujete.",
+      "permit_unapprovable": "Ta podpis pooblašča porabnika (spender), da premika vaše žetone, Veyrnox pa takšnih podpisov prek WalletConnect ne odobri. Dokončajte ga na zaslonu Pošlji v aplikaciji, kjer je tveganje mogoče pregledati in potrditi.",
+      "token_amount_row_label": "Znesek žetonov",
+      "token_recipient_row_label": "Prejemnik žetonov",
+      "unknown_token_title": "⚠ Neznan žeton",
+      "unknown_token_body": "Zneska iz te zahteve ni mogoče prebrati. Ne odobrite, razen če natančno veste, kaj to pošilja.",
+      "max_fee_row_label": "Maks. provizija",
+      "max_fee_row_value": "do {{amount}} {{symbol}}",
+      "max_fee_note": "To je največ, kar lahko stane omrežna provizija, poleg vrednosti zgoraj. Je zgornja meja, ne ocena — dejanska provizija je običajno precej nižja.",
+      "remote_screening_notice": "Za to zahtevo je aktivno spletno preverjanje z obveščevalnimi podatki o grožnjah. Pred odobritvijo lahko Veyrnox pošlje naslov prejemnika, znesek in podatke klica svoji storitvi za preverjanje TIP.",
+      "remote_screening_unavailable": "Spletno preverjanje je vklopljeno v vaših nastavitvah, vendar v tej različici ni konfiguriran noben ponudnik TIP. Ta zahteva bo preverjena samo lokalno."
     },
     "active_sessions": {
       "empty": "Ni še povezanih dApp-ov. Zgoraj povežite enega za začetek.",
@@ -293,6 +310,23 @@
       "biometric": "Odobrite to pošiljanje s PIN-om + biometrijo",
       "passkey": "Odobrite to pošiljanje s PIN-om + ključem za dostop",
       "password": "Odobrite to pošiljanje s PIN-om + akcijskim geslom"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Vir: {{source}}.",
+      "note_fallback": "Označeno na lokalnem seznamu obveščevalnih podatkov o grožnjah",
+      "critical_footer": "To je označeno kot kritično. Še vedno lahko nadaljujete, vendar pred tem razumite tveganje.",
+      "headline": {
+        "sanctioned": "Ta naslov je na seznamu sankcij.",
+        "drainer": "To je znan izsesovalec denarnic (drainer).",
+        "phishing": "Ta naslov je povezan z lažnim predstavljanjem (phishing).",
+        "exploit": "Ta naslov je povezan z znanim izkoriščanjem (exploit).",
+        "scam": "Ta naslov je označen kot goljufija.",
+        "malicious_contract": "Ta pogodba je bila označena kot zlonamerna.",
+        "mixer": "To je storitev za mešanje (mixer).",
+        "burn": "To je naslov za sežig (burn).",
+        "default": "Sentinel je označil ta naslov."
+      }
     }
   }
 }

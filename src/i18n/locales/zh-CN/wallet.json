@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "演练可否认性",
       "description": "以拿着你已解锁手机的人的视角查看仪表板。"
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — 在线回答",
+      "description": "需主动开启 · 你输入的问题会离开设备",
+      "help": "开启后，你在顾问中输入的问题会发送到我们的代理，并由第三方 AI 模型回答，同时发送的还有你当前所在的页面、所选链，以及一个仅用于执行每台设备每日提问上限的随机安装 ID。关闭后会立即停止；顾问仍会基于内置知识作答。重新开启时会再次显示完整说明，让你在了解详情的前提下同意。",
+      "enable_aria": "查看并开启 AI 安全顾问在线回答",
+      "disable_aria": "关闭 AI 安全顾问在线回答"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "首页",
     "tab_send": "发送",
     "tab_receive": "接收",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "你需要输入 PIN 才能重新进入。",
+    "lock_confirm_cancel": "取消"
   },
   "back": {
     "default_label": "返回"
@@ -381,7 +390,8 @@
       "local_disclosure": "收件人会根据你自己的历史在设备上进行诈骗地址检查 — 数据不会离开你的设备。",
       "remote_opt_in": "同时对照在线威胁数据库进行筛查（会将此地址发送给第三方）",
       "remote_unavailable": "在线筛查已启用，但此构建中未配置提供者 — 筛查仍在本地进行，因此我们无法与外部列表进行比对。",
-      "demo_poison_button": "演示：粘贴一个相似地址"
+      "demo_poison_button": "演示：粘贴一个相似地址",
+      "remote_enabled": "在线威胁情报筛查已启用。在验证步骤中，这会将收款地址、你自己的发送地址、金额，以及（对于代币转账）合约地址和调用数据发送到 TIP 服务。"
     },
     "simulation": {
       "title": "交易模拟",
@@ -407,7 +417,13 @@
       "balance_prefix": "余额：",
       "demo_suffix": "（演示）",
       "live_suffix": "（实时）",
-      "reading_from_network": "正在从网络读取…"
+      "reading_from_network": "正在从网络读取…",
+      "mode_crypto_aria": "以 {{currency}} 输入金额",
+      "mode_fiat_aria": "以 USD 输入金额",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "最大",
+      "max_chip_aria": "使用你全部的 {{currency}} 余额"
     },
     "errors": {
       "amount_missing": "必须输入金额",
@@ -433,7 +449,8 @@
       "back": "返回"
     },
     "verify": {
-      "summary_label": "你正在发送"
+      "summary_label": "你正在发送",
+      "finality": "发送是最终的。转账在网络上确认后，将无法撤销或退款 — 请核对收款方和金额。"
     },
     "fee": {
       "automatic": "{{currency}}（{{network}}）的网络费将自动设置。",
@@ -482,6 +499,11 @@
       "two_factor_retry": "发送未能完成 — 请再次验证以重试。",
       "send_failed_fallback": "发送失败",
       "unconfirmed": "尚无法在网络中确认此交易 — 可能仍在待处理状态。请查看浏览器。"
+    },
+    "wizard": {
+      "step_recipient": "收款方和金额",
+      "step_review": "检查",
+      "step_confirm": "确认"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "请仅在 {{network}} 上向此地址发送 Solana。"
     },
     "select_asset_prompt": "选择要接收的资产。",
-    "unlock_footer_note": "地址来自你设备上的钱包，仅在解锁时才显示。"
+    "unlock_footer_note": "地址来自你设备上的钱包，仅在解锁时才显示。",
+    "actions": {
+      "copy": "复制",
+      "copied": "已复制",
+      "share": "分享",
+      "share_dialog_title": "分享地址",
+      "share_failed_toast": "无法打开分享面板"
+    }
   },
   "dashboard": {
     "portfolioValue": "投资组合价值",

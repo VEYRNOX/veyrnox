@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Ensayar negabilidad",
       "description": "Mira el panel exactamente como lo vería alguien que tuviera tu celular desbloqueado."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — respuestas en línea",
+      "description": "Opcional · las preguntas que escribe salen del dispositivo",
+      "help": "Si está activado, las preguntas que escriba en el Advisor se envían a nuestro proxy y las responde un modelo de IA de terceros, junto con la pantalla en la que se encuentra, la cadena seleccionada y un ID de instalación aleatorio que solo se usa para aplicar un límite diario de preguntas por dispositivo. Al desactivarlo se detiene de inmediato; el Advisor sigue respondiendo con su conocimiento integrado. Al volver a activarlo se muestra de nuevo la explicación completa para que pueda aceptarla con los detalles a la vista.",
+      "enable_aria": "Revisar y activar las respuestas en línea de AI Security Advisor",
+      "disable_aria": "Desactivar las respuestas en línea de AI Security Advisor"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Inicio",
     "tab_send": "Enviar",
     "tab_receive": "Recibir",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Necesitará su PIN para volver a entrar.",
+    "lock_confirm_cancel": "Cancelar"
   },
   "back": {
     "default_label": "Atrás"
@@ -381,7 +390,8 @@
       "local_disclosure": "Los destinatarios se comprueban en tu dispositivo contra direcciones fraudulentas de tu propio historial — nada sale del dispositivo.",
       "remote_opt_in": "Comprobar también contra una base de datos de amenazas en línea (envía esta dirección a un tercero)",
       "remote_unavailable": "La comprobación en línea está activada, pero no hay ningún proveedor configurado en esta compilación — la comprobación se mantiene local, así que no pudimos verificar esta dirección contra una lista externa.",
-      "demo_poison_button": "Demo: pegar una dirección parecida"
+      "demo_poison_button": "Demo: pegar una dirección parecida",
+      "remote_enabled": "El análisis en línea con inteligencia de amenazas está activo. En el paso de verificación, envía la dirección del destinatario, su propia dirección de envío, el monto y, en las transferencias de tokens, la dirección del contrato y los datos de la llamada al servicio TIP."
     },
     "simulation": {
       "title": "Simulación de transacción",
@@ -407,7 +417,13 @@
       "balance_prefix": "Saldo:",
       "demo_suffix": "(demo)",
       "live_suffix": "(en vivo)",
-      "reading_from_network": "leyendo desde la red…"
+      "reading_from_network": "leyendo desde la red…",
+      "mode_crypto_aria": "Ingrese el monto en {{currency}}",
+      "mode_fiat_aria": "Ingrese el monto en USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Máx.",
+      "max_chip_aria": "Usar todo su saldo de {{currency}}"
     },
     "errors": {
       "amount_missing": "Se requiere una cantidad",
@@ -433,7 +449,8 @@
       "back": "Atrás"
     },
     "verify": {
-      "summary_label": "Estás enviando"
+      "summary_label": "Estás enviando",
+      "finality": "El envío es definitivo. Una vez confirmada en la red, esta transferencia no se puede revertir ni reembolsar: verifique el destinatario y el monto."
     },
     "fee": {
       "automatic": "La comisión de red se establece automáticamente para {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "El envío no se pudo completar — vuelve a verificar para reintentar.",
       "send_failed_fallback": "El envío falló",
       "unconfirmed": "Todavía no se pudo confirmar esta transacción en la red — puede seguir pendiente. Revisa el explorador."
+    },
+    "wizard": {
+      "step_recipient": "Destinatario y monto",
+      "step_review": "Revisar",
+      "step_confirm": "Confirmar"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Envía Solana únicamente en {{network}} a esta dirección."
     },
     "select_asset_prompt": "Selecciona un activo para recibir.",
-    "unlock_footer_note": "Las direcciones vienen de tu cartera en el dispositivo y solo aparecen mientras esté desbloqueada."
+    "unlock_footer_note": "Las direcciones vienen de tu cartera en el dispositivo y solo aparecen mientras esté desbloqueada.",
+    "actions": {
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "share": "Compartir",
+      "share_dialog_title": "Compartir dirección",
+      "share_failed_toast": "No se pudo abrir el menú para compartir"
+    }
   },
   "dashboard": {
     "portfolioValue": "Valor del portafolio",

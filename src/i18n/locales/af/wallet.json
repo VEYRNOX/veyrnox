@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Oefen ontkenbaarheid",
       "description": "Sien die paneelbord presies soos iemand wat jou ontsluite foon vashou dit sou sien."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — aanlyn antwoorde",
+      "description": "Opsioneel · jou getikte vrae verlaat die toestel",
+      "help": "Wanneer dit aan is, word die vrae wat jy in die Advisor tik na ons proxy gestuur en deur 'n derdeparty-KI-model beantwoord, saam met die skerm waarop jy is, die gekose blokketting en 'n ewekansige installasie-ID wat slegs gebruik word om 'n daaglikse vraagperk per toestel af te dwing. As jy dit afskakel, hou dit onmiddellik op; die Advisor antwoord steeds uit sy ingeboude kennis. As jy dit weer aanskakel, word die volledige verduideliking weer gewys sodat jy daartoe kan instem met die besonderhede voor jou.",
+      "enable_aria": "Hersien en skakel aanlyn AI Security Advisor-antwoorde aan",
+      "disable_aria": "Skakel aanlyn AI Security Advisor-antwoorde af"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Tuis",
     "tab_send": "Stuur",
     "tab_receive": "Ontvang",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Jy sal jou PIN nodig hê om weer in te kom.",
+    "lock_confirm_cancel": "Kanselleer"
   },
   "back": {
     "default_label": "Terug"
@@ -381,7 +390,8 @@
       "local_disclosure": "Ontvangers word op jou toestel teen bedrogadresse in jou eie geskiedenis gekontroleer — niks verlaat jou toestel nie.",
       "remote_opt_in": "Kontroleer ook teen 'n aanlyn dreigingsdatabasis (stuur hierdie adres na 'n derde party)",
       "remote_unavailable": "Aanlyn-kontrole is geaktiveer, maar geen verskaffer is in hierdie bou-weergawe opgestel nie — kontrole bly plaaslik, so ons kon dit nie teen 'n eksterne lys verifieer nie.",
-      "demo_poison_button": "Demo: plak 'n soortgelyke adres"
+      "demo_poison_button": "Demo: plak 'n soortgelyke adres",
+      "remote_enabled": "Aanlyn bedreigingsintelligensie-sifting is aktief. By die verifieerstap stuur dit die ontvangeradres, jou eie stuuradres, die bedrag en — vir tokenoordragte — die kontrakadres en oproepdata na die TIP-diens."
     },
     "simulation": {
       "title": "Transaksiesimulasie",
@@ -407,7 +417,13 @@
       "balance_prefix": "Saldo:",
       "demo_suffix": "(demo)",
       "live_suffix": "(lewendig)",
-      "reading_from_network": "word van netwerk gelees…"
+      "reading_from_network": "word van netwerk gelees…",
+      "mode_crypto_aria": "Voer bedrag in {{currency}} in",
+      "mode_fiat_aria": "Voer bedrag in USD in",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Maks",
+      "max_chip_aria": "Gebruik jou volle {{currency}}-saldo"
     },
     "errors": {
       "amount_missing": "Bedrag word vereis",
@@ -433,7 +449,8 @@
       "back": "Terug"
     },
     "verify": {
-      "summary_label": "Jy stuur"
+      "summary_label": "Jy stuur",
+      "finality": "Stuur is finaal. Sodra dit op die netwerk bevestig is, kan hierdie oordrag nie omgekeer of terugbetaal word nie — kontroleer die ontvanger en bedrag."
     },
     "fee": {
       "automatic": "Netwerkfooi word outomaties gestel vir {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Stuur kon nie voltooi word nie — verifieer asseblief weer om te herprobeer.",
       "send_failed_fallback": "Stuur het misluk",
       "unconfirmed": "Kon hierdie transaksie nog nie op die netwerk bevestig nie — dit is dalk steeds hangend. Kontroleer die verkenner."
+    },
+    "wizard": {
+      "step_recipient": "Ontvanger en bedrag",
+      "step_review": "Hersien",
+      "step_confirm": "Bevestig"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Stuur slegs Solana op {{network}} na hierdie adres."
     },
     "select_asset_prompt": "Kies 'n bate om te ontvang.",
-    "unlock_footer_note": "Adresse kom van jou toestel-gebaseerde beursie en verskyn slegs terwyl dit ontsluit is."
+    "unlock_footer_note": "Adresse kom van jou toestel-gebaseerde beursie en verskyn slegs terwyl dit ontsluit is.",
+    "actions": {
+      "copy": "Kopieer",
+      "copied": "Gekopieer",
+      "share": "Deel",
+      "share_dialog_title": "Deel adres",
+      "share_failed_toast": "Kon nie die deelblad oopmaak nie"
+    }
   },
   "dashboard": {
     "portfolioValue": "Portefeuljewaarde",

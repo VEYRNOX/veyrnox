@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "İnkâr edilebilirliği prova et",
       "description": "Kilidi açık telefonunuzu elinde tutan birinin göreceği gibi panoyu görün."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — çevrimiçi yanıtlar",
+      "description": "İsteğe bağlı · yazdığınız sorular cihazdan ayrılır",
+      "help": "Açıkken, Danışman'a yazdığınız sorular proxy sunucumuza gönderilir ve üçüncü taraf bir yapay zekâ modeli tarafından yanıtlanır; bulunduğunuz ekran, seçili zincir ve yalnızca cihaz başına günlük soru sınırını uygulamak için kullanılan rastgele bir kurulum kimliği de birlikte gönderilir. Kapatmak bunu hemen durdurur; Danışman yine yerleşik bilgisinden yanıt verir. Yeniden açmak, ayrıntılar önünüzdeyken kabul edebilmeniz için tam açıklamayı tekrar gösterir.",
+      "enable_aria": "Çevrimiçi Yapay Zekâ Güvenlik Danışmanı yanıtlarını inceleyin ve açın",
+      "disable_aria": "Çevrimiçi Yapay Zekâ Güvenlik Danışmanı yanıtlarını kapatın"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Ana Sayfa",
     "tab_send": "Gönder",
     "tab_receive": "Al",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Tekrar girmek için PIN'inize ihtiyacınız olacak.",
+    "lock_confirm_cancel": "İptal"
   },
   "back": {
     "default_label": "Geri"
@@ -381,7 +390,8 @@
       "local_disclosure": "Alıcılar, kendi geçmişinize karşı dolandırıcılık adresleri için cihazınızda kontrol edilir — hiçbir şey cihazınızdan çıkmaz.",
       "remote_opt_in": "Ayrıca çevrimiçi bir tehdit veritabanına karşı tarayın (bu adresi bir üçüncü tarafa gönderir)",
       "remote_unavailable": "Çevrimiçi tarama etkin, ancak bu sürümde yapılandırılmış bir sağlayıcı yok — tarama yerel kalıyor, bu yüzden bunu harici bir listeye karşı doğrulayamadık.",
-      "demo_poison_button": "Demo: benzer görünümlü bir adres yapıştır"
+      "demo_poison_button": "Demo: benzer görünümlü bir adres yapıştır",
+      "remote_enabled": "Çevrimiçi tehdit istihbaratı taraması etkin. Doğrulama adımında alıcı adresi, kendi gönderen adresiniz, tutar ve — token transferlerinde — sözleşme adresi ile çağrı verisi TIP hizmetine gönderilir."
     },
     "simulation": {
       "title": "İşlem Simülasyonu",
@@ -407,7 +417,13 @@
       "balance_prefix": "Bakiye:",
       "demo_suffix": "(demo)",
       "live_suffix": "(canlı)",
-      "reading_from_network": "ağdan okunuyor…"
+      "reading_from_network": "ağdan okunuyor…",
+      "mode_crypto_aria": "{{currency}} cinsinden tutar girin",
+      "mode_fiat_aria": "USD cinsinden tutar girin",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Maks.",
+      "max_chip_aria": "Tüm {{currency}} bakiyenizi kullanın"
     },
     "errors": {
       "amount_missing": "Miktar gereklidir",
@@ -433,7 +449,8 @@
       "back": "Geri"
     },
     "verify": {
-      "summary_label": "Gönderiyorsunuz"
+      "summary_label": "Gönderiyorsunuz",
+      "finality": "Gönderim kesindir. Transfer ağda onaylandıktan sonra geri alınamaz veya iade edilemez — alıcıyı ve tutarı kontrol edin."
     },
     "fee": {
       "automatic": "Ağ ücreti {{currency}} ({{network}}) için otomatik olarak ayarlanır.",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Gönderim tamamlanamadı — tekrar denemek için lütfen yeniden doğrulayın.",
       "send_failed_fallback": "Gönderim başarısız oldu",
       "unconfirmed": "Bu işlem ağda henüz onaylanamadı — hâlâ beklemede olabilir. Explorer'ı kontrol edin."
+    },
+    "wizard": {
+      "step_recipient": "Alıcı ve tutar",
+      "step_review": "İnceleme",
+      "step_confirm": "Onayla"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Bu adrese yalnızca {{network}} üzerinde Solana gönderin."
     },
     "select_asset_prompt": "Alınacak bir varlık seçin.",
-    "unlock_footer_note": "Adresler cihaz üzerindeki cüzdanınızdan gelir ve yalnızca kilidi açıkken görünür."
+    "unlock_footer_note": "Adresler cihaz üzerindeki cüzdanınızdan gelir ve yalnızca kilidi açıkken görünür.",
+    "actions": {
+      "copy": "Kopyala",
+      "copied": "Kopyalandı",
+      "share": "Paylaş",
+      "share_dialog_title": "Adresi paylaş",
+      "share_failed_toast": "Paylaşım sayfası açılamadı"
+    }
   },
   "dashboard": {
     "portfolioValue": "Portföy Değeri",

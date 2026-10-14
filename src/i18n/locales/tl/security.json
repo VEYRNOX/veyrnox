@@ -78,7 +78,10 @@
     "demo_reset": "I-reset ang demo (burahin ang lahat ng data ng wallet + nakatagong wallet)",
     "non_demo_hint": "I-lock ang iyong wallet at ilagay ang Emergency PIN para subukan ito. Huwag itong ibahagi kailanman. Nakalimutan? Alisin ito rito habang naka-unlock gamit ang iyong tunay na PIN.",
     "network_default_name": "ang test network",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Bahagi ng Safety Plus ang pagtatakda ng bagong Emergency PIN",
+    "setup_locked_body": "Kailangan ng aktibong subscription sa Safety Plus para gumawa o magpalit ng Emergency PIN. Hindi ito kailanman kailangan sa pag-alis nito, at magagawa mo iyon sa ibaba anumang oras.",
+    "setup_locked_cta": "Tingnan ang mga plano"
   },
   "stealth": {
     "heading": "Stealth / Mga Nakatagong Wallet",
@@ -213,7 +216,8 @@
       "trust_warning": "Kumonekta lamang sa mga dApp na pinagkakatiwalaan mo. Makikita ng dApp ang wallet na ito kapag nakakonekta na.",
       "reject": "Tanggihan",
       "connect_busy": "Kumokonekta…",
-      "connect": "Kumonekta"
+      "connect": "Kumonekta",
+      "risk_blocked": "Naka-block ang koneksyon sa dApp na ito. Tanggihan ito at magbukas na lang ng pinagkakatiwalaang URL."
     },
     "request_approval": {
       "blocked_title": "Naharang ang kahilingan",
@@ -248,7 +252,20 @@
       "sending_busy": "Nagpapadala…",
       "signing_busy": "Lumalagda…",
       "unknown_network_with_id": "Hindi kilalang network (chain {{id}})",
-      "unknown_network": "Hindi kilalang network"
+      "unknown_network": "Hindi kilalang network",
+      "typed_contract_row_label": "Contract",
+      "typed_chain_row_label": "Chain ID",
+      "typed_contract_hint": "Pinipili ng site ang pangalan sa itaas. Ang contract address na ito ang talagang pinapahintulutan ng iyong lagda — ihambing ito sa token na inaasahan mo.",
+      "permit_unapprovable": "Pinapahintulutan ng lagdang ito ang isang spender na ilipat ang iyong mga token, at hindi ina-approve ng Veyrnox ang mga ito sa pamamagitan ng WalletConnect. Tapusin ito mula sa Send screen sa loob ng app, kung saan maaaring suriin at kilalanin ang panganib.",
+      "token_amount_row_label": "Halaga ng token",
+      "token_recipient_row_label": "Tatanggap ng token",
+      "unknown_token_title": "⚠ Hindi kilalang token",
+      "unknown_token_body": "Hindi mabasa ang halaga mula sa request na ito. Huwag aprubahan maliban kung alam mo nang eksakto kung ano ang ipapadala nito.",
+      "max_fee_row_label": "Max na bayad",
+      "max_fee_row_value": "hanggang {{amount}} {{symbol}}",
+      "max_fee_note": "Ito ang pinakamataas na posibleng halaga ng network fee, bukod pa sa halaga sa itaas. Isa itong ceiling, hindi pagtataya — kadalasang mas mababa nang malaki ang aktwal na bayad.",
+      "remote_screening_notice": "Aktibo ang online na threat-intelligence screening para sa request na ito. Bago ang pag-apruba, maaaring ipadala ng Veyrnox ang address ng tatanggap, halaga, at call data sa TIP screening service nito.",
+      "remote_screening_unavailable": "Naka-enable ang online screening sa iyong mga kagustuhan, ngunit walang naka-configure na TIP provider sa build na ito. Lokal lang ang pagsusuri sa request na ito."
     },
     "active_sessions": {
       "empty": "Wala pang nakakonektang dApp. Mag-pair ng isa sa itaas para magsimula.",
@@ -293,6 +310,23 @@
       "biometric": "Awtorisahan ang pagpapadalang ito gamit ang iyong PIN + biometrics",
       "passkey": "Awtorisahan ang pagpapadalang ito gamit ang iyong PIN + passkey",
       "password": "Awtorisahan ang pagpapadalang ito gamit ang iyong PIN + Action Password"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Pinagmulan: {{source}}.",
+      "note_fallback": "Na-flag sa lokal na threat-intelligence list",
+      "critical_footer": "Na-flag ito bilang kritikal. Maaari ka pa ring magpatuloy, ngunit unawain muna ang panganib bago gawin ito.",
+      "headline": {
+        "sanctioned": "Nasa listahan ng mga parusa (sanctions) ang address na ito.",
+        "drainer": "Ito ay kilalang wallet drainer.",
+        "phishing": "Ang address na ito ay nauugnay sa phishing.",
+        "exploit": "Ang address na ito ay nauugnay sa kilalang exploit.",
+        "scam": "Na-flag ang address na ito bilang scam.",
+        "malicious_contract": "Na-flag ang contract na ito bilang malisyoso.",
+        "mixer": "Ito ay isang mixing service.",
+        "burn": "Ito ay isang burn address.",
+        "default": "Na-flag ng Sentinel ang address na ito."
+      }
     }
   }
 }

@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Latihan penafian",
       "description": "Lihat papan pemuka persis seperti yang akan dilihat oleh seseorang yang memegang telefon anda yang terbuka kunci."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — jawapan dalam talian",
+      "description": "Pilihan sendiri · soalan yang anda taip meninggalkan peranti",
+      "help": "Apabila dihidupkan, soalan yang anda taip dalam Penasihat dihantar ke proksi kami dan dijawab oleh model AI pihak ketiga, bersama-sama skrin yang sedang anda lihat, rantaian yang dipilih, dan ID pemasangan rawak yang hanya digunakan untuk menguatkuasakan had soalan harian bagi setiap peranti. Mematikannya menghentikan penghantaran serta-merta; Penasihat masih menjawab daripada pengetahuan terbina dalamnya. Menghidupkannya semula memaparkan penjelasan penuh sekali lagi supaya anda boleh bersetuju dengan butirannya di hadapan anda.",
+      "enable_aria": "Semak dan hidupkan jawapan Penasihat Keselamatan AI dalam talian",
+      "disable_aria": "Matikan jawapan Penasihat Keselamatan AI dalam talian"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Laman Utama",
     "tab_send": "Hantar",
     "tab_receive": "Terima",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Anda memerlukan PIN anda untuk masuk semula.",
+    "lock_confirm_cancel": "Batal"
   },
   "back": {
     "default_label": "Kembali"
@@ -381,7 +390,8 @@
       "local_disclosure": "Penerima disemak pada peranti anda untuk alamat penipuan terhadap sejarah anda sendiri — tiada apa yang meninggalkan peranti anda.",
       "remote_opt_in": "Turut semak terhadap pangkalan data ancaman dalam talian (menghantar alamat ini kepada pihak ketiga)",
       "remote_unavailable": "Semakan dalam talian diaktifkan, tetapi tiada pembekal dikonfigurasikan dalam binaan ini — semakan kekal tempatan, jadi kami tidak dapat mengesahkan ini terhadap senarai luaran.",
-      "demo_poison_button": "Demo: tampal alamat serupa"
+      "demo_poison_button": "Demo: tampal alamat serupa",
+      "remote_enabled": "Saringan risikan ancaman dalam talian aktif. Pada langkah pengesahan, ini menghantar alamat penerima, alamat penghantaran anda sendiri, jumlah, dan — bagi pemindahan token — alamat kontrak serta data panggilan kepada perkhidmatan TIP."
     },
     "simulation": {
       "title": "Simulasi Transaksi",
@@ -407,7 +417,13 @@
       "balance_prefix": "Baki:",
       "demo_suffix": "(demo)",
       "live_suffix": "(langsung)",
-      "reading_from_network": "membaca daripada rangkaian…"
+      "reading_from_network": "membaca daripada rangkaian…",
+      "mode_crypto_aria": "Masukkan jumlah dalam {{currency}}",
+      "mode_fiat_aria": "Masukkan jumlah dalam USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Maks",
+      "max_chip_aria": "Gunakan keseluruhan baki {{currency}} anda"
     },
     "errors": {
       "amount_missing": "Jumlah diperlukan",
@@ -433,7 +449,8 @@
       "back": "Kembali"
     },
     "verify": {
-      "summary_label": "Anda menghantar"
+      "summary_label": "Anda menghantar",
+      "finality": "Penghantaran adalah muktamad. Setelah disahkan pada rangkaian, pemindahan ini tidak boleh dibalikkan atau dikembalikan wang — semak penerima dan jumlah."
     },
     "fee": {
       "automatic": "Yuran rangkaian ditetapkan secara automatik untuk {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Hantaran tidak dapat selesai — sila sahkan semula untuk mencuba lagi.",
       "send_failed_fallback": "Hantaran gagal",
       "unconfirmed": "Tidak dapat mengesahkan transaksi ini pada rangkaian lagi — ia mungkin masih belum selesai. Semak explorer."
+    },
+    "wizard": {
+      "step_recipient": "Penerima & jumlah",
+      "step_review": "Semak",
+      "step_confirm": "Sahkan"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Hanya hantar Solana pada {{network}} ke alamat ini."
     },
     "select_asset_prompt": "Pilih aset untuk diterima.",
-    "unlock_footer_note": "Alamat datang daripada dompet di peranti anda dan hanya muncul semasa ia terbuka kunci."
+    "unlock_footer_note": "Alamat datang daripada dompet di peranti anda dan hanya muncul semasa ia terbuka kunci.",
+    "actions": {
+      "copy": "Salin",
+      "copied": "Disalin",
+      "share": "Kongsi",
+      "share_dialog_title": "Kongsi alamat",
+      "share_failed_toast": "Tidak dapat membuka helaian kongsi"
+    }
   },
   "dashboard": {
     "portfolioValue": "Nilai Portfolio",

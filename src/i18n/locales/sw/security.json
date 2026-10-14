@@ -78,7 +78,10 @@
     "demo_reset": "Weka upya onyesho (futa data yote ya pochi + pochi iliyofichwa)",
     "non_demo_hint": "Funga pochi yako na uingize PIN ya Dharura ili kuijaribu. Usiishiriki kamwe. Umeisahau? Iondoe hapa ukiwa umefungua kwa PIN yako halisi.",
     "network_default_name": "mtandao wa majaribio",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Kuweka PIN mpya ya Dharura ni sehemu ya Safety Plus",
+    "setup_locked_body": "Kuunda au kubadilisha PIN ya Dharura kunahitaji usajili hai wa Safety Plus. Kuiondoa hakuhitaji kamwe, na unaweza kufanya hivyo hapa chini wakati wowote.",
+    "setup_locked_cta": "Tazama mipango"
   },
   "stealth": {
     "heading": "Pochi za Kificho / Zilizofichwa",
@@ -213,7 +216,8 @@
       "trust_warning": "Unganisha tu na dApp unazoziamini. Pochi hii itaonekana kwa dApp mara tu ikiunganishwa.",
       "reject": "Kataa",
       "connect_busy": "Inaunganisha…",
-      "connect": "Unganisha"
+      "connect": "Unganisha",
+      "risk_blocked": "Muunganisho na dApp hii umezuiwa. Ikatae na ufungue URL inayoaminika badala yake."
     },
     "request_approval": {
       "blocked_title": "Ombi limezuiliwa",
@@ -248,7 +252,20 @@
       "sending_busy": "Inatuma…",
       "signing_busy": "Inatia saini…",
       "unknown_network_with_id": "Mtandao usiojulikana (mnyororo {{id}})",
-      "unknown_network": "Mtandao usiojulikana"
+      "unknown_network": "Mtandao usiojulikana",
+      "typed_contract_row_label": "Mkataba",
+      "typed_chain_row_label": "Kitambulisho cha mnyororo",
+      "typed_contract_hint": "Jina lililo juu huchaguliwa na tovuti. Anwani hii ya mkataba ndiyo ambayo saini yako inaidhinisha kikweli — iangalie dhidi ya tokeni unayotarajia.",
+      "permit_unapprovable": "Saini hii inamruhusu mtumiaji (spender) kuhamisha tokeni zako, na Veyrnox haidhinishi hizo kupitia WalletConnect. Ikamilishe kutoka skrini ya Tuma ndani ya programu, ambapo hatari inaweza kukaguliwa na kukubaliwa.",
+      "token_amount_row_label": "Kiasi cha tokeni",
+      "token_recipient_row_label": "Mpokeaji wa tokeni",
+      "unknown_token_title": "⚠ Tokeni isiyojulikana",
+      "unknown_token_body": "Kiasi hakisomeki kutoka kwa ombi hili. Usiidhinishe isipokuwa unajua hasa hiki kinatuma nini.",
+      "max_fee_row_label": "Ada ya juu zaidi",
+      "max_fee_row_value": "hadi {{amount}} {{symbol}}",
+      "max_fee_note": "Hii ndiyo kiwango cha juu ambacho ada ya mtandao inaweza kugharimu, juu ya thamani iliyo hapo juu. Ni kikomo, si makadirio — ada halisi mara nyingi huwa ndogo zaidi.",
+      "remote_screening_notice": "Uchunguzi wa taarifa za kijasusi za vitisho mtandaoni umewashwa kwa ombi hili. Kabla ya kuidhinisha, Veyrnox inaweza kutuma anwani ya mpokeaji, kiasi, na data ya wito kwa huduma yake ya uchunguzi ya TIP.",
+      "remote_screening_unavailable": "Uchunguzi wa mtandaoni umewashwa katika mapendeleo yako, lakini hakuna mtoa huduma wa TIP aliyesanidiwa katika toleo hili. Ombi hili litachunguzwa kwenye kifaa pekee."
     },
     "active_sessions": {
       "empty": "Hakuna dApp zilizounganishwa bado. Unganisha moja hapo juu ili kuanza.",
@@ -293,6 +310,23 @@
       "biometric": "Idhinisha utumaji huu kwa PIN + alama za mwili",
       "passkey": "Idhinisha utumaji huu kwa PIN + ufunguo wa siri",
       "password": "Idhinisha utumaji huu kwa PIN + Nenosiri la Kitendo"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Chanzo: {{source}}.",
+      "note_fallback": "Imetiwa alama kwenye orodha ya ndani ya taarifa za kijasusi za vitisho",
+      "critical_footer": "Hii imetiwa alama kuwa hatari kuu. Bado unaweza kuendelea, lakini elewa hatari kabla ya kufanya hivyo.",
+      "headline": {
+        "sanctioned": "Anwani hii iko kwenye orodha ya vikwazo (sanctions).",
+        "drainer": "Huyu ni mnyang'anyi wa pochi anayejulikana (drainer).",
+        "phishing": "Anwani hii inahusishwa na ulaghai wa phishing.",
+        "exploit": "Anwani hii inahusishwa na exploit inayojulikana.",
+        "scam": "Anwani hii imetiwa alama kuwa ya ulaghai.",
+        "malicious_contract": "Mkataba huu umetiwa alama kuwa hasidi.",
+        "mixer": "Hii ni huduma ya kuchanganya (mixer).",
+        "burn": "Hii ni anwani ya kuchoma (burn).",
+        "default": "Sentinel imetia alama anwani hii."
+      }
     }
   }
 }

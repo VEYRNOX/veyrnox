@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Répéter la déniabilité",
       "description": "Voir le tableau de bord exactement comme le verrait quelqu'un tenant ton téléphone déverrouillé."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — réponses en ligne",
+      "description": "Sur option · tes questions saisies quittent l'appareil",
+      "help": "Lorsque cette option est activée, les questions que tu saisis dans l'Advisor sont envoyées à notre proxy et traitées par un modèle d'IA tiers, avec l'écran où tu te trouves, la chaîne sélectionnée et un identifiant d'installation aléatoire utilisé uniquement pour appliquer une limite quotidienne de questions par appareil. La désactiver l'arrête immédiatement ; l'Advisor répond alors à partir de ses connaissances intégrées. La réactiver réaffiche l'explication complète afin que tu puisses l'accepter en connaissance de cause.",
+      "enable_aria": "Consulter et activer les réponses en ligne de l'AI Security Advisor",
+      "disable_aria": "Désactiver les réponses en ligne de l'AI Security Advisor"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Accueil",
     "tab_send": "Envoyer",
     "tab_receive": "Recevoir",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Tu auras besoin de ton PIN pour y revenir.",
+    "lock_confirm_cancel": "Annuler"
   },
   "back": {
     "default_label": "Retour"
@@ -381,7 +390,8 @@
       "local_disclosure": "Les destinataires sont vérifiés sur ton appareil pour détecter des adresses d'arnaque à partir de ton propre historique — rien ne quitte ton appareil.",
       "remote_opt_in": "Vérifier aussi auprès d'une base de données de menaces en ligne (envoie cette adresse à un tiers)",
       "remote_unavailable": "La vérification en ligne est activée, mais aucun fournisseur n'est configuré dans cette version — la vérification reste locale, nous n'avons donc pas pu la confirmer par rapport à une liste externe.",
-      "demo_poison_button": "Démo : coller une adresse ressemblante"
+      "demo_poison_button": "Démo : coller une adresse ressemblante",
+      "remote_enabled": "Le filtrage en ligne par renseignement sur les menaces est actif. À l'étape de vérification, il envoie au service TIP l'adresse du destinataire, ta propre adresse d'envoi, le montant et, pour les transferts de jetons, l'adresse du contrat et les données d'appel."
     },
     "simulation": {
       "title": "Simulation de transaction",
@@ -407,7 +417,13 @@
       "balance_prefix": "Solde :",
       "demo_suffix": "(démo)",
       "live_suffix": "(en direct)",
-      "reading_from_network": "lecture depuis le réseau…"
+      "reading_from_network": "lecture depuis le réseau…",
+      "mode_crypto_aria": "Saisir le montant en {{currency}}",
+      "mode_fiat_aria": "Saisir le montant en USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Max",
+      "max_chip_aria": "Utiliser tout ton solde en {{currency}}"
     },
     "errors": {
       "amount_missing": "Le montant est requis",
@@ -433,7 +449,8 @@
       "back": "Retour"
     },
     "verify": {
-      "summary_label": "Tu envoies"
+      "summary_label": "Tu envoies",
+      "finality": "L'envoi est définitif. Une fois confirmé sur le réseau, ce transfert ne peut être ni annulé ni remboursé — vérifie le destinataire et le montant."
     },
     "fee": {
       "automatic": "Les frais de réseau sont définis automatiquement pour {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "L'envoi n'a pas pu aboutir — veuillez vérifier à nouveau pour réessayer.",
       "send_failed_fallback": "Échec de l'envoi",
       "unconfirmed": "Impossible de confirmer cette transaction sur le réseau pour l'instant — elle est peut-être encore en attente. Vérifie sur l'explorateur."
+    },
+    "wizard": {
+      "step_recipient": "Destinataire et montant",
+      "step_review": "Vérification",
+      "step_confirm": "Confirmation"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "N'envoie du Solana sur {{network}} qu'à cette adresse."
     },
     "select_asset_prompt": "Sélectionne un actif à recevoir.",
-    "unlock_footer_note": "Les adresses proviennent de ton portefeuille sur l'appareil et n'apparaissent que lorsqu'il est déverrouillé."
+    "unlock_footer_note": "Les adresses proviennent de ton portefeuille sur l'appareil et n'apparaissent que lorsqu'il est déverrouillé.",
+    "actions": {
+      "copy": "Copier",
+      "copied": "Copié",
+      "share": "Partager",
+      "share_dialog_title": "Partager l'adresse",
+      "share_failed_toast": "Impossible d'ouvrir la feuille de partage"
+    }
   },
   "dashboard": {
     "portfolioValue": "Valeur du portefeuille",

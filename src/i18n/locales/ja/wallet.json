@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "デニアビリティ（否認可能性）のリハーサル",
       "description": "ロック解除された端末を手にした第三者から見えるダッシュボードをそのまま確認できます。"
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — オンライン回答",
+      "description": "オプトイン · 入力した質問がデバイスの外に送信されます",
+      "help": "オンにすると、Advisorに入力した質問が、表示中の画面、選択中のチェーン、および端末ごとの1日あたりの質問数の上限を適用するためだけに使われるランダムなインストールIDとともに、当社のプロキシへ送信され、サードパーティのAIモデルが回答します。オフにすると直ちに送信が止まり、Advisorは内蔵の知識で回答し続けます。再びオンにすると詳細な説明が再表示されるので、内容を確認したうえで同意できます。",
+      "enable_aria": "AI Security Advisorのオンライン回答を確認してオンにする",
+      "disable_aria": "AI Security Advisorのオンライン回答をオフにする"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "ホーム",
     "tab_send": "送金",
     "tab_receive": "受取",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "再び入るにはPINが必要です。",
+    "lock_confirm_cancel": "キャンセル"
   },
   "back": {
     "default_label": "戻る"
@@ -381,7 +390,8 @@
       "local_disclosure": "送金先は、あなた自身の履歴と照合して詐欺アドレスがないかこの端末上で確認されます — 何もこの端末の外には送信されません。",
       "remote_opt_in": "オンラインの脅威データベースとも照合する（このアドレスをサードパーティに送信します）",
       "remote_unavailable": "オンライン照合は有効になっていますが、このビルドではプロバイダーが設定されていないため、照合はローカルのみで行われ、外部リストとの照合は確認できませんでした。",
-      "demo_poison_button": "デモ: 似せかけのアドレスを貼り付ける"
+      "demo_poison_button": "デモ: 似せかけのアドレスを貼り付ける",
+      "remote_enabled": "オンラインの脅威インテリジェンス・スクリーニングが有効です。確認ステップで、受取人のアドレス、ご自身の送信元アドレス、金額、そしてトークン送金の場合はコントラクトアドレスとコールデータがTIPサービスに送信されます。"
     },
     "simulation": {
       "title": "トランザクションシミュレーション",
@@ -407,7 +417,13 @@
       "balance_prefix": "残高:",
       "demo_suffix": "（デモ）",
       "live_suffix": "（ライブ）",
-      "reading_from_network": "ネットワークから読み込み中…"
+      "reading_from_network": "ネットワークから読み込み中…",
+      "mode_crypto_aria": "{{currency}}で金額を入力",
+      "mode_fiat_aria": "USDで金額を入力",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "最大",
+      "max_chip_aria": "{{currency}}の全残高を使用"
     },
     "errors": {
       "amount_missing": "金額を入力してください",
@@ -433,7 +449,8 @@
       "back": "戻る"
     },
     "verify": {
-      "summary_label": "送金内容"
+      "summary_label": "送金内容",
+      "finality": "送信は取り消せません。ネットワーク上で承認されると、この送金は取り消しも返金もできません — 受取人と金額を確認してください。"
     },
     "fee": {
       "automatic": "{{currency}}（{{network}}）のネットワーク手数料は自動設定されます。",
@@ -482,6 +499,11 @@
       "two_factor_retry": "送金を完了できませんでした — 再度確認してから再試行してください。",
       "send_failed_fallback": "送金に失敗しました",
       "unconfirmed": "このトランザクションはまだネットワーク上で確認できませんでした — 保留中の可能性があります。エクスプローラーで確認してください。"
+    },
+    "wizard": {
+      "step_recipient": "受取人と金額",
+      "step_review": "確認",
+      "step_confirm": "確定"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "このアドレスには{{network}}上のSolanaのみを送金してください。"
     },
     "select_asset_prompt": "受け取る資産を選択してください。",
-    "unlock_footer_note": "アドレスは端末内のウォレットから取得され、ロック解除中のみ表示されます。"
+    "unlock_footer_note": "アドレスは端末内のウォレットから取得され、ロック解除中のみ表示されます。",
+    "actions": {
+      "copy": "コピー",
+      "copied": "コピーしました",
+      "share": "共有",
+      "share_dialog_title": "アドレスを共有",
+      "share_failed_toast": "共有シートを開けませんでした"
+    }
   },
   "dashboard": {
     "portfolioValue": "ポートフォリオ評価額",

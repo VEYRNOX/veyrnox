@@ -78,7 +78,10 @@
     "demo_reset": "Resetovat demo (smazat všechna data peněženky + skrytou peněženku)",
     "non_demo_hint": "Zamkněte peněženku a zadejte Nouzový PIN, abyste si to vyzkoušeli. Nikdy jej nikomu nesdělujte. Zapomněli jste jej? Odeberte jej zde, když jste odemknuti skutečným PINem.",
     "network_default_name": "testovací síť",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Nastavení nového Nouzového PINu je součástí Safety Plus",
+    "setup_locked_body": "Vytvoření nebo změna Nouzového PINu vyžaduje aktivní předplatné Safety Plus. Odebrání ho nevyžaduje nikdy a můžete ho provést kdykoli níže.",
+    "setup_locked_cta": "Zobrazit plány"
   },
   "stealth": {
     "heading": "Utajené / skryté peněženky",
@@ -213,7 +216,8 @@
       "trust_warning": "Připojujte se pouze k dApps, kterým důvěřujete. Tato peněženka bude po připojení viditelná pro dApp.",
       "reject": "Odmítnout",
       "connect_busy": "Připojování…",
-      "connect": "Připojit"
+      "connect": "Připojit",
+      "risk_blocked": "Připojení k této dApp je zablokováno. Odmítněte a místo toho otevřete důvěryhodnou URL."
     },
     "request_approval": {
       "blocked_title": "Požadavek zablokován",
@@ -248,7 +252,20 @@
       "sending_busy": "Odesílání…",
       "signing_busy": "Podepisování…",
       "unknown_network_with_id": "Neznámá síť (chain {{id}})",
-      "unknown_network": "Neznámá síť"
+      "unknown_network": "Neznámá síť",
+      "typed_contract_row_label": "Kontrakt",
+      "typed_chain_row_label": "ID řetězce",
+      "typed_contract_hint": "Název výše zvolil web. Tato adresa kontraktu je to, co váš podpis skutečně opravňuje — porovnejte ji s tokenem, který očekáváte.",
+      "permit_unapprovable": "Tento podpis opravňuje spendera k přesunu vašich tokenů a Veyrnox je přes WalletConnect neschvaluje. Dokončete to na obrazovce Odeslat v aplikaci, kde lze riziko zkontrolovat a potvrdit.",
+      "token_amount_row_label": "Částka tokenu",
+      "token_recipient_row_label": "Příjemce tokenu",
+      "unknown_token_title": "⚠ Neznámý token",
+      "unknown_token_body": "Částku nelze z tohoto požadavku přečíst. Neschvalujte, pokud přesně nevíte, co to odesílá.",
+      "max_fee_row_label": "Max. poplatek",
+      "max_fee_row_value": "až {{amount}} {{symbol}}",
+      "max_fee_note": "Toto je nejvíce, kolik může síťový poplatek stát, nad rámec hodnoty výše. Je to strop, nikoli odhad — skutečný poplatek bývá obvykle mnohem nižší.",
+      "remote_screening_notice": "Pro tento požadavek je aktivní online prověřování pomocí threat intelligence. Před schválením může Veyrnox odeslat adresu příjemce, částku a data volání své prověřovací službě TIP.",
+      "remote_screening_unavailable": "Online prověřování je ve vašich předvolbách zapnuto, ale v tomto sestavení není nakonfigurován žádný poskytovatel TIP. Tento požadavek bude prověřen pouze lokálně."
     },
     "active_sessions": {
       "empty": "Zatím nejsou připojeny žádné dApps. Spárujte jednu výše a začněte.",
@@ -293,6 +310,23 @@
       "biometric": "Autorizujte tuto platbu svým PINem + biometrikou",
       "passkey": "Autorizujte tuto platbu svým PINem + passkey",
       "password": "Autorizujte tuto platbu svým PINem + akčním heslem"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Zdroj: {{source}}.",
+      "note_fallback": "Označeno v lokálním seznamu threat intelligence",
+      "critical_footer": "Je to označeno jako kritické. Stále můžete pokračovat, ale před tím prosím pochopte riziko.",
+      "headline": {
+        "sanctioned": "Tato adresa je na sankčním seznamu.",
+        "drainer": "Toto je známý drainer peněženek.",
+        "phishing": "Tato adresa souvisí s phishingem.",
+        "exploit": "Tato adresa souvisí se známým exploitem.",
+        "scam": "Tato adresa je označena jako podvod.",
+        "malicious_contract": "Tento kontrakt byl označen jako škodlivý.",
+        "mixer": "Toto je mixovací služba.",
+        "burn": "Toto je spalovací adresa.",
+        "default": "Sentinel označil tuto adresu."
+      }
     }
   }
 }

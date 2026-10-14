@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Isanay ang deniability",
       "description": "Tingnan ang dashboard eksakto sa paraan ng makikita ng may hawak ng iyong naka-unlock na telepono."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — mga online na sagot",
+      "description": "Opt-in · lalabas ng device ang mga tanong na tina-type mo",
+      "help": "Kapag naka-on, ang mga tanong na tina-type mo sa Advisor ay ipinapadala sa aming proxy at sinasagot ng third-party na AI model, kasama ang screen na kinaroroonan mo, ang napiling chain, at isang random na install ID na ginagamit lamang para ipatupad ang pang-araw-araw na limitasyon ng tanong kada device. Kapag in-off mo ito, titigil ito kaagad; sasagot pa rin ang Advisor mula sa built-in nitong kaalaman. Kapag in-on mo ulit, ipapakita muli ang buong paliwanag para makapayag ka nang nasa harap mo ang mga detalye.",
+      "enable_aria": "Suriin at i-on ang mga online na sagot ng AI Security Advisor",
+      "disable_aria": "I-off ang mga online na sagot ng AI Security Advisor"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Home",
     "tab_send": "Magpadala",
     "tab_receive": "Tumanggap",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Kakailanganin mo ang iyong PIN para makabalik.",
+    "lock_confirm_cancel": "Kanselahin"
   },
   "back": {
     "default_label": "Bumalik"
@@ -381,7 +390,8 @@
       "local_disclosure": "Sinusuri ang mga tatanggap sa iyong device para sa mga scam address laban sa sarili mong history — walang umaalis sa iyong device.",
       "remote_opt_in": "Suriin din laban sa online na threat database (ipinapadala ang address na ito sa isang third party)",
       "remote_unavailable": "Naka-enable ang online screening, pero walang na-configure na provider sa build na ito — mananatiling lokal ang screening, kaya hindi namin ma-verify ito laban sa panlabas na listahan.",
-      "demo_poison_button": "Demo: i-paste ang isang look-alike na address"
+      "demo_poison_button": "Demo: i-paste ang isang look-alike na address",
+      "remote_enabled": "Aktibo ang online na threat intelligence screening. Sa hakbang ng pag-verify, ipinapadala nito sa TIP service ang address ng tatanggap, ang sarili mong sending address, ang halaga, at — para sa mga token transfer — ang contract address at call data."
     },
     "simulation": {
       "title": "Simulasyon ng Transaksyon",
@@ -407,7 +417,13 @@
       "balance_prefix": "Balanse:",
       "demo_suffix": "(demo)",
       "live_suffix": "(live)",
-      "reading_from_network": "binabasa mula sa network…"
+      "reading_from_network": "binabasa mula sa network…",
+      "mode_crypto_aria": "Maglagay ng halaga sa {{currency}}",
+      "mode_fiat_aria": "Maglagay ng halaga sa USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Max",
+      "max_chip_aria": "Gamitin ang buong balanse mong {{currency}}"
     },
     "errors": {
       "amount_missing": "Kinakailangan ang halaga",
@@ -433,7 +449,8 @@
       "back": "Bumalik"
     },
     "verify": {
-      "summary_label": "Ipinapadala mo"
+      "summary_label": "Ipinapadala mo",
+      "finality": "Pinal ang pagpapadala. Kapag nakumpirma na ito sa network, hindi na maaaring ibalik o i-refund ang transfer na ito — suriin ang tatanggap at ang halaga."
     },
     "fee": {
       "automatic": "Awtomatikong itinatakda ang network fee para sa {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Hindi nakumpleto ang pagpapadala — mangyaring mag-verify muli para subukan ulit.",
       "send_failed_fallback": "Nabigo ang pagpapadala",
       "unconfirmed": "Hindi pa makumpirma ang transaksyong ito sa network — puwedeng nakabinbin pa ito. Suriin sa explorer."
+    },
+    "wizard": {
+      "step_recipient": "Tatanggap at halaga",
+      "step_review": "Suriin",
+      "step_confirm": "Kumpirmahin"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Ipadala lamang ang Solana sa {{network}} sa address na ito."
     },
     "select_asset_prompt": "Pumili ng asset na tatanggapin.",
-    "unlock_footer_note": "Nanggagaling ang mga address mula sa iyong on-device na wallet at lalabas lamang habang naka-unlock ito."
+    "unlock_footer_note": "Nanggagaling ang mga address mula sa iyong on-device na wallet at lalabas lamang habang naka-unlock ito.",
+    "actions": {
+      "copy": "Kopyahin",
+      "copied": "Nakopya",
+      "share": "Ibahagi",
+      "share_dialog_title": "Ibahagi ang address",
+      "share_failed_toast": "Hindi mabuksan ang share sheet"
+    }
   },
   "dashboard": {
     "portfolioValue": "Halaga ng Portfolio",

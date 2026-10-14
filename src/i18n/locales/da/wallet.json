@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Øv benægtelighed",
       "description": "Se dashboardet præcis som en person, der holder din oplåste telefon, ville se det."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — onlinesvar",
+      "description": "Valgfrit · dine indtastede spørgsmål forlader enheden",
+      "help": "Når det er slået til, sendes de spørgsmål, du skriver i Advisor, til vores proxy og besvares af en AI-model fra en tredjepart, sammen med den skærm, du er på, den valgte chain og et tilfældigt installations-ID, der kun bruges til at håndhæve en daglig spørgsmålsgrænse pr. enhed. Hvis du slår det fra, stopper det med det samme; Advisor svarer stadig ud fra sin indbyggede viden. Hvis du slår det til igen, vises den fulde forklaring igen, så du kan acceptere den med detaljerne foran dig.",
+      "enable_aria": "Gennemgå og slå onlinesvar fra AI Security Advisor til",
+      "disable_aria": "Slå onlinesvar fra AI Security Advisor fra"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Hjem",
     "tab_send": "Send",
     "tab_receive": "Modtag",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Du skal bruge din PIN for at komme ind igen.",
+    "lock_confirm_cancel": "Annuller"
   },
   "back": {
     "default_label": "Tilbage"
@@ -381,7 +390,8 @@
       "local_disclosure": "Modtagere tjekkes på din enhed for svindeladresser mod din egen historik — intet forlader din enhed.",
       "remote_opt_in": "Tjek også mod en online trusselsdatabase (sender denne adresse til en tredjepart)",
       "remote_unavailable": "Onlinetjek er aktiveret, men ingen udbyder er konfigureret i denne build — tjekket forbliver lokalt, så vi kunne ikke bekræfte dette mod en ekstern liste.",
-      "demo_poison_button": "Demo: indsæt en lignende adresse"
+      "demo_poison_button": "Demo: indsæt en lignende adresse",
+      "remote_enabled": "Online trusselsefterretningsscreening er aktiv. I verificeringstrinnet sender den modtagerens adresse, din egen afsenderadresse, beløbet og — ved tokenoverførsler — kontraktadressen og kaldedata til TIP-tjenesten."
     },
     "simulation": {
       "title": "Transaktionssimulering",
@@ -407,7 +417,13 @@
       "balance_prefix": "Saldo:",
       "demo_suffix": "(demo)",
       "live_suffix": "(live)",
-      "reading_from_network": "læser fra netværket…"
+      "reading_from_network": "læser fra netværket…",
+      "mode_crypto_aria": "Indtast beløb i {{currency}}",
+      "mode_fiat_aria": "Indtast beløb i USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Maks",
+      "max_chip_aria": "Brug hele din {{currency}}-saldo"
     },
     "errors": {
       "amount_missing": "Beløb er påkrævet",
@@ -433,7 +449,8 @@
       "back": "Tilbage"
     },
     "verify": {
-      "summary_label": "Du sender"
+      "summary_label": "Du sender",
+      "finality": "Afsendelse er endelig. Når overførslen er bekræftet på netværket, kan den ikke fortrydes eller refunderes — kontrollér modtager og beløb."
     },
     "fee": {
       "automatic": "Netværksgebyr indstilles automatisk for {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Afsendelsen kunne ikke gennemføres — verificér igen for at prøve igen.",
       "send_failed_fallback": "Afsendelse mislykkedes",
       "unconfirmed": "Kunne ikke bekræfte denne transaktion på netværket endnu — den kan stadig være afventende. Tjek explorer."
+    },
+    "wizard": {
+      "step_recipient": "Modtager og beløb",
+      "step_review": "Gennemgå",
+      "step_confirm": "Bekræft"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Send kun Solana på {{network}} til denne adresse."
     },
     "select_asset_prompt": "Vælg et aktiv, der skal modtages.",
-    "unlock_footer_note": "Adresser kommer fra din wallet på enheden og vises kun, mens den er låst op."
+    "unlock_footer_note": "Adresser kommer fra din wallet på enheden og vises kun, mens den er låst op.",
+    "actions": {
+      "copy": "Kopiér",
+      "copied": "Kopieret",
+      "share": "Del",
+      "share_dialog_title": "Del adresse",
+      "share_failed_toast": "Kunne ikke åbne delingsarket"
+    }
   },
   "dashboard": {
     "portfolioValue": "Porteføljeværdi",

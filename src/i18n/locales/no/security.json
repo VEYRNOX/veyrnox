@@ -78,7 +78,10 @@
     "demo_reset": "Tilbakestill demo (slett all lommebokdata + skjult lommebok)",
     "non_demo_hint": "Lås lommeboken din og tast inn nød-PIN-koden for å prøve det. Del den aldri. Glemt den? Fjern den her mens du er innlogget med den reelle PIN-koden.",
     "network_default_name": "testnettverket",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Å angi en ny nød-PIN er en del av Safety Plus",
+    "setup_locked_body": "Å opprette eller endre en nød-PIN krever et aktivt Safety Plus-abonnement. Å fjerne en krever det aldri, og det kan du gjøre nedenfor når som helst.",
+    "setup_locked_cta": "Se abonnementer"
   },
   "stealth": {
     "heading": "Skjulte lommebøker",
@@ -213,7 +216,8 @@
       "trust_warning": "Koble bare til dApper du stoler på. Denne lommeboken vil være synlig for dApp-en når den er tilkoblet.",
       "reject": "Avvis",
       "connect_busy": "Kobler til…",
-      "connect": "Koble til"
+      "connect": "Koble til",
+      "risk_blocked": "Tilkoblingen til denne dApp-en er blokkert. Avvis og åpne en pålitelig URL i stedet."
     },
     "request_approval": {
       "blocked_title": "Forespørsel blokkert",
@@ -248,7 +252,20 @@
       "sending_busy": "Sender…",
       "signing_busy": "Signerer…",
       "unknown_network_with_id": "Ukjent nettverk (kjede {{id}})",
-      "unknown_network": "Ukjent nettverk"
+      "unknown_network": "Ukjent nettverk",
+      "typed_contract_row_label": "Kontrakt",
+      "typed_chain_row_label": "Kjede-ID",
+      "typed_contract_hint": "Navnet ovenfor er valgt av nettstedet. Denne kontraktadressen er det signaturen din faktisk gir fullmakt til — kontroller den mot tokenet du forventer.",
+      "permit_unapprovable": "Denne signaturen gir en bruker (spender) fullmakt til å flytte tokenene dine, og Veyrnox godkjenner ikke slike over WalletConnect. Fullfør det fra Send-skjermen i appen, der risikoen kan gjennomgås og bekreftes.",
+      "token_amount_row_label": "Tokenbeløp",
+      "token_recipient_row_label": "Tokenmottaker",
+      "unknown_token_title": "⚠ Ukjent token",
+      "unknown_token_body": "Beløpet kan ikke leses fra denne forespørselen. Ikke godkjenn med mindre du vet nøyaktig hva dette sender.",
+      "max_fee_row_label": "Maks gebyr",
+      "max_fee_row_value": "opptil {{amount}} {{symbol}}",
+      "max_fee_note": "Dette er det mest nettverksgebyret kan koste, i tillegg til verdien ovenfor. Det er et tak, ikke et estimat — det faktiske gebyret er vanligvis langt lavere.",
+      "remote_screening_notice": "Trusseletterretningskontroll på nett er aktiv for denne forespørselen. Før godkjenning kan Veyrnox sende mottakeradressen, beløpet og kalldataene til TIP-kontrolltjenesten sin.",
+      "remote_screening_unavailable": "Kontroll på nett er slått på i innstillingene dine, men ingen TIP-leverandør er konfigurert i denne versjonen. Denne forespørselen vil bare bli kontrollert lokalt."
     },
     "active_sessions": {
       "empty": "Ingen dApper tilkoblet ennå. Koble til en ovenfor for å komme i gang.",
@@ -293,6 +310,23 @@
       "biometric": "Autoriser denne sendingen med PIN-koden din + biometri",
       "passkey": "Autoriser denne sendingen med PIN-koden din + passkey",
       "password": "Autoriser denne sendingen med PIN-koden din + handlingspassord"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Kilde: {{source}}.",
+      "note_fallback": "Flagget i den lokale trusseletterretningslisten",
+      "critical_footer": "Dette er flagget som kritisk. Du kan fortsatt gå videre, men forstå risikoen før du gjør det.",
+      "headline": {
+        "sanctioned": "Denne adressen står på en sanksjonsliste.",
+        "drainer": "Dette er en kjent lommebok-drainer.",
+        "phishing": "Denne adressen er knyttet til phishing.",
+        "exploit": "Denne adressen er knyttet til et kjent exploit.",
+        "scam": "Denne adressen er flagget som svindel.",
+        "malicious_contract": "Denne kontrakten er flagget som skadelig.",
+        "mixer": "Dette er en miksetjeneste.",
+        "burn": "Dette er en brenn-adresse.",
+        "default": "Sentinel har flagget denne adressen."
+      }
     }
   }
 }

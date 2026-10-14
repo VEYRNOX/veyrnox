@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Nacvičit deniabilitu",
       "description": "Zobrazte si přehled přesně tak, jak by jej viděl někdo, kdo drží váš odemknutý telefon."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — online odpovědi",
+      "description": "Volitelné · vaše zadané dotazy opouštějí zařízení",
+      "help": "Když je zapnuto, dotazy, které zadáte v Advisoru, jsou odeslány na náš proxy server a zodpovězeny modelem umělé inteligence třetí strany, spolu s obrazovkou, na které se nacházíte, vybraným řetězcem a náhodným ID instalace, které slouží pouze k prosazení denního limitu dotazů na zařízení. Vypnutí to okamžitě zastaví; Advisor nadále odpovídá z vestavěných znalostí. Opětovným zapnutím se znovu zobrazí úplné vysvětlení, abyste s ním mohli souhlasit s podrobnostmi před očima.",
+      "enable_aria": "Zkontrolovat a zapnout online odpovědi AI Security Advisor",
+      "disable_aria": "Vypnout online odpovědi AI Security Advisor"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Domů",
     "tab_send": "Odeslat",
     "tab_receive": "Přijmout",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Pro opětovný vstup budete potřebovat svůj PIN.",
+    "lock_confirm_cancel": "Zrušit"
   },
   "back": {
     "default_label": "Zpět"
@@ -381,7 +390,8 @@
       "local_disclosure": "Příjemci jsou kontrolováni na vašem zařízení proti podvodným adresám z vaší vlastní historie — nic neopouští vaše zařízení.",
       "remote_opt_in": "Také prověřit proti online databázi hrozeb (odešle tuto adresu třetí straně)",
       "remote_unavailable": "Online prověřování je zapnuto, ale v této verzi není nakonfigurován žádný poskytovatel — prověřování zůstává lokální, takže jsme to nemohli ověřit proti externímu seznamu.",
-      "demo_poison_button": "Demo: vložit podobně vypadající adresu"
+      "demo_poison_button": "Demo: vložit podobně vypadající adresu",
+      "remote_enabled": "Online prověřování pomocí threat intelligence je aktivní. V kroku ověření odešle adresu příjemce, vaši odesílací adresu, částku a — u převodů tokenů — adresu kontraktu a data volání službě TIP."
     },
     "simulation": {
       "title": "Simulace transakce",
@@ -407,7 +417,13 @@
       "balance_prefix": "Zůstatek:",
       "demo_suffix": "(demo)",
       "live_suffix": "(živě)",
-      "reading_from_network": "načítání ze sítě…"
+      "reading_from_network": "načítání ze sítě…",
+      "mode_crypto_aria": "Zadejte částku v {{currency}}",
+      "mode_fiat_aria": "Zadejte částku v USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Max",
+      "max_chip_aria": "Použít celý váš zůstatek {{currency}}"
     },
     "errors": {
       "amount_missing": "Částka je povinná",
@@ -433,7 +449,8 @@
       "back": "Zpět"
     },
     "verify": {
-      "summary_label": "Odesíláte"
+      "summary_label": "Odesíláte",
+      "finality": "Odeslání je konečné. Jakmile je převod potvrzen v síti, nelze jej vrátit zpět ani získat zpět — zkontrolujte příjemce a částku."
     },
     "fee": {
       "automatic": "Síťový poplatek je pro {{currency}} ({{network}}) nastaven automaticky.",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Odeslání se nepodařilo dokončit — pro opakování se prosím znovu ověřte.",
       "send_failed_fallback": "Odeslání selhalo",
       "unconfirmed": "Tuto transakci se v síti zatím nepodařilo potvrdit — může být stále ve zpracování. Zkontrolujte v prohlížeči."
+    },
+    "wizard": {
+      "step_recipient": "Příjemce a částka",
+      "step_review": "Kontrola",
+      "step_confirm": "Potvrdit"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Na tuto adresu posílejte pouze Solana na síti {{network}}."
     },
     "select_asset_prompt": "Vyberte aktivum k přijetí.",
-    "unlock_footer_note": "Adresy pocházejí z vaší peněženky v zařízení a zobrazí se pouze při odemknutí."
+    "unlock_footer_note": "Adresy pocházejí z vaší peněženky v zařízení a zobrazí se pouze při odemknutí.",
+    "actions": {
+      "copy": "Kopírovat",
+      "copied": "Zkopírováno",
+      "share": "Sdílet",
+      "share_dialog_title": "Sdílet adresu",
+      "share_failed_toast": "Nepodařilo se otevřít okno sdílení"
+    }
   },
   "dashboard": {
     "portfolioValue": "Hodnota portfolia",

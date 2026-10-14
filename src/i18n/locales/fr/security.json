@@ -78,7 +78,10 @@
     "demo_reset": "Réinitialiser la démo (supprimer toutes les données de portefeuille + le portefeuille caché)",
     "non_demo_hint": "Verrouille ton portefeuille et saisis le PIN d'urgence pour essayer. Ne le partage jamais. Oublié ? Supprime-le ici pendant que tu es déverrouillé avec ton vrai PIN.",
     "network_default_name": "le réseau de test",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Définir un nouveau PIN d'urgence fait partie de Safety Plus",
+    "setup_locked_body": "Créer ou modifier un PIN d'urgence nécessite un abonnement Safety Plus actif. En supprimer un ne l'exige jamais, et tu peux le faire ci-dessous à tout moment.",
+    "setup_locked_cta": "Voir les offres"
   },
   "stealth": {
     "heading": "Portefeuilles furtifs / cachés",
@@ -213,7 +216,8 @@
       "trust_warning": "Ne te connecte qu'à des dApps en qui tu as confiance. Ce portefeuille sera visible par la dApp une fois connecté.",
       "reject": "Rejeter",
       "connect_busy": "Connexion…",
-      "connect": "Connecter"
+      "connect": "Connecter",
+      "risk_blocked": "La connexion à cette dApp est bloquée. Refuse et ouvre plutôt une URL de confiance."
     },
     "request_approval": {
       "blocked_title": "Demande bloquée",
@@ -248,7 +252,20 @@
       "sending_busy": "Envoi…",
       "signing_busy": "Signature…",
       "unknown_network_with_id": "Réseau inconnu (chaîne {{id}})",
-      "unknown_network": "Réseau inconnu"
+      "unknown_network": "Réseau inconnu",
+      "typed_contract_row_label": "Contrat",
+      "typed_chain_row_label": "ID de chaîne",
+      "typed_contract_hint": "Le nom ci-dessus est choisi par le site. Cette adresse de contrat est ce que ta signature autorise réellement — compare-la avec le jeton que tu attends.",
+      "permit_unapprovable": "Cette signature autorise un tiers (spender) à déplacer tes jetons, et Veyrnox n'approuve pas ce type de demande via WalletConnect. Effectue-la depuis l'écran Envoyer de l'application, où le risque peut être examiné et reconnu.",
+      "token_amount_row_label": "Montant du jeton",
+      "token_recipient_row_label": "Destinataire du jeton",
+      "unknown_token_title": "⚠ Jeton inconnu",
+      "unknown_token_body": "Montant illisible dans cette demande. N'approuve pas sauf si tu sais exactement ce que cela envoie.",
+      "max_fee_row_label": "Frais max.",
+      "max_fee_row_value": "jusqu'à {{amount}} {{symbol}}",
+      "max_fee_note": "C'est le maximum que peuvent coûter les frais de réseau, en plus de la valeur ci-dessus. C'est un plafond, pas une estimation — les frais réels sont généralement bien inférieurs.",
+      "remote_screening_notice": "Le filtrage en ligne par renseignement sur les menaces est actif pour cette demande. Avant l'approbation, Veyrnox peut envoyer l'adresse du destinataire, le montant et les données d'appel à son service de filtrage TIP.",
+      "remote_screening_unavailable": "Le filtrage en ligne est activé dans tes préférences, mais aucun fournisseur TIP n'est configuré dans cette version. Cette demande sera filtrée localement uniquement."
     },
     "active_sessions": {
       "empty": "Aucune dApp connectée pour l'instant. Associe-en une ci-dessus pour commencer.",
@@ -293,6 +310,23 @@
       "biometric": "Autorise cet envoi avec ton PIN + biométrie",
       "passkey": "Autorise cet envoi avec ton PIN + passkey",
       "password": "Autorise cet envoi avec ton PIN + mot de passe d'action"
+    },
+    "sentinel": {
+      "speaker": "Sentinel :",
+      "detail": "{{note}} — Source : {{source}}.",
+      "note_fallback": "Signalé dans la liste locale de renseignement sur les menaces",
+      "critical_footer": "Ceci est signalé comme critique. Tu peux quand même continuer, mais comprends bien le risque avant de le faire.",
+      "headline": {
+        "sanctioned": "Cette adresse figure sur une liste de sanctions.",
+        "drainer": "C'est un drainer de portefeuilles connu.",
+        "phishing": "Cette adresse est liée à de l'hameçonnage.",
+        "exploit": "Cette adresse est liée à une faille exploitée connue.",
+        "scam": "Cette adresse est signalée comme une arnaque.",
+        "malicious_contract": "Ce contrat a été signalé comme malveillant.",
+        "mixer": "C'est un service de mixage.",
+        "burn": "C'est une adresse de destruction (burn).",
+        "default": "Sentinel a signalé cette adresse."
+      }
     }
   }
 }

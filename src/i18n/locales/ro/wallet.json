@@ -325,6 +325,13 @@
     "rehearsal": {
       "title": "Repetiție pentru negabilitate",
       "description": "Vezi tabloul de bord exact așa cum ar arăta pentru cineva care îți ține telefonul deblocat."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — răspunsuri online",
+      "description": "Doar cu acordul tău · întrebările scrise părăsesc dispozitivul",
+      "help": "Când este activat, întrebările pe care le scrii în Consultant sunt trimise către proxy-ul nostru și primesc răspuns de la un model AI terț, împreună cu ecranul pe care te afli, rețeaua selectată și un ID de instalare aleatoriu folosit doar pentru a aplica o limită zilnică de întrebări per dispozitiv. Dezactivarea oprește imediat acest lucru; Consultantul răspunde în continuare din cunoștințele sale încorporate. Reactivarea afișează din nou explicația completă, ca să poți fi de acord având toate detaliile în față.",
+      "enable_aria": "Examinează și activează răspunsurile online ale Consultantului de securitate AI",
+      "disable_aria": "Dezactivează răspunsurile online ale Consultantului de securitate AI"
     }
   },
   "nav": {
@@ -347,7 +354,9 @@
     "tab_home": "Acasă",
     "tab_send": "Trimite",
     "tab_receive": "Primește",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Vei avea nevoie de PIN pentru a reintra.",
+    "lock_confirm_cancel": "Anulează"
   },
   "back": {
     "default_label": "Înapoi"
@@ -381,7 +390,8 @@
       "local_disclosure": "Destinatarii sunt verificați pe dispozitivul tău pentru adrese de escrocherie comparate cu propriul tău istoric — nimic nu părăsește dispozitivul tău.",
       "remote_opt_in": "De asemenea, verifică într-o bază de date online de amenințări (trimite această adresă unui terț)",
       "remote_unavailable": "Verificarea online este activată, dar niciun furnizor nu este configurat în această versiune — verificarea rămâne locală, deci nu am putut verifica asta față de o listă externă.",
-      "demo_poison_button": "Demo: lipește o adresă asemănătoare"
+      "demo_poison_button": "Demo: lipește o adresă asemănătoare",
+      "remote_enabled": "Screeningul online de informații despre amenințări este activ. La pasul de verificare, acesta trimite către serviciul TIP adresa destinatarului, propria ta adresă de trimitere, suma și — pentru transferurile de tokenuri — adresa contractului și datele apelului."
     },
     "simulation": {
       "title": "Simularea tranzacției",
@@ -407,7 +417,13 @@
       "balance_prefix": "Sold:",
       "demo_suffix": "(demo)",
       "live_suffix": "(live)",
-      "reading_from_network": "se citește din rețea…"
+      "reading_from_network": "se citește din rețea…",
+      "mode_crypto_aria": "Introdu suma în {{currency}}",
+      "mode_fiat_aria": "Introdu suma în USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Max",
+      "max_chip_aria": "Folosește tot soldul tău în {{currency}}"
     },
     "errors": {
       "amount_missing": "Suma este necesară",
@@ -433,7 +449,8 @@
       "back": "Înapoi"
     },
     "verify": {
-      "summary_label": "Trimiți"
+      "summary_label": "Trimiți",
+      "finality": "Trimiterea este definitivă. Odată confirmat în rețea, acest transfer nu poate fi anulat sau rambursat — verifică destinatarul și suma."
     },
     "fee": {
       "automatic": "Comisionul de rețea este setat automat pentru {{currency}} ({{network}}).",
@@ -482,6 +499,11 @@
       "two_factor_retry": "Trimiterea nu s-a putut finaliza — te rugăm să verifici din nou pentru a reîncerca.",
       "send_failed_fallback": "Trimiterea a eșuat",
       "unconfirmed": "Nu am putut confirma încă această tranzacție pe rețea — poate fi încă în așteptare. Verifică explorerul."
+    },
+    "wizard": {
+      "step_recipient": "Destinatar și sumă",
+      "step_review": "Verificare",
+      "step_confirm": "Confirmă"
     }
   },
   "receive": {
@@ -511,7 +533,14 @@
       "solana": "Trimite Solana doar pe {{network}} la această adresă."
     },
     "select_asset_prompt": "Selectează un activ de primit.",
-    "unlock_footer_note": "Adresele provin din portofelul tău de pe dispozitiv și apar doar cât timp este deblocat."
+    "unlock_footer_note": "Adresele provin din portofelul tău de pe dispozitiv și apar doar cât timp este deblocat.",
+    "actions": {
+      "copy": "Copiază",
+      "copied": "Copiat",
+      "share": "Distribuie",
+      "share_dialog_title": "Distribuie adresa",
+      "share_failed_toast": "Nu s-a putut deschide fereastra de distribuire"
+    }
   },
   "dashboard": {
     "portfolioValue": "Valoarea portofoliului",
