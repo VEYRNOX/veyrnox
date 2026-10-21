@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -30,9 +30,22 @@ describe('VigilMotion', () => {
     expect(container.querySelector('[data-vigil="asleep"]')).not.toBeNull();
   });
 
-  // Bounded loop: an infinite repeat is the idle loop Vigil.jsx forbids.
-  it('never repeats forever', async () => {
-    const text = await readFile(resolve(process.cwd(), 'src/components/VigilMotion.jsx'), 'utf8');
-    expect(text).not.toMatch(/repeat:\s*Infinity/);
+  it('draws two wings of six feathers behind the owl', () => {
+    const { container } = render(<VigilMotion state="asleep" />);
+    expect(container.querySelectorAll('.vw-feather')).toHaveLength(12);
+  });
+
+  it('opens its wings on mount and flaps when tapped', () => {
+    const { container } = render(<VigilMotion state="asleep" />);
+    const root = () => container.querySelector('[data-vigil-motion]');
+    expect(root().getAttribute('data-play')).toBe('open');
+    fireEvent.pointerDown(root());
+    expect(root().getAttribute('data-play')).toBe('flap');
+  });
+
+  // One-shot only: an infinite loop is the idle loop Vigil.jsx forbids.
+  it.each(['VigilMotion.jsx', 'vigil-wings.css'])('%s never loops forever', async (file) => {
+    const text = await readFile(resolve(process.cwd(), 'src/components', file), 'utf8');
+    expect(text).not.toMatch(/infinite|Infinity/i);
   });
 });
