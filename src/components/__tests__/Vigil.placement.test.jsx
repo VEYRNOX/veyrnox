@@ -69,7 +69,7 @@ describe('paywall surfaces use the asleep state', () => {
   // Scoped to the JSX call, not to the word "Vigil": all three files discuss
   // the mascot in comments, and an unscoped search would match the prose that
   // documents this very rule and pass for the wrong reason.
-  const CALL = /<Vigil\s+state="([a-z]+)"/g;
+  const CALL = /<Vigil(?:Motion)?\s+state="([a-z]+)"/g;
 
   it.each([
     ['PaywallNudge.jsx'],
