@@ -39,9 +39,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { motion, useReducedMotion } from 'framer-motion';
 import { X } from 'lucide-react';
-import Vigil from '@/components/Vigil';
+import VigilMotion from '@/components/VigilMotion';
 import { Button } from '@/components/ui/button';
 import { useModalA11y } from '@/lib/useModalA11y';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
@@ -87,7 +86,6 @@ export function upsellFor(tier) {
 export default function WinPaywall() {
   const { currentTier } = useTier();
   const navigate = useNavigate();
-  const reduce = useReducedMotion();
   const [win, setWin] = useState(null);
   // Free-trial wording. undefined = still asking the store for THIS win, null =
   // no confirmed trial (today's copy), object = a store-confirmed, eligible
@@ -182,15 +180,9 @@ export default function WinPaywall() {
           </button>
         </div>
         <div className="flex justify-center">
-          {/* One-shot entrance, not an idle loop (Vigil.jsx: NO IDLE MOTION).
-              The win is the state change that earns it. */}
-          <motion.div
-            initial={reduce ? false : { scale: 0.86, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 220, damping: 16 }}
-          >
-            <Vigil state="asleep" size={84} />
-          </motion.div>
+          {/* Entrance, breathing and tap reaction live in VigilMotion
+              (bounded, reduced-motion safe). */}
+          <VigilMotion state="asleep" size={84} />
         </div>
         <p className="text-sm text-muted-foreground">{shown.body}</p>
         <div className="flex gap-3">
