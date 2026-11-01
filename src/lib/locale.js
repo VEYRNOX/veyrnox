@@ -62,6 +62,23 @@ const FALLBACK_FIAT = 'USD';
 import { FIAT_CURRENCIES } from './fiatCurrencies.js';
 export const SUPPORTED_FIAT = Object.keys(FIAT_CURRENCIES);
 
+// Region → ISO 4217 defaults for currencies present in the local catalogue.
+// Intl does not expose a currency for a locale, so keep this explicit and
+// conservative: an unlisted region falls back to USD rather than guessing.
+const REGION_FIAT = {
+  US: 'USD', PR: 'USD', EC: 'USD', SV: 'USD', PA: 'USD',
+  CA: 'CAD', MX: 'MXN', BR: 'BRL', AR: 'ARS', CO: 'COP', CL: 'CLP',
+  AT: 'EUR', BE: 'EUR', CY: 'EUR', DE: 'EUR', EE: 'EUR', ES: 'EUR', FI: 'EUR',
+  FR: 'EUR', GR: 'EUR', HR: 'EUR', IE: 'EUR', IT: 'EUR', LT: 'EUR', LU: 'EUR',
+  LV: 'EUR', MT: 'EUR', NL: 'EUR', PT: 'EUR', SI: 'EUR', SK: 'EUR',
+  GB: 'GBP', CH: 'CHF', LI: 'CHF', SE: 'SEK', NO: 'NOK', DK: 'DKK',
+  PL: 'PLN', CZ: 'CZK', HU: 'HUF', RO: 'RON',
+  JP: 'JPY', KR: 'KRW', HK: 'HKD', SG: 'SGD', TW: 'TWD', IN: 'INR',
+  ID: 'IDR', PH: 'PHP', TH: 'THB', MY: 'MYR', VN: 'VND', AU: 'AUD', NZ: 'NZD',
+  AE: 'AED', SA: 'SAR', IL: 'ILS', TR: 'TRY', ZA: 'ZAR', NG: 'NGN',
+  KE: 'KES', GH: 'GHS',
+};
+
 // RTL locales — the languages whose script naturally reads right-to-left.
 // Match by base language subtag so `ar-EG`, `ar-SA`, `fa-IR`, etc. all
 // resolve to RTL. `he` is the modern ISO tag; `iw` is the legacy alias
@@ -353,18 +370,23 @@ export function resolveTimeZone() {
 
 /**
  * Resolve the display fiat currency (ISO 4217). Order: stored preference (if
- * in SUPPORTED_FIAT) → 'USD'. Returns one of SUPPORTED_FIAT.
- *
- * Kept conservative: we do NOT infer a fiat from the locale (e.g. `fr-FR` →
- * EUR). Live FX is not wired (see cryptos.js USD_RATES / FiatCurrencySelector
- * hardcoded rates) — silently switching a French user to EUR would mean
- * quoting them a wrong number in a wrong currency. Explicit opt-in only.
+ * in SUPPORTED_FIAT) → device-locale region when its currency is catalogued →
+ * USD. The UI labels non-USD conversion as approximate because its FX rates
+ * are fixed references, not a live feed.
+ * @param {{ navigator?: { language?: string, languages?: readonly string[] } }} [opts]
  */
-export function resolveFiatCurrency() {
+export function resolveFiatCurrency(opts) {
   const stored = safeGet(FIAT_KEY);
   // tsc strict-null: safeGet returns string|null; narrow explicitly rather
   // than relying on .includes(null) short-circuiting.
   if (stored && SUPPORTED_FIAT.includes(stored)) return stored;
+  try {
+    const region = new Intl.Locale(resolveLocale(opts)).maximize().region;
+    const localCurrency = region ? REGION_FIAT[region] : null;
+    if (localCurrency && SUPPORTED_FIAT.includes(localCurrency)) return localCurrency;
+  } catch {
+    // Invalid/unsupported locale tag: use the explicit safe fallback below.
+  }
   return FALLBACK_FIAT;
 }
 
