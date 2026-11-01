@@ -126,4 +126,15 @@ describe('presignGateOrReject — fresh fail-closed signing decision', () => {
     expect(result.proceedAllowed).toBe(false);
     expect(result.rejectCode).toBe('RASP_BLOCK');
   });
+
+  it('blocks a missing or errored artifact even when it carries a clean-looking tier', async () => {
+    for (const artifact of [null, undefined, { ...clean, error: 'rasp unavailable' }, { ...clean, tier: undefined }, { ...clean, tier: 7 }]) {
+      const result = await presignGateOrReject({
+        getFreshArtifact: vi.fn().mockResolvedValue(artifact),
+        isNative: () => false,
+      });
+      expect(result.proceedAllowed).toBe(false);
+      expect(result.rejectCode).toBe('RASP_BLOCK');
+    }
+  });
 });
