@@ -85,6 +85,9 @@ export default function PortfolioRiskScore() {
             couldn't complete. When indeterminate, say so instead. */}
         {portfolio?.indeterminate ? (
           <IncompleteBalanceNote />
+        ) : portfolio?.quoteUnavailable ? (
+          // Confirmed positive balances with no price are not "no holdings".
+          <IncompleteBalanceNote unpricedOnly />
         ) : (
           <div className="p-6 rounded-xl border border-border bg-card text-center">
             <p className="text-sm text-muted-foreground">No holdings to score yet — add assets to see a risk estimate.</p>
