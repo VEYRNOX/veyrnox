@@ -47,6 +47,14 @@ export async function presignGateOrReject({
       return { ...BLOCKED };
     }
 
+    // An explicit signing block in the fresh artifact is NOT overridable by the
+    // WARN acknowledgement path (e.g. native integrity-unavailable degrades to a
+    // WARN artifact that lists 'sign' in blockedActions). A missing or malformed
+    // list is unknown, so it fails closed (I4).
+    if (!Array.isArray(artifact.blockedActions) || artifact.blockedActions.includes('sign')) {
+      return { ...BLOCKED, artifact };
+    }
+
     // WARN policy requires biometric confirmation on native. Treat a missing or
     // false field as BLOCK so artifact drift cannot silently remove that step.
     if (artifact.tier === TIER.WARN && artifact.requiresBiometric !== true) {

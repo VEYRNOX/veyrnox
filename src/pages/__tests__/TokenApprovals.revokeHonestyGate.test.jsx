@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   update: vi.fn(),
   presignGateOrReject: vi.fn(),
   verifyBiometric2fa: vi.fn(),
+  reauthRequired: vi.fn(() => false),
 }));
 
 vi.mock('@/api/base44Client', () => ({
@@ -26,7 +27,7 @@ vi.mock('@/api/demoClient', () => ({ DEMO: false }));
 vi.mock('@/lib/WalletProvider', () => ({
   useWallet: () => ({
     isUnlocked: true,
-    isSendReauthRequired: () => false,
+    isSendReauthRequired: () => state.reauthRequired(),
     withPrivateKey: state.withPrivateKey,
     recordAudit: vi.fn(),
   }),
@@ -115,6 +116,7 @@ beforeEach(() => {
   });
   state.update.mockReset().mockResolvedValue({});
   state.verifyBiometric2fa.mockReset().mockResolvedValue(true);
+  state.reauthRequired.mockReset().mockReturnValue(false);
   state.presignGateOrReject.mockReset().mockResolvedValue({
     proceedAllowed: true,
     rejectCode: null,
@@ -224,5 +226,31 @@ describe('TokenApprovals — key callback stays behind the shared pre-sign resul
 
     await waitFor(() => expect(state.presignGateOrReject).toHaveBeenCalledTimes(1));
     expect(state.withPrivateKey).not.toHaveBeenCalled();
+  });
+  it('re-checks recent authentication after the warning dialog and does not sign when it expired', async () => {
+    state.rows = [approval('mainnet')];
+    state.presignGateOrReject
+      .mockResolvedValueOnce({
+        proceedAllowed: false,
+        rejectCode: 'RASP_WARN_ACK_REQUIRED',
+        artifact: { sentence: 'This device needs extra caution.' },
+        requiresBiometric: false,
+      })
+      .mockResolvedValueOnce({ proceedAllowed: true, rejectCode: null });
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Revoke' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue to real transaction' }));
+    const continueButton = await screen.findByRole('button', { name: 'Confirm and continue' });
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    // The recent-auth window expires while the warning dialog is open.
+    state.reauthRequired.mockReturnValue(true);
+    fireEvent.click(continueButton);
+
+    await waitFor(() => expect(state.presignGateOrReject).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByText(/Re-enter your PIN or password/)).toBeTruthy());
+    expect(state.withPrivateKey).not.toHaveBeenCalled();
+    expect(state.sendRevoke).not.toHaveBeenCalled();
   });
 });

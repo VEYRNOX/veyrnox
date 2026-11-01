@@ -137,4 +137,27 @@ describe('presignGateOrReject — fresh fail-closed signing decision', () => {
       expect(result.rejectCode).toBe('RASP_BLOCK');
     }
   });
+  it('does not let acknowledgement override an explicit sign block on a WARN artifact', async () => {
+    const warnSignBlocked = { ...warn, blockedActions: ['sign'] };
+    const result = await presignGateOrReject({
+      acknowledged: true,
+      biometricConfirmed: true,
+      getFreshArtifact: vi.fn().mockResolvedValue(warnSignBlocked),
+      isNative: () => true,
+    });
+    expect(result.proceedAllowed).toBe(false);
+    expect(result.rejectCode).toBe('RASP_BLOCK');
+  });
+
+  it('blocks when blockedActions is missing or malformed', async () => {
+    for (const blockedActions of [undefined, null, 'sign']) {
+      const result = await presignGateOrReject({
+        acknowledged: true,
+        biometricConfirmed: true,
+        getFreshArtifact: vi.fn().mockResolvedValue({ ...clean, blockedActions }),
+        isNative: () => false,
+      });
+      expect(result.proceedAllowed).toBe(false);
+    }
+  });
 });

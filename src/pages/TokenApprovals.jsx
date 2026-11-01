@@ -205,6 +205,18 @@ export default function TokenApprovals({ demo = DEMO } = {}) {
       refusePresign(resultWithApproval);
       return false;
     }
+    // The interactive warning/biometric step can outlast the recent-auth window,
+    // so re-check freshness immediately before the mutation (I4: a throw blocks).
+    let reauthRequired = true;
+    try {
+      reauthRequired = Boolean(wallet.isSendReauthRequired?.());
+    } catch {
+      reauthRequired = true;
+    }
+    if (reauthRequired) {
+      setError('Re-enter your PIN or password to authorise this revoke.');
+      return false;
+    }
     revoke.mutate(approval);
     return true;
   };
