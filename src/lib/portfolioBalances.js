@@ -147,6 +147,7 @@ export async function computePortfolio(wallets, walletAddresses, livePrices, pri
   const assetTotals = {};
   let grandTotal = 0;
   let anyIndeterminate = false;
+  let anyQuoteUnavailable = false;
   let priceBasis = livePrices ? 'live' : 'approx';
 
   // Flatten every (wallet, enabled asset) pair, fetch all in parallel. Each
@@ -188,7 +189,7 @@ export async function computePortfolio(wallets, walletAddresses, livePrices, pri
   };
   const jobs = [];
   for (const w of wallets) {
-    byWallet[w.id] = { assets: [], total: 0, indeterminate: false };
+    byWallet[w.id] = { assets: [], total: 0, indeterminate: false, quoteUnavailable: false };
     for (const entry of w.enabledAssets || []) {
       const asset = getAssetById(entry) || (!isAssetIdString(entry) ? getAsset(entry) : null);
       if (!asset) continue;
@@ -225,6 +226,10 @@ export async function computePortfolio(wallets, walletAddresses, livePrices, pri
     } else {
       assetTotals[id].amount += amount;
       if (quoteUnavailable) {
+        // A known balance with no quote is NOT a failed read: keep it distinct
+        // from `indeterminate`, but mark the wallet/portfolio valuation partial.
+        byWallet[walletId].quoteUnavailable = true;
+        anyQuoteUnavailable = true;
         assetTotals[id].quoteUnavailable = true;
         assetTotals[id].usd = null;
       } else {
@@ -244,6 +249,7 @@ export async function computePortfolio(wallets, walletAddresses, livePrices, pri
     grandTotal,
     assetTotals,
     indeterminate: anyIndeterminate,
+    quoteUnavailable: anyQuoteUnavailable,
     priceBasis,
     pricesUpdatedAt: priceBasis === 'live' ? pricesUpdatedAt : null,
   };
@@ -263,13 +269,15 @@ export async function computePortfolio(wallets, walletAddresses, livePrices, pri
 export function sumPortfolioTotal(pfWallets, byWallet) {
   let total = 0;
   let indeterminate = false;
+  let quoteUnavailable = false;
   for (const w of pfWallets) {
     const entry = byWallet[w.id];
     if (!entry) continue; // not yet computed (loading) — handled by the caller
     total += entry.total || 0;
     if (entry.indeterminate) indeterminate = true;
+    if (entry.quoteUnavailable) quoteUnavailable = true;
   }
-  return { total, indeterminate };
+  return { total, indeterminate, quoteUnavailable };
 }
 
 /**
@@ -359,7 +367,15 @@ export function usePortfolio(wallets, walletAddresses) {
       // A hydrated result never carries a live label: the cache key has no
       // price basis and entries live up to 24h, so its provenance says nothing
       // about now. It reads approximate until this session's first compute.
-      return cached ? { ...cached.data, priceBasis: 'approx', pricesUpdatedAt: null } : undefined;
+      // `unavailable` is a statement about missing quotes, not provenance, so it
+      // survives hydration; cached live pricing still downgrades to approximate.
+      return cached
+        ? {
+          ...cached.data,
+          priceBasis: cached.data?.priceBasis === 'unavailable' ? 'unavailable' : 'approx',
+          pricesUpdatedAt: null,
+        }
+        : undefined;
     },
     // Hydration is display-only. Always mark it stale so even a cache written
     // moments ago cannot suppress this session's first real computation.

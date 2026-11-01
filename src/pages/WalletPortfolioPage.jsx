@@ -43,7 +43,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWallet } from "@/lib/WalletProvider";
 import { usePortfolio, sumPortfolioTotal, assetDistribution } from "@/lib/portfolioBalances";
-import { resolveAssetRow } from "@/lib/balanceDisplay";
+import { resolveAssetRow, UNPRICED_TOTAL_NOTE } from "@/lib/balanceDisplay";
 import { ASSETS, getAsset, getAssetById, NON_LIVE_ASSET_SPEND_NOTICE } from "@/wallet-core/assets.js";
 import { isAssetIdString } from "@/wallet-core/assetId.js";
 import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
@@ -784,7 +784,7 @@ export default function WalletPortfolioPage() {
   // When !isUnlocked, wallets is empty, so this is a harmless {total:0}.
   const inActive = (w) => (walletPortfolioMap[w.id] || MAIN_PORTFOLIO_ID) === activePortfolioId;
   const pfWallets = wallets.filter(inActive);
-  const { total: pfTotal, indeterminate: pfIncomplete } = sumPortfolioTotal(pfWallets, byWallet);
+  const { total: pfTotal, indeterminate: pfIncomplete, quoteUnavailable: pfUnpriced } = sumPortfolioTotal(pfWallets, byWallet);
 
   // Telemetry (Task 9): funnel tracking for the wallet-ready + first-inbound
   // milestones. safeEmit()-backed, so neither blocks nor throws (I4).
@@ -845,6 +845,7 @@ export default function WalletPortfolioPage() {
     && pfWallets.length > 0
     && pfTotal === 0
     && !pfIncomplete
+    && !pfUnpriced
     && priceBasis !== "unavailable";
 
   // Per-wallet cards (active portfolio). Built once so the same markup serves both
@@ -874,7 +875,7 @@ export default function WalletPortfolioPage() {
             </div>
             <p className="text-xs text-muted-foreground">
               {fmtFiat(data.total)}
-              {data.indeterminate && <span className="text-caution"> · {t("portfolio.walletCard.partial")}</span>}
+              {(data.indeterminate || data.quoteUnavailable) && <span className="text-caution"> · {t("portfolio.walletCard.partial")}</span>}
             </p>
           </button>
           {canManage && (
@@ -1027,6 +1028,9 @@ export default function WalletPortfolioPage() {
             Same copy in decoy and real sessions (no isDecoy branch). */}
         {pfIncomplete && (
           <p className="text-xs text-caution mt-1">{t("portfolio.partialTotalNote")}</p>
+        )}
+        {!pfIncomplete && pfUnpriced && (
+          <p className="text-xs text-caution mt-1">{UNPRICED_TOTAL_NOTE}</p>
         )}
         <PriceBasisNote priceBasis={priceBasis} pricesUpdatedAt={pricesUpdatedAt} onRefresh={() => refetchPrices?.()} />
         {/* DENIABILITY (CLAUDE.md "never show wallet count/list" · I3 / KEK spec §5):

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
   deniable: false,
@@ -35,6 +35,7 @@ vi.mock('../../deniabilitySession.js', () => ({
 
 vi.mock('../networks.js', () => ({
   getNetwork: vi.fn(() => ({ chainId: 1, explorer: 'https://example.test' })),
+  getNetworkInfo: (key) => (key === 'sepolia' ? { isTestnet: true } : key === 'mainnet' ? { isTestnet: false } : null),
 }));
 
 import { getTokenBalance, sendToken } from '../token-send.js';
@@ -81,6 +82,36 @@ describe('getTokenBalance I3/demo boundary', () => {
     })).rejects.toThrow(/I3/);
 
     expect(h.getToken).not.toHaveBeenCalled();
+    expect(h.getProvider).not.toHaveBeenCalled();
+  });
+});
+
+describe('sendToken dev testnet verification exception', () => {
+  const args = (networkKey) => ({
+    networkKey,
+    privateKey: '0x' + '11'.repeat(32),
+    symbol: 'LINK',
+    to: RECIPIENT,
+    amount: '1',
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('lets an opted-in DEV build past the gate on a testnet only', async () => {
+    vi.stubEnv('VITE_DEV_UNGATE_SEND', '1');
+    const err = await sendToken(args('sepolia')).catch((e) => e);
+    expect(String(err?.message)).not.toContain('is not LIVE');
+    expect(h.getProvider).toHaveBeenCalled();
+  });
+
+  it('still refuses a receive-only token on mainnet even when the dev flag is set', async () => {
+    vi.stubEnv('VITE_DEV_UNGATE_SEND', '1');
+    await expect(sendToken(args('mainnet'))).rejects.toThrow('is not LIVE');
+    expect(h.getProvider).not.toHaveBeenCalled();
+  });
+
+  it('refuses on a testnet without the explicit opt-in', async () => {
+    vi.stubEnv('VITE_DEV_UNGATE_SEND', '');
+    await expect(sendToken(args('sepolia'))).rejects.toThrow('is not LIVE');
     expect(h.getProvider).not.toHaveBeenCalled();
   });
 });

@@ -18,13 +18,14 @@
 
 import { Contract, Interface, Wallet, parseUnits, formatUnits, isAddress } from 'ethers';
 import { getProvider } from './provider.js';
-import { getNetwork } from './networks.js';
+import { getNetwork, getNetworkInfo } from './networks.js';
 import { getToken, ERC20_ABI } from './tokens.js';
 import { resolveEvmFeeOverrides } from './fees.js';
 import { verifyLiveChainId, applyEstimatedGasLimit } from './preflight.js';
 import { assertDecimalAmount } from '../amount.js';
 import { canSend, getAssetById, NON_LIVE_ASSET_SPEND_NOTICE } from '../assets.js';
 import { isDeniabilityOrDemoActive } from '../deniabilitySession.js';
+import { isDevSendUngated } from '../../lib/devSendOverride.js';
 
 const erc20Interface = new Interface(ERC20_ABI);
 const TRANSFER_SELECTOR = '0xa9059cbb'; // keccak256("transfer(address,uint256)")[0:4]
@@ -98,7 +99,14 @@ export async function sendToken({ networkKey, privateKey, symbol, to, amount, fe
   // while send capability belongs to its composite asset identity. Missing or
   // non-LIVE registry rows fail closed before provider construction or key use.
   const asset = typeof t.assetId === 'string' ? getAssetById(t.assetId) : null;
-  if (!canSend(asset)) {
+  // The ONE exception is the existing developer verification flow: a vite DEV
+  // build with VITE_DEV_UNGATE_SEND=1 may send a non-LIVE asset on a TESTNET to
+  // obtain an on-chain txid. It needs all three locks (DEV build, explicit opt-in
+  // env, a testnet network), changes no asset status, and never applies to
+  // mainnet (ALLOW_MAINNET is true now, so the testnet check here is mandatory).
+  const devTestnetUngate = isDevSendUngated(import.meta.env)
+    && getNetworkInfo(networkKey)?.isTestnet === true;
+  if (!canSend(asset) && !devTestnetUngate) {
     throw new Error(
       `Token ${t.assetId || symbol} is not LIVE. ${NON_LIVE_ASSET_SPEND_NOTICE}`,
     );

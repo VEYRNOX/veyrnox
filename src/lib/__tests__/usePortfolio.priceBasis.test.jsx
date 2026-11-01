@@ -53,6 +53,14 @@ describe('usePortfolio price basis', () => {
     expect(result.current.pricesUpdatedAt).toBeNull();
   });
 
+  it('a cache entry saved as unavailable stays unavailable while hydrating', () => {
+    loadPortfolioCache.mockReturnValue({ ts: Date.now(), data: { ...LIVE_RESULT, grandTotal: 0, priceBasis: 'unavailable', pricesUpdatedAt: null } });
+    useLivePrices.mockReturnValue(livePrices());
+    getBalanceEth.mockImplementation(pending);
+    const { result } = setup();
+    expect(result.current.priceBasis).toBe('unavailable');
+  });
+
   it('recomputes a freshly written cache entry on the first session render', async () => {
     loadPortfolioCache.mockReturnValue({ ts: Date.now(), data: LIVE_RESULT });
     useLivePrices.mockReturnValue(livePrices());

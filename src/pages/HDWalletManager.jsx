@@ -136,7 +136,8 @@ export function AssetLiveBalance({ asset, address }) {
     retry: 1,
   });
   if (!address) return null;
-  const state = isLoading ? "pending" : isError ? "error" : null;
+  // A suppressed (deniability/demo) or otherwise empty read is unavailable, never NaN.
+  const state = isDeniabilityOrDemoActive() ? "error" : isLoading ? "pending" : (isError || data == null) ? "error" : null;
   return (
     <>
       <BalanceStatus state={state} />
@@ -156,7 +157,8 @@ function BtcLiveBalance({ address, networkKey }) {
     retry: 1,
   });
   if (!address) return null;
-  const state = isLoading ? "pending" : isError ? "error" : null;
+  // A suppressed (deniability/demo) or otherwise empty read is unavailable, never NaN.
+  const state = isDeniabilityOrDemoActive() ? "error" : isLoading ? "pending" : (isError || data == null) ? "error" : null;
   const btcVal = state === null ? Number(data) / 1e8 : null;
   return (
     <>
@@ -177,7 +179,8 @@ function SolLiveBalance({ address, networkKey }) {
     retry: 1,
   });
   if (!address) return null;
-  const state = isLoading ? "pending" : isError ? "error" : null;
+  // A suppressed (deniability/demo) or otherwise empty read is unavailable, never NaN.
+  const state = isDeniabilityOrDemoActive() ? "error" : isLoading ? "pending" : (isError || data == null) ? "error" : null;
   return (
     <>
       <BalanceStatus state={state} />

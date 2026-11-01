@@ -23,7 +23,7 @@ vi.mock('@/wallet-core/deniabilitySession.js', () => ({
 }));
 
 import { getTokenBalance } from '@/wallet-core/evm/token-send.js';
-import { computePortfolio, usdRate } from '@/lib/portfolioBalances.js';
+import { computePortfolio, sumPortfolioTotal, usdRate } from '@/lib/portfolioBalances.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -57,5 +57,25 @@ describe('portfolio missing-quote honesty', () => {
     expect(usdRate('USDC')).toBe(1);
     expect(usdRate('USDT')).toBe(1);
     expect(usdRate('LINK')).toBeNull();
+  });
+});
+
+describe('unpriced holdings mark the valuation incomplete without faking a failed read', () => {
+  it('flags wallet, aggregate and summed totals as unpriced, distinct from indeterminate', async () => {
+    const wallets = [{ id: 'w1', enabledAssets: [LINK.id] }];
+    const result = await computePortfolio(wallets, { w1: { evm: '0x1111111111111111111111111111111111111111' } });
+    expect(result.byWallet.w1.quoteUnavailable).toBe(true);
+    expect(result.byWallet.w1.indeterminate).toBe(false);
+    expect(result.quoteUnavailable).toBe(true);
+    expect(result.indeterminate).toBe(false);
+    expect(sumPortfolioTotal(wallets, result.byWallet)).toEqual({ total: 0, indeterminate: false, quoteUnavailable: true });
+  });
+
+  it('does not flag a confirmed zero balance', async () => {
+    getTokenBalance.mockResolvedValue('0');
+    const wallets = [{ id: 'w1', enabledAssets: [LINK.id] }];
+    const result = await computePortfolio(wallets, { w1: { evm: '0x1111111111111111111111111111111111111111' } });
+    expect(result.quoteUnavailable).toBe(false);
+    expect(sumPortfolioTotal(wallets, result.byWallet).quoteUnavailable).toBe(false);
   });
 });

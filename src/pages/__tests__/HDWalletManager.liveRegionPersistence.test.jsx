@@ -133,3 +133,26 @@ describe('AssetLiveBalance — persistent live region across the real query life
     expect(getTokenBalance).not.toHaveBeenCalled();
   });
 });
+
+describe('AssetLiveBalance — a suppressed read is unavailable, never NaN', () => {
+  it('shows the unavailable state in a deniability/demo session and makes no read', async () => {
+    session.deniable = true;
+    const { container } = renderWithClient(
+      <AssetLiveBalance asset={{ chain: 'mainnet', family: 'erc20', symbol: 'USDC' }} address="0xabc" />,
+    );
+    await new Promise((r) => setTimeout(r, 20));
+    expect(container.textContent).toContain('Balance unavailable');
+    expect(container.textContent).not.toMatch(/NaN/);
+    expect(getTokenBalance).not.toHaveBeenCalled();
+    expect(getBalanceEth).not.toHaveBeenCalled();
+  });
+
+  it('treats a resolved null result as unavailable, not a confident zero', async () => {
+    getBalanceEth.mockResolvedValue(null);
+    const { container } = renderWithClient(
+      <AssetLiveBalance asset={{ chain: 'mainnet', family: 'evm', symbol: 'ETH' }} address="0xabc" />,
+    );
+    await waitFor(() => expect(container.textContent).toContain('Balance unavailable'));
+    expect(container.textContent).not.toMatch(/NaN|\b0 ETH/);
+  });
+});
