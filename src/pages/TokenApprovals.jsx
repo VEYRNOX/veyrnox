@@ -207,7 +207,7 @@ export default function TokenApprovals({ demo = DEMO } = {}) {
     }
     // The interactive warning/biometric step can outlast the recent-auth window,
     // so re-check freshness immediately before the mutation (I4: a throw blocks).
-    let reauthRequired = true;
+    let reauthRequired;
     try {
       reauthRequired = Boolean(wallet.isSendReauthRequired?.());
     } catch {
