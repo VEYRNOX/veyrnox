@@ -3,8 +3,8 @@
 // The outer component contains the deniability gate and renders no inner hooks,
 // storage reads, RPC reads, token names, or wallet identifiers when gated.
 
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Coins, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import {
   saveCustomToken,
 } from '@/lib/customTokenStore.js';
 import { CUSTOM_TOKEN_PAGE_SIZE, nextCustomTokenCount, pageCustomTokens } from '@/lib/customTokenPaging.js';
+import { capturePendingWorkGen, isPendingWorkCurrent } from '@/wallet-core/wipeEpoch.js';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 
 function privateSession() {
@@ -27,21 +28,31 @@ function privateSession() {
   }
 }
 
-function displayBalance(value) {
+const DISPLAY_FRACTION_DIGITS = 8;
+const BALANCE_REFRESH_MS = 60_000;
+export const BELOW_PRECISION_LABEL = '<0.00000001';
+
+export function displayBalance(value) {
   if (typeof value !== 'string') return '—';
   const [whole, fraction = ''] = value.split('.');
-  const trimmedFraction = fraction.slice(0, 8).replace(/0+$/, '');
-  const rendered = trimmedFraction ? `${whole}.${trimmedFraction}` : whole;
+  const kept = fraction.slice(0, DISPLAY_FRACTION_DIGITS).replace(/0+$/, '');
+  // A positive balance smaller than the display precision must not read as 0.
+  if (!kept && /^0*$/.test(whole) && /[1-9]/.test(fraction)) return BELOW_PRECISION_LABEL;
+  const rendered = kept ? `${whole}.${kept}` : whole;
   return rendered.length > 24 ? `${rendered.slice(0, 21)}…` : rendered;
 }
 
 function CustomTokenRow({ token, ownerAddress, onRemove }) {
   const network = getNetworkInfo(token.networkKey);
   const balance = useQuery({
-    queryKey: ['custom-token-balance', token.id, ownerAddress],
+    // token.id is network+address; decimals is included so a re-import with
+    // changed decimals never reuses a stale cached balance.
+    queryKey: ['custom-token-balance', token.networkKey, token.address, token.decimals, ownerAddress],
     queryFn: () => readCustomTokenBalance({ token, owner: ownerAddress }),
     enabled: Boolean(ownerAddress),
     staleTime: 30_000,
+    refetchInterval: () => (typeof document !== 'undefined' && document.hidden ? false : BALANCE_REFRESH_MS),
+    refetchIntervalInBackground: false,
     retry: false,
   });
   const shortAddress = `${token.address.slice(0, 8)}…${token.address.slice(-6)}`;
@@ -91,23 +102,37 @@ function ActiveCustomTokensPanel({ ownerAddress }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [visibleCount, setVisibleCount] = useState(CUSTOM_TOKEN_PAGE_SIZE);
+  const queryClient = useQueryClient();
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  const refreshBalances = () => {
+    queryClient.refetchQueries({ queryKey: ['custom-token-balance'] });
+  };
 
   const addToken = async (event) => {
     event.preventDefault();
     setError('');
     setNotice('');
     setBusy(true);
+    // A wipe or lock while the RPC is pending invalidates this import, so it can
+    // never re-create the storage key afterwards. Unmount is checked as well.
+    const gen = capturePendingWorkGen();
     try {
       const token = await inspectCustomToken({ networkKey, address });
+      if (!mountedRef.current || !isPendingWorkCurrent(gen)) return;
       saveCustomToken(token);
       setTokens(listCustomTokens());
       setAddress('');
       setFormOpen(false);
       setNotice(`${token.symbol} was added from ${getNetworkInfo(token.networkKey)?.name || token.networkKey}.`);
     } catch (err) {
-      setError(err?.message || 'The token could not be added.');
+      if (mountedRef.current && isPendingWorkCurrent(gen)) setError(err?.message || 'The token could not be added.');
     } finally {
-      setBusy(false);
+      if (mountedRef.current) setBusy(false);
     }
   };
 
@@ -129,9 +154,16 @@ function ActiveCustomTokensPanel({ ownerAddress }) {
           <h3 id="custom-token-heading" className="text-sm font-semibold">Custom tokens</h3>
           <p className="text-xs text-muted-foreground">Read-only ERC-20 balances for the active wallet.</p>
         </div>
+        <div className="flex items-center gap-2">
+        {tokens.length > 0 && (
+          <Button type="button" size="sm" variant="ghost" className="px-2" aria-label="Refresh custom token balances" onClick={refreshBalances}>
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        )}
         <Button type="button" size="sm" variant="outline" className="gap-1.5" onClick={() => { setFormOpen((open) => !open); setError(''); }}>
           <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add token
         </Button>
+        </div>
       </div>
 
       {formOpen && (

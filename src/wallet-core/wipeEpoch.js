@@ -19,6 +19,10 @@
 export const CHAFF_SUPERSEDED = 'CHAFF_SUPERSEDED';
 
 let epoch = 0;
+// Separate generation for user-initiated async work (e.g. custom-token import)
+// that must not persist after a wipe OR a lock. Kept apart from `epoch` so a
+// lock does not drop in-flight chaff writes.
+let pendingWorkGen = 0;
 const inFlight = new Set();
 
 /**
@@ -49,5 +53,21 @@ export function runChaffJob(fn) {
  */
 export async function beginWipe() {
   epoch += 1;
+  pendingWorkGen += 1;
   while (inFlight.size) await Promise.allSettled([...inFlight]);
+}
+
+/** Generation to capture before an await; compare with isPendingWorkCurrent(). */
+export function capturePendingWorkGen() {
+  return pendingWorkGen;
+}
+
+/** False once a wipe or lock has happened since `gen` was captured. */
+export function isPendingWorkCurrent(gen) {
+  return gen === pendingWorkGen;
+}
+
+/** Called on lock: discard results of imports still awaiting an RPC. */
+export function invalidatePendingWork() {
+  pendingWorkGen += 1;
 }

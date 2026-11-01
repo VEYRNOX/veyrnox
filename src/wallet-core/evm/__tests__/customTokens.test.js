@@ -128,3 +128,41 @@ describe('custom-token fail-closed reads', () => {
     expect(f.contractFactory).not.toHaveBeenCalled();
   });
 });
+
+describe('custom-token session re-check after each await', () => {
+  const stored = { networkKey: 'mainnet', address: TOKEN, symbol: 'TKN', decimals: 6 };
+
+  it('inspect: session turning private while getCode() is pending sends no symbol()/decimals()', async () => {
+    const f = fixture();
+    f.provider.getCode.mockImplementation(async () => {
+      isDeniabilityOrDemoActive.mockReturnValue(true);
+      return '0x60016000';
+    });
+    await expect(inspectCustomToken({ networkKey: 'mainnet', address: TOKEN, ...f }))
+      .rejects.toThrow(/private session/i);
+    expect(f.contractFactory).not.toHaveBeenCalled();
+    expect(f.contract.symbol).not.toHaveBeenCalled();
+    expect(f.contract.decimals).not.toHaveBeenCalled();
+  });
+
+  it('balance: session turning private while decimals() is pending never sends balanceOf(owner)', async () => {
+    const f = fixture({ decimals: 6n });
+    f.contract.decimals.mockImplementation(async () => {
+      isDeniabilityOrDemoActive.mockReturnValue(true);
+      return 6n;
+    });
+    await expect(readCustomTokenBalance({ token: stored, owner: OWNER, ...f }))
+      .rejects.toThrow(/private session/i);
+    expect(f.contract.balanceOf).not.toHaveBeenCalled();
+  });
+
+  it('balance: the denial is not swallowed as a generic balance error', async () => {
+    const f = fixture();
+    f.contract.balanceOf.mockImplementation(async () => {
+      isDeniabilityOrDemoActive.mockReturnValue(true);
+      return 5n;
+    });
+    await expect(readCustomTokenBalance({ token: stored, owner: OWNER, ...f }))
+      .rejects.toMatchObject({ code: 'CUSTOM_TOKEN_DENIABLE' });
+  });
+});

@@ -141,6 +141,9 @@ export async function inspectCustomToken(options = /** @type {CustomTokenFactori
   } catch {
     throw userError('Could not check this address on the selected network. Try again.', 'CUSTOM_TOKEN_RPC');
   }
+  // The session can turn decoy/hidden/demo while getCode() is pending. Re-check
+  // outside the catch above so the denial is never swallowed as an RPC error.
+  assertPrimarySession();
   if (typeof code !== 'string' || !/^0x[0-9a-fA-F]*$/.test(code) || /^0x0*$/.test(code)) {
     throw userError('No contract was found at this address on the selected network.', 'CUSTOM_TOKEN_NOT_CONTRACT');
   }
@@ -153,6 +156,7 @@ export async function inspectCustomToken(options = /** @type {CustomTokenFactori
   } catch {
     throw userError('This contract does not expose readable ERC-20 symbol and decimals metadata.', 'CUSTOM_TOKEN_METADATA');
   }
+  assertPrimarySession();
 
   return validateStoredCustomToken({
     networkKey,
@@ -177,13 +181,17 @@ export async function readCustomTokenBalance(options = /** @type {CustomTokenFac
   } catch {
     throw userError('Could not verify this token’s decimals. The balance was not loaded.', 'CUSTOM_TOKEN_METADATA');
   }
+  // Re-check before the owner address is sent to the RPC in balanceOf().
+  assertPrimarySession();
   assertCustomTokenDecimalsMatch(cleanToken.decimals, observedDecimals);
 
   let rawBalance;
   try {
     rawBalance = await contract.balanceOf(cleanOwner);
-    return formatUnits(rawBalance, cleanToken.decimals);
   } catch {
     throw userError('Could not load this token balance from the selected network.', 'CUSTOM_TOKEN_BALANCE');
   }
+  // Do not hand a real-session balance to a session that went private mid-flight.
+  assertPrimarySession();
+  return formatUnits(rawBalance, cleanToken.decimals);
 }
