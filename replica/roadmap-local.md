@@ -18,9 +18,9 @@ Status tags: all items are TARGET. Nothing here is built. Inputs: `replica/recon
 - **Credentials:** minted on the phone, shown once, hash-only at rest on the phone, scopes fixed at creation, mandatory expiry, revocable. The agent presents the credential to the companion; the phone verifies it on every call (the companion is not trusted to enforce scope).
 - **Pull model:** the phone answers each read on demand and only while unlocked and the app is foregrounded or an explicit "agent session" is on. Locked, backgrounded or unreachable = deny with a generic error (I4).
 - **Intents:** a `wallet:propose` call lands in the phone's inbox. Approval and signing happen only on the phone, through the existing gate. The companion never sees a signature request payload beyond the intent it forwarded.
-- **Companion hardening:** bind loopback only, Origin/Host checks (DNS rebinding), random port, no persistent log of wallet data, shows paired-phone status, one-click unpair. Distribution as a signed release; reproducible build target.
+- **Companion hardening:** the MCP endpoint binds loopback only (127.0.0.1) and is never exposed to the LAN. The phone link is a separate paired, encrypted transport: the companion listens for the phone on the LAN for that link only and accepts nothing but the paired key. Origin/Host checks (DNS rebinding), random port, no persistent log of wallet data, shows paired-phone status, one-click unpair. Distribution as a signed release; reproducible build target.
 - **Known costs:** iOS backgrounding makes sessions foreground-only; local-network permission prompts; works only when phone and computer are on the same network; one more artifact to sign, ship and audit. Deniability: pairing UI and listener are absent in decoy mode, and the companion learns nothing about whether a decoy exists.
-- **New Phase 0 questions:** companion language/runtime (Node vs Rust single binary), how a phone-side listener is reached on iOS/Android (Capacitor plugin vs the phone dialling out to the companion, which is simpler: the companion listens on the LAN and the phone connects, so the phone never listens).
+- **Still open for Phase 0 (the host itself is decided):** companion language/runtime (Node vs Rust single binary), how a phone-side listener is reached on iOS/Android (Capacitor plugin vs the phone dialling out to the companion, which is simpler: the companion listens on the LAN and the phone connects, so the phone never listens).
 
 ## Phase 0: design and threat model (S, ~1 week)
 
@@ -74,4 +74,4 @@ Hosted/remote MCP, shared agent memory, any signing by an agent, bank aggregatio
 
 ## Next step
 
-Phase 0 decision on the host (desktop-hosted vs QR-paired companion). Then file the issues; check `main` first in case another session has started it.
+The host is decided (QR-paired companion). Phase 0 is tracked in #2923 and Phase 1 in #2924 (blocked on the Phase 0 spec). Phases 2-5 have no issues yet; file them when Phase 1 is underway, checking `main` first in case another session has started.

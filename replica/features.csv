@@ -7,7 +7,7 @@ Read-only portfolio tools (balances holdings history),agent tools,must,yes,no,wa
 Separate scope for dangerous capability,agent access,must,yes,no,Era: mcp:billing-write; Veyrnox: propose-tx scope
 Per-transaction human approval,safety,must,yes,no,Veyrnox: on-device presignGate + step-up; agent can never sign
 Agent proposes unsigned intent,agent tools,must,partial,no,replaces Era "move money"; intent shown with plain-language risk
-Activity log of agent actions (reads and writes),safety,must,partial,no,Era logs writes only; log reads too
+Activity log of agent actions (reads and writes),safety,must,partial,no,Era logs MCP reads and writes but REST reads are unlogged; Veyrnox logs every read and write on every path
 Dry-run / preview before create,agent tools,should,yes,no,Transaction Simulation only; never broadcast in sim
 Spend limits per agent per period,safety,should,no,no,not seen at Era; natural fit for coercion-resistance
 Address allowlist for agent proposals,safety,should,no,no,Veyrnox-native
