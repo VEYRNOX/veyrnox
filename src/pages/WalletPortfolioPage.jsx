@@ -57,7 +57,7 @@ const CHAIN_LABEL = {
 };
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
 import { defaultAssetSymbol } from "@/lib/sendWalletSource";
-import { formatFiat } from "@/components/FiatCurrencySelector";
+import { formatFiat, formatSpotPrice } from "@/components/FiatCurrencySelector";
 import { useLocalePreferences } from "@/lib/useLocale";
 import VaultIllustration from "@/components/VaultIllustration";
 import SeedGrid from "@/components/SeedGrid";
@@ -672,10 +672,9 @@ export default function WalletPortfolioPage() {
   const { priceFor, changeFor, isLive: pricesLive } = usePortfolioMarketData();
   const fmtPrice = (usd) => {
     if (!Number.isFinite(usd)) return null;
-    if (usd >= 1) return formatFiat(usd, fiatCurrency, locale);
-    // sub-$1 assets: keep 4 significant digits so 0.0901 renders as 0.0901, not $0.09
-    const digits = Math.min(6, Math.max(2, 2 - Math.floor(Math.log10(usd))));
-    return formatFiat(Number(usd.toFixed(digits)), fiatCurrency, locale);
+    // Unit prices keep their significant digits below $1 (0.0901 stays 0.0901,
+    // a sub-cent price never collapses to $0.00).
+    return formatSpotPrice(usd, fiatCurrency, locale);
   };
   const fmtChange = (pct) => {
     if (!Number.isFinite(pct)) return null;

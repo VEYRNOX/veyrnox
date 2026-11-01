@@ -47,9 +47,14 @@ const MAINNET_USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 const MAINNET_USDT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
 
 // Ethereum-mainnet ERC-20 facts read on-chain 2026-11-01 and cross-checked
-// against the Etherscan links published by CoinMarketCap. Issuer docs were NOT
-// checked. The asset capability registry keeps all four receive-only until the
-// owner confirms a real on-chain send with a txid.
+// against the Etherscan links published by CoinMarketCap.
+//   LINK: ALSO matches the issuer's own docs (Chainlink, "LINK Token Contracts",
+//         Ethereum mainnet, chain id 1): https://docs.chain.link/resources/link-token-contracts
+//   UNI, SHIB, LEO: issuer documentation was NOT confirmed (the issuer pages are
+//         script-rendered and were not machine-checkable). They stay receive-only
+//         and must be confirmed against the issuer before any of them goes LIVE.
+// The asset capability registry keeps all four receive-only until the owner
+// confirms a real on-chain send with a txid.
 // On-chain names: ChainLink Token, Uniswap, SHIBA INU, Bitfinex LEO Token.
 const MAINNET_LINK = '0x514910771AF9Ca656af840dff83E8264EcF986CA';
 const MAINNET_UNI = '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984';

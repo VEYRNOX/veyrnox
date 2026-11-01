@@ -30,6 +30,7 @@ import { assetDisplaySymbol, assetChainLabel } from "@/lib/assetLabel";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { DEMO } from "@/api/demoClient";
 import { formatUsd } from "@/lib/locale";
+import { spotPriceFractionDigits } from "@/components/FiatCurrencySelector";
 
 export default function CryptoDetailPage() {
   const { t } = useTranslation("wallet");
@@ -155,7 +156,7 @@ export default function CryptoDetailPage() {
           <div className="flex items-center gap-2 mt-0.5">
             {spotPrice != null && (
               <span className="text-lg font-semibold mono-value" data-testid="asset-spot-price">
-                {formatUsd(spotPrice, undefined, { maximumFractionDigits: spotPrice < 1 ? 4 : 2, minimumFractionDigits: 2 })}
+                {formatUsd(spotPrice, undefined, spotPriceFractionDigits(spotPrice))}
               </span>
             )}
             {isUp != null && (

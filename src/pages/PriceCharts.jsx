@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ResponsiveContainer, ComposedChart, Bar } from "@/lib/recharts";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { spotPriceFractionDigits } from "@/components/FiatCurrencySelector";
 import { TOP_CRYPTOS } from "@/lib/cryptos";
 import { fetchOHLCV } from "@/lib/ohlcv";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
@@ -83,16 +84,20 @@ export default function PriceCharts() {
             className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold shrink-0 transition-colors ${selected === a.symbol ? "border-transparent text-white" : "border-border bg-card text-muted-foreground hover:text-foreground"} ${!livePricesOn ? "opacity-40 cursor-not-allowed" : ""}`}
             style={selected === a.symbol ? { backgroundColor: a.color } : {}}>
             {a.symbol}
-            <span className={`text-xs ${a.change24h >= 0 ? "text-success" : "text-destructive"}`}>
-              {a.change24h >= 0 ? "+" : ""}{a.change24h}%
-            </span>
+            {Number.isFinite(a.change24h) ? (
+              <span className={`text-xs ${a.change24h >= 0 ? "text-success" : "text-destructive"}`}>
+                {a.change24h >= 0 ? "+" : ""}{a.change24h}%
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">—</span>
+            )}
           </button>
         ))}
       </div>
 
       <div className="flex items-end justify-between">
         <div>
-          <p className="text-3xl font-bold">${lastPrice?.toLocaleString(undefined, { maximumFractionDigits: 2 }) ?? "—"}</p>
+          <p className="text-3xl font-bold">${lastPrice?.toLocaleString(undefined, { maximumFractionDigits: spotPriceFractionDigits(lastPrice).maximumFractionDigits }) ?? "—"}</p>
           {change == null ? (
             <div data-testid="selected-period-change" className="mt-0.5 text-sm font-medium text-muted-foreground">— · {period}</div>
           ) : (
