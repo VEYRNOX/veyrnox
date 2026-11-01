@@ -46,6 +46,17 @@ const MAINNET_USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 // Cross-checked on Etherscan: name=Tether USD, symbol=USDT, decimals=6
 const MAINNET_USDT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
 
+// Ethereum-mainnet ERC-20 facts read on-chain 2026-11-01 and cross-checked
+// against the Etherscan links published by CoinMarketCap. Issuer docs were NOT
+// checked. The asset capability registry keeps all four receive-only until the
+// owner confirms a real on-chain send with a txid.
+// On-chain names: ChainLink Token, Uniswap, SHIBA INU, Bitfinex LEO Token.
+const MAINNET_LINK = '0x514910771AF9Ca656af840dff83E8264EcF986CA';
+const MAINNET_UNI = '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984';
+const MAINNET_SHIB = '0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE';
+// LEO is an exchange token; its pause/blacklist behaviour is unreviewed.
+const MAINNET_LEO = '0x2AF5D2aD76741191D15Dfe7bF6aC92d4Bd912Ca3';
+
 export const TOKENS = {
   sepolia: {
     USDC: { address: SEPOLIA_USDC, decimals: 6, symbol: 'USDC', assetId: 'USDC:mainnet' },
@@ -55,6 +66,10 @@ export const TOKENS = {
   mainnet: {
     USDC: { address: MAINNET_USDC, decimals: 6, symbol: 'USDC', assetId: 'USDC:mainnet' },
     USDT: { address: MAINNET_USDT, decimals: 6, symbol: 'USDT', assetId: 'USDT:mainnet' },
+    LINK: { address: MAINNET_LINK, decimals: 18, symbol: 'LINK', assetId: 'LINK:mainnet' },
+    UNI: { address: MAINNET_UNI, decimals: 18, symbol: 'UNI', assetId: 'UNI:mainnet' },
+    SHIB: { address: MAINNET_SHIB, decimals: 18, symbol: 'SHIB', assetId: 'SHIB:mainnet' },
+    LEO: { address: MAINNET_LEO, decimals: 18, symbol: 'LEO', assetId: 'LEO:mainnet' },
   },
 };
 

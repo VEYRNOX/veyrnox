@@ -15,6 +15,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), message: v
 
 import { AssetUsdValue, PriceBasisNote, fmtPriceTime } from '@/pages/WalletPortfolioPage';
 import { USD_REFERENCE_NOTE } from '@/lib/cryptos';
+import { canSend, getAssetById } from '@/wallet-core/assets';
 
 describe('PriceBasisNote', () => {
   it('live basis: shows the live refresh control and NOT the reference-rate note', () => {
@@ -62,6 +63,16 @@ describe('AssetUsdValue', () => {
     render(<AssetUsdValue usd={null} formatFiat={formatFiat} />);
     expect(screen.getByText('—')).toBeInTheDocument();
     expect(screen.queryByText('$0.00')).not.toBeInTheDocument();
+    expect(formatFiat).not.toHaveBeenCalled();
+  });
+
+  it('shows unavailable for a real receive-only LINK row with no quote', () => {
+    const link = getAssetById('LINK:mainnet');
+    expect(link?.status).toBe('receive_only');
+    expect(canSend(link)).toBe(false);
+    const formatFiat = vi.fn();
+    render(<AssetUsdValue usd={null} formatFiat={formatFiat} />);
+    expect(screen.getByText('—')).toBeInTheDocument();
     expect(formatFiat).not.toHaveBeenCalled();
   });
 });

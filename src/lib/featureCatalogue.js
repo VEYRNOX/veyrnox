@@ -36,6 +36,7 @@
 // tests and verified-evidence entries are keyed on it, so rename via
 // displayName rather than editing name.
 import verifiedEvidence from '../../docs/verified-evidence.json';
+import { NON_LIVE_ASSET_SPEND_NOTICE, RECEIVE_ONLY_ASSET_COUNT } from '../wallet-core/assets.js';
 
 export const STATUS = Object.freeze({
   VERIFIED: 'verified',
@@ -140,14 +141,14 @@ export const FEATURE_CATEGORIES = [
         displayName: 'Ethereum Token Standard (ERC-20) Tokens',
         status: 'verified',
         verifiedBy: 'USDC mainnet send (full UI path, build:release, Ethereum mainnet)',
-        summary: 'USDC and USDT via the shared token path, mainnet-verified',
-        explanation: 'ERC-20 tokens (USDC, USDT) ride the token path with contract-read decimals and balance reads, reusing the native EVM signing flow. Both USDC and USDT have a real Ethereum-mainnet send confirmed on-chain (docs/verified-evidence.json).',
+        summary: `USDC/USDT live; ${RECEIVE_ONLY_ASSET_COUNT} Ethereum tokens receive-only`,
+        explanation: `ERC-20 tokens ride the shared path with contract-read decimals and balance reads, reusing the native EVM signing flow. USDC and USDT have real Ethereum-mainnet sends confirmed on-chain (docs/verified-evidence.json). LINK, UNI, SHIB, and LEO are first-class receive-only assets and are not send-verified. ${NON_LIVE_ASSET_SPEND_NOTICE}`,
       },
       {
         name: 'Additional Tokens',
-        status: 'roadmap',
-        summary: 'More ERC-20 tokens (DAI, LINK …)',
-        explanation: 'Additional ERC-20 tokens reuse the existing token path, so they are cheap to add. On the roadmap, not yet enabled.',
+        status: 'built',
+        summary: `LINK, UNI, SHIB, and LEO are receive-only. ${NON_LIVE_ASSET_SPEND_NOTICE}`,
+        explanation: `LINK, UNI, SHIB, and LEO reuse the existing Ethereum token path. Mainnet contracts and 18-decimal metadata are pinned; receive addresses and balances are enabled. All four remain receive-only and are not send-verified. ${NON_LIVE_ASSET_SPEND_NOTICE} Further tokens such as DAI remain roadmap items.`,
       },
       {
         name: 'Additional Networks',
