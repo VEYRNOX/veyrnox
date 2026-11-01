@@ -7,8 +7,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-vi.mock('@/wallet-core/evm/provider.js', () => ({ getBalanceEth: vi.fn(), getProvider: vi.fn(() => ({})) }));
-vi.mock('@/wallet-core/evm/tokens.js', () => ({ getToken: vi.fn(() => ({ address: '0xtoken', decimals: 6 })), ERC20_ABI: [] }));
+vi.mock('@/wallet-core/evm/provider.js', () => ({ getBalanceEth: vi.fn() }));
+vi.mock('@/wallet-core/evm/token-send.js', () => ({ getTokenBalance: vi.fn() }));
 vi.mock('@/wallet-core/btc/provider.js', () => ({ getBalanceSats: vi.fn() }));
 vi.mock('@/wallet-core/sol/provider.js', () => ({ getBalanceSol: vi.fn() }));
 vi.mock('@/wallet-core/deniabilitySession.js', () => ({ isDeniabilitySessionActive: vi.fn(() => false) }));

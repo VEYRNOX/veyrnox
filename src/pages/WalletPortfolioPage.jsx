@@ -44,7 +44,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWallet } from "@/lib/WalletProvider";
 import { usePortfolio, sumPortfolioTotal, assetDistribution } from "@/lib/portfolioBalances";
 import { resolveAssetRow } from "@/lib/balanceDisplay";
-import { ASSETS, getAsset, getAssetById } from "@/wallet-core/assets.js";
+import { ASSETS, getAsset, getAssetById, NON_LIVE_ASSET_SPEND_NOTICE } from "@/wallet-core/assets.js";
 import { isAssetIdString } from "@/wallet-core/assetId.js";
 import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
 
@@ -166,6 +166,13 @@ export function PriceBasisNote({ priceBasis, pricesUpdatedAt, onRefresh }) {
       </div>
     );
   }
+  if (priceBasis === "unavailable") {
+    return (
+      <div className="mt-1 flex justify-center">
+        <span className="text-xs text-muted-foreground">Price unavailable for one or more assets.</span>
+      </div>
+    );
+  }
   return (
     <>
       <div className="mt-1 flex justify-center">
@@ -173,6 +180,15 @@ export function PriceBasisNote({ priceBasis, pricesUpdatedAt, onRefresh }) {
       </div>
       <ReferenceRateNote />
     </>
+  );
+}
+
+/** Render a row's fiat value without coercing a missing quote to $0. */
+export function AssetUsdValue({ usd, formatFiat: formatValue }) {
+  return (
+    <p className="text-xs text-muted-foreground">
+      {usd == null ? "—" : formatValue(usd)}
+    </p>
   );
 }
 
@@ -825,7 +841,11 @@ export default function WalletPortfolioPage() {
   // Testnet balances are commonly 0, so this is the expected fresh-wallet view.
   // Fail-closed: a $0 total that is actually INCOMPLETE (a read failed) must NOT
   // claim "no balance yet" — we can't assert emptiness we couldn't confirm.
-  const isZeroState = !portfolioLoading && pfWallets.length > 0 && pfTotal === 0 && !pfIncomplete;
+  const isZeroState = !portfolioLoading
+    && pfWallets.length > 0
+    && pfTotal === 0
+    && !pfIncomplete
+    && priceBasis !== "unavailable";
 
   // Per-wallet cards (active portfolio). Built once so the same markup serves both
   // the funded view and the expanded zero-state — no duplication.
@@ -912,7 +932,7 @@ export default function WalletPortfolioPage() {
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold">{displaySymbol}{chainLabel ? ` (${chainLabel})` : ""}</p>
                     {a?.status === "receive_only" && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-caution/15 text-caution" title="No on-chain send has been verified for this asset yet">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-caution/15 text-caution" title={NON_LIVE_ASSET_SPEND_NOTICE}>
                         Receive only
                       </span>
                     )}
@@ -960,8 +980,8 @@ export default function WalletPortfolioPage() {
                       </span>
                     )}
                   </p>
-                  {/* indeterminate read → "—", not a misleading $0.00 */}
-                  <p className="text-xs text-muted-foreground">{row.indeterminate ? "—" : fmtFiat(row.usd)}</p>
+                  {/* failed balance or missing quote → "—", never a fabricated $0.00 */}
+                  <AssetUsdValue usd={row.usd} formatFiat={fmtFiat} />
                 </div>
               </button>
             );

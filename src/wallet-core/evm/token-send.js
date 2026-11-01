@@ -23,6 +23,8 @@ import { getToken, ERC20_ABI } from './tokens.js';
 import { resolveEvmFeeOverrides } from './fees.js';
 import { verifyLiveChainId, applyEstimatedGasLimit } from './preflight.js';
 import { assertDecimalAmount } from '../amount.js';
+import { canSend, getAssetById, NON_LIVE_ASSET_SPEND_NOTICE } from '../assets.js';
+import { isDeniabilityOrDemoActive } from '../deniabilitySession.js';
 
 const erc20Interface = new Interface(ERC20_ABI);
 const TRANSFER_SELECTOR = '0xa9059cbb'; // keccak256("transfer(address,uint256)")[0:4]
@@ -42,6 +44,11 @@ async function assertDecimals(contract, token) {
  * token's decimals. Returns a decimal string (e.g. "12.5").
  */
 export async function getTokenBalance({ networkKey, symbol, owner }) {
+  // I3: fail before provider or Contract construction. The canonical predicate
+  // covers decoy, hidden, build-time demo and a live persisted demo toggle.
+  if (isDeniabilityOrDemoActive()) {
+    throw new Error('I3: no egress in deniability or demo session');
+  }
   if (!isAddress(owner)) throw new Error('Invalid owner address');
   const provider = getProvider(networkKey);
   const t = getToken(networkKey, symbol); // throws if unconfigured/unverified
@@ -86,9 +93,18 @@ export function buildTokenTransfer({ networkKey, symbol, to, amount }) {
  */
 export async function sendToken({ networkKey, privateKey, symbol, to, amount, fee }) {
   if (!isAddress(to)) throw new Error('Invalid recipient address');
+  const t = getToken(networkKey, symbol);
+  // Authoritative signing-boundary gate. A token contract is network-specific,
+  // while send capability belongs to its composite asset identity. Missing or
+  // non-LIVE registry rows fail closed before provider construction or key use.
+  const asset = typeof t.assetId === 'string' ? getAssetById(t.assetId) : null;
+  if (!canSend(asset)) {
+    throw new Error(
+      `Token ${t.assetId || symbol} is not LIVE. ${NON_LIVE_ASSET_SPEND_NOTICE}`,
+    );
+  }
   const net = getNetwork(networkKey); // throws if mainnet gated / disabled
   const provider = getProvider(networkKey);
-  const t = getToken(networkKey, symbol);
 
   const wallet = new Wallet(privateKey, provider);
 

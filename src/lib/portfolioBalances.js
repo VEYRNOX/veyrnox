@@ -20,15 +20,14 @@
 // UPSTREAM (vault decryption): computePortfolio reads ONLY the addresses handed
 // to it, so a decoy session can never reach a real-set address (Finding 1).
 
-import { Contract, formatUnits } from 'ethers';
 import { useCallback, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ASSETS, getAsset, getAssetById } from '@/wallet-core/assets.js';
 import { isAssetIdString } from '@/wallet-core/assetId.js';
 import { USD_RATES } from '@/lib/cryptos.js';
 import { assetDisplaySymbol } from '@/lib/assetLabel.js';
-import { getProvider, getBalanceEth } from '@/wallet-core/evm/provider.js';
-import { getToken, ERC20_ABI } from '@/wallet-core/evm/tokens.js';
+import { getBalanceEth } from '@/wallet-core/evm/provider.js';
+import { getTokenBalance } from '@/wallet-core/evm/token-send.js';
 import { getBalanceSats } from '@/wallet-core/btc/provider.js';
 import { getBalanceSol } from '@/wallet-core/sol/provider.js';
 import { useLivePrices } from '@/lib/priceFeed.js';
@@ -47,10 +46,10 @@ function resolveUsdRate(symbol, livePrices) {
   if (typeof live === 'number' && Number.isFinite(live)) {
     return { rate: live, basis: 'live' };
   }
-  return {
-    rate: USD_RATES[symbol] ?? (symbol === 'USDC' || symbol === 'USDT' ? 1 : 0),
-    basis: 'approx',
-  };
+  const reference = USD_RATES[symbol] ?? (symbol === 'USDC' || symbol === 'USDT' ? 1 : null);
+  return reference == null
+    ? { rate: null, basis: 'unavailable' }
+    : { rate: reference, basis: 'approx' };
 }
 
 /**
@@ -89,10 +88,13 @@ export async function fetchAssetAmount(asset, addr) {
     }
     if (asset.family === 'erc20') {
       if (!addr.evm) return 0;
-      const token = getToken(asset.chain, asset.symbol);
-      const c = new Contract(token.address, ERC20_ABI, getProvider(asset.chain));
-      const raw = await c.balanceOf(addr.evm);
-      return finite(Number(formatUnits(raw, token.decimals)));
+      // Shared token reader verifies on-chain decimals against the registry and
+      // carries its own I3/demo guard before provider/Contract construction.
+      return finite(Number(await getTokenBalance({
+        networkKey: asset.chain,
+        symbol: asset.symbol,
+        owner: addr.evm,
+      })));
     }
     if (asset.family === 'btc') {
       if (!addr.btc) return 0;
@@ -206,19 +208,30 @@ export async function computePortfolio(wallets, walletAddresses, livePrices, pri
     // Only a row that puts dollars into the total can downgrade its basis: a
     // failed read (usd null) or an empty balance contributes nothing, so a
     // missing live price for it leaves every summed dollar live-priced.
-    if (resolvedRate.basis !== 'live' && !indeterminate && amount > 0) priceBasis = 'approx';
-    const usd = indeterminate ? null : amount * resolvedRate.rate;
-    byWallet[walletId].assets.push({ id, symbol, amount, usd, indeterminate });
-    if (!assetTotals[id]) assetTotals[id] = { symbol, amount: 0, usd: 0, indeterminate: false };
+    if (!indeterminate && amount > 0) {
+      if (resolvedRate.basis === 'unavailable') priceBasis = 'unavailable';
+      else if (resolvedRate.basis !== 'live' && priceBasis !== 'unavailable') priceBasis = 'approx';
+    }
+    // A confirmed zero balance contributes exactly $0 even without a quote;
+    // only a positive holding needs a market rate to be valued honestly.
+    const quoteUnavailable = !indeterminate && amount > 0 && resolvedRate.rate == null;
+    const usd = indeterminate || quoteUnavailable ? null : amount * resolvedRate.rate;
+    byWallet[walletId].assets.push({ id, symbol, amount, usd, indeterminate, quoteUnavailable });
+    if (!assetTotals[id]) assetTotals[id] = { symbol, amount: 0, usd: 0, indeterminate: false, quoteUnavailable: false };
     if (indeterminate) {
       byWallet[walletId].indeterminate = true;
       assetTotals[id].indeterminate = true;
       anyIndeterminate = true;
     } else {
-      byWallet[walletId].total += usd;
-      grandTotal += usd;
       assetTotals[id].amount += amount;
-      assetTotals[id].usd += usd;
+      if (quoteUnavailable) {
+        assetTotals[id].quoteUnavailable = true;
+        assetTotals[id].usd = null;
+      } else {
+        byWallet[walletId].total += usd;
+        grandTotal += usd;
+        if (!assetTotals[id].quoteUnavailable) assetTotals[id].usd += usd;
+      }
     }
   }
   // Keep each wallet's asset rows in canonical ASSETS order for a stable UI.
@@ -309,7 +322,8 @@ function portfolioKey(wallets, walletAddresses) {
  * computePortfolio() shape (or a zeroed shell while loading).
  * Also composes useLivePrices and threads the live map into computePortfolio
  * when prices are available (priceBasis === 'live'), else falls back to the
- * built-in USD_RATES (priceBasis === 'approx'). Additive: existing callers
+ * built-in USD_RATES (priceBasis === 'approx'). A positive asset with neither
+ * source is `unavailable` and excluded from numeric totals. Additive: existing callers
  * that ignore priceBasis/pricesUpdatedAt/refetchPrices are unaffected.
  */
 export function usePortfolio(wallets, walletAddresses) {
@@ -355,7 +369,9 @@ export function usePortfolio(wallets, walletAddresses) {
   // may predate a live refetch) AND live prices are available right now (an
   // opt-out or price error drops the label at once, even while a live-priced
   // placeholder is still showing). Anything else fails honest to approximate.
-  const priceBasis = liveOk && query.data?.priceBasis === 'live' ? 'live' : 'approx';
+  const priceBasis = query.data?.priceBasis === 'unavailable'
+    ? 'unavailable'
+    : liveOk && query.data?.priceBasis === 'live' ? 'live' : 'approx';
   const displayedPricesUpdatedAt = priceBasis === 'live' ? (query.data?.pricesUpdatedAt ?? null) : null;
 
   // Manual refresh: fetch prices, then re-price the portfolio with them. The

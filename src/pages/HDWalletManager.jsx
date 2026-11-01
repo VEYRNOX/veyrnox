@@ -16,7 +16,7 @@ import { getAuthModel } from "@/lib/authModel";
 import { isPasskeyGateError, PASSKEY_GATE_MESSAGES, PASSKEY_ESCAPE_HATCH_BLURBS } from "@/lib/passkey";
 import { isBiometricGateError } from "@/lib/biometric";
 import { isTheftProtectionError, theftProtectionMessage } from "@/lib/theftProtection";
-import { ASSETS, ASSET_STATUS, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
+import { ASSETS, ASSET_STATUS, canSend, canReceive, isEvmFamily, NON_LIVE_ASSET_SPEND_NOTICE } from "@/wallet-core/assets";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import { getTokenBalance } from "@/wallet-core/evm/token-send";
@@ -131,7 +131,7 @@ export function AssetLiveBalance({ asset, address }) {
     queryFn: () => isErc20
       ? getTokenBalance({ networkKey, symbol: asset.symbol, owner: address })
       : getBalanceEth(networkKey, address),
-    enabled: !!address,
+    enabled: !!address && !isDeniabilityOrDemoActive(),
     refetchInterval: 20000,
     retry: 1,
   });
@@ -151,7 +151,7 @@ function BtcLiveBalance({ address, networkKey }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["hd-btc-balance", networkKey, address],
     queryFn: () => getBalanceSats(networkKey, address),
-    enabled: !!address,
+    enabled: !!address && !isDeniabilityOrDemoActive(),
     refetchInterval: 30000,
     retry: 1,
   });
@@ -172,7 +172,7 @@ function SolLiveBalance({ address, networkKey }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["hd-sol-balance", networkKey, address],
     queryFn: () => getBalanceSol(networkKey, address),
-    enabled: !!address,
+    enabled: !!address && !isDeniabilityOrDemoActive(),
     refetchInterval: 20000,
     retry: 1,
   });
@@ -622,14 +622,14 @@ export default function HDWalletManager() {
                         size="sm"
                         className="h-11 text-xs gap-1.5"
                         disabled={!sendable}
-                        title={sendable ? undefined : `Sending not yet enabled for ${asset.symbol}.`}
+                        title={sendable ? undefined : NON_LIVE_ASSET_SPEND_NOTICE}
                       >
                         <ArrowUpRight className="h-3.5 w-3.5" /> Send
                       </Button>
                     </div>
                     {!sendable && (
                       <p className="text-xs text-muted-foreground">
-                        {dim ? "This asset is on the roadmap — no address is derived and funds cannot move until its crypto path is verified." : `Sending not yet enabled for ${asset.symbol}.`}
+                        {dim ? "This asset is on the roadmap — no address is derived." : NON_LIVE_ASSET_SPEND_NOTICE}
                       </p>
                     )}
                   </div>

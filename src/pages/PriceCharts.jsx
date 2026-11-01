@@ -27,25 +27,27 @@ export default function PriceCharts() {
   const { resolution, limit } = PERIOD_PARAMS[period];
 
   // Volume bar still needs its own query (same queryKey — cached, no double-fetch).
-  const { data: rawCandles } = useQuery({
+  const { data: rawCandles, isError } = useQuery({
     queryKey: ["ohlcv", selected, period],
     queryFn: () => fetchOHLCV(selected, resolution, limit),
     enabled: livePricesOn,
     staleTime: 60_000,
   });
 
-  const data = (rawCandles ?? []).map((d) => ({
+  const data = (isError ? [] : (rawCandles ?? [])).map((d) => ({
     close: d.close,
     volume: d.volumefrom,
     price: d.close,
     time: formatCandleTime(d.time, period),
   }));
 
-  const prices = data.map((d) => d.price);
-  const firstPrice = data[0]?.price;
-  const lastPrice = data[data.length - 1]?.price;
-  const change = firstPrice && lastPrice ? ((lastPrice - firstPrice) / firstPrice * 100).toFixed(2) : "0.00";
-  const isUp = parseFloat(change) >= 0;
+  const finitePrices = data.map((d) => d.price).filter(Number.isFinite);
+  const firstPrice = finitePrices[0];
+  const lastPrice = finitePrices[finitePrices.length - 1];
+  const change = finitePrices.length >= 2 && firstPrice !== 0
+    ? ((lastPrice - firstPrice) / firstPrice * 100).toFixed(2)
+    : null;
+  const isUp = change != null && parseFloat(change) >= 0;
 
   useAdvisorSnapshot({
     price_charts: {
@@ -91,10 +93,14 @@ export default function PriceCharts() {
       <div className="flex items-end justify-between">
         <div>
           <p className="text-3xl font-bold">${lastPrice?.toLocaleString(undefined, { maximumFractionDigits: 2 }) ?? "—"}</p>
-          <div className={`flex items-center gap-1 mt-0.5 text-sm font-medium ${isUp ? "text-success" : "text-destructive"}`}>
-            {isUp ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-            {isUp ? "+" : ""}{change}% · {period}
-          </div>
+          {change == null ? (
+            <div data-testid="selected-period-change" className="mt-0.5 text-sm font-medium text-muted-foreground">— · {period}</div>
+          ) : (
+            <div data-testid="selected-period-change" className={`flex items-center gap-1 mt-0.5 text-sm font-medium ${isUp ? "text-success" : "text-destructive"}`}>
+              {isUp ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+              {isUp ? "+" : ""}{change}% · {period}
+            </div>
+          )}
         </div>
         <div className="text-end text-xs text-muted-foreground">
           <p>Mkt Cap ${asset.mcap}</p>

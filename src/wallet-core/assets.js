@@ -22,6 +22,10 @@ export const ASSET_STATUS = Object.freeze({
   COMING_SOON: 'coming_soon',
 });
 
+/** Honest capability disclosure for every receive-only send gate. */
+export const NON_LIVE_ASSET_SPEND_NOTICE =
+  'Direct sends are disabled. Connected dApps may still spend this token through existing approvals.';
+
 // family determines which derivation/signing stack an asset uses.
 //   evm    - native coin on an EVM chain (secp256k1, m/44'/60')
 //   erc20  - token on an EVM chain (same keys; contract-call send path)
