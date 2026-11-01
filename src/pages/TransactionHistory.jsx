@@ -1,8 +1,9 @@
 // @ts-nocheck
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { formatDistanceToNow } from "date-fns";
+import { formatUnits } from "ethers";
 import {
   ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Clock, CheckCircle2, XCircle,
   ExternalLink, Loader2, AlertTriangle, Lock, ShieldCheck, History, Info, Printer,
@@ -10,14 +11,23 @@ import {
 import { DEMO } from "@/api/demoClient";
 import { base44 } from "@/api/base44Client";
 import { SkeletonList } from "@/components/Skeleton";
-import { ALLOW_MAINNET } from "@/wallet-core/evm/networks";
+import { ALLOW_MAINNET, getNetworkInfo } from "@/wallet-core/evm/networks";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS, canReceive } from "@/wallet-core/assets";
 import { fetchAssetHistory, explorerAddressUrl } from "@/lib/txHistory";
 import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import { useActionGuard } from "@/components/security/useActionGuard";
+import { toast } from "@/lib/toast";
+import { getAuthModel } from "@/lib/authModel";
+import {
+  preparePendingEvmReplacement,
+  replacePendingEvmTransaction,
+  REPLACEMENT_ACTION,
+} from "@/wallet-core/evm/replacement";
 
 // Only assets that derive a real address can have an address to look up. The
 // history view mirrors the wallet's receivable assets (coming_soon assets have no
@@ -28,6 +38,7 @@ const statusMeta = {
   pending: { icon: Clock, cls: "text-caution", label: "Pending" },
   confirmed: { icon: CheckCircle2, cls: "text-primary", label: "Confirmed" },
   failed: { icon: XCircle, cls: "text-destructive", label: "Failed" },
+  replaced: { icon: ArrowLeftRight, cls: "text-muted-foreground", label: "Replaced" },
   // Codex P2 2026-08-15: fallback for unknown / missing tx.status. Prior
   // behaviour fell open to "Confirmed" via `statusMeta[tx.status] || statusMeta.confirmed`,
   // so a poisoned/stale indexer row with no trustworthy status could show
@@ -94,7 +105,7 @@ function TxRow({ tx, onOpen }) {
 // exposes a print button that emits a text-only receipt via a fresh window.
 // Print DOM built with textContent only — never innerHTML with user-derived
 // strings (VULN-3 rule preserved from the removed TransactionReceipt page).
-function TxDetailDialog({ tx, open, onClose }) {
+function TxDetailDialog({ tx, open, onClose, canReplace, onReplace, replacementPreparing }) {
   const { t } = useTranslation("wallet");
   if (!tx) return null;
   const sMeta = statusMeta[tx.status] || statusMeta.unknown;
@@ -189,6 +200,26 @@ function TxDetailDialog({ tx, open, onClose }) {
           <p className="text-center text-muted-foreground text-xs">
             Digital transaction record — verify on the block explorer.
           </p>
+          {canReplace && (
+            <div className="grid grid-cols-2 gap-2 pt-2 font-sans">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={replacementPreparing}
+                onClick={() => onReplace(tx, REPLACEMENT_ACTION.SPEED_UP)}
+              >
+                {replacementPreparing ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : "Speed up"}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={replacementPreparing}
+                onClick={() => onReplace(tx, REPLACEMENT_ACTION.CANCEL)}
+              >
+                Cancel transaction
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -201,22 +232,25 @@ function TxDetailDialog({ tx, open, onClose }) {
 // Chain rows win on dedup because they carry authoritative confirmed/failed
 // status. EVM has no in-app history indexer (see txHistory.js), so this local
 // mirror is the ONLY way an EVM send shows up here with a receipt.
-function normalizeLocalSend(row, assetSymbol) {
+function normalizeLocalSend(row, asset) {
   if (!row || !row.tx_hash) return null;
-  if ((row.currency || "").toUpperCase() !== assetSymbol.toUpperCase()) return null;
+  if ((row.currency || "").toUpperCase() !== asset.symbol.toUpperCase()) return null;
   const ts = row.updated_date || row.created_date;
   return {
     id: row.tx_hash,
+    localId: row.id || null,
+    walletId: row.wallet_id || null,
     hash: row.tx_hash,
-    family: null,
-    networkKey: null,
-    assetSymbol,
+    family: asset.family,
+    networkKey: row.network || asset.chain,
+    assetSymbol: asset.symbol,
     type: row.type || "send",
     status: row.status || "pending",
     amount: String(row.amount ?? ""),
     feeNative: row.fee != null ? String(row.fee) : null,
     feePaidByUs: (row.type || "send") === "send",
     counterparty: row.to_address || row.from_address || null,
+    fromAddress: row.from_address || null,
     timestamp: ts ? new Date(ts).getTime() : null,
     explorerUrl: row.explorer_url || "",
     demo: false,
@@ -226,10 +260,176 @@ function normalizeLocalSend(row, assetSymbol) {
 export default function TransactionHistory() {
   const { t } = useTranslation("wallet");
   const wallet = useWallet();
+  const queryClient = useQueryClient();
+  const { requireTwoFactor, gateModal } = useActionGuard();
   const egressAllowed = !isDeniabilityOrDemoActive();
   const [symbol, setSymbol] = useState("ETH");
+  const [replacementReview, setReplacementReview] = useState(null);
+  const [replacementError, setReplacementError] = useState("");
+  const [replacementCredential, setReplacementCredential] = useState("");
+  const [replacementNeedsReauth, setReplacementNeedsReauth] = useState(false);
+  const [replacementVerifying, setReplacementVerifying] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const replacementInFlightRef = useRef(false);
+  const authModel = getAuthModel();
   const asset = useMemo(() => HISTORY_ASSETS.find((a) => a.symbol === symbol) || HISTORY_ASSETS[0], [symbol]);
   const address = DEMO ? null : addressFor(asset, wallet);
+
+  const safeReplacementError = (err) => {
+    const messages = {
+      ORIGINAL_TX_UNAVAILABLE: "The pending transaction is no longer available. Refresh activity and try again.",
+      ORIGINAL_TX_CONFIRMED: "The original transaction has already confirmed, so it cannot be replaced.",
+      ORIGINAL_NONCE_GONE: "The original nonce is no longer pending. Refresh activity before trying again.",
+      STEP_UP_REQUIRED: "Re-enter your PIN or password before signing.",
+      PRESIGN_BLOCKED: "The pre-sign safety check blocked this transaction. Nothing was signed.",
+      REPLACEMENT_EIP1559_REQUIRED: "This pending transaction does not use EIP-1559 fees and cannot be replaced here.",
+      REPLACEMENT_REVIEW_CHANGED: "The transaction changed while you were reviewing it. Review the new fee again.",
+    };
+    return messages[err?.code] || "The replacement could not be completed safely. Nothing was signed.";
+  };
+
+  const prepareReplacement = useMutation({
+    mutationFn: async ({ tx, action }) => {
+      if (DEMO || isDeniabilityOrDemoActive()) {
+        throw Object.assign(new Error("Replacement unavailable"), { code: "REPLACEMENT_UNAVAILABLE" });
+      }
+      const from = tx.fromAddress || address;
+      return {
+        target: tx,
+        prepared: await preparePendingEvmReplacement({
+          networkKey: tx.networkKey || asset.chain,
+          originalHash: tx.hash,
+          expectedFrom: from,
+          action,
+        }),
+      };
+    },
+    onSuccess: (review) => {
+      setSelected(null);
+      setReplacementError("");
+      setReplacementCredential("");
+      setReplacementNeedsReauth(false);
+      setReplacementReview(review);
+    },
+    onError: (err) => {
+      const message = safeReplacementError(err);
+      setReplacementError(message);
+      toast.error(message);
+    },
+  });
+
+  const broadcastReplacement = useMutation({
+    mutationFn: async ({ target, prepared }) => {
+      if (replacementInFlightRef.current) {
+        throw Object.assign(new Error("Replacement already in progress"), { code: "REPLACEMENT_IN_FLIGHT" });
+      }
+      replacementInFlightRef.current = true;
+      const account = wallet.accounts?.find((a) =>
+        a.address?.toLowerCase() === prepared.from.toLowerCase()
+      );
+      if (!account) {
+        throw Object.assign(new Error("Active account mismatch"), { code: "REPLACEMENT_KEY_MISMATCH" });
+      }
+      return replacePendingEvmTransaction({
+        prepared,
+        isReauthRequired: wallet.isSendReauthRequired,
+        withPrivateKey: (signer) => wallet.withPrivateKey(account.index, signer),
+      }).then((result) => ({ result, target }));
+    },
+    onSuccess: async ({ result, target }) => {
+      // The broadcast has already happened. Local-history persistence is
+      // best-effort so a storage error cannot invite a duplicate replacement.
+      try {
+        if (target.localId) {
+          await base44.entities.Transaction.update(target.localId, { status: "replaced" });
+        }
+        await base44.entities.Transaction.create({
+          wallet_id: target.walletId || wallet.activeWalletId,
+          type: result.action === REPLACEMENT_ACTION.CANCEL ? "self" : (target.type || "send"),
+          amount: result.action === REPLACEMENT_ACTION.CANCEL ? 0 : target.amount,
+          currency: target.assetSymbol,
+          to_address: result.action === REPLACEMENT_ACTION.CANCEL ? result.from : target.counterparty,
+          from_address: result.from,
+          network: target.networkKey,
+          status: "pending",
+          tx_hash: result.hash,
+          explorer_url: result.explorerUrl,
+          replaces_tx_hash: target.hash,
+          replacement_action: result.action,
+        });
+      } catch {
+        toast.warning("Replacement broadcast, but local activity could not be updated. Refresh before trying again.");
+      }
+      queryClient.invalidateQueries({ queryKey: ["local-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      setReplacementReview(null);
+      setReplacementError("");
+      toast.success(result.action === REPLACEMENT_ACTION.CANCEL
+        ? "Cancellation broadcast. It remains pending until the network includes it."
+        : "Speed-up broadcast. It remains pending until the network includes it.");
+    },
+    onError: (err) => {
+      if (err?.code !== "REPLACEMENT_IN_FLIGHT") setReplacementError(safeReplacementError(err));
+    },
+    onSettled: (_data, err) => {
+      if (err?.code !== "REPLACEMENT_IN_FLIGHT") replacementInFlightRef.current = false;
+    },
+  });
+
+  const runReviewedReplacement = () => {
+    if (!replacementReview || broadcastReplacement.isPending) return;
+    requireTwoFactor(
+      () => broadcastReplacement.mutate(replacementReview),
+      { title: replacementReview.prepared.action === REPLACEMENT_ACTION.CANCEL
+        ? "Authorise transaction cancellation"
+        : "Authorise transaction speed-up" },
+    );
+  };
+
+  const authoriseReplacement = () => {
+    setReplacementError("");
+    let needsReauth = true;
+    try {
+      needsReauth = typeof wallet.isSendReauthRequired === "function"
+        ? wallet.isSendReauthRequired()
+        : true;
+    } catch {
+      needsReauth = true;
+    }
+    if (needsReauth !== false) {
+      setReplacementNeedsReauth(true);
+      return;
+    }
+    runReviewedReplacement();
+  };
+
+  const submitReplacementReauth = async () => {
+    if (!replacementCredential || replacementVerifying) return;
+    setReplacementVerifying(true);
+    setReplacementError("");
+    try {
+      if (typeof wallet.verifyActiveCredentialDetailed !== "function") {
+        setReplacementError("Verification is unavailable. Re-lock and unlock your wallet before trying again.");
+        return;
+      }
+      const result = await wallet.verifyActiveCredentialDetailed(replacementCredential);
+      if (result?.bricked) {
+        setReplacementError("Verification is unavailable. Re-lock and unlock your wallet before trying again.");
+        return;
+      }
+      if (result?.ok !== true) {
+        setReplacementError("That PIN or password was not accepted.");
+        return;
+      }
+      setReplacementCredential("");
+      setReplacementNeedsReauth(false);
+      runReviewedReplacement();
+    } catch {
+      setReplacementError("Verification is unavailable. Re-lock and unlock your wallet before trying again.");
+    } finally {
+      setReplacementVerifying(false);
+    }
+  };
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["tx-history", asset.symbol, address, DEMO],
@@ -262,8 +462,6 @@ export default function TransactionHistory() {
     enabled: !isDeniabilitySessionActive(),
     staleTime: 5000,
   });
-  const [selected, setSelected] = useState(null);
-
   // Codex P1 2026-08-15: `enabled:false` stops refetches, NOT cached reads.
   // A real-session cache under the same queryKey would still render into a
   // decoy/hidden session on mount. Blank the derived shape so the neutral
@@ -282,13 +480,13 @@ export default function TransactionHistory() {
   const txs = useMemo(() => {
     if (denySession) return [];
     const localNormalized = localRowsRaw
-      .map((r) => normalizeLocalSend(r, asset.symbol))
+      .map((r) => normalizeLocalSend(r, asset))
       .filter(Boolean);
     const byHash = new Map();
     for (const row of localNormalized) byHash.set(row.hash, row);
     for (const row of chainTxs) if (row.hash) byHash.set(row.hash, row); // chain wins
     return Array.from(byHash.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-  }, [denySession, localRowsRaw, chainTxs, asset.symbol]);
+  }, [denySession, localRowsRaw, chainTxs, asset]);
 
   useAdvisorSnapshot({
     transaction_history: {
@@ -430,7 +628,129 @@ export default function TransactionHistory() {
         )}
       </div>
 
-      <TxDetailDialog tx={selected} open={!!selected} onClose={() => setSelected(null)} />
+      <TxDetailDialog
+        tx={selected}
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        canReplace={!!selected
+          && selected.status === "pending"
+          && (selected.family === "evm" || selected.family === "erc20")
+          && (selected.type === "send" || selected.type === "self")
+          && !DEMO
+          && !denySession}
+        onReplace={(tx, action) => {
+          setReplacementError("");
+          prepareReplacement.mutate({ tx, action });
+        }}
+        replacementPreparing={prepareReplacement.isPending}
+      />
+
+      <Dialog
+        open={!!replacementReview}
+        onOpenChange={(open) => {
+          if (!open && !broadcastReplacement.isPending) {
+            setReplacementReview(null);
+            setReplacementError("");
+            setReplacementCredential("");
+            setReplacementNeedsReauth(false);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {replacementReview?.prepared.action === REPLACEMENT_ACTION.CANCEL
+                ? "Cancel pending transaction"
+                : "Speed up pending transaction"}
+            </DialogTitle>
+          </DialogHeader>
+          {replacementReview && (() => {
+            const { prepared } = replacementReview;
+            const network = getNetworkInfo(prepared.networkKey);
+            const symbol = network?.symbol || "native token";
+            const maxFee = formatUnits(prepared.maxNetworkFeeWei, network?.decimals ?? 18);
+            const oldMax = formatUnits(prepared.originalMaxFeePerGas, "gwei");
+            const newMax = formatUnits(prepared.txRequest.maxFeePerGas, "gwei");
+            const oldPriority = formatUnits(prepared.originalMaxPriorityFeePerGas, "gwei");
+            const newPriority = formatUnits(prepared.txRequest.maxPriorityFeePerGas, "gwei");
+            return (
+              <div className="space-y-4 text-sm">
+                <p className="text-muted-foreground">
+                  {prepared.action === REPLACEMENT_ACTION.CANCEL
+                    ? "This sends 0 to your own address with the same nonce. If the network accepts it first, the original transaction will not execute."
+                    : "This sends the same transaction again with the same nonce and higher fees. Only one version can confirm."}
+                </p>
+                <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">Maximum network fee</span>
+                    <span className="font-semibold text-end">{maxFee} {symbol}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    This is the most the replacement can cost, not an estimate. The actual fee may be lower.
+                  </p>
+                  <div className="border-t border-border pt-2 text-xs space-y-1">
+                    <div className="flex justify-between gap-3">
+                      <span>Fee cap</span><span>{oldMax} → {newMax} gwei</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span>Priority fee</span><span>{oldPriority} → {newPriority} gwei</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Both fee rates are raised by at least 10%, rounded up to whole wei, to meet the usual node replacement rule.
+                  </p>
+                </div>
+
+                {replacementNeedsReauth && (
+                  <div className="space-y-2">
+                    <label htmlFor="replacement-credential" className="text-xs font-medium">
+                      Re-enter your {authModel === "pin" ? "PIN" : "password"} to authorise signing
+                    </label>
+                    <Input
+                      id="replacement-credential"
+                      type="password"
+                      inputMode={authModel === "pin" ? "numeric" : "text"}
+                      autoComplete="current-password"
+                      value={replacementCredential}
+                      disabled={replacementVerifying || broadcastReplacement.isPending}
+                      onChange={(event) => setReplacementCredential(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") void submitReplacementReauth();
+                      }}
+                    />
+                  </div>
+                )}
+
+                {replacementError && <p role="alert" className="text-sm text-destructive">{replacementError}</p>}
+
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={broadcastReplacement.isPending}
+                    onClick={() => setReplacementReview(null)}
+                  >
+                    Keep pending
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={prepared.action === REPLACEMENT_ACTION.CANCEL ? "destructive" : "default"}
+                    disabled={broadcastReplacement.isPending || replacementVerifying || (replacementNeedsReauth && !replacementCredential)}
+                    onClick={() => replacementNeedsReauth ? void submitReplacementReauth() : authoriseReplacement()}
+                  >
+                    {(broadcastReplacement.isPending || replacementVerifying) && <Loader2 className="h-4 w-4 motion-safe:animate-spin" />}
+                    {replacementNeedsReauth
+                      ? "Verify and continue"
+                      : prepared.action === REPLACEMENT_ACTION.CANCEL ? "Sign cancellation" : "Sign speed-up"}
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {gateModal}
 
       {/* Footer: count + manual refresh (keeps the disclosure on-demand, not auto). */}
       {data?.supported && !evmNoIndexer && !lockedLive && (
