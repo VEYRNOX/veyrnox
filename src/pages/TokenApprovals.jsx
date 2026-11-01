@@ -5,11 +5,11 @@ import { base44 } from "@/api/base44Client";
 import { DEMO } from "@/api/demoClient";
 import { useWallet } from "@/lib/WalletProvider";
 import { summarizeAllowance, buildRevokeCalldata, sendRevoke } from "@/wallet-core/evm/approvals";
-import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
+import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import { fetchRiskNoteAsync } from "@/lib/approvalRiskNotes";
 import { useTier } from "@/lib/TierProvider";
 import { useApprovalMonitor } from "@/hooks/useApprovalMonitor";
-import { ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle, ExternalLink, Loader2, X, MessageSquare, BellRing } from "lucide-react";
+import { ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle, ExternalLink, Loader2, X, MessageSquare, BellRing, Fingerprint } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/lib/toast";
@@ -17,6 +17,8 @@ import { useActionGuard } from "@/components/security/useActionGuard";
 import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import { getFreshLocalRaspArtifact } from "@/lib/getFreshLocalRaspArtifact";
 import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
+import { verifyBiometric2fa } from "@/lib/biometric";
+import { presignGateOrReject } from "@/sign-gate/presignGateOrReject";
 
 const RISK_CFG = {
   low: { cls: "bg-success/10 text-success", label: "Low Risk" },
@@ -45,7 +47,33 @@ function decorate(a) {
   return { ...a, summary, risk: riskOf(summary, a.trusted) };
 }
 
-export default function TokenApprovals() {
+export function getRevokeConfirmationCopy(approval, demo = DEMO) {
+  const net = getNetworkInfo(approval?.network);
+  const networkName = net?.name || approval?.network || "the selected network";
+  const gasSymbol = net?.symbol || "the network gas token";
+
+  if (demo) {
+    return {
+      title: `Simulate revoke on ${networkName}`,
+      body: `Demo mode — this revoke on ${networkName} is simulated. No transaction will be broadcast and no gas will be charged.`,
+      confirmLabel: "Simulate revoke",
+    };
+  }
+  if (net?.isTestnet === false) {
+    return {
+      title: `Revoke on ${networkName}`,
+      body: `This is a real ${networkName} transaction. It will be broadcast on-chain and costs real ${gasSymbol} in gas.`,
+      confirmLabel: "Continue to real transaction",
+    };
+  }
+  return {
+    title: `Revoke on ${networkName}`,
+    body: `This is a ${networkName} transaction. It will be broadcast on testnet and uses testnet ${gasSymbol} for gas.`,
+    confirmLabel: "Continue to testnet transaction",
+  };
+}
+
+export default function TokenApprovals({ demo = DEMO } = {}) {
   const qc = useQueryClient();
   const wallet = useWallet();
   const { requireTwoFactor, gateModal } = useActionGuard();
@@ -54,6 +82,10 @@ export default function TokenApprovals() {
   const [filter, setFilter] = useState("active");
   const [result, setResult] = useState(null); // post-revoke summary dialog
   const [error, setError] = useState(null);
+  const [pendingApproval, setPendingApproval] = useState(null);
+  const [raspWarning, setRaspWarning] = useState(null);
+  const [raspAcknowledged, setRaspAcknowledged] = useState(false);
+  const [raspGatePending, setRaspGatePending] = useState(false);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["token-approvals"],
@@ -73,7 +105,7 @@ export default function TokenApprovals() {
         decimals: a.decimals ?? 18,
       });
 
-      if (DEMO) {
+      if (demo) {
         // SIMULATED revoke — no key, no broadcast. We still exercise the real
         // calldata builder above so the demo shows precisely what a native build
         // would sign. Persist the new state in the in-memory demo store.
@@ -81,7 +113,7 @@ export default function TokenApprovals() {
         return { simulated: true, approval: a, data, summary };
       }
 
-      // NATIVE / testnet: real broadcast through the EXISTING signing path. The
+      // Real on-chain broadcast through the EXISTING signing path. The
       // private key is handed in transiently by withPrivateKey and never stored.
       if (!wallet.isUnlocked) {
         throw new Error("Unlock your wallet to broadcast a revoke transaction.");
@@ -100,7 +132,7 @@ export default function TokenApprovals() {
     onSuccess: (r) => {
       setResult(r);
       qc.invalidateQueries({ queryKey: ["token-approvals"] });
-      if (!r.simulated) wallet.recordAudit("approval_revoked"); // real testnet revoke only
+      if (!r.simulated) wallet.recordAudit("approval_revoked"); // real on-chain revoke only
     },
     onError: (e) => setError(e?.message || "Revoke failed"),
   });
@@ -122,7 +154,7 @@ export default function TokenApprovals() {
       }));
       return notes;
     },
-    enabled: spenders.length > 0 && !DEMO,
+    enabled: spenders.length > 0 && !demo,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
@@ -150,6 +182,33 @@ export default function TokenApprovals() {
       is_loading: isLoading,
     },
   });
+  const refusePresign = (gateResult) => {
+    if (gateResult?.rejectCode === 'RASP_WARN_ACK_REQUIRED' && gateResult.artifact) {
+      setRaspAcknowledged(false);
+      setRaspWarning({
+        approval: gateResult.approval,
+        sentence: gateResult.artifact.sentence,
+        requiresBiometric: gateResult.requiresBiometric === true,
+      });
+      return;
+    }
+    toast.error(
+      gateResult?.artifact?.sentence
+        || 'Approval revocation is disabled because this device could not pass the signing safety check.'
+    );
+  };
+
+  const runFreshPresign = async (approval, { acknowledged = false, biometricConfirmed = false } = {}) => {
+    const gateResult = await presignGateOrReject({ acknowledged, biometricConfirmed });
+    const resultWithApproval = { ...gateResult, approval };
+    if (gateResult?.proceedAllowed !== true) {
+      refusePresign(resultWithApproval);
+      return false;
+    }
+    revoke.mutate(approval);
+    return true;
+  };
+
   const guardedRevoke = (approval) => {
     const gate = sensitiveGate(raspArtifact, 'sign');
     if (gate.blocked) {
@@ -161,6 +220,14 @@ export default function TokenApprovals() {
         setError('Re-enter your PIN or password to authorise this revoke.');
         return;
       }
+
+      if (!demo) {
+        await runFreshPresign(approval);
+        return;
+      }
+
+      // Demo remains a simulated, keyless path. Keep its existing local-only
+      // integrity check; do not add the signing probe or any broadcast call.
       const freshArtifact = await getFreshLocalRaspArtifact();
       const freshGate = sensitiveGate(freshArtifact, 'sign');
       if (freshGate.blocked) {
@@ -169,6 +236,36 @@ export default function TokenApprovals() {
       }
       revoke.mutate(approval);
     }, { title: 'Revoke token approval' });
+  };
+
+  const confirmSelectedRevoke = () => {
+    const approval = pendingApproval;
+    setPendingApproval(null);
+    if (approval) guardedRevoke(approval);
+  };
+
+  const continueAfterRaspWarning = async () => {
+    if (!raspWarning || !raspAcknowledged || raspGatePending) return;
+    setRaspGatePending(true);
+    let biometricConfirmed = !raspWarning.requiresBiometric;
+    if (raspWarning.requiresBiometric) {
+      try {
+        biometricConfirmed = (await verifyBiometric2fa()) === true;
+      } catch {
+        biometricConfirmed = false;
+      }
+      if (!biometricConfirmed) {
+        toast.error('Biometric confirmation did not pass — the revoke was not signed.');
+        setRaspGatePending(false);
+        return;
+      }
+    }
+
+    const approval = raspWarning.approval;
+    setRaspWarning(null);
+    setRaspAcknowledged(false);
+    await runFreshPresign(approval, { acknowledged: true, biometricConfirmed });
+    setRaspGatePending(false);
   };
 
   return (
@@ -181,7 +278,7 @@ export default function TokenApprovals() {
           </p>
         </div>
         <span className="shrink-0 text-xs px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
-          {DEMO ? "Demo · simulated" : ALLOW_MAINNET ? "Mainnet" : "Testnet"}
+          {demo ? "Demo · simulated" : "On-chain"}
         </span>
       </div>
 
@@ -189,7 +286,9 @@ export default function TokenApprovals() {
         <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
         <p>
           Unlimited approvals are a common drain vector. Revoking removes the permission — signed on your device.{" "}
-          {DEMO ? "In demo, the revoke is simulated — no broadcast." : "Mainnet is gated; revokes run on testnet."}
+          {demo
+            ? "In demo, the revoke is simulated — no broadcast."
+            : "Each revoke uses the approval row's own network. Review the chain and gas warning before you confirm."}
         </p>
       </div>
 
@@ -358,7 +457,7 @@ export default function TokenApprovals() {
                       variant="destructive"
                       className="gap-1 text-xs h-11"
                       disabled={pending}
-                      onClick={() => guardedRevoke(a)}
+                      onClick={() => setPendingApproval(a)}
                     >
                       {pending ? <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> : <ShieldAlert className="h-3.5 w-3.5" />}
                       Revoke
@@ -372,6 +471,73 @@ export default function TokenApprovals() {
           );
         })}
       </div>
+
+      <Dialog open={!!pendingApproval} onOpenChange={(open) => !open && setPendingApproval(null)}>
+        <DialogContent>
+          {pendingApproval && (() => {
+            const copy = getRevokeConfirmationCopy(pendingApproval, demo);
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle>{copy.title}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-2 text-sm">
+                  <p className="text-muted-foreground">{copy.body}</p>
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => setPendingApproval(null)}>Cancel</Button>
+                    <Button variant="destructive" onClick={confirmSelectedRevoke}>{copy.confirmLabel}</Button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!raspWarning} onOpenChange={(open) => {
+        if (!open && !raspGatePending) {
+          setRaspWarning(null);
+          setRaspAcknowledged(false);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Signing safety warning</DialogTitle>
+          </DialogHeader>
+          {raspWarning && (
+            <div className="space-y-4 pt-2 text-sm">
+              <p className="text-caution">
+                {raspWarning.sentence || 'This device needs extra caution before signing.'}
+              </p>
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={raspAcknowledged}
+                  onChange={(event) => setRaspAcknowledged(event.target.checked)}
+                />
+                <span>I understand the warning and want to revoke this approval anyway.</span>
+              </label>
+              {raspWarning.requiresBiometric && (
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Fingerprint className="h-3.5 w-3.5" aria-hidden="true" />
+                  Biometric confirmation is also required before signing.
+                </p>
+              )}
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" disabled={raspGatePending} onClick={() => setRaspWarning(null)}>Cancel</Button>
+                <Button
+                  variant="destructive"
+                  disabled={!raspAcknowledged || raspGatePending}
+                  onClick={continueAfterRaspWarning}
+                >
+                  {raspGatePending ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : 'Confirm and continue'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Post-revoke confirmation: shows the exact calldata that was built/signed. */}
       <Dialog open={!!result} onOpenChange={(o) => !o && setResult(null)}>
