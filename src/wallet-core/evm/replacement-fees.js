@@ -35,3 +35,60 @@ export function bumpEip1559Fees({ maxFeePerGas, maxPriorityFeePerGas }) {
   };
 }
 
+function feeError(code, message) {
+  return Object.assign(new Error(message), { code });
+}
+
+/**
+ * Replacement fees that satisfy BOTH floors:
+ *   1. the node replacement rule (each rate >= original + 10%), and
+ *   2. the live network rate (fee cap >= 2 x live base fee + tip), so a
+ *      replacement of an old low-fee transaction is not itself stuck under the
+ *      current base fee.
+ *
+ * The live numbers come from an untrusted RPC (I5), so they are bounded:
+ *   - a live base fee above the per-network ceiling FAILS CLOSED (same rule as
+ *     buildEvmTiers); it is never clamped into a signable value;
+ *   - the live tip is clamped to [0, maxTipWei];
+ *   - the live-derived fee cap is clamped to maxBaseFeeWei + maxTipWei, but never
+ *     below the required 10% bump. If the required bump itself exceeds that
+ *     ceiling the replacement fails closed.
+ * All values are integer wei (BigInt).
+ */
+export function replacementFeesWithLiveFloor({
+  maxFeePerGas,
+  maxPriorityFeePerGas,
+  liveBaseFeePerGas,
+  liveTipWei,
+  maxBaseFeeWei,
+  maxTipWei,
+}) {
+  const bumped = bumpEip1559Fees({ maxFeePerGas, maxPriorityFeePerGas });
+  const baseCap = asNonNegativeWei(maxBaseFeeWei, 'Base fee ceiling');
+  const tipCap = asNonNegativeWei(maxTipWei, 'Tip ceiling');
+  const ceiling = baseCap + tipCap;
+  if (liveBaseFeePerGas == null) {
+    throw feeError('REPLACEMENT_LIVE_FEE_UNAVAILABLE', 'The current network fee could not be read.');
+  }
+  const liveBase = BigInt(liveBaseFeePerGas);
+  if (liveBase < 0n || liveBase > baseCap) {
+    throw feeError('REPLACEMENT_LIVE_FEE_UNSAFE', 'The RPC returned an implausible network fee.');
+  }
+  const rawTip = liveTipWei == null ? 0n : BigInt(liveTipWei);
+  const liveTip = rawTip < 0n ? 0n : (rawTip > tipCap ? tipCap : rawTip);
+
+  const priority = bumped.maxPriorityFeePerGas > liveTip ? bumped.maxPriorityFeePerGas : liveTip;
+  let liveCap = liveBase * 2n + priority;
+  if (liveCap > ceiling) liveCap = ceiling;
+  let maxFee = bumped.maxFeePerGas > liveCap ? bumped.maxFeePerGas : liveCap;
+  if (maxFee < priority) maxFee = priority;
+  if (maxFee > ceiling || priority > tipCap) {
+    throw feeError('REPLACEMENT_FEE_UNSAFE', 'The required replacement fee is above this network’s safety ceiling.');
+  }
+  return {
+    maxFeePerGas: maxFee,
+    maxPriorityFeePerGas: priority,
+    liveBaseFeePerGas: liveBase,
+  };
+}
+

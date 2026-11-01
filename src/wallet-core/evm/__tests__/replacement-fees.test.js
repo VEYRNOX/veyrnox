@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bumpEip1559Fees, bumpReplacementWei } from '../replacement-fees.js';
+import { bumpEip1559Fees, bumpReplacementWei, replacementFeesWithLiveFloor } from '../replacement-fees.js';
 
 describe('EIP-1559 replacement fee bump', () => {
   it('raises an exactly divisible value by 10%', () => {
@@ -37,3 +37,40 @@ describe('EIP-1559 replacement fee bump', () => {
   });
 });
 
+
+describe('replacement fees with a bounded live-network floor', () => {
+  const G = 1_000_000_000n;
+  const bounds = { maxBaseFeeWei: 200n * G, maxTipWei: 500n * G };
+
+  it('lifts a stale 30 gwei cap above a live 50 gwei base fee instead of signing 33 gwei', () => {
+    const fee = replacementFeesWithLiveFloor({
+      maxFeePerGas: 30n * G, maxPriorityFeePerGas: 2n * G, liveBaseFeePerGas: 50n * G, liveTipWei: 1n * G, ...bounds,
+    });
+    expect(fee.maxFeePerGas).toBe(102_200_000_000n);
+    expect(fee.maxPriorityFeePerGas).toBe(2_200_000_000n);
+  });
+
+  it('keeps the 10% bump when it already exceeds the live floor', () => {
+    const fee = replacementFeesWithLiveFloor({
+      maxFeePerGas: 30n * G, maxPriorityFeePerGas: 2n * G, liveBaseFeePerGas: 1n * G, liveTipWei: 1n * G, ...bounds,
+    });
+    expect(fee.maxFeePerGas).toBe(33n * G);
+  });
+
+  it('clamps a hostile live tip and the live-derived cap to the network ceiling', () => {
+    const fee = replacementFeesWithLiveFloor({
+      maxFeePerGas: 30n * G, maxPriorityFeePerGas: 2n * G, liveBaseFeePerGas: 200n * G, liveTipWei: 10_000n * G, ...bounds,
+    });
+    expect(fee.maxPriorityFeePerGas).toBe(500n * G);
+    expect(fee.maxFeePerGas).toBe(700n * G);
+  });
+
+  it('fails closed on an implausible or missing live base fee', () => {
+    expect(() => replacementFeesWithLiveFloor({
+      maxFeePerGas: 30n * G, maxPriorityFeePerGas: 2n * G, liveBaseFeePerGas: 201n * G, liveTipWei: 0n, ...bounds,
+    })).toThrow(expect.objectContaining({ code: 'REPLACEMENT_LIVE_FEE_UNSAFE' }));
+    expect(() => replacementFeesWithLiveFloor({
+      maxFeePerGas: 30n * G, maxPriorityFeePerGas: 2n * G, liveBaseFeePerGas: null, liveTipWei: 0n, ...bounds,
+    })).toThrow(expect.objectContaining({ code: 'REPLACEMENT_LIVE_FEE_UNAVAILABLE' }));
+  });
+});
