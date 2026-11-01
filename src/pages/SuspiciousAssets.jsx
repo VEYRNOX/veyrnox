@@ -570,7 +570,7 @@ export default function SuspiciousAssets() {
                   <div key={nft.id} className="rounded-2xl border border-border bg-card p-4 flex gap-3">
                     <div className="h-16 w-16 rounded-xl bg-secondary overflow-hidden shrink-0 flex items-center justify-center">
                       {nft.image_url ? (
-                        <img src={safeNftImageUrl(nft.image_url)} alt={nft.name} referrerPolicy="no-referrer" crossOrigin="anonymous" className="h-full w-full object-cover" />
+                        <img src={safeNftImageUrl(nft.image_url)} alt={nft.name} referrerPolicy="no-referrer" crossOrigin="anonymous" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                       ) : (
                         <ImageIcon className="h-5 w-5 text-muted-foreground opacity-40" />
                       )}
