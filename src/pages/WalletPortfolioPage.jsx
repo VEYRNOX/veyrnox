@@ -85,6 +85,7 @@ import { isDeferred } from "@/lib/seedVerifyState";
 import { useWalletReady, useFirstInbound } from "@/lib/tracking-integration";
 import { buildAssetSpamIntel } from "@/lib/spamTokenIntel";
 import { usePortfolioMarketData } from "@/hooks/usePortfolioMarketData";
+import FiatApproximationNote from "@/components/FiatApproximationNote";
 
 // Read-only supplier of the posture-state fields the SecurityPosture widget
 // intentionally does NOT self-detect (portable-by-design): PIN cohort / length,
@@ -174,14 +175,7 @@ export function AssetBalanceValues({ row, symbol, locale, fmtFiatValue, balanceL
   );
 }
 
-export function FiatApproximationNote({ fiatCurrency }) {
-  if (fiatCurrency === "USD") return null;
-  return (
-    <p role="note" className="text-xs text-muted-foreground mt-1">
-      Approximate {fiatCurrency} values using fixed reference rates.
-    </p>
-  );
-}
+export { FiatApproximationNote };
 
 // "12:04" local time for the live-price freshness stamp. A stamp from another
 // day carries its date ("3 Oct, 12:04") so it can't read as today's.

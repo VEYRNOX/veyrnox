@@ -381,7 +381,11 @@ export function resolveFiatCurrency(opts) {
   // than relying on .includes(null) short-circuiting.
   if (stored && SUPPORTED_FIAT.includes(stored)) return stored;
   try {
-    const region = new Intl.Locale(resolveLocale(opts)).maximize().region;
+    // DEVICE locale only: the stored UI-language preference is deliberately
+    // ignored here. LanguageSwitcher stores language-only tags ('en', 'fr'),
+    // which maximize to en-US / fr-FR and would flip an en-GB device to USD.
+    const nav = opts && 'navigator' in opts ? opts.navigator : undefined;
+    const region = new Intl.Locale(detectBrowserLocale(nav) || FALLBACK_LOCALE).maximize().region;
     const localCurrency = region ? REGION_FIAT[region] : null;
     if (localCurrency && SUPPORTED_FIAT.includes(localCurrency)) return localCurrency;
   } catch {

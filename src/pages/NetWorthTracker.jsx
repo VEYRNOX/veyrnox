@@ -6,6 +6,7 @@ import { CURRENCY_COLORS, approxUsd } from "@/lib/cryptos";
 import { formatFiat } from "@/components/FiatCurrencySelector";
 import { useLocalePreferences } from "@/lib/useLocale";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
+import FiatApproximationNote from "@/components/FiatApproximationNote";
 import CoinLogo from "@/components/CoinLogo";
 import { RefreshCw } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
@@ -131,6 +132,7 @@ export default function NetWorthTracker() {
           stale rates (when live, values are real-time and need no caveat). The
           token's presence here also satisfies the usdDisclosure guard. */}
       {!live && <ReferenceRateNote />}
+      {live && <FiatApproximationNote fiatCurrency={fiatCurrency} />}
     </div>
   );
 }
