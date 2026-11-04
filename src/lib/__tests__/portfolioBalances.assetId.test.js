@@ -10,11 +10,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/wallet-core/evm/provider.js', () => ({
   getBalanceEth: vi.fn(),
-  getProvider: vi.fn(() => ({})),
 }));
-vi.mock('@/wallet-core/evm/tokens.js', () => ({
-  getToken: vi.fn(() => ({ address: '0xtoken', decimals: 6 })),
-  ERC20_ABI: [],
+vi.mock('@/wallet-core/evm/token-send.js', () => ({
+  getTokenBalance: vi.fn(),
 }));
 vi.mock('@/wallet-core/btc/provider.js', () => ({ getBalanceSats: vi.fn() }));
 vi.mock('@/wallet-core/sol/provider.js', () => ({ getBalanceSol: vi.fn() }));

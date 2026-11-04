@@ -120,7 +120,7 @@ export default function NFTPortfolio() {
                 <div className="aspect-square bg-secondary flex items-center justify-center relative">
                   {nft.image_url ? (
                     /* M-10: attacker-influenced field; safeNftImageUrl gates the fetch. */
-                    <img src={safeNftImageUrl(nft.image_url)} alt={nft.name} referrerPolicy="no-referrer" crossOrigin="anonymous" className="w-full h-full object-cover" />
+                    <img src={safeNftImageUrl(nft.image_url)} alt={nft.name} referrerPolicy="no-referrer" crossOrigin="anonymous" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   ) : (
                     <Image className="h-8 w-8 text-muted-foreground opacity-40" />
                   )}

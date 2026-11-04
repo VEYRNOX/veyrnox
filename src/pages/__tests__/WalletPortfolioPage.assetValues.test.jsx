@@ -54,6 +54,25 @@ describe('WalletPortfolioPage asset values', () => {
     expect(fmtFiatValue).not.toHaveBeenCalled();
   });
 
+  it('shows an unpriced holding as an unavailable fiat value with its known amount, not $0 and not a failed read', () => {
+    const fmtFiatValue = vi.fn((usd) => `fiat:${usd}`);
+    const { container } = render(
+      <AssetBalanceValues
+        row={{ amount: 2.5, usd: null, indeterminate: false, quoteUnavailable: true }}
+        symbol="LINK"
+        locale="en-US"
+        fmtFiatValue={fmtFiatValue}
+        balanceLoadFailedTitle="Balance failed"
+      />,
+    );
+    const [primary, secondary] = container.firstElementChild.children;
+    expect(primary).toHaveTextContent('—');
+    expect(primary).not.toHaveAttribute('title');
+    expect(secondary).toHaveTextContent('2.5');
+    expect(screen.queryByLabelText('Balance failed')).toBeNull();
+    expect(fmtFiatValue).not.toHaveBeenCalled();
+  });
+
   it('renders BTC secondary values as exact, grouped satoshis', () => {
     expect(fmtSatoshis(12_345_678n, 'en-US')).toBe('12,345,678 sats');
     expect(fmtSatoshis(undefined, 'en-US')).toBe('—');

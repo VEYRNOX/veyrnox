@@ -1,3 +1,4 @@
+import { UNPRICED_TOTAL_NOTE } from "@/lib/balanceDisplay";
 import { useTranslation } from "react-i18next";
 import { useWallet } from "@/lib/WalletProvider";
 import { usePortfolio } from "@/lib/portfolioBalances";
@@ -32,6 +33,8 @@ export default function NetWorthTracker() {
 
   const total = portfolio?.grandTotal ?? 0;
   const incomplete = !!portfolio?.indeterminate;
+  // A known balance with no quote is not a failed read, but the total leaves it out.
+  const unpriced = !incomplete && !!portfolio?.quoteUnavailable;
   const assetTotals = /** @type {Record<string, { amount?: number, usd?: number|null, indeterminate?: boolean }>} */ (portfolio?.assetTotals || {});
   const live = priceBasis === "live";
   // null amount/usd = indeterminate (read failed) → "—", never a misleading $0.
@@ -70,6 +73,7 @@ export default function NetWorthTracker() {
         <p className="text-4xl font-bold mt-1">{isLoading ? "…" : fmtUsd(total)}</p>
         <div className="mt-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
           {incomplete && <span className="text-caution">{t("networth.partialNote")}</span>}
+          {unpriced && <span className="text-caution">{UNPRICED_TOTAL_NOTE}</span>}
           {live ? (
             <button
               type="button"
