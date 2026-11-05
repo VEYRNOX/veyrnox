@@ -43,8 +43,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWallet } from "@/lib/WalletProvider";
 import { usePortfolio, sumPortfolioTotal, assetDistribution } from "@/lib/portfolioBalances";
-import { resolveAssetRow } from "@/lib/balanceDisplay";
-import { ASSETS, getAsset, getAssetById } from "@/wallet-core/assets.js";
+import { resolveAssetRow, UNPRICED_TOTAL_NOTE } from "@/lib/balanceDisplay";
+import { ASSETS, getAsset, getAssetById, NON_LIVE_ASSET_SPEND_NOTICE } from "@/wallet-core/assets.js";
 import { isAssetIdString } from "@/wallet-core/assetId.js";
 import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
 
@@ -57,7 +57,7 @@ const CHAIN_LABEL = {
 };
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
 import { defaultAssetSymbol } from "@/lib/sendWalletSource";
-import { formatFiat } from "@/components/FiatCurrencySelector";
+import FiatCurrencySelector, { formatFiat } from "@/components/FiatCurrencySelector";
 import { useLocalePreferences } from "@/lib/useLocale";
 import VaultIllustration from "@/components/VaultIllustration";
 import SeedGrid from "@/components/SeedGrid";
@@ -86,6 +86,7 @@ import { isDeferred } from "@/lib/seedVerifyState";
 import { useWalletReady, useFirstInbound } from "@/lib/tracking-integration";
 import { buildAssetSpamIntel } from "@/lib/spamTokenIntel";
 import { usePortfolioMarketData } from "@/hooks/usePortfolioMarketData";
+import FiatApproximationNote from "@/components/FiatApproximationNote";
 
 // Read-only supplier of the posture-state fields the SecurityPosture widget
 // intentionally does NOT self-detect (portable-by-design): PIN cohort / length,
@@ -134,6 +135,50 @@ const fmtAmount = (n) =>
     : n < 0.0001 ? n.toExponential(2)
     : n.toLocaleString(undefined, { maximumFractionDigits: 6 });
 
+/** Format an exact satoshi integer without converting money through Number. */
+export function fmtSatoshis(sats, locale) {
+  if (sats == null || sats === '') return "—";
+  if (typeof sats !== 'bigint' && !/^\d+$/.test(String(sats))) return "—";
+  try {
+    const exact = typeof sats === 'bigint' ? sats : BigInt(sats);
+    if (exact < 0n) return "—";
+    return `${new Intl.NumberFormat(locale).format(exact)} sats`;
+  } catch {
+    return "—";
+  }
+}
+
+export function AssetBalanceValues({ row, symbol, locale, fmtFiatValue, balanceLoadFailedTitle }) {
+  const failed = row.indeterminate;
+  const secondary = failed
+    ? "—"
+    : symbol === "BTC"
+      ? fmtSatoshis(row.sats, locale)
+      : fmtAmount(row.amount);
+  return (
+    <div className="text-end shrink-0">
+      <p
+        className="text-sm font-mono flex items-center justify-end gap-1"
+        title={failed ? balanceLoadFailedTitle : undefined}
+      >
+        {/* failed balance or missing quote → "—", never a fabricated $0.00 */}
+        {failed || row.usd == null ? "—" : fmtFiatValue(row.usd)}
+        {failed && (
+          <span
+            aria-label={balanceLoadFailedTitle}
+            className="text-amber-400 opacity-70 text-xs leading-none"
+          >
+            ⚠
+          </span>
+        )}
+      </p>
+      <p className="text-xs text-muted-foreground">{secondary}</p>
+    </div>
+  );
+}
+
+export { FiatApproximationNote };
+
 // "12:04" local time for the live-price freshness stamp. A stamp from another
 // day carries its date ("3 Oct, 12:04") so it can't read as today's.
 export const fmtPriceTime = (ts, now = Date.now()) => {
@@ -167,6 +212,13 @@ export function PriceBasisNote({ priceBasis, pricesUpdatedAt, onRefresh }) {
       </div>
     );
   }
+  if (priceBasis === "unavailable") {
+    return (
+      <div className="mt-1 flex justify-center">
+        <span className="text-xs text-muted-foreground">Price unavailable for one or more assets.</span>
+      </div>
+    );
+  }
   return (
     <>
       <div className="mt-1 flex justify-center">
@@ -174,6 +226,15 @@ export function PriceBasisNote({ priceBasis, pricesUpdatedAt, onRefresh }) {
       </div>
       <ReferenceRateNote />
     </>
+  );
+}
+
+/** Render a row's fiat value without coercing a missing quote to $0. */
+export function AssetUsdValue({ usd, formatFiat: formatValue }) {
+  return (
+    <p className="text-xs text-muted-foreground">
+      {usd == null ? "—" : formatValue(usd)}
+    </p>
   );
 }
 
@@ -650,7 +711,7 @@ export default function WalletPortfolioPage() {
   // read it). fmtFiat is bound to (currency, locale) so per-locale formatting
   // (symbol placement, JPY 0-decimal) applies consistently across all four call
   // sites below.
-  const { locale, fiatCurrency } = useLocalePreferences();
+  const { locale, fiatCurrency, setFiatCurrency } = useLocalePreferences();
   const fmtFiat = (usd) => formatFiat(usd, fiatCurrency, locale);
   // Portfolio market data (spot USD + 24h % change) — SafePal-parity row display.
   // I2/I3-safe: fixed basket, decoy/hidden/DEMO ⇒ null values (row hides delta).
@@ -769,7 +830,7 @@ export default function WalletPortfolioPage() {
   // When !isUnlocked, wallets is empty, so this is a harmless {total:0}.
   const inActive = (w) => (walletPortfolioMap[w.id] || MAIN_PORTFOLIO_ID) === activePortfolioId;
   const pfWallets = wallets.filter(inActive);
-  const { total: pfTotal, indeterminate: pfIncomplete } = sumPortfolioTotal(pfWallets, byWallet);
+  const { total: pfTotal, indeterminate: pfIncomplete, quoteUnavailable: pfUnpriced } = sumPortfolioTotal(pfWallets, byWallet);
 
   // Telemetry (Task 9): funnel tracking for the wallet-ready + first-inbound
   // milestones. safeEmit()-backed, so neither blocks nor throws (I4).
@@ -793,8 +854,12 @@ export default function WalletPortfolioPage() {
     return (
       <div className="max-w-lg mx-auto space-y-5 pt-6">
         <div className="text-center space-y-1">
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">{t("portfolio.portfolioValueLabel")}</p>
+          <div className="flex items-center justify-center gap-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-widest">{t("portfolio.portfolioValueLabel")}</p>
+            <FiatCurrencySelector value={fiatCurrency} onChange={setFiatCurrency} />
+          </div>
           <p className="text-4xl font-bold">{fmtFiat(0)}</p>
+          <FiatApproximationNote fiatCurrency={fiatCurrency} />
           <p className="text-xs text-muted-foreground">{t("portfolio.explore.subtitle")}</p>
         </div>
         <div className="p-6 rounded-2xl border border-dashed border-border bg-card text-center space-y-4">
@@ -826,7 +891,12 @@ export default function WalletPortfolioPage() {
   // Testnet balances are commonly 0, so this is the expected fresh-wallet view.
   // Fail-closed: a $0 total that is actually INCOMPLETE (a read failed) must NOT
   // claim "no balance yet" — we can't assert emptiness we couldn't confirm.
-  const isZeroState = !portfolioLoading && pfWallets.length > 0 && pfTotal === 0 && !pfIncomplete;
+  const isZeroState = !portfolioLoading
+    && pfWallets.length > 0
+    && pfTotal === 0
+    && !pfIncomplete
+    && !pfUnpriced
+    && priceBasis !== "unavailable";
 
   // Per-wallet cards (active portfolio). Built once so the same markup serves both
   // the funded view and the expanded zero-state — no duplication.
@@ -855,7 +925,7 @@ export default function WalletPortfolioPage() {
             </div>
             <p className="text-xs text-muted-foreground">
               {fmtFiat(data.total)}
-              {data.indeterminate && <span className="text-caution"> · {t("portfolio.walletCard.partial")}</span>}
+              {(data.indeterminate || data.quoteUnavailable) && <span className="text-caution"> · {t("portfolio.walletCard.partial")}</span>}
             </p>
           </button>
           {canManage && (
@@ -913,7 +983,7 @@ export default function WalletPortfolioPage() {
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold">{displaySymbol}{chainLabel ? ` (${chainLabel})` : ""}</p>
                     {a?.status === "receive_only" && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-caution/15 text-caution" title="No on-chain send has been verified for this asset yet">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-caution/15 text-caution" title={NON_LIVE_ASSET_SPEND_NOTICE}>
                         Receive only
                       </span>
                     )}
@@ -946,24 +1016,13 @@ export default function WalletPortfolioPage() {
                     );
                   })()}
                 </div>
-                <div className="text-end shrink-0">
-                  <p
-                    className="text-sm font-mono flex items-center justify-end gap-1"
-                    title={row.indeterminate ? t("portfolio.balanceLoadFailedTitle") : undefined}
-                  >
-                    {fmtAmount(row.amount)}
-                    {row.indeterminate && (
-                      <span
-                        aria-label={t("portfolio.balanceLoadFailedTitle")}
-                        className="text-amber-400 opacity-70 text-xs leading-none"
-                      >
-                        ⚠
-                      </span>
-                    )}
-                  </p>
-                  {/* indeterminate read → "—", not a misleading $0.00 */}
-                  <p className="text-xs text-muted-foreground">{row.indeterminate ? "—" : fmtFiat(row.usd)}</p>
-                </div>
+                <AssetBalanceValues
+                  row={row}
+                  symbol={symbol}
+                  locale={locale}
+                  fmtFiatValue={fmtFiat}
+                  balanceLoadFailedTitle={t("portfolio.balanceLoadFailedTitle")}
+                />
               </button>
             );
           })}
@@ -994,7 +1053,10 @@ export default function WalletPortfolioPage() {
 
       {/* Active-portfolio total */}
       <div className="relative overflow-hidden rounded-3xl border border-border/40 bg-card text-center px-4 py-6 bg-[radial-gradient(120%_90%_at_50%_0%,hsl(var(--primary)/0.14),transparent_60%)]">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{t("portfolio.totalValueHeading", { name: activePortfolioName })}</p>
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">{t("portfolio.totalValueHeading", { name: activePortfolioName })}</p>
+          <FiatCurrencySelector value={fiatCurrency} onChange={setFiatCurrency} />
+        </div>
         {/* byWallet defaults to {} while the portfolio query is in flight, so
             pfTotal falls back to 0 and this rendered a confident "$0.00" for a
             funded wallet before the real figure resolved. A skeleton of the same
@@ -1003,11 +1065,15 @@ export default function WalletPortfolioPage() {
         {portfolioLoading
           ? <div className="h-10 w-40 mx-auto rounded-lg bg-secondary animate-pulse" role="status" aria-label="Loading total value" />
           : <p className="text-5xl font-semibold tracking-tight mono-value">{fmtFiat(pfTotal)}</p>}
+        <FiatApproximationNote fiatCurrency={fiatCurrency} />
         {/* I4 fail-closed: when a balance read failed, the total is incomplete —
             say so rather than presenting a silently-understated figure as fact.
             Same copy in decoy and real sessions (no isDecoy branch). */}
         {pfIncomplete && (
           <p className="text-xs text-caution mt-1">{t("portfolio.partialTotalNote")}</p>
+        )}
+        {!pfIncomplete && pfUnpriced && (
+          <p className="text-xs text-caution mt-1">{UNPRICED_TOTAL_NOTE}</p>
         )}
         <PriceBasisNote priceBasis={priceBasis} pricesUpdatedAt={pricesUpdatedAt} onRefresh={() => refetchPrices?.()} />
         {/* DENIABILITY (CLAUDE.md "never show wallet count/list" · I3 / KEK spec §5):

@@ -51,7 +51,7 @@ import { MAX_BASE_FEE_GWEI, evmFeeOverrides } from "@/wallet-core/evm/fees";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getBalanceSats } from "@/wallet-core/btc/provider.js";
 import { getBalanceSol } from "@/wallet-core/sol/provider.js";
-import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
+import { getAsset, canSend, canReceive, isEvmFamily, NON_LIVE_ASSET_SPEND_NOTICE } from "@/wallet-core/assets";
 import { assetDisplayLabel, assetDisplaySymbol } from "@/lib/assetLabel";
 import { isDevSendUngated } from "@/lib/devSendOverride";
 import { signAndBroadcastBtc, estimateBtcSend, broadcastBtcTx } from "@/wallet-core/btc/send";
@@ -2495,7 +2495,7 @@ export default function SendCrypto() {
         {selectedWallet && !sendEnabled && !devUngated && (
           <div role="status" className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
             <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground">{tw("send.status.not_enabled", { currency: selectedWallet.currency })}</p>
+            <p className="text-xs text-muted-foreground">{NON_LIVE_ASSET_SPEND_NOTICE}</p>
           </div>
         )}
         {selectedWallet && !sendEnabled && devUngated && (

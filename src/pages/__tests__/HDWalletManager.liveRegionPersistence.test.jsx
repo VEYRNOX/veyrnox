@@ -23,6 +23,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 const getBalanceEth = vi.fn();
+const getTokenBalance = vi.fn();
+const session = vi.hoisted(() => ({ deniable: false }));
 vi.mock('@/wallet-core/evm/provider', () => ({
   getBalanceEth: (...a) => getBalanceEth(...a),
 }));
@@ -30,7 +32,10 @@ vi.mock('@/wallet-core/evm/networks', () => ({
   getNetworkInfo: () => ({ name: 'Ethereum (test)', symbol: 'ETH' }),
 }));
 vi.mock('@/wallet-core/evm/token-send', () => ({
-  getTokenBalance: vi.fn(),
+  getTokenBalance: (...a) => getTokenBalance(...a),
+}));
+vi.mock('@/wallet-core/deniabilitySession', () => ({
+  isDeniabilityOrDemoActive: () => session.deniable,
 }));
 
 let AssetLiveBalance;
@@ -38,6 +43,7 @@ let BalanceStatus;
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  session.deniable = false;
   ({ AssetLiveBalance, BalanceStatus } = await import('../HDWalletManager.jsx'));
 });
 
@@ -111,5 +117,42 @@ describe('AssetLiveBalance — persistent live region across the real query life
     await waitFor(() => expect(container.textContent).toContain('Balance unavailable'), { timeout: 3000 });
     const statusAfter = container.querySelector('[role="status"]');
     expect(statusAfter).toBe(statusBefore);
+  });
+
+  it.each(['decoy', 'hidden'])('starts no native or token balance query in a %s session', () => {
+    session.deniable = true;
+    const address = '0x1111111111111111111111111111111111111111';
+    renderWithClient(
+      <>
+        <AssetLiveBalance asset={{ chain: 'mainnet', family: 'evm', symbol: 'ETH' }} address={address} />
+        <AssetLiveBalance asset={{ chain: 'mainnet', family: 'erc20', symbol: 'USDC' }} address={address} />
+      </>
+    );
+
+    expect(getBalanceEth).not.toHaveBeenCalled();
+    expect(getTokenBalance).not.toHaveBeenCalled();
+  });
+});
+
+describe('AssetLiveBalance — a suppressed read is unavailable, never NaN', () => {
+  it('shows the unavailable state in a deniability/demo session and makes no read', async () => {
+    session.deniable = true;
+    const { container } = renderWithClient(
+      <AssetLiveBalance asset={{ chain: 'mainnet', family: 'erc20', symbol: 'USDC' }} address="0xabc" />,
+    );
+    await new Promise((r) => setTimeout(r, 20));
+    expect(container.textContent).toContain('Balance unavailable');
+    expect(container.textContent).not.toMatch(/NaN/);
+    expect(getTokenBalance).not.toHaveBeenCalled();
+    expect(getBalanceEth).not.toHaveBeenCalled();
+  });
+
+  it('treats a resolved null result as unavailable, not a confident zero', async () => {
+    getBalanceEth.mockResolvedValue(null);
+    const { container } = renderWithClient(
+      <AssetLiveBalance asset={{ chain: 'mainnet', family: 'evm', symbol: 'ETH' }} address="0xabc" />,
+    );
+    await waitFor(() => expect(container.textContent).toContain('Balance unavailable'));
+    expect(container.textContent).not.toMatch(/NaN|\b0 ETH/);
   });
 });
