@@ -65,6 +65,17 @@ describe('fetchAssetAmount — indeterminate vs zero (Finding 2)', () => {
     getBalanceSol.mockRejectedValueOnce(new Error('rpc down'));
     expect(await fetchAssetAmount({ symbol: 'SOL', family: 'solana', chain: 'devnet' }, { sol: 'So11' })).toBeNull();
   });
+
+  it('retains exact BTC satoshis as a cache-safe decimal string', async () => {
+    getBalanceSats.mockResolvedValueOnce(12_345_678n);
+    const { byWallet } = await computePortfolio(
+      [{ id: 'w1', enabledAssets: ['BTC'] }],
+      { w1: { btc: 'tb1q' } },
+    );
+    const row = byWallet.w1.assets.find((asset) => asset.symbol === 'BTC');
+    expect(row.sats).toBe('12345678');
+    expect(() => JSON.stringify(row)).not.toThrow();
+  });
 });
 
 describe('computePortfolio — indeterminate propagation (Finding 2)', () => {
