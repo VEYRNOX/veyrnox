@@ -64,6 +64,18 @@ function resolveUsdRate(symbol, livePrices) {
  * @returns {Promise<number|null>} amount, or null when indeterminate
  */
 export async function fetchAssetAmount(asset, addr) {
+  const balance = await fetchAssetBalance(asset, addr);
+  return balance?.amount ?? null;
+}
+
+/**
+ * Internal balance read used by the portfolio aggregator. BTC keeps the exact
+ * satoshi integer as a decimal string alongside its display-unit Number: JSON
+ * caches cannot store BigInt, while reconstructing sats from a BTC float would
+ * reintroduce money rounding. Other families leave `sats` null.
+ * @returns {Promise<{amount:number, sats:string|null}|null>}
+ */
+async function fetchAssetBalance(asset, addr) {
   // I3 zero-egress: an ERC-20 balance is read through a raw ethers Contract that
   // does NOT route through getBalanceEth's own deniability guard. Gate it here,
   // BEFORE the try/catch — so it THROWS (fail-closed) rather than being folded
@@ -77,17 +89,17 @@ export async function fetchAssetAmount(asset, addr) {
   // undefined/NaN without throwing) must be treated as indeterminate — NOT folded to a
   // confident 0. `Number(undefined) || 0` was silently showing $0 for an unknown
   // balance, which for a wallet reads as "your funds are gone". `finite()` returns the
-  // number when it is genuinely finite, else null, so the read joins the same
-  // indeterminate path as a thrown error (callers key off `amount === null`).
-  const finite = (n) => (Number.isFinite(n) ? n : null);
+  // balance object when the amount is genuinely finite, else null, so the read
+  // joins the same indeterminate path as a thrown error.
+  const finite = (n, sats = null) => (Number.isFinite(n) ? { amount: n, sats } : null);
   try {
-    if (!asset || !addr) return 0;
+    if (!asset || !addr) return { amount: 0, sats: null };
     if (asset.family === 'evm') {
-      if (!addr.evm) return 0;
+      if (!addr.evm) return { amount: 0, sats: null };
       return finite(Number(await getBalanceEth(asset.chain, addr.evm)));
     }
     if (asset.family === 'erc20') {
-      if (!addr.evm) return 0;
+      if (!addr.evm) return { amount: 0, sats: null };
       // Shared token reader verifies on-chain decimals against the registry and
       // carries its own I3/demo guard before provider/Contract construction.
       return finite(Number(await getTokenBalance({
@@ -97,14 +109,16 @@ export async function fetchAssetAmount(asset, addr) {
       })));
     }
     if (asset.family === 'btc') {
-      if (!addr.btc) return 0;
-      return finite(Number(await getBalanceSats(asset.chain, addr.btc)) / 1e8);
+      if (!addr.btc) return { amount: 0, sats: '0' };
+      const sats = await getBalanceSats(asset.chain, addr.btc);
+      const exactSats = typeof sats === 'bigint' ? sats : BigInt(sats);
+      return finite(Number(exactSats) / 100_000_000, exactSats.toString());
     }
     if (asset.family === 'solana') {
-      if (!addr.sol) return 0;
+      if (!addr.sol) return { amount: 0, sats: null };
       return finite(Number(await getBalanceSol(asset.chain, addr.sol)));
     }
-    return 0;
+    return { amount: 0, sats: null };
   } catch (err) {
     // Surface the failure without leaking the watched address. Upstream error
     // messages (esp. BTC via Esplora) include the full request URL, which
@@ -123,7 +137,7 @@ export async function fetchAssetAmount(asset, addr) {
  * Aggregate the whole portfolio. A failed read (amount === null) is carried as
  * `indeterminate` at every level and is NEVER summed as 0 (I4 fail-closed):
  *   {
- *     byWallet: { [id]: { assets: [{symbol, amount, usd, indeterminate}],
+ *     byWallet: { [id]: { assets: [{symbol, amount, usd, indeterminate, sats?}],
  *                         total, indeterminate } },
  *     grandTotal,          // USD across all READABLE wallets + assets
  *     assetTotals: { [symbol]: { amount, usd, indeterminate } },
@@ -182,10 +196,10 @@ export async function computePortfolio(wallets, walletAddresses, livePrices, pri
   // so the worst case is unchanged. A genuine outage still resolves to null (I4).
   const RETRY_DELAY_MS = 350;
   const readWithRetry = async (asset, addr) => {
-    const first = await fetchAssetAmount(asset, addr);
+    const first = await fetchAssetBalance(asset, addr);
     if (first !== null) return first;
     await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-    return fetchAssetAmount(asset, addr);
+    return fetchAssetBalance(asset, addr);
   };
   const jobs = [];
   for (const w of wallets) {
@@ -194,14 +208,19 @@ export async function computePortfolio(wallets, walletAddresses, livePrices, pri
       const asset = getAssetById(entry) || (!isAssetIdString(entry) ? getAsset(entry) : null);
       if (!asset) continue;
       jobs.push(
-        withPerJobTimeout(readWithRetry(asset, walletAddresses[w.id] || {})).then((amount) => ({
-          walletId: w.id, id: asset.id, symbol: asset.symbol, priceSymbol: asset.priceSymbol || asset.symbol, amount,
+        withPerJobTimeout(readWithRetry(asset, walletAddresses[w.id] || {})).then((balance) => ({
+          walletId: w.id,
+          id: asset.id,
+          symbol: asset.symbol,
+          priceSymbol: asset.priceSymbol || asset.symbol,
+          amount: balance?.amount ?? null,
+          sats: balance?.sats ?? null,
         })),
       );
     }
   }
   const results = await Promise.all(jobs);
-  for (const { walletId, id, symbol, priceSymbol, amount } of results) {
+  for (const { walletId, id, symbol, priceSymbol, amount, sats } of results) {
     const indeterminate = amount === null; // read FAILED, not an empty wallet
     // priceSymbol lets a row use a different price feed than its own symbol
     // (ARB/OP rows hold native ETH on their L2, so priceSymbol='ETH').
@@ -217,7 +236,7 @@ export async function computePortfolio(wallets, walletAddresses, livePrices, pri
     // only a positive holding needs a market rate to be valued honestly.
     const quoteUnavailable = !indeterminate && amount > 0 && resolvedRate.rate == null;
     const usd = indeterminate || quoteUnavailable ? null : amount * resolvedRate.rate;
-    byWallet[walletId].assets.push({ id, symbol, amount, usd, indeterminate, quoteUnavailable });
+    byWallet[walletId].assets.push({ id, symbol, amount, usd, indeterminate, quoteUnavailable, ...(symbol === 'BTC' ? { sats } : {}) });
     if (!assetTotals[id]) assetTotals[id] = { symbol, amount: 0, usd: 0, indeterminate: false, quoteUnavailable: false };
     if (indeterminate) {
       byWallet[walletId].indeterminate = true;
