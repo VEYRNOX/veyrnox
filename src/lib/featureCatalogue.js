@@ -147,8 +147,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Additional Tokens',
         status: 'built',
-        summary: `LINK, UNI, SHIB, and LEO are receive-only. ${NON_LIVE_ASSET_SPEND_NOTICE}`,
-        explanation: `LINK, UNI, SHIB, and LEO reuse the existing Ethereum token path. Mainnet contracts and 18-decimal metadata are pinned; receive addresses and balances are enabled. All four remain receive-only and are not send-verified. ${NON_LIVE_ASSET_SPEND_NOTICE} Further tokens such as DAI remain roadmap items.`,
+        summary: `Add a read-only ERC-20 by contract address; built-in LINK, UNI, SHIB, and LEO are receive-only. ${NON_LIVE_ASSET_SPEND_NOTICE}`,
+        explanation: `Built for enabled EVM networks: a user selects the active network and supplies only the contract address; symbol and decimals are read from that chain. Non-contract addresses and unsafe metadata are rejected, and decimals are re-checked before each balance read. Custom tokens are display-only in this phase (no send, swap, or bridge), use the configured chain RPC with an in-app disclosure, and are completely suppressed in decoy/hidden sessions. Unit-test coverage is included; this is not device-verified and no custom-token transaction has been performed. LINK, UNI, SHIB, and LEO are also built in as first-class receive-only assets (pinned mainnet contracts, 18 decimals) and are not send-verified. ${NON_LIVE_ASSET_SPEND_NOTICE}`,
       },
       {
         name: 'Additional Networks',

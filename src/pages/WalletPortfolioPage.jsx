@@ -78,6 +78,7 @@ import PortfolioChart from "@/components/PortfolioChart";
 import AssetDistributionChart from "@/components/AssetDistributionChart";
 import GasTracker from "@/components/GasTracker";
 import CryptoNewsFeed from "@/components/CryptoNewsFeed";
+import CustomTokensPanel from "@/components/CustomTokensPanel";
 import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { DEMO } from "@/api/demoClient";
 import { fetchAssetHistory } from "@/lib/txHistory";
@@ -1211,6 +1212,10 @@ export default function WalletPortfolioPage() {
           ) : (
             walletCards
           )}
+          <CustomTokensPanel
+            ownerAddress={walletAddresses[activeWalletId]?.evm || null}
+            visible={canManage}
+          />
         </TabsContent>
 
         <TabsContent value="activity" className="mt-3">
