@@ -145,9 +145,9 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Additional Tokens',
-        status: 'roadmap',
-        summary: 'More ERC-20 tokens (DAI, LINK …)',
-        explanation: 'Additional ERC-20 tokens reuse the existing token path, so they are cheap to add. On the roadmap, not yet enabled.',
+        status: 'built',
+        summary: 'Add a read-only ERC-20 by contract address',
+        explanation: 'Built for enabled EVM networks: a user selects the active network and supplies only the contract address; symbol and decimals are read from that chain. Non-contract addresses and unsafe metadata are rejected, and decimals are re-checked before each balance read. Custom tokens are display-only in this phase (no send, swap, or bridge), use the configured chain RPC with an in-app disclosure, and are completely suppressed in decoy/hidden sessions. Unit-test coverage is included; this is not device-verified and no custom-token transaction has been performed.',
       },
       {
         name: 'Additional Networks',

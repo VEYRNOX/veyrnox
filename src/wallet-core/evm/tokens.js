@@ -48,19 +48,21 @@ const MAINNET_USDT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
 
 export const TOKENS = {
   sepolia: {
-    USDC: { address: SEPOLIA_USDC, decimals: 6, symbol: 'USDC' },
-    USDT: { address: SEPOLIA_USDT, decimals: 6, symbol: 'USDT' },
+    USDC: { address: SEPOLIA_USDC, decimals: 6, symbol: 'USDC', assetId: 'USDC:mainnet' },
+    USDT: { address: SEPOLIA_USDT, decimals: 6, symbol: 'USDT', assetId: 'USDT:mainnet' },
   },
   // Mainnet entries added 2026-06-17 after owner sign-off (ALLOW_MAINNET = true).
   mainnet: {
-    USDC: { address: MAINNET_USDC, decimals: 6, symbol: 'USDC' },
-    USDT: { address: MAINNET_USDT, decimals: 6, symbol: 'USDT' },
+    USDC: { address: MAINNET_USDC, decimals: 6, symbol: 'USDC', assetId: 'USDC:mainnet' },
+    USDT: { address: MAINNET_USDT, decimals: 6, symbol: 'USDT', assetId: 'USDT:mainnet' },
   },
 };
 
 /**
  * Resolve a token's registry entry, refusing anything not configured/verified.
- * @returns {{ address: string, decimals: number, symbol: string }}
+ * `assetId` binds each network-specific contract to the composite capability
+ * registry entry that authorises direct sends.
+ * @returns {{ address: string, decimals: number, symbol: string, assetId: string }}
  */
 export function getToken(networkKey, symbol) {
   const t = TOKENS[networkKey]?.[symbol];

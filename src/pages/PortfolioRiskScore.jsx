@@ -103,7 +103,7 @@ export default function PortfolioRiskScore() {
 
       {/* I4 fail-closed: the score derives from assetTotals, which EXCLUDE any
           asset whose balance read failed — flag that the score may be incomplete. */}
-      {portfolio?.indeterminate && <IncompleteBalanceNote />}
+      {(portfolio?.indeterminate || portfolio?.quoteUnavailable) && <IncompleteBalanceNote unpricedOnly={!portfolio?.indeterminate} />}
 
       {/* Score card */}
       <div className="p-6 rounded-xl border border-border bg-card text-center">

@@ -13,7 +13,7 @@ vi.mock('react-i18next', () => ({
 vi.mock('@/lib/WalletProvider', () => ({ useWallet: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() } }));
 
-import { PriceBasisNote, fmtPriceTime } from '@/pages/WalletPortfolioPage';
+import { AssetUsdValue, PriceBasisNote, fmtPriceTime } from '@/pages/WalletPortfolioPage';
 import { USD_REFERENCE_NOTE } from '@/lib/cryptos';
 
 describe('PriceBasisNote', () => {
@@ -46,5 +46,22 @@ describe('PriceBasisNote', () => {
     expect(screen.getByText('portfolio.approximate')).toBeInTheDocument();
     expect(screen.getByText(USD_REFERENCE_NOTE)).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('unavailable basis does not describe the incomplete total as approximate', () => {
+    render(<PriceBasisNote priceBasis="unavailable" pricesUpdatedAt={null} onRefresh={() => {}} />);
+    expect(screen.getByText('Price unavailable for one or more assets.')).toBeInTheDocument();
+    expect(screen.queryByText('portfolio.approximate')).not.toBeInTheDocument();
+    expect(screen.queryByText(USD_REFERENCE_NOTE)).not.toBeInTheDocument();
+  });
+});
+
+describe('AssetUsdValue', () => {
+  it('renders the existing unavailable dash and never formats a missing quote as zero', () => {
+    const formatFiat = vi.fn(() => '$0.00');
+    render(<AssetUsdValue usd={null} formatFiat={formatFiat} />);
+    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.queryByText('$0.00')).not.toBeInTheDocument();
+    expect(formatFiat).not.toHaveBeenCalled();
   });
 });
