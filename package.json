@@ -214,7 +214,7 @@
     "@wdio/cli": "^9.32.0",
     "@wdio/local-runner": "^9.32.0",
     "@wdio/mocha-framework": "^9.32.0",
-    "@wdio/spec-reporter": "^9.32.0",
+    "@wdio/spec-reporter": "^10.1.0",
     "appium": "^3.8.0",
     "appium-uiautomator2-driver": "git+https://github.com/appium/appium-uiautomator2-driver.git#7a54db007aa8a44f5df21cd0b52afc13c0d277ae",
     "autoprefixer": "^10.6.1",
