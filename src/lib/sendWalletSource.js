@@ -58,6 +58,9 @@ const DEMO_SOL_ADDRESS = 'So1Veyrnoxdemo1111111111111111111111111111';
 const DEMO_SEND_BALANCES = {
   ETH: 2.4831, BTC: 0.0521, SOL: 18.42, USDC: 1250, USDT: 540,
   MATIC: 420.5, ARB: 1.85, OP: 2.4, AVAX: 9.6, BNB: 0.75,
+  // Receive-only assets are default-enabled too, so the demo picker needs a seed
+  // for them (display only; a demo send of a non-LIVE asset is still refused).
+  LINK: 12.5, UNI: 30, SHIB: 4500000, LEO: 85,
 };
 
 /**

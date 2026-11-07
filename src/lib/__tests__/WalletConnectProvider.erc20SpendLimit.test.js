@@ -17,18 +17,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const synthetic = vi.hoisted(() => ({
-  asset: Object.freeze({
-    id: 'LINK:mainnet',
-    symbol: 'LINK',
-    name: 'Chainlink',
-    family: 'erc20',
-    chain: 'mainnet',
-    status: 'receive_only',
-  }),
-  tokenAddress: '0x2222222222222222222222222222222222222222',
-}));
-
 vi.mock('@/sign-gate/presign', () => ({
   presignGate: vi.fn(() => ({ proceedAllowed: true, signerReachable: true, decision: 'allow', owner: null })),
 }));
@@ -82,35 +70,10 @@ vi.mock('@/wallet-core/evm/provider.js', () => ({
 }));
 
 vi.mock('@/wallet-core/evm/networks.js', () => ({
-  getNetworkByChainId: vi.fn(() => ({ key: 'sepolia', chainId: 11155111, symbol: 'ETH' })),
+  getNetworkByChainId: vi.fn((chainId) => chainId === 1
+    ? { key: 'mainnet', chainId: 1, symbol: 'ETH' }
+    : { key: 'sepolia', chainId: 11155111, symbol: 'ETH' }),
 }));
-
-vi.mock('@/wallet-core/evm/tokens.js', async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    TOKENS: {
-      ...actual.TOKENS,
-      sepolia: {
-        ...actual.TOKENS.sepolia,
-        LINK: {
-          address: synthetic.tokenAddress,
-          decimals: 18,
-          symbol: 'LINK',
-          assetId: synthetic.asset.id,
-        },
-      },
-    },
-  };
-});
-
-vi.mock('@/wallet-core/assets.js', async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    getAssetById: (id) => id === synthetic.asset.id ? synthetic.asset : actual.getAssetById(id),
-  };
-});
 
 vi.mock('@/lib/WalletProvider.jsx', () => ({ useWallet: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
@@ -143,8 +106,8 @@ const WALLET_ADDR = '0xAbCd1234567890AbCd1234567890abCd12345678';
 const RECIPIENT   = '0x1111222233334444555566667777888899990000';
 const UNKNOWN_TOKEN = '0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF';
 const SEPOLIA_USDC = TOKENS.sepolia.USDC.address;
-const SEPOLIA_LINK = TOKENS.sepolia.LINK.address;
 const NET = { key: 'sepolia', chainId: 11155111, symbol: 'ETH' };
+const MAINNET_CAIP2 = 'eip155:1';
 const NOTICE = 'Direct sends are disabled. Connected dApps may still spend this token through existing approvals.';
 
 const word = (v) => v.replace(/^0x/, '').toLowerCase().padStart(64, '0');
@@ -294,16 +257,35 @@ describe('M-6 — the WC send handler scores ERC-20 transfers against spend limi
     ['approve', `0x095ea7b3${word(RECIPIENT)}${word('1')}`],
     ['permit', '0xd505accf'],
     ['unknown selector', '0xdeadbeef'],
-  ])('rejects every %s call aimed directly at a synthetic receive-only token', async (_label, data) => {
+  ])('rejects every %s call aimed directly at a real receive-only token', async (_label, data) => {
     const { _handleSendTransaction } = await import('../WalletConnectProvider.jsx');
     await expect(_handleSendTransaction(
       ctx({ txLimits: [] }),
       'topic', 70,
-      [{ ...base, to: SEPOLIA_LINK, data }],
-      'eip155:11155111',
+      [{ ...base, to: TOKENS.mainnet.LINK.address, data }],
+      MAINNET_CAIP2,
     )).rejects.toThrow(NOTICE);
 
     expect(rejectRequest).toHaveBeenCalledWith('topic', 70, 'WC_TOKEN_NOT_LIVE');
     expect(withPrivateKeySpy).not.toHaveBeenCalled();
   });
+
+  it.each(['LINK', 'UNI', 'SHIB', 'LEO'])(
+    'rejects a direct WalletConnect transfer to real mainnet %s before key access',
+    async (symbol) => {
+      const token = TOKENS.mainnet[symbol];
+      expect(token).toMatchObject({ symbol, decimals: 18, assetId: `${symbol}:mainnet` });
+      const { _handleSendTransaction } = await import('../WalletConnectProvider.jsx');
+
+      await expect(_handleSendTransaction(
+        ctx({ txLimits: [] }),
+        'topic', 71,
+        [{ ...base, to: token.address, data: transferData(RECIPIENT, 10n ** BigInt(token.decimals)) }],
+        MAINNET_CAIP2,
+      )).rejects.toThrow(NOTICE);
+
+      expect(rejectRequest).toHaveBeenCalledWith('topic', 71, 'WC_TOKEN_NOT_LIVE');
+      expect(withPrivateKeySpy).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -80,17 +80,18 @@ vi.mock('@/sign-gate/presignGateOrReject', () => ({
 }));
 
 import TokenApprovals from '../TokenApprovals.jsx';
+import { TOKENS } from '@/wallet-core/evm/tokens.js';
 
-function approval(network) {
+function approval(network, tokenSymbol = 'USDC', decimals = 6) {
   return {
-    id: `approval-${network}`,
+    id: `approval-${network}-${tokenSymbol}`,
     network,
     status: 'active',
-    token_symbol: 'USDC',
+    token_symbol: tokenSymbol,
     spender_name: 'Example spender',
     spender_address: '0x1234567890123456789012345678901234567890',
     allowance_raw: '1',
-    decimals: 6,
+    decimals,
     trusted: false,
   };
 }
@@ -126,6 +127,24 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe('TokenApprovals — network-honest revoke confirmation', () => {
+  it.each(['LINK', 'UNI', 'SHIB', 'LEO'])(
+    'shows real Ethereum Mainnet and gas wording for a %s approval row',
+    async (symbol) => {
+      const token = TOKENS.mainnet[symbol];
+      expect(token).toMatchObject({ symbol, decimals: 18, assetId: `${symbol}:mainnet` });
+      state.rows = [approval('mainnet', symbol, token.decimals)];
+      renderPage();
+
+      expect(await screen.findByText(symbol)).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Revoke' }));
+
+      expect(await screen.findByText('Revoke on Ethereum Mainnet')).toBeTruthy();
+      expect(screen.getByText(
+        'This is a real Ethereum Mainnet transaction. It will be broadcast on-chain and costs real ETH in gas.',
+      )).toBeTruthy();
+    },
+  );
+
   it('shows the selected mainnet chain and says it is a real transaction with a real gas cost', async () => {
     state.rows = [approval('mainnet')];
     renderPage();
@@ -164,6 +183,38 @@ describe('TokenApprovals — network-honest revoke confirmation', () => {
 });
 
 describe('TokenApprovals — key callback stays behind the shared pre-sign result', () => {
+  it.each([
+    ['LINK', {
+      proceedAllowed: false,
+      rejectCode: 'RASP_WARN_ACK_REQUIRED',
+      artifact: { sentence: 'This device needs extra caution.' },
+      requiresBiometric: true,
+    }],
+    ['UNI', {
+      proceedAllowed: false,
+      rejectCode: 'RASP_BLOCK',
+      artifact: { sentence: 'Signing is turned off.' },
+    }],
+    ['SHIB', undefined],
+    ['LEO', {
+      proceedAllowed: false,
+      rejectCode: 'PRESIGN_GATE_ERROR',
+      artifact: { sentence: 'The signing safety check errored.' },
+    }],
+  ])('%s never reaches the key callback on WARN/BLOCK/missing/errored pre-sign results', async (symbol, gateResult) => {
+    const token = TOKENS.mainnet[symbol];
+    state.rows = [approval('mainnet', symbol, token.decimals)];
+    state.presignGateOrReject.mockResolvedValue(gateResult);
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Revoke' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue to real transaction' }));
+
+    await waitFor(() => expect(state.presignGateOrReject).toHaveBeenCalledTimes(1));
+    expect(state.withPrivateKey).not.toHaveBeenCalled();
+    expect(state.sendRevoke).not.toHaveBeenCalled();
+  });
+
   it('keeps revocation available when the fresh shared gate allows', async () => {
     state.rows = [approval('mainnet')];
     renderPage();

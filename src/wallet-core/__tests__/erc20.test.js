@@ -54,10 +54,37 @@ describe('token registry guard', () => {
     expect(isTokenConfigured('mainnet', 'USDT')).toBe(true);
   });
 
+  it.each([
+    ['LINK', '0x514910771AF9Ca656af840dff83E8264EcF986CA'],
+    ['UNI', '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984'],
+    ['SHIB', '0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE'],
+    ['LEO', '0x2AF5D2aD76741191D15Dfe7bF6aC92d4Bd912Ca3'],
+  ])('pins mainnet %s to its checked contract, 18 decimals, and composite asset id', (symbol, address) => {
+    expect(getToken('mainnet', symbol)).toEqual({
+      address,
+      decimals: 18,
+      symbol,
+      assetId: `${symbol}:mainnet`,
+    });
+    expect(isTokenConfigured('mainnet', symbol)).toBe(true);
+  });
+
   it('sendToken refuses any token not in the verified registry (no signing)', async () => {
     await expect(
       sendToken({ networkKey: 'sepolia', privateKey: '0x' + '1'.repeat(64), symbol: 'NOPE', to: RECIPIENT, amount: '1' })
     ).rejects.toThrow(/unknown token/i);
+  });
+
+  it.each(['LINK', 'UNI', 'SHIB', 'LEO'])('sendToken rejects real mainnet %s while it is receive-only', async (symbol) => {
+    const token = getToken('mainnet', symbol);
+    expect(token.decimals).toBe(18);
+    await expect(sendToken({
+      networkKey: 'mainnet',
+      privateKey: '0x' + '1'.repeat(64),
+      symbol,
+      to: RECIPIENT,
+      amount: '1',
+    })).rejects.toThrow(new RegExp(`Token ${symbol}:mainnet is not LIVE`));
   });
 });
 

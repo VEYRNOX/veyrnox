@@ -84,4 +84,15 @@ describe('PriceCharts missing OHLCV does not fabricate +0.00%', () => {
     await waitFor(() => expect(screen.getByText('$2')).toBeInTheDocument());
     expectUnavailableChange();
   });
+  it('shows an unavailable move, not a green "+%", on picker chips for assets with no reference change', async () => {
+    fetchOHLCV.mockResolvedValue([]);
+    const client = renderPage();
+    await waitFor(() => expect(client.getQueryState(['ohlcv', 'BTC', '1D'])?.status).toBe('success'));
+    for (const symbol of ['LINK', 'UNI', 'SHIB', 'LEO']) {
+      const chip = screen.getByRole('button', { name: new RegExp(`^${symbol}`) });
+      expect(chip).toHaveTextContent('—');
+      expect(chip).not.toHaveTextContent('%');
+    }
+    expect(document.body.textContent).not.toMatch(/\+%/);
+  });
 });

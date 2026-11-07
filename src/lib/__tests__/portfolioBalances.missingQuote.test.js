@@ -1,19 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const LINK = vi.hoisted(() => Object.freeze({
-  id: 'LINK:mainnet',
-  symbol: 'LINK',
-  name: 'Chainlink',
-  family: 'erc20',
-  chain: 'mainnet',
-  status: 'receive_only',
-}));
-
-vi.mock('@/wallet-core/assets.js', () => ({
-  ASSETS: [LINK],
-  getAsset: (key) => key === LINK.symbol || key === LINK.id ? LINK : null,
-  getAssetById: (id) => id === LINK.id ? LINK : null,
-}));
 vi.mock('@/wallet-core/evm/provider.js', () => ({ getBalanceEth: vi.fn() }));
 vi.mock('@/wallet-core/evm/token-send.js', () => ({ getTokenBalance: vi.fn() }));
 vi.mock('@/wallet-core/btc/provider.js', () => ({ getBalanceSats: vi.fn() }));
@@ -24,6 +10,10 @@ vi.mock('@/wallet-core/deniabilitySession.js', () => ({
 
 import { getTokenBalance } from '@/wallet-core/evm/token-send.js';
 import { computePortfolio, sumPortfolioTotal, usdRate } from '@/lib/portfolioBalances.js';
+import { getAssetById } from '@/wallet-core/assets.js';
+import { getCrypto } from '@/lib/cryptos.js';
+
+const LINK = getAssetById('LINK:mainnet');
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -31,7 +21,8 @@ beforeEach(() => {
 });
 
 describe('portfolio missing-quote honesty', () => {
-  it('keeps a positive synthetic receive-only balance unpriced and out of numeric totals', async () => {
+  it('keeps a positive real LINK receive-only balance unpriced and out of numeric totals', async () => {
+    expect(LINK).toMatchObject({ status: 'receive_only', family: 'erc20', chain: 'mainnet' });
     const result = await computePortfolio(
       [{ id: 'w1', enabledAssets: [LINK.id] }],
       { w1: { evm: '0x1111111111111111111111111111111111111111' } },
@@ -56,7 +47,10 @@ describe('portfolio missing-quote honesty', () => {
     expect(usdRate('ETH')).toBeGreaterThan(0);
     expect(usdRate('USDC')).toBe(1);
     expect(usdRate('USDT')).toBe(1);
-    expect(usdRate('LINK')).toBeNull();
+    for (const symbol of ['LINK', 'UNI', 'SHIB', 'LEO']) {
+      expect(getCrypto(symbol)).toMatchObject({ symbol, usd: null });
+      expect(usdRate(symbol)).toBeNull();
+    }
   });
 });
 
