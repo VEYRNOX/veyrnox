@@ -23,6 +23,7 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession.js";
+import { NON_LIVE_ASSET_SPEND_NOTICE } from "@/wallet-core/assets.js";
 // 2026-08-16 audit remediation: hard-code the event name to avoid coupling
 // the subscription to a mockable named export — existing test suites mock
 // deniabilitySession.js without exporting this constant. The string here
@@ -276,7 +277,7 @@ const SCREEN_DEFINITIONS = {
   dashboard: {
     questionsKey: 'dashboard',
     pageContext: `The user is on the DASHBOARD — the main home screen after unlocking. It shows:
-- Portfolio total balance across all chains (ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT)
+- Portfolio total balance across all chains (ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT, LINK, UNI, SHIB, LEO). LINK, UNI, SHIB, and LEO are receive-only. ${NON_LIVE_ASSET_SPEND_NOTICE}
 - Individual asset cards with balances and 24h price changes
 - Quick-action buttons: Send, Receive, Buy
 - Bottom navigation: Dashboard, Send, Receive, WalletConnect, More
@@ -583,7 +584,7 @@ The advisor can help the user understand transaction details, confirmation times
   },
   general: {
     questionsKey: 'general',
-    pageContext: `The user is browsing the Veyrnox wallet app. Veyrnox is a self-custody, coercion-resistant crypto wallet supporting ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, and USDT. Key features: hardware-bound encryption (KEK), RASP tamper detection, deniability mode with duress PINs, vault with AES-256-GCM + Argon2id, and built-in threat intelligence screening.`,
+    pageContext: `The user is browsing the Veyrnox wallet app. Veyrnox is a self-custody, coercion-resistant crypto wallet supporting ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT, LINK, UNI, SHIB, and LEO. LINK, UNI, SHIB, and LEO are receive-only. ${NON_LIVE_ASSET_SPEND_NOTICE} Key features: hardware-bound encryption (KEK), RASP tamper detection, deniability mode with duress PINs, vault with AES-256-GCM + Argon2id, and built-in threat intelligence screening.`,
   },
 };
 
