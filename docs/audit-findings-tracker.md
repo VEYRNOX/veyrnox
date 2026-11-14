@@ -1,6 +1,6 @@
 # Audit Findings Tracker
-Last updated: 2026-10-12
-Analysed against: origin/main @ `4b98715a533a8250c926e32cdff84c6a2930dd6e`
+Last updated: 2026-11-02
+Analysed against: origin/main @ `040e260dbe6de2a68dfcb09528dec62055b25562`
 (clean branch worktree cut from `origin/main` per Step 0 — not the live checkout,
 not a `git show` fallback. macOS/zsh.)
 
@@ -11,7 +11,66 @@ not a `git show` fallback. macOS/zsh.)
 > against source this run; rows tagged `(doc)` carry the status recorded in an audit doc or
 > PR history and were not independently re-checked.
 
-## Window since last run (2026-10-05 → 2026-10-12)
+## Window since last run (2026-10-12 → 2026-11-02)
+
+Previous tracker analysed `4b98715a`; `main` has moved **23 commits** (`040e260d`). The
+`git diff --stat` over `src/wallet-core`, `src/rasp`, `android/`, `ios/App/App`, `supabase/`,
+`functions/`, `src/walletconnect`, `src/providers` is **empty — no security-surface code
+changed**. This window had a three-week gap (no tracker on 10-19 or 10-26). Two audit
+inputs landed that the 10-12 tracker did not include: the **2026-10-12 weekly internal
+audit** (#2887, `docs/audit-2026-10-12-weekly.md`, same pin `4b98715a`) and daily diffs
+10-14 … 11-02. Daily diffs: **0 REGRESSION**; one NEEDS-REVIEW (10-22 `.npmrc`, below).
+The 2026-11-02 weekly audit (PR #2948) is **not on `main` at this pin**, so it is not
+synthesised here; next run will pick it up.
+
+**Re-verified this run (grep, at `040e260d`) — all STILL OPEN, unchanged:**
+M-7 `SceneDelegate.swift:67-73` `QA-INSTRUMENT-TEMP` `NSLog` block still present (**seventh
+consecutive window unfiled**); H-3 `keystore/kekProfiles.js:101` `usedFallback: !stamped && i > 0`;
+H-1 `typed-data.js` still only 2 hits for `TransferWithAuthorization|SafeTx` (no struct
+entries — unchanged vs prior check); N-A1 `AndroidManifest.xml` 0 `<queries>`; N-B2
+`RequestApprovalModal.jsx:89` unguarded `BigInt(reqParams[0].value)`; H-2 `HEARTBEAT_MS =
+60_000`; M-3 `AAD_V3_MIGRATION_ENABLED = false` (`vault.js:323`); N-B6 pending queues filter
+on `id` only (`WalletConnectProvider.jsx:891,912,937,986`). **No finding fixed, none
+regressed this window.**
+
+### New this run — 2026-10-12 weekly (7 new; IDs per surface)
+
+| ID | Sev | Finding | File:Line | Evidence |
+|---|---|---|---|---|
+| N-C2 | MEDIUM | Silent fast-path stores the RAW DEK under a 30 s device-wide `BIOMETRIC_STRONG` window, no `CryptoObject`, bypassing H/C/KEK; `isFastpathEnabled()` is `!== OFF` (default-on) contradicting the plugin comment. Owner decision whether accepted | `native.js:625-660,1322-1345`; `AndroidBiometricCachePlugin.kt:546-575`; `fastpathUnlock.js:62-63` | (doc) |
+| N-B6 | LOW | WC pending queue filtered by `id` only, not `topic+id`; a second dApp can evict another's pending request (griefing, no spoof) | `WalletConnectProvider.jsx:891,912,937,986` | (grep) |
+| N-C3 | LOW | StrongBox fallback catches only `StrongBoxUnavailableException`; some OEMs throw `ProviderException` so enroll fails instead of TEE fallback (fail-closed) | `HardwareKekPlugin.kt:256`; `AndroidBiometricCachePlugin.kt:572,625` | (doc) |
+| N-C4 | LOW | `combineKek` uses Web Crypto HKDF; CLAUDE.md says @noble/@scure only (policy deviation; I6 concat/domain correct) | `kek.js:100-112` | (doc) |
+| N-C5 | LOW | `unwrapDek` still accepts `WRAP_V1` without AAD (needs KEK to forge) | `kek.js:151-157` | (doc) |
+| N-D1b | LOW | PIN counter is localStorage; session floor monotonic but lost on restart (disclosed). Distinct from 10-05 N-D1 (TierProvider I3) | `pinAttemptGuard.js:105-140` | (doc) |
+| N-D3 | LOW | Credential verifier comment says “same cost as vault”, but `createCredentialVerifier` defaults to 96 MiB/t6 versus the 192 MiB/t3 legacy-vault profile; session-local. Correct the comment or use the vault profile. | `credentialVerifier.js:3-4,105-110` | (doc) 10-12 weekly |
+
+Also in the 10-12 weekly, already tracked: L-6 (iOS `enroll` now RASP-gated — **PARTIALLY FIXED (doc)**; Android `enroll` and
+`clearCredential` on both platforms still ungated). 10-12 weekly: **Any REGRESSED: none.**
+It could not locate 09-28 H-5 (refused WC request stays queued) at the cited lines and did
+not re-read L-4/L-5; this tracker keeps H-5 as REGRESSED per its last grep verification
+(2026-10-05) and flags it as due for a fresh grep.
+
+### New this run — daily diffs 10-14 … 11-02
+
+| ID | Sev | Finding | File:Line | Evidence |
+|---|---|---|---|---|
+| DIFF-1022-NPMRC | NEEDS-REVIEW (supply chain) | New repo-wide `.npmrc` `before=2026-10-21T00:00:00.000Z` (c7cea504, #2903). `npm ci` unaffected, but `npm install`/`npm audit fix`/Dependabot cannot resolve any package published after 2026-10-21, so a fresh crypto/security patch silently fails to resolve. Labelled temporary; no expiry or tracking issue | `.npmrc:5` | (grep) file present with `before=` line; effect (doc) diff-2026-10-22 |
+
+Other daily diffs (10-14, 15, 16, 18, 28, 29, 30, 31, 11-01, 11-02) rated SAFE: i18n string
+swaps, paywall components, lockfile `dompurify` bump, `.omc/` ignore, `public/_headers` and
+lazy-loaded NFT `<img>` tags (`safeNftImageUrl`, `referrerPolicy` unchanged).
+
+### Summary adjustment (this run)
+
+Prior totals (10-12 section below) plus 8 new open items (7 weekly + `.npmrc`): total
+**~415**, fixed **~309** (+0), still open **~109**, regressed **2** (unchanged), needs
+on-device **~36** (unchanged). The summary block lower in this file is superseded by this
+section.
+
+---
+
+## Previous window (2026-10-05 → 2026-10-12, retained for reference)
 
 Previous run analysed `87e868b6`. `main` has moved **21 commits** since (`4b98715a`). **Zero
 commits touch `src/wallet-core`, `src/rasp`, `android/`, `ios/App/App`, `supabase/` or
