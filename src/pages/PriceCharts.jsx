@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ResponsiveContainer, ComposedChart, Bar } from "@/lib/recharts";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { spotPriceFractionDigits } from "@/components/FiatCurrencySelector";
 import { TOP_CRYPTOS } from "@/lib/cryptos";
 import { fetchOHLCV } from "@/lib/ohlcv";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
@@ -27,25 +28,27 @@ export default function PriceCharts() {
   const { resolution, limit } = PERIOD_PARAMS[period];
 
   // Volume bar still needs its own query (same queryKey — cached, no double-fetch).
-  const { data: rawCandles } = useQuery({
+  const { data: rawCandles, isError } = useQuery({
     queryKey: ["ohlcv", selected, period],
     queryFn: () => fetchOHLCV(selected, resolution, limit),
     enabled: livePricesOn,
     staleTime: 60_000,
   });
 
-  const data = (rawCandles ?? []).map((d) => ({
+  const data = (isError ? [] : (rawCandles ?? [])).map((d) => ({
     close: d.close,
     volume: d.volumefrom,
     price: d.close,
     time: formatCandleTime(d.time, period),
   }));
 
-  const prices = data.map((d) => d.price);
-  const firstPrice = data[0]?.price;
-  const lastPrice = data[data.length - 1]?.price;
-  const change = firstPrice && lastPrice ? ((lastPrice - firstPrice) / firstPrice * 100).toFixed(2) : "0.00";
-  const isUp = parseFloat(change) >= 0;
+  const finitePrices = data.map((d) => d.price).filter(Number.isFinite);
+  const firstPrice = finitePrices[0];
+  const lastPrice = finitePrices[finitePrices.length - 1];
+  const change = finitePrices.length >= 2 && firstPrice !== 0
+    ? ((lastPrice - firstPrice) / firstPrice * 100).toFixed(2)
+    : null;
+  const isUp = change != null && parseFloat(change) >= 0;
 
   useAdvisorSnapshot({
     price_charts: {
@@ -81,20 +84,28 @@ export default function PriceCharts() {
             className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold shrink-0 transition-colors ${selected === a.symbol ? "border-transparent text-white" : "border-border bg-card text-muted-foreground hover:text-foreground"} ${!livePricesOn ? "opacity-40 cursor-not-allowed" : ""}`}
             style={selected === a.symbol ? { backgroundColor: a.color } : {}}>
             {a.symbol}
-            <span className={`text-xs ${a.change24h >= 0 ? "text-success" : "text-destructive"}`}>
-              {a.change24h >= 0 ? "+" : ""}{a.change24h}%
-            </span>
+            {Number.isFinite(a.change24h) ? (
+              <span className={`text-xs ${a.change24h >= 0 ? "text-success" : "text-destructive"}`}>
+                {a.change24h >= 0 ? "+" : ""}{a.change24h}%
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">—</span>
+            )}
           </button>
         ))}
       </div>
 
       <div className="flex items-end justify-between">
         <div>
-          <p className="text-3xl font-bold">${lastPrice?.toLocaleString(undefined, { maximumFractionDigits: 2 }) ?? "—"}</p>
-          <div className={`flex items-center gap-1 mt-0.5 text-sm font-medium ${isUp ? "text-success" : "text-destructive"}`}>
-            {isUp ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-            {isUp ? "+" : ""}{change}% · {period}
-          </div>
+          <p className="text-3xl font-bold">${lastPrice?.toLocaleString(undefined, { maximumFractionDigits: spotPriceFractionDigits(lastPrice).maximumFractionDigits }) ?? "—"}</p>
+          {change == null ? (
+            <div data-testid="selected-period-change" className="mt-0.5 text-sm font-medium text-muted-foreground">— · {period}</div>
+          ) : (
+            <div data-testid="selected-period-change" className={`flex items-center gap-1 mt-0.5 text-sm font-medium ${isUp ? "text-success" : "text-destructive"}`}>
+              {isUp ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+              {isUp ? "+" : ""}{change}% · {period}
+            </div>
+          )}
         </div>
         <div className="text-end text-xs text-muted-foreground">
           <p>Mkt Cap ${asset.mcap}</p>

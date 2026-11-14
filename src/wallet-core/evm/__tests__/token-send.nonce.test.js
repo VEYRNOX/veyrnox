@@ -35,12 +35,22 @@ vi.mock('../tokens.js', () => ({
     address: '0x000000000000000000000000000000000000AAAA',
     symbol: 'MOCK',
     decimals: 6,
+    assetId: 'MOCK:mainnet',
   }),
   ERC20_ABI: [
     'function transfer(address to, uint256 value) returns (bool)',
     'function decimals() view returns (uint8)',
     'function balanceOf(address owner) view returns (uint256)',
   ],
+}));
+
+vi.mock('../../assets.js', () => ({
+  getAssetById: (id) => id === 'MOCK:mainnet'
+    ? { id, symbol: 'MOCK', chain: 'mainnet', status: 'live' }
+    : null,
+  canSend: (asset) => asset?.status === 'live',
+  NON_LIVE_ASSET_SPEND_NOTICE:
+    'Direct sends are disabled. Connected dApps may still spend this token through existing approvals.',
 }));
 
 // Consecutive-call nonce holder: #1 = trusted, #2 = poisoned RPC re-fetch.

@@ -70,7 +70,9 @@ vi.mock('@/wallet-core/evm/provider.js', () => ({
 }));
 
 vi.mock('@/wallet-core/evm/networks.js', () => ({
-  getNetworkByChainId: vi.fn(() => ({ key: 'sepolia', chainId: 11155111, symbol: 'ETH' })),
+  getNetworkByChainId: vi.fn((chainId) => chainId === 1
+    ? { key: 'mainnet', chainId: 1, symbol: 'ETH' }
+    : { key: 'sepolia', chainId: 11155111, symbol: 'ETH' }),
 }));
 
 vi.mock('@/lib/WalletProvider.jsx', () => ({ useWallet: vi.fn() }));
@@ -105,6 +107,8 @@ const RECIPIENT   = '0x1111222233334444555566667777888899990000';
 const UNKNOWN_TOKEN = '0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF';
 const SEPOLIA_USDC = TOKENS.sepolia.USDC.address;
 const NET = { key: 'sepolia', chainId: 11155111, symbol: 'ETH' };
+const MAINNET_CAIP2 = 'eip155:1';
+const NOTICE = 'Direct sends are disabled. Connected dApps may still spend this token through existing approvals.';
 
 const word = (v) => v.replace(/^0x/, '').toLowerCase().padStart(64, '0');
 const transferData = (to, raw) => `0xa9059cbb${word(to)}${word(raw.toString(16))}`;
@@ -222,6 +226,19 @@ describe('M-6 — the WC send handler scores ERC-20 transfers against spend limi
     expect(respondToRequest).toHaveBeenCalled();
   });
 
+  it('does not treat an unregistered router/aggregator target as a receive-only token', async () => {
+    const { _handleSendTransaction } = await import('../WalletConnectProvider.jsx');
+    await _handleSendTransaction(
+      ctx({ txLimits: [] }),
+      'topic', 64,
+      [{ ...base, to: UNKNOWN_TOKEN, data: '0xdeadbeef' }],
+      'eip155:11155111',
+    );
+    expect(withPrivateKeySpy).toHaveBeenCalled();
+    expect(respondToRequest).toHaveBeenCalledWith('topic', 64, '0xtxhash');
+    expect(rejectRequest).not.toHaveBeenCalledWith('topic', 64, 'WC_TOKEN_NOT_LIVE');
+  });
+
   it('allows a registry-token transfer that sits under the cap', async () => {
     const { _handleSendTransaction } = await import('../WalletConnectProvider.jsx');
     await _handleSendTransaction(
@@ -233,4 +250,42 @@ describe('M-6 — the WC send handler scores ERC-20 transfers against spend limi
     expect(withPrivateKeySpy).toHaveBeenCalled();
     expect(respondToRequest).toHaveBeenCalled();
   });
+
+  it.each([
+    ['transfer', transferData(RECIPIENT, 1n)],
+    ['transferFrom', transferFromData(WALLET_ADDR, RECIPIENT, 1n)],
+    ['approve', `0x095ea7b3${word(RECIPIENT)}${word('1')}`],
+    ['permit', '0xd505accf'],
+    ['unknown selector', '0xdeadbeef'],
+  ])('rejects every %s call aimed directly at a real receive-only token', async (_label, data) => {
+    const { _handleSendTransaction } = await import('../WalletConnectProvider.jsx');
+    await expect(_handleSendTransaction(
+      ctx({ txLimits: [] }),
+      'topic', 70,
+      [{ ...base, to: TOKENS.mainnet.LINK.address, data }],
+      MAINNET_CAIP2,
+    )).rejects.toThrow(NOTICE);
+
+    expect(rejectRequest).toHaveBeenCalledWith('topic', 70, 'WC_TOKEN_NOT_LIVE');
+    expect(withPrivateKeySpy).not.toHaveBeenCalled();
+  });
+
+  it.each(['LINK', 'UNI', 'SHIB', 'LEO'])(
+    'rejects a direct WalletConnect transfer to real mainnet %s before key access',
+    async (symbol) => {
+      const token = TOKENS.mainnet[symbol];
+      expect(token).toMatchObject({ symbol, decimals: 18, assetId: `${symbol}:mainnet` });
+      const { _handleSendTransaction } = await import('../WalletConnectProvider.jsx');
+
+      await expect(_handleSendTransaction(
+        ctx({ txLimits: [] }),
+        'topic', 71,
+        [{ ...base, to: token.address, data: transferData(RECIPIENT, 10n ** BigInt(token.decimals)) }],
+        MAINNET_CAIP2,
+      )).rejects.toThrow(NOTICE);
+
+      expect(rejectRequest).toHaveBeenCalledWith('topic', 71, 'WC_TOKEN_NOT_LIVE');
+      expect(withPrivateKeySpy).not.toHaveBeenCalled();
+    },
+  );
 });
