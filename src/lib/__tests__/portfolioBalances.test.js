@@ -11,11 +11,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock every per-chain provider so the aggregation logic is exercised in isolation.
 vi.mock('@/wallet-core/evm/provider.js', () => ({
   getBalanceEth: vi.fn(),
-  getProvider: vi.fn(() => ({})),
 }));
-vi.mock('@/wallet-core/evm/tokens.js', () => ({
-  getToken: vi.fn(() => ({ address: '0xtoken', decimals: 6 })),
-  ERC20_ABI: [],
+vi.mock('@/wallet-core/evm/token-send.js', () => ({
+  getTokenBalance: vi.fn(),
 }));
 vi.mock('@/wallet-core/btc/provider.js', () => ({ getBalanceSats: vi.fn() }));
 vi.mock('@/wallet-core/sol/provider.js', () => ({ getBalanceSol: vi.fn() }));
@@ -23,7 +21,8 @@ vi.mock('@/wallet-core/deniabilitySession.js', () => ({
   isDeniabilitySessionActive: vi.fn(() => false),
 }));
 
-import { getBalanceEth, getProvider } from '@/wallet-core/evm/provider.js';
+import { getBalanceEth } from '@/wallet-core/evm/provider.js';
+import { getTokenBalance } from '@/wallet-core/evm/token-send.js';
 import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
 import { getBalanceSats } from '@/wallet-core/btc/provider.js';
 import { getBalanceSol } from '@/wallet-core/sol/provider.js';
@@ -65,6 +64,17 @@ describe('fetchAssetAmount — indeterminate vs zero (Finding 2)', () => {
     expect(await fetchAssetAmount({ symbol: 'BTC', family: 'btc', chain: 'testnet' }, { btc: 'tb1q' })).toBeNull();
     getBalanceSol.mockRejectedValueOnce(new Error('rpc down'));
     expect(await fetchAssetAmount({ symbol: 'SOL', family: 'solana', chain: 'devnet' }, { sol: 'So11' })).toBeNull();
+  });
+
+  it('retains exact BTC satoshis as a cache-safe decimal string', async () => {
+    getBalanceSats.mockResolvedValueOnce(12_345_678n);
+    const { byWallet } = await computePortfolio(
+      [{ id: 'w1', enabledAssets: ['BTC'] }],
+      { w1: { btc: 'tb1q' } },
+    );
+    const row = byWallet.w1.assets.find((asset) => asset.symbol === 'BTC');
+    expect(row.sats).toBe('12345678');
+    expect(() => JSON.stringify(row)).not.toThrow();
   });
 });
 
@@ -163,11 +173,9 @@ describe('computePortfolio — I3 seal (Finding 1)', () => {
 });
 
 describe('I3 zero-egress — ERC-20 balanceOf must not fire in a deniability session', () => {
-  it('fetchAssetAmount throws (with I3 in the message) and never builds the RPC Contract', async () => {
+  it('fetchAssetAmount throws (with I3 in the message) and never calls the token reader', async () => {
     isDeniabilitySessionActive.mockReturnValue(true);
-    getProvider.mockClear();
-    // getProvider(asset.chain) is the choke-point the erc20 branch calls to build
-    // the ethers Contract before balanceOf — if the guard throws first it is never reached.
+    getTokenBalance.mockClear();
     const USDC = { symbol: 'USDC', family: 'erc20', chain: 'sepolia' };
     let threw = null;
     try {
@@ -177,8 +185,21 @@ describe('I3 zero-egress — ERC-20 balanceOf must not fire in a deniability ses
     }
     expect(threw, 'erc20 balance read must THROW in a deniability session, not return 0/null').toBeTruthy();
     expect(String(threw?.message)).toMatch(/I3/);
-    expect(getProvider).not.toHaveBeenCalled();
+    expect(getTokenBalance).not.toHaveBeenCalled();
     isDeniabilitySessionActive.mockReturnValue(false);
+  });
+});
+
+describe('ERC-20 decimals verification is shared with the portfolio path', () => {
+  it('keeps the row indeterminate when getTokenBalance rejects a decimals mismatch', async () => {
+    getTokenBalance.mockRejectedValueOnce(new Error('Decimals mismatch for USDC'));
+    const asset = { symbol: 'USDC', family: 'erc20', chain: 'mainnet' };
+    expect(await fetchAssetAmount(asset, { evm: '0xabc' })).toBeNull();
+    expect(getTokenBalance).toHaveBeenCalledWith({
+      networkKey: 'mainnet',
+      symbol: 'USDC',
+      owner: '0xabc',
+    });
   });
 });
 

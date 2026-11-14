@@ -78,6 +78,21 @@ describe('candle trimming', () => {
 });
 
 describe('fetchOHLCVCG — shape', () => {
+  it.each([
+    ['LINK', 'chainlink'],
+    ['UNI', 'uniswap'],
+    ['SHIB', 'shiba-inu'],
+    ['LEO', 'unus-sed-leo'],
+  ])('maps %s to the CoinGecko id %s', async (symbol, coinId) => {
+    fetchCoinGecko.mockResolvedValue(makeCgCandles(1));
+    await fetchOHLCVCG(symbol, 'hour', 24);
+    expect(fetchCoinGecko).toHaveBeenCalledWith('coins/ohlc', {
+      coin_id: coinId,
+      vs_currency: 'usd',
+      days: '7',
+    });
+  });
+
   it('returns candles with the expected fields', async () => {
     fetchCoinGecko.mockResolvedValue(makeCgCandles(1));
     const [c] = await fetchOHLCVCG('BTC', 'hour', 24);
@@ -90,6 +105,6 @@ describe('fetchOHLCVCG — shape', () => {
   });
 
   it('throws for an unmapped ticker', async () => {
-    await expect(fetchOHLCVCG('SHIB', 'hour', 24)).rejects.toThrow(/no mapping/);
+    await expect(fetchOHLCVCG('DAI', 'hour', 24)).rejects.toThrow(/no mapping/);
   });
 });

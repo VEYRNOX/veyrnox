@@ -192,9 +192,9 @@
   end-to-end through the full in-app UI path on-chain (covering every send family:
   EVM L1 native, ERC-20 contract-call, four EVM L2/sidechains, BTC UTXO, and SOL
   ed25519). USDC and USDT are LIVE on Ethereum mainnet (build:release sends, both re-confirmed via RPC 2026-06-22): USDC `0xc37314…` and USDT `0xf06a0b…` (to Tether's USDT contract, status SUCCESS, block 25360159). NOTE: PR #280 first recorded a wrong USDT txid (`0x3f2fe1…`, actually a USDC-contract tx); corrected to the real USDT send 2026-06-22. AVAX and BNB are LIVE on their testnets — full UI-path sends confirmed on-chain (AVAX Fuji `0x3697e0d…`, independently re-confirmed via Routescan 2026-06-22; BNB testnet `0x1a6ee75…`, independently re-confirmed on-chain via public BSC-testnet RPC 2026-06-22; full UI-path provenance per session record + owner confirmation).
-  Receiving and balance reads work for all 10 assets; the send *code path* exists
-  and is unit-tested for EVM/ERC-20/BTC/SOL, but is HARD-gated off until a real
-  on-chain send is done by hand and reviewed.
+  Receiving and balance reads work for all 14 assets. Direct sends remain enabled
+  for the 10 live assets; LINK, UNI, SHIB, and LEO are the 4 receive-only assets.
+  **Direct sends are disabled. Connected dApps may still spend this token through existing approvals.**
 - **Security depth is the real progress.** The S1/S2/S3 security stack is the
   bulk of what's built. Both audits are now COMPLETE — the internal audit
   (2026-06-17, the mainnet gate) and the independent ECC third-party audit
@@ -209,7 +209,7 @@
 
 ---
 
-## 1. Assets & send-gating (the 10 standardized assets)
+## 1. Assets & send-gating (14 standardized assets: 10 live, 4 receive-only)
 
 Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — only
 `live` assets may send. Receive + balance read work for everything below.
@@ -219,6 +219,10 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 | ETH | evm | Sepolia | ✅ | ✅ verified on-chain (full UI path, `0x2d4d5d…`) | ✅ **live** |
 | USDC | erc20 | **Ethereum Mainnet** | ✅ | ✅ verified on-chain (full UI path, build:release, `0xc37314…`, 2026-06-20) — **✓ MAINNET** | ✅ **live** |
 | USDT | erc20 | **Ethereum Mainnet** | ✅ | ✅ verified on-chain (full UI path, build:release, `0xf06a0b…`, to Tether USDT contract, block 25360159, re-confirmed via RPC 2026-06-22) — **✓ MAINNET** (corrects wrong txid `0x3f2fe1…` from PR #280) | ✅ **live** |
+| LINK | erc20 | **Ethereum Mainnet** | ✅ | ❌ direct send disabled | 🟡 **receive-only** |
+| UNI | erc20 | **Ethereum Mainnet** | ✅ | ❌ direct send disabled | 🟡 **receive-only** |
+| SHIB | erc20 | **Ethereum Mainnet** | ✅ | ❌ direct send disabled | 🟡 **receive-only** |
+| LEO | erc20 | **Ethereum Mainnet** | ✅ | ❌ direct send disabled | 🟡 **receive-only** |
 | MATIC | evm | Polygon Amoy | ✅ | ✅ verified on-chain (full UI path, `0x6a4ded…`, block 40274236, 2026-06-16) | ✅ **live** |
 | ARB | evm | Arbitrum Sepolia | ✅ | ✅ verified on-chain (full UI path, `0x797928…`, 2026-06-14) | ✅ **live** |
 | OP | evm | Optimism Sepolia | ✅ | ✅ verified on-chain (full UI path, `0xc3fd1e…`, 2026-06-14) | ✅ **live** |
@@ -226,6 +230,8 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 | BNB | evm | BNB testnet | ✅ | ✅ verified on-chain (full UI path, `0x1a6ee75…`, block 114427048) | ✅ **live** |
 | BTC | btc | Bitcoin testnet (BIP-84) | ✅ | ✅ verified on-chain (full UI path, `2da87a27…`, block 4990901) | ✅ **live** |
 | SOL | solana | Solana devnet (ed25519) | ✅ | ✅ verified on-chain (full UI path, `5KGXAGTJ…`, finalized) | ✅ **live** |
+
+For every receive-only row: **Direct sends are disabled. Connected dApps may still spend this token through existing approvals.** None flips to live until the owner confirms a real on-chain send with a txid. LEO is an exchange token; its pause/blacklist behaviour is unreviewed. The 2026-11-01 contract facts were read on-chain and cross-checked against Etherscan links on CoinMarketCap; issuer docs were not checked.
 
 > **Honest framing:** the EVM send path is verified end-to-end for ETH/ARB/OP
 > (full UI path, on-chain). BTC and SOL send **modules** are also verified
