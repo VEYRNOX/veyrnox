@@ -34,6 +34,10 @@ describe('fetchLivePricesUsd — holdings-agnostic live fetch', () => {
       binancecoin: { usd: 300 },
       bitcoin: { usd: 60000 },
       solana: { usd: 150 },
+      chainlink: { usd: 12 },
+      uniswap: { usd: 7 },
+      'shiba-inu': { usd: 0.00001 },
+      'unus-sed-leo': { usd: 9 },
     };
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => cgResponse }));
     vi.stubGlobal('fetch', fetchMock);
@@ -45,9 +49,14 @@ describe('fetchLivePricesUsd — holdings-agnostic live fetch', () => {
     expect(url).toContain('vs_currencies=usd');
     expect(url).toContain('ethereum');
     expect(url).toContain('bitcoin');
+    expect(url).toContain('chainlink');
+    expect(url).toContain('uniswap');
+    expect(url).toContain('shiba-inu');
+    expect(url).toContain('unus-sed-leo');
     // Output is keyed by Veyrnox ticker
     expect(out.ETH).toBe(10);
     expect(out.BTC).toBe(60000);
+    expect(out).toMatchObject({ LINK: 12, UNI: 7, SHIB: 0.00001, LEO: 9 });
   });
 
   it('throws on a non-OK HTTP response (caller treats as unavailable)', async () => {
