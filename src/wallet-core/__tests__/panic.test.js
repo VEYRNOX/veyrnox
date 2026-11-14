@@ -261,6 +261,7 @@ describe('panic wipe', () => {
       'veyrnox-portfolios',
       'veyrnox-active-portfolio',
       'veyrnox-spam-overrides',
+      'veyrnox-custom-tokens',
       // GAP-4 LOW metadata tells
       'veyrnox-autolock-timeout',
       'veyrnox-message-signing-enabled',

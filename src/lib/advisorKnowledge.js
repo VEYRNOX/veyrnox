@@ -4,6 +4,12 @@
 
 import advisories from '../data/security-advisories.json';
 import { FEATURE_CATEGORIES } from './featureCatalogue.js';
+import {
+  LIVE_SEND_ENABLED_ASSET_COUNT,
+  NON_LIVE_ASSET_SPEND_NOTICE,
+  RECEIVE_ONLY_ASSET_COUNT,
+  TOTAL_SUPPORTED_ASSET_COUNT,
+} from '../wallet-core/assets.js';
 
 export const KNOWLEDGE_BASE = {
   wallet_basics: {
@@ -301,7 +307,7 @@ export const KNOWLEDGE_BASE = {
       },
       {
         q: 'What blockchains does Veyrnox support?',
-        a: 'Veyrnox supports 10 assets across multiple blockchains: ETH, MATIC (Polygon), ARB (Arbitrum), OP (Optimism), AVAX (Avalanche), BNB (BNB Chain), BTC (Bitcoin), SOL (Solana), USDC, and USDT. EVM chains share one address; BTC and SOL have their own derivation paths.',
+        a: `Veyrnox supports ${TOTAL_SUPPORTED_ASSET_COUNT} assets across multiple blockchains: ETH, MATIC (Polygon), ARB (Arbitrum), OP (Optimism), AVAX (Avalanche), BNB (BNB Chain), BTC (Bitcoin), SOL (Solana), USDC, USDT, LINK, UNI, SHIB, and LEO. ${LIVE_SEND_ENABLED_ASSET_COUNT} are live/send-enabled; LINK, UNI, SHIB, and LEO are the ${RECEIVE_ONLY_ASSET_COUNT} receive-only assets. ${NON_LIVE_ASSET_SPEND_NOTICE} EVM chains share one address; BTC and SOL have their own derivation paths.`,
       },
     ],
   },

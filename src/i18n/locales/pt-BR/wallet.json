@@ -325,6 +325,61 @@
     "rehearsal": {
       "title": "Ensaiar a negabilidade",
       "description": "Veja o painel exatamente como alguém segurando seu celular desbloqueado veria."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — respostas online",
+      "description": "Opcional · as perguntas que você digita saem do dispositivo",
+      "help": "Quando ativado, as perguntas que você digita no Consultor são enviadas ao nosso proxy e respondidas por um modelo de IA de terceiros, junto com a tela em que você está, a rede selecionada e um ID de instalação aleatório usado apenas para aplicar um limite diário de perguntas por dispositivo. Desativar interrompe isso imediatamente; o Consultor continua respondendo com seu conhecimento integrado. Ativar novamente exibe a explicação completa de novo, para que você possa concordar com todos os detalhes à sua frente.",
+      "enable_aria": "Revisar e ativar as respostas online do Consultor de Segurança com IA",
+      "disable_aria": "Desativar as respostas online do Consultor de Segurança com IA"
+    },
+    "page": {
+      "section_appearance": "Aparência",
+      "section_privacy": "Privacidade",
+      "section_language": "Idioma",
+      "section_security": "Segurança",
+      "section_plan": "Plano",
+      "section_wallet": "Carteira",
+      "section_help_legal": "Ajuda e jurídico",
+      "section_danger_zone": "Zona de perigo",
+      "security_managed_note": "As configurações de segurança são gerenciadas na sua carteira desbloqueada.",
+      "unlock_methods": "Métodos de desbloqueio",
+      "biometric_heading": "Biometria",
+      "wallet_passkeys": "Passkeys da carteira",
+      "wallet_passkeys_loading": "Carregando passkeys da carteira…",
+      "create_wallet_first": "Crie uma carteira primeiro",
+      "plan_current": "Plano atual: {{plan}}",
+      "plan_desc_safety_plus_ai": "Inclui todos os recursos do Safety Plus e respostas do Vigil ao vivo baseadas no TIP",
+      "plan_desc_safety_plus": "Controles de segurança mais profundos e análises avançadas",
+      "plan_desc_ai": "Respostas do Vigil ao vivo baseadas no TIP",
+      "plan_desc_free": "Faça upgrade para o Safety Plus ou AI Security Protection",
+      "plan_view_plans": "Ver planos",
+      "quick_links": "Atalhos",
+      "link_security_center": "Central de Segurança",
+      "link_security_center_desc": "Sessões e limites",
+      "link_network_manager": "Gerenciador de Redes",
+      "link_network_manager_desc": "RPC e redes",
+      "link_token_approvals": "Aprovações de Tokens",
+      "link_token_approvals_desc": "Veja e revogue permissões",
+      "link_personal_backup": "Backup Pessoal Criptografado",
+      "link_personal_backup_desc": "Backup pessoal",
+      "link_reveal_seed": "Revelar Seed",
+      "link_reveal_seed_desc": "QR da frase de backup",
+      "link_change_pin": "Alterar PIN",
+      "link_change_password": "Alterar senha do cofre",
+      "link_change_desc": "Acesso e recuperação",
+      "terms_title": "Termos e jurídico",
+      "terms_desc": "Termos, divulgações e limites honestos",
+      "terms_action": "Ver",
+      "rate_title": "Avalie o Veyrnox",
+      "rate_desc": "Abrir o pedido de avaliação da loja",
+      "rate_action": "Avaliar",
+      "feedback_title": "Enviar feedback",
+      "feedback_desc": "Fale diretamente com a equipe por e-mail",
+      "feedback_action": "E-mail",
+      "feature_title": "Sugerir um recurso",
+      "feature_desc": "Sugira uma ideia para a equipe considerar",
+      "feature_action": "Sugerir"
     }
   },
   "nav": {
@@ -347,7 +402,9 @@
     "tab_home": "Início",
     "tab_send": "Enviar",
     "tab_receive": "Receber",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Você precisará do seu PIN para entrar novamente.",
+    "lock_confirm_cancel": "Cancelar"
   },
   "back": {
     "default_label": "Voltar"
@@ -381,7 +438,8 @@
       "local_disclosure": "Os destinatários são verificados no seu dispositivo em busca de endereços fraudulentos no seu próprio histórico — nada sai do seu dispositivo.",
       "remote_opt_in": "Também verificar em uma base de dados de ameaças on-line (envia este endereço a terceiros)",
       "remote_unavailable": "A verificação on-line está ativada, mas nenhum provedor está configurado nesta versão — a verificação continua local, então não conseguimos verificar isso em uma lista externa.",
-      "demo_poison_button": "Demonstração: colar um endereço parecido"
+      "demo_poison_button": "Demonstração: colar um endereço parecido",
+      "remote_enabled": "A verificação online de inteligência de ameaças está ativa. Na etapa de verificação, isso envia ao serviço TIP o endereço do destinatário, seu próprio endereço de envio, o valor e — em transferências de tokens — o endereço do contrato e os dados da chamada."
     },
     "simulation": {
       "title": "Simulação de transação",
@@ -407,7 +465,13 @@
       "balance_prefix": "Saldo:",
       "demo_suffix": "(demonstração)",
       "live_suffix": "(ao vivo)",
-      "reading_from_network": "lendo da rede…"
+      "reading_from_network": "lendo da rede…",
+      "mode_crypto_aria": "Digite o valor em {{currency}}",
+      "mode_fiat_aria": "Digite o valor em USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Máx.",
+      "max_chip_aria": "Usar todo o seu saldo de {{currency}}"
     },
     "errors": {
       "amount_missing": "O valor é obrigatório",
@@ -433,7 +497,8 @@
       "back": "Voltar"
     },
     "verify": {
-      "summary_label": "Você está enviando"
+      "summary_label": "Você está enviando",
+      "finality": "O envio é definitivo. Depois de confirmada na rede, esta transferência não pode ser revertida nem reembolsada — confira o destinatário e o valor."
     },
     "fee": {
       "automatic": "A taxa de rede é definida automaticamente para {{currency}} ({{network}}).",
@@ -482,6 +547,11 @@
       "two_factor_retry": "O envio não pôde ser concluído — verifique novamente para tentar de novo.",
       "send_failed_fallback": "Falha no envio",
       "unconfirmed": "Não foi possível confirmar esta transação na rede ainda — ela pode estar pendente. Verifique no explorador."
+    },
+    "wizard": {
+      "step_recipient": "Destinatário e valor",
+      "step_review": "Revisar",
+      "step_confirm": "Confirmar"
     }
   },
   "receive": {
@@ -511,7 +581,14 @@
       "solana": "Envie Solana apenas na {{network}} para este endereço."
     },
     "select_asset_prompt": "Selecione um ativo para receber.",
-    "unlock_footer_note": "Os endereços vêm da sua carteira no dispositivo e só aparecem enquanto ela estiver desbloqueada."
+    "unlock_footer_note": "Os endereços vêm da sua carteira no dispositivo e só aparecem enquanto ela estiver desbloqueada.",
+    "actions": {
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "share": "Compartilhar",
+      "share_dialog_title": "Compartilhar endereço",
+      "share_failed_toast": "Não foi possível abrir a folha de compartilhamento"
+    }
   },
   "dashboard": {
     "portfolioValue": "Valor do portfólio",
