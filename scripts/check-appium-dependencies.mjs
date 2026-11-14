@@ -56,7 +56,7 @@ export async function checkInstalledTree(root) {
       if (watched.has(name)) {
         assert.equal(manifest.name, name, `Unexpected package identity at ${key}`);
         if (name === 'appium' || name === 'appium-uiautomator2-driver') {
-          assert.equal(manifest.version, name === 'appium' ? '3.8.0' : '8.7.0', `Unexpected ${name} version at ${key}`);
+          assert.equal(manifest.version, name === 'appium' ? '3.9.0' : '8.7.0', `Unexpected ${name} version at ${key}`);
         } else {
           assert.ok(safeVersion(name, manifest.version), `Vulnerable/unsupported ${name}@${manifest.version} on disk: ${key}`);
         }
