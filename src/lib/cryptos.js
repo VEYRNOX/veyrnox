@@ -1,17 +1,16 @@
 // src/lib/cryptos.js
 //
-// Canonical "top 10 cryptocurrencies by market cap" used across ALL display
-// features (price lists, charts, watchlists, swap selectors, portfolio mocks).
-// One source of truth so every feature shows the same coins, colours, glyphs
-// and reference prices.
+// Canonical display/market metadata used across price lists, charts, watchlists,
+// selectors, and portfolio rows. It includes the original market basket plus
+// every first-class wallet asset that needs a price/detail surface.
 //
 // IMPORTANT — display vs. capability:
 // This module is for DISPLAY/market data only. It does NOT grant any wallet
 // the ability to derive a real address, receive, or send. Real on-chain
 // capability is gated separately and deliberately in
-// src/wallet-core/assets.js (live / receive_only / coming_soon). Several of
-// the coins below (XRP, DOGE, ADA, TRX, BTC, SOL, USDT) have no signing stack
-// yet and remain coming_soon there. Never use this list to enable a send.
+// src/wallet-core/assets.js (live / receive_only / coming_soon). Some display
+// coins below (XRP, DOGE, ADA, TRX) have no wallet asset entry. Never use this
+// list to enable a send.
 //
 // Reference USD prices are static mocks for demo/portfolio math; live features
 // (e.g. PriceAlerts) still fetch real quotes from their price API.
@@ -35,9 +34,15 @@ export const TOP_CRYPTOS = Object.freeze([
   { symbol: "ARB",   name: "Arbitrum",      chain: "Arbitrum",    color: "#28A0F0", glyph: "A", usd: 3200,   change24h: -1.1,  mcap: "3B"    },
   { symbol: "OP",    name: "Optimism",      chain: "Optimism",    color: "#FF0420", glyph: "Ø", usd: 3200,   change24h: -1.1,  mcap: "2B"    },
   { symbol: "AVAX",  name: "Avalanche",     chain: "Avalanche",   color: "#E84142", glyph: "A", usd: 25,     change24h:  0.0,  mcap: "10B"   },
+  // First-class receive-only ERC-20s. No fabricated reference quote: live
+  // price plumbing may fill these; otherwise portfolio valuation is unavailable.
+  { symbol: "LINK",  name: "Chainlink",     chain: "Ethereum",    color: "#2A5ADA", glyph: "⬡", usd: null,   change24h: null, mcap: null    },
+  { symbol: "UNI",   name: "Uniswap",       chain: "Ethereum",    color: "#FF007A", glyph: "U", usd: null,   change24h: null, mcap: null    },
+  { symbol: "SHIB",  name: "Shiba Inu",     chain: "Ethereum",    color: "#F00500", glyph: "S", usd: null,   change24h: null, mcap: null    },
+  { symbol: "LEO",   name: "UNUS SED LEO", chain: "Ethereum",    color: "#121D28", glyph: "L", usd: null,   change24h: null, mcap: null    },
 ]);
 
-/** Ordered list of the 10 ticker symbols. */
+/** Ordered list of display/market ticker symbols. */
 export const TOP_SYMBOLS = Object.freeze(TOP_CRYPTOS.map(c => c.symbol));
 
 const byKey = (key) =>

@@ -95,6 +95,11 @@ import { resolveSend2faMethod, SEND_2FA } from '@/lib/send2faMethod';
 // M-6: the per-chain VERIFIED token registry (address + decimals). Data only —
 // no ethers Interface at module init, so it is safe to import statically here.
 import { TOKENS } from '@/wallet-core/evm/tokens.js';
+import {
+  canSend,
+  getAssetById,
+  NON_LIVE_ASSET_SPEND_NOTICE,
+} from '@/wallet-core/assets.js';
 
 // L-1 (PR #962): use the shared constant from getFreshRaspArtifact so the
 // Send-path and WC-path stay in sync with a single source of truth.
@@ -605,6 +610,26 @@ export async function _handleSendTransaction(
 
   const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
   const net = getNetworkByChainId(chainId);
+
+  // Receive-only ERC-20 capability gate. Match the target address against the
+  // registry before looking at calldata so every selector is covered: transfer,
+  // transferFrom, approve, permit and unknown calls all reach the same token
+  // contract. Unregistered routers/aggregators remain arbitrary contract calls
+  // and are intentionally unaffected by this direct-token boundary.
+  const targetToken = lookupRegistryToken(net?.key, txParams.to);
+  if (targetToken) {
+    const targetAsset = typeof targetToken.assetId === 'string'
+      ? getAssetById(targetToken.assetId)
+      : null;
+    if (!canSend(targetAsset)) {
+      await rejectRequest(topic, id, 'WC_TOKEN_NOT_LIVE').catch(() => {});
+      throw new Error(
+        `Rejected transaction [WC_TOKEN_NOT_LIVE]: token ` +
+        `${targetToken.assetId || targetToken.symbol || txParams.to} is not LIVE. ` +
+        NON_LIVE_ASSET_SPEND_NOTICE,
+      );
+    }
+  }
 
   // #1090 / Strix-13 — the WC surface has NO in-band affordance to satisfy any
   // configured second factor (Action Password, passkey, or native biometric).

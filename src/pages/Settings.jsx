@@ -190,7 +190,7 @@ export default function Settings() {
         </p>
       </div>
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Appearance</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">{t("settings.page.section_appearance")}</h2>
       {/* Theme Toggle */}
       <div className="p-5 rounded-2xl border border-border/40 bg-card">
         <div className="flex items-center justify-between">
@@ -212,7 +212,7 @@ export default function Settings() {
       </div>
 
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Privacy</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">{t("settings.page.section_privacy")}</h2>
       {/* Activity log (opt-in, off by default — deniability-safe S4) */}
       <div className="p-5 rounded-2xl border border-border/40 bg-card">
         <div className="flex items-center justify-between gap-3">
@@ -390,7 +390,7 @@ export default function Settings() {
         </p>
       </div>
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Language</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">{t("settings.page.section_language")}</h2>
       {/* Language — Phase 2 slice 1. Writes route through lib/locale.js setLocale
           which is I3-gated (no-op in decoy/duress/stealth/demo), so a coerced
           tap cannot flip the real user's stored language or leave a "someone
@@ -401,7 +401,7 @@ export default function Settings() {
         <LanguageSwitcher />
       </div>
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Security</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">{t("settings.page.section_security")}</h2>
       {/* Security settings — shown on all platforms.
           TwoFactorSettings now handles native biometric 2FA (Face ID) via
           BiometricAuth, so it is no longer WebAuthn-only and can render on native.
@@ -427,7 +427,7 @@ export default function Settings() {
       {isDeniabilityOrDemoActive() ? (
         <div className="p-5 rounded-2xl border border-border/40 bg-card">
           <p className="text-sm text-muted-foreground">
-            Security settings are managed from your unlocked wallet.
+            {t("settings.page.security_managed_note")}
           </p>
         </div>
       ) : (
@@ -436,7 +436,7 @@ export default function Settings() {
             <div className="flex items-center gap-2">
               <Fingerprint className="h-5 w-5 text-primary" />
               <h3 className="font-semibold">
-                {isNative ? "Biometric" : "Unlock Methods"}
+                {isNative ? t("settings.page.biometric_heading") : t("settings.page.unlock_methods")}
               </h3>
             </div>
 
@@ -471,12 +471,12 @@ export default function Settings() {
         <div className="space-y-3">
           <h3 className="font-semibold flex items-center gap-2">
             <Fingerprint className="h-4 w-4 text-primary" />
-            Wallet Passkeys
+            {t("settings.page.wallet_passkeys")}
           </h3>
           {isLoading ? (
-            <Spinner className="h-16" label="Loading wallet passkeys…" />
+            <Spinner className="h-16" label={t("settings.page.wallet_passkeys_loading")} />
           ) : wallets.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Create a wallet first</p>
+            <p className="text-sm text-muted-foreground">{t("settings.page.create_wallet_first")}</p>
           ) : (
             wallets.map(wallet => (
               <div key={wallet.id} className="space-y-2">
@@ -493,7 +493,7 @@ export default function Settings() {
         </div>
       )}
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Plan</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">{t("settings.page.section_plan")}</h2>
       {/* Current plan — reflects the real entitlement from TierProvider (useTier). */}
       <Link to="/plans" className="flex items-center justify-between gap-4 p-5 rounded-2xl border border-border/40 bg-card hover:border-primary/40 transition-colors min-h-[44px]">
         <div className="flex items-center gap-3">
@@ -501,77 +501,77 @@ export default function Settings() {
             <Sparkles className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="text-sm font-semibold">Current plan: {planLabel}</p>
+            <p className="text-sm font-semibold">{t("settings.page.plan_current", { plan: planLabel })}</p>
             <p className="text-xs text-muted-foreground">
               {isSafetyPlus
                 ? currentTier === TIER.AI_SECURITY_PROTECTION
-                  ? "Includes every Safety Plus feature plus live TIP-backed Vigil answers"
-                  : "Deeper security controls & advanced analytics"
+                  ? t("settings.page.plan_desc_safety_plus_ai")
+                  : t("settings.page.plan_desc_safety_plus")
                 : currentTier === TIER.AI_SECURITY_PROTECTION
-                  ? "Live TIP-backed Vigil answers"
-                  : "Upgrade to Safety Plus or AI Security Protection"}
+                  ? t("settings.page.plan_desc_ai")
+                  : t("settings.page.plan_desc_free")}
             </p>
           </div>
         </div>
-        <span className="text-sm text-primary font-medium">View plans</span>
+        <span className="text-sm text-primary font-medium">{t("settings.page.plan_view_plans")}</span>
       </Link>
       {/* Status + expiry: cancelled, billing retry and expired are all visible here. */}
       <SubscriptionStatus subscription={subscription} />
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Wallet</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">{t("settings.page.section_wallet")}</h2>
       {/* Withdrawal Address Whitelist */}
       <div className="p-5 rounded-2xl border border-border/40 bg-card">
         <WhitelistManager />
       </div>
 
       {/* Quick Links */}
-      <p className="text-xs font-medium text-muted-foreground -mb-4">Quick links</p>
+      <p className="text-xs font-medium text-muted-foreground -mb-4">{t("settings.page.quick_links")}</p>
       <div className="grid grid-cols-2 gap-3">
         <Link to="/security" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
           <ShieldAlert className="h-5 w-5 text-primary shrink-0" />
           <div>
-            <p className="text-sm font-medium">Security Center</p>
-            <p className="text-xs text-muted-foreground">Sessions &amp; Limits</p>
+            <p className="text-sm font-medium">{t("settings.page.link_security_center")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings.page.link_security_center_desc")}</p>
           </div>
         </Link>
         <Link to="/network-manager" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
           <Network className="h-5 w-5 text-primary shrink-0" />
           <div>
-            <p className="text-sm font-medium">Network Manager</p>
-            <p className="text-xs text-muted-foreground">RPC &amp; chains</p>
+            <p className="text-sm font-medium">{t("settings.page.link_network_manager")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings.page.link_network_manager_desc")}</p>
           </div>
         </Link>
         <Link to="/token-approvals" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
           <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
           <div>
-            <p className="text-sm font-medium">Token Approvals</p>
-            <p className="text-xs text-muted-foreground">View &amp; revoke allowances</p>
+            <p className="text-sm font-medium">{t("settings.page.link_token_approvals")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings.page.link_token_approvals_desc")}</p>
           </div>
         </Link>
         <Link to="/personal-backup" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
           <CloudUpload className="h-5 w-5 text-primary shrink-0" />
           <div>
-            <p className="text-sm font-medium">Encrypted Personal Backup</p>
-            <p className="text-xs text-muted-foreground">Personal backup</p>
+            <p className="text-sm font-medium">{t("settings.page.link_personal_backup")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings.page.link_personal_backup_desc")}</p>
           </div>
         </Link>
         <Link to="/wallet-seed-qr" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
           <Key className="h-5 w-5 text-primary shrink-0" />
           <div>
-            <p className="text-sm font-medium">Reveal Seed</p>
-            <p className="text-xs text-muted-foreground">Backup phrase QR</p>
+            <p className="text-sm font-medium">{t("settings.page.link_reveal_seed")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings.page.link_reveal_seed_desc")}</p>
           </div>
         </Link>
         <Link to="/wallet-access" data-testid="change-pin-link" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
           <KeyRound className="h-5 w-5 text-primary shrink-0" />
           <div>
-            <p className="text-sm font-medium">{getAuthModel() === "pin" ? "Change PIN" : "Change vault password"}</p>
-            <p className="text-xs text-muted-foreground">Access &amp; recovery</p>
+            <p className="text-sm font-medium">{getAuthModel() === "pin" ? t("settings.page.link_change_pin") : t("settings.page.link_change_password")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings.page.link_change_desc")}</p>
           </div>
         </Link>
       </div>
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Help & legal</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">{t("settings.page.section_help_legal")}</h2>
       {/* Terms & legal — ordinary nav row to the static reference screen. No
           badge, no status, no count (deniability framing: nothing to read here). */}
       <Link to="/terms-legal" className="flex items-center justify-between gap-4 p-5 rounded-2xl border border-border/40 bg-card hover:border-primary/40 transition-colors min-h-[44px]">
@@ -580,11 +580,11 @@ export default function Settings() {
             <Scale className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="text-sm font-semibold">Terms &amp; legal</p>
-            <p className="text-xs text-muted-foreground">Terms, disclosures &amp; honest limits</p>
+            <p className="text-sm font-semibold">{t("settings.page.terms_title")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings.page.terms_desc")}</p>
           </div>
         </div>
-        <span className="text-sm text-primary font-medium">View</span>
+        <span className="text-sm text-primary font-medium">{t("settings.page.terms_action")}</span>
       </Link>
 
       {/* Rate & feedback — always-visible, non-gated paths. No sentiment
@@ -609,11 +609,11 @@ export default function Settings() {
                   <Star className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">Rate Veyrnox</p>
-                  <p className="text-xs text-muted-foreground">Open the store review prompt</p>
+                  <p className="text-sm font-semibold">{t("settings.page.rate_title")}</p>
+                  <p className="text-xs text-muted-foreground">{t("settings.page.rate_desc")}</p>
                 </div>
               </div>
-              <span className="text-sm text-primary font-medium">Rate</span>
+              <span className="text-sm text-primary font-medium">{t("settings.page.rate_action")}</span>
             </button>
           )}
           <button
@@ -627,11 +627,11 @@ export default function Settings() {
                 <MessageSquare className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-sm font-semibold">Send feedback</p>
-                <p className="text-xs text-muted-foreground">Reach the team directly by email</p>
+                <p className="text-sm font-semibold">{t("settings.page.feedback_title")}</p>
+                <p className="text-xs text-muted-foreground">{t("settings.page.feedback_desc")}</p>
               </div>
             </div>
-            <span className="text-sm text-primary font-medium">Email</span>
+            <span className="text-sm text-primary font-medium">{t("settings.page.feedback_action")}</span>
           </button>
           <button
             type="button"
@@ -644,11 +644,11 @@ export default function Settings() {
                 <Lightbulb className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-sm font-semibold">Request a feature</p>
-                <p className="text-xs text-muted-foreground">Suggest an idea for the team to consider</p>
+                <p className="text-sm font-semibold">{t("settings.page.feature_title")}</p>
+                <p className="text-xs text-muted-foreground">{t("settings.page.feature_desc")}</p>
               </div>
             </div>
-            <span className="text-sm text-primary font-medium">Suggest</span>
+            <span className="text-sm text-primary font-medium">{t("settings.page.feature_action")}</span>
           </button>
         </div>
       )}
@@ -657,7 +657,7 @@ export default function Settings() {
           hides itself on web and in decoy/demo (I3). */}
       <OtaVersionRow />
 
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">Danger zone</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-4 px-1">{t("settings.page.section_danger_zone")}</h2>
       {/* Danger Zone */}
       <div className="p-5 rounded-xl border border-destructive/30 bg-destructive/5 space-y-3">
         <div className="flex items-center gap-2 text-destructive">

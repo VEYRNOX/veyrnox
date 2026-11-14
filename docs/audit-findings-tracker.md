@@ -1,6 +1,6 @@
 # Audit Findings Tracker
-Last updated: 2026-10-05
-Analysed against: origin/main @ `87e868b6233098c7fe02d83b1165203343ae582f`
+Last updated: 2026-10-12
+Analysed against: origin/main @ `4b98715a533a8250c926e32cdff84c6a2930dd6e`
 (clean branch worktree cut from `origin/main` per Step 0 — not the live checkout,
 not a `git show` fallback. macOS/zsh.)
 
@@ -11,7 +11,55 @@ not a `git show` fallback. macOS/zsh.)
 > against source this run; rows tagged `(doc)` carry the status recorded in an audit doc or
 > PR history and were not independently re-checked.
 
-## Window since last run
+## Window since last run (2026-10-05 → 2026-10-12)
+
+Previous run analysed `87e868b6`. `main` has moved **21 commits** since (`4b98715a`). **Zero
+commits touch `src/wallet-core`, `src/rasp`, `android/`, `ios/App/App`, `supabase/` or
+`functions/`**; the code changes are UI restyles (Send/Receive/Settings/Home), review-prompt
+gating, upsell-card dedupe and dependency bumps. **The 2026-10-05 weekly internal audit
+landed** (#2854, `docs/audit-2026-10-05-weekly.md`) — it adds 12 new findings (below) and
+re-confirms every 09-28 item STILL PRESENT. Daily diffs 10-06 … 10-12: 0 REGRESSION; one
+NEEDS-REVIEW (low, `package.json`/lockfile, 10-08) carried.
+
+**Re-verified this run (grep, at `4b98715a`):** M-7 `SceneDelegate.swift:67-73`
+`QA-INSTRUMENT-TEMP` `NSLog` still present; H-3 `kekProfiles.js:101`
+`usedFallback: !stamped && i > 0` unchanged; H-1 `typed-data.js` has no
+`TransferWithAuthorization`/`SafeTx` entry; N-A1 `AndroidManifest.xml` has 0 `queries`
+elements; N-B2 `RequestApprovalModal.jsx:89` unguarded `BigInt(reqParams[0].value)`;
+H-2 `HEARTBEAT_MS = 60_000` unchanged. **No finding fixed, none regressed this window.**
+M-7 (logs WalletConnect pairing secrets, one-line delete) is now sixth consecutive window unfiled.
+
+### New this run — 2026-10-05 weekly (12; IDs scoped per surface, `N-` prefix)
+
+| ID | Sev | Finding | File:Line | Evidence |
+|---|---|---|---|---|
+| N-A1 | MEDIUM | Android package-based RASP detections (Xposed/Magisk/mock-location/keyboard/a11y) likely inert on targetSdk 36: no `<queries>`/`QUERY_ALL_PACKAGES` | `AndroidManifest.xml`, `RaspIntegrityPlugin.kt:419,753,688,726,635` | (grep) 0 `queries`; effect (doc), device-unverified |
+| N-B1 | MEDIUM | Off-chain asset-move typed data (CoW, Hyperliquid UsdSend/Withdraw, `to`+amount structs) scores OK; extends H-1 | `typed-data.js:34,75` | (doc) |
+| N-B2 | MEDIUM | Garbage `value` crashes approval modal render, re-crashes WC page until session deleted (fails closed) | `RequestApprovalModal.jsx:89` | (grep) |
+| N-A2 | LOW | TokenApprovals revoke has no `presignGate`/biometric tier friction | `TokenApprovals.jsx:152-170` | (doc) |
+| N-A3 | LOW | WARN-tier biometric step-up is a UI boolean in one place | `SendCrypto.jsx:1272,1338` | (doc) |
+| N-A4 | LOW | M-7 reach wider: logs rejected URLs too, incl. unredacted `wc:` pairing URI | `SceneDelegate.swift:67-73` | (grep) block present |
+| N-B3 | LOW | Gas-estimation failure still broadcasts at 1M cap; fee ceiling skippable on bad fee data | `WalletConnectProvider.jsx:785-800` | (doc) |
+| N-B4 | LOW | Flagged dApp domain banner-only at sign time, tier-gated | `RequestApprovalModal.jsx:233-256` | (doc) |
+| N-B5 | LOW | `personal_sign` content never scored (32-byte hash as raw hex; Safe vector, inference) | `WalletConnectProvider.jsx:414-468` | (doc) |
+| N-D1 | LOW | Subscription refresh doesn't re-check deniability after awaited RevenueCat call (I3) | `TierProvider.jsx:46-150` | (doc) |
+| N-D2 | INFO | `deniabilitySession.js` imports `demoClient` (load-time side effect); fail-closed | `deniabilitySession.js` | (doc) |
+| N-C1 | INFO | R8 optimisation (#2765) has no release-APK KEK/RASP device test (extends DIFF-1004-R8) | `proguard-rules.pro` | (doc) |
+
+Also recorded **PASS (doc):** Android tamper-cert placeholder — blank release cert hard-fails
+the build (`build.gradle:370-380,518-527`). Not reviewed by the audit: `OtaBundleVerifier.kt` /
+`OtaUpdatePlugin.kt` (OTA is inside the RASP trust boundary; in next week's brief).
+
+### Summary adjustment (this run)
+
+Prior totals (below) plus 12 new open items: total **~407**, fixed **~309** (+0; tamper-cert
+PASS was already counted as fixed), still open **~101**, regressed **2** (unchanged: 09-28 H-3,
+WC queue), needs on-device **~36** (N-A1). The 10-05 summary block below is otherwise superseded
+by this section.
+
+---
+
+## Previous window (2026-09-28 → 2026-10-05, retained for reference)
 
 Previous run analysed `b3a8c58c` (2026-09-28). `main` has moved **75 commits** since. Almost
 none are security-relevant: release/OTA/paywall/portfolio work, dependency bumps, and eight

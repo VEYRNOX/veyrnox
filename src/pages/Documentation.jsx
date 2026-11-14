@@ -2,6 +2,12 @@
 import { useState } from "react";
 import { exportCataloguePdf } from "@/lib/pdfExport";
 import { FEATURE_CATEGORIES, STATUS, resolveStatus, verifiedFeatureNames } from "@/lib/featureCatalogue";
+import {
+  LIVE_SEND_ENABLED_ASSET_COUNT,
+  NON_LIVE_ASSET_SPEND_NOTICE,
+  RECEIVE_ONLY_ASSET_COUNT,
+  TOTAL_SUPPORTED_ASSET_COUNT,
+} from "@/wallet-core/assets";
 import { toast } from "@/lib/toast";
 import { Link } from "react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -249,7 +255,7 @@ export default function Documentation() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            10 assets across 8 networks: ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, and USDT. One HD seed derives all accounts. Each send is locally signed and individually broadcast.
+            {TOTAL_SUPPORTED_ASSET_COUNT} assets across 8 networks: ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT, LINK, UNI, SHIB, and LEO. {LIVE_SEND_ENABLED_ASSET_COUNT} are live/send-enabled; LINK, UNI, SHIB, and LEO are the {RECEIVE_ONLY_ASSET_COUNT} receive-only assets. {NON_LIVE_ASSET_SPEND_NOTICE} One HD seed derives all accounts; every enabled send is locally signed and individually broadcast.
           </CardContent>
         </Card>
       </div>
