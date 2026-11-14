@@ -192,6 +192,8 @@ vi.mock('@/wallet-core/assets', () => ({
   canSend: () => true,
   canReceive: () => true,
   isEvmFamily: () => true,
+  NON_LIVE_ASSET_SPEND_NOTICE:
+    'Direct sends are disabled. Connected dApps may still spend this token through existing approvals.',
 }));
 
 vi.mock('@/wallet-core/evm/networks', () => ({
