@@ -325,6 +325,61 @@
     "rehearsal": {
       "title": "Deniability oefenen",
       "description": "Bekijk het dashboard precies zoals iemand met je ontgrendelde telefoon het zou zien."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — online antwoorden",
+      "description": "Alleen na toestemming · je getypte vragen verlaten het apparaat",
+      "help": "Als dit aan staat, worden de vragen die je in de Adviseur typt naar onze proxy gestuurd en beantwoord door een AI-model van een derde partij, samen met het scherm waarop je je bevindt, de geselecteerde chain en een willekeurig installatie-ID dat alleen wordt gebruikt om een dagelijkse vragenlimiet per apparaat af te dwingen. Uitzetten stopt dit direct; de Adviseur blijft antwoorden vanuit zijn ingebouwde kennis. Weer aanzetten toont de volledige uitleg opnieuw, zodat je er met alle details voor je akkoord mee kunt gaan.",
+      "enable_aria": "Online antwoorden van de AI-beveiligingsadviseur bekijken en aanzetten",
+      "disable_aria": "Online antwoorden van de AI-beveiligingsadviseur uitzetten"
+    },
+    "page": {
+      "section_appearance": "Weergave",
+      "section_privacy": "Privacy",
+      "section_language": "Taal",
+      "section_security": "Beveiliging",
+      "section_plan": "Abonnement",
+      "section_wallet": "Wallet",
+      "section_help_legal": "Help & juridisch",
+      "section_danger_zone": "Gevarenzone",
+      "security_managed_note": "Beveiligingsinstellingen beheer je vanuit je ontgrendelde wallet.",
+      "unlock_methods": "Ontgrendelmethoden",
+      "biometric_heading": "Biometrie",
+      "wallet_passkeys": "Wallet-passkeys",
+      "wallet_passkeys_loading": "Wallet-passkeys laden…",
+      "create_wallet_first": "Maak eerst een wallet aan",
+      "plan_current": "Huidig abonnement: {{plan}}",
+      "plan_desc_safety_plus_ai": "Bevat alle Safety Plus-functies plus live Vigil-antwoorden op basis van TIP",
+      "plan_desc_safety_plus": "Diepere beveiligingscontroles & geavanceerde analyses",
+      "plan_desc_ai": "Live Vigil-antwoorden op basis van TIP",
+      "plan_desc_free": "Upgrade naar Safety Plus of AI Security Protection",
+      "plan_view_plans": "Abonnementen bekijken",
+      "quick_links": "Snelkoppelingen",
+      "link_security_center": "Beveiligingscentrum",
+      "link_security_center_desc": "Sessies & limieten",
+      "link_network_manager": "Netwerkbeheer",
+      "link_network_manager_desc": "RPC & chains",
+      "link_token_approvals": "Tokengoedkeuringen",
+      "link_token_approvals_desc": "Machtigingen bekijken & intrekken",
+      "link_personal_backup": "Versleutelde persoonlijke back-up",
+      "link_personal_backup_desc": "Persoonlijke back-up",
+      "link_reveal_seed": "Seed tonen",
+      "link_reveal_seed_desc": "QR van back-upzin",
+      "link_change_pin": "Pincode wijzigen",
+      "link_change_password": "Kluiswachtwoord wijzigen",
+      "link_change_desc": "Toegang & herstel",
+      "terms_title": "Voorwaarden & juridisch",
+      "terms_desc": "Voorwaarden, disclosures & eerlijke beperkingen",
+      "terms_action": "Bekijken",
+      "rate_title": "Beoordeel Veyrnox",
+      "rate_desc": "Open de beoordelingsprompt van de store",
+      "rate_action": "Beoordelen",
+      "feedback_title": "Feedback sturen",
+      "feedback_desc": "Neem rechtstreeks per e-mail contact op met het team",
+      "feedback_action": "E-mail",
+      "feature_title": "Functie aanvragen",
+      "feature_desc": "Stel een idee voor dat het team kan overwegen",
+      "feature_action": "Voorstellen"
     }
   },
   "nav": {
@@ -347,7 +402,9 @@
     "tab_home": "Start",
     "tab_send": "Versturen",
     "tab_receive": "Ontvangen",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Je hebt je pincode nodig om weer binnen te komen.",
+    "lock_confirm_cancel": "Annuleren"
   },
   "back": {
     "default_label": "Terug"
@@ -381,7 +438,8 @@
       "local_disclosure": "Ontvangers worden op je apparaat gecontroleerd op scamadressen aan de hand van je eigen geschiedenis — er verlaat niets je apparaat.",
       "remote_opt_in": "Ook screenen tegen een online dreigingsdatabase (verstuurt dit adres naar een derde partij)",
       "remote_unavailable": "Online screening is ingeschakeld, maar er is geen provider geconfigureerd in deze build — screening blijft lokaal, dus we konden dit niet verifiëren tegen een externe lijst.",
-      "demo_poison_button": "Demo: een lookalike-adres plakken"
+      "demo_poison_button": "Demo: een lookalike-adres plakken",
+      "remote_enabled": "Online threat-intelligence-screening is actief. In de verificatiestap worden het adres van de ontvanger, je eigen verzendadres, het bedrag en — bij tokenoverdrachten — het contractadres en de aanroepdata naar de TIP-service gestuurd."
     },
     "simulation": {
       "title": "Transactiesimulatie",
@@ -407,7 +465,13 @@
       "balance_prefix": "Saldo:",
       "demo_suffix": "(demo)",
       "live_suffix": "(live)",
-      "reading_from_network": "wordt van het netwerk gelezen…"
+      "reading_from_network": "wordt van het netwerk gelezen…",
+      "mode_crypto_aria": "Voer bedrag in {{currency}} in",
+      "mode_fiat_aria": "Voer bedrag in USD in",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Max",
+      "max_chip_aria": "Gebruik je volledige {{currency}}-saldo"
     },
     "errors": {
       "amount_missing": "Bedrag is verplicht",
@@ -433,7 +497,8 @@
       "back": "Terug"
     },
     "verify": {
-      "summary_label": "Je verstuurt"
+      "summary_label": "Je verstuurt",
+      "finality": "Verzenden is definitief. Zodra de transactie op het netwerk is bevestigd, kan deze overdracht niet worden teruggedraaid of terugbetaald — controleer de ontvanger en het bedrag."
     },
     "fee": {
       "automatic": "Netwerkkosten worden automatisch ingesteld voor {{currency}} ({{network}}).",
@@ -482,6 +547,11 @@
       "two_factor_retry": "Versturen kon niet worden voltooid — verifieer opnieuw om het nogmaals te proberen.",
       "send_failed_fallback": "Versturen mislukt",
       "unconfirmed": "Kon deze transactie nog niet bevestigen op het netwerk — mogelijk nog in behandeling. Controleer de explorer."
+    },
+    "wizard": {
+      "step_recipient": "Ontvanger en bedrag",
+      "step_review": "Controleren",
+      "step_confirm": "Bevestigen"
     }
   },
   "receive": {
@@ -511,7 +581,14 @@
       "solana": "Stuur alleen Solana op {{network}} naar dit adres."
     },
     "select_asset_prompt": "Selecteer een asset om te ontvangen.",
-    "unlock_footer_note": "Adressen komen van je wallet op het apparaat en verschijnen alleen wanneer deze ontgrendeld is."
+    "unlock_footer_note": "Adressen komen van je wallet op het apparaat en verschijnen alleen wanneer deze ontgrendeld is.",
+    "actions": {
+      "copy": "Kopiëren",
+      "copied": "Gekopieerd",
+      "share": "Delen",
+      "share_dialog_title": "Adres delen",
+      "share_failed_toast": "Kan het deelvenster niet openen"
+    }
   },
   "dashboard": {
     "portfolioValue": "Portefeuillewaarde",

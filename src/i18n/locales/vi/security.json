@@ -78,7 +78,10 @@
     "demo_reset": "Đặt lại demo (xóa toàn bộ dữ liệu ví + ví ẩn)",
     "non_demo_hint": "Khóa ví của bạn rồi nhập PIN khẩn cấp để thử. Không bao giờ chia sẻ nó. Quên rồi? Xóa nó tại đây khi đang mở khóa bằng PIN thật của bạn.",
     "network_default_name": "mạng thử nghiệm",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Đặt PIN khẩn cấp mới là một phần của Safety Plus",
+    "setup_locked_body": "Tạo hoặc thay đổi PIN khẩn cấp cần có gói đăng ký Safety Plus đang hoạt động. Việc xóa thì không bao giờ cần, và bạn có thể làm điều đó bên dưới bất cứ lúc nào.",
+    "setup_locked_cta": "Xem các gói"
   },
   "stealth": {
     "heading": "Ví ẩn danh (Stealth)",
@@ -213,7 +216,8 @@
       "trust_warning": "Chỉ kết nối với các dApp bạn tin tưởng. Ví này sẽ hiển thị với dApp sau khi kết nối.",
       "reject": "Từ chối",
       "connect_busy": "Đang kết nối…",
-      "connect": "Kết nối"
+      "connect": "Kết nối",
+      "risk_blocked": "Kết nối với dApp này bị chặn. Hãy từ chối và mở một URL đáng tin cậy thay thế."
     },
     "request_approval": {
       "blocked_title": "Yêu cầu bị chặn",
@@ -248,7 +252,20 @@
       "sending_busy": "Đang gửi…",
       "signing_busy": "Đang ký…",
       "unknown_network_with_id": "Mạng không xác định (chuỗi {{id}})",
-      "unknown_network": "Mạng không xác định"
+      "unknown_network": "Mạng không xác định",
+      "typed_contract_row_label": "Hợp đồng",
+      "typed_chain_row_label": "ID chuỗi",
+      "typed_contract_hint": "Tên ở trên do trang web chọn. Địa chỉ hợp đồng này mới là thứ chữ ký của bạn thực sự ủy quyền — hãy đối chiếu với token bạn mong đợi.",
+      "permit_unapprovable": "Chữ ký này ủy quyền cho một bên chi tiêu (spender) di chuyển token của bạn, và Veyrnox không phê duyệt những chữ ký này qua WalletConnect. Hãy hoàn tất từ màn hình Gửi trong ứng dụng, nơi có thể xem xét và xác nhận rủi ro.",
+      "token_amount_row_label": "Số lượng token",
+      "token_recipient_row_label": "Người nhận token",
+      "unknown_token_title": "⚠ Token không xác định",
+      "unknown_token_body": "Không đọc được số tiền từ yêu cầu này. Đừng phê duyệt trừ khi bạn biết chính xác yêu cầu này gửi gì.",
+      "max_fee_row_label": "Phí tối đa",
+      "max_fee_row_value": "tối đa {{amount}} {{symbol}}",
+      "max_fee_note": "Đây là mức tối đa mà phí mạng có thể tốn, cộng thêm vào giá trị ở trên. Đó là mức trần, không phải ước tính — phí thực tế thường thấp hơn nhiều.",
+      "remote_screening_notice": "Tính năng sàng lọc thông tin tình báo mối đe dọa trực tuyến đang hoạt động cho yêu cầu này. Trước khi phê duyệt, Veyrnox có thể gửi địa chỉ người nhận, số tiền và dữ liệu lệnh gọi đến dịch vụ sàng lọc TIP của mình.",
+      "remote_screening_unavailable": "Sàng lọc trực tuyến đã được bật trong tùy chọn của bạn, nhưng bản dựng này chưa cấu hình nhà cung cấp TIP nào. Yêu cầu này sẽ chỉ được sàng lọc cục bộ."
     },
     "active_sessions": {
       "empty": "Chưa có dApp nào được kết nối. Ghép nối một dApp ở trên để bắt đầu.",
@@ -293,6 +310,23 @@
       "biometric": "Ủy quyền lệnh gửi này bằng PIN + sinh trắc học",
       "passkey": "Ủy quyền lệnh gửi này bằng PIN + passkey",
       "password": "Ủy quyền lệnh gửi này bằng PIN + Mật khẩu Hành động"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Nguồn: {{source}}.",
+      "note_fallback": "Bị gắn cờ trong danh sách tình báo mối đe dọa cục bộ",
+      "critical_footer": "Mục này bị gắn cờ mức nghiêm trọng. Bạn vẫn có thể tiếp tục, nhưng hãy hiểu rõ rủi ro trước khi làm.",
+      "headline": {
+        "sanctioned": "Địa chỉ này nằm trong danh sách trừng phạt.",
+        "drainer": "Đây là một công cụ rút cạn ví (drainer) đã được biết đến.",
+        "phishing": "Địa chỉ này liên quan đến lừa đảo phishing.",
+        "exploit": "Địa chỉ này liên quan đến một lỗ hổng khai thác (exploit) đã biết.",
+        "scam": "Địa chỉ này bị gắn cờ là lừa đảo.",
+        "malicious_contract": "Hợp đồng này đã bị gắn cờ là độc hại.",
+        "mixer": "Đây là dịch vụ trộn tiền (mixer).",
+        "burn": "Đây là địa chỉ đốt (burn).",
+        "default": "Sentinel đã gắn cờ địa chỉ này."
+      }
     }
   }
 }
