@@ -7,8 +7,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-vi.mock('@/wallet-core/evm/provider.js', () => ({ getBalanceEth: vi.fn(), getProvider: vi.fn(() => ({})) }));
-vi.mock('@/wallet-core/evm/tokens.js', () => ({ getToken: vi.fn(() => ({ address: '0xtoken', decimals: 6 })), ERC20_ABI: [] }));
+vi.mock('@/wallet-core/evm/provider.js', () => ({ getBalanceEth: vi.fn() }));
+vi.mock('@/wallet-core/evm/token-send.js', () => ({ getTokenBalance: vi.fn() }));
 vi.mock('@/wallet-core/btc/provider.js', () => ({ getBalanceSats: vi.fn() }));
 vi.mock('@/wallet-core/sol/provider.js', () => ({ getBalanceSol: vi.fn() }));
 vi.mock('@/wallet-core/deniabilitySession.js', () => ({ isDeniabilitySessionActive: vi.fn(() => false) }));
@@ -51,6 +51,14 @@ describe('usePortfolio price basis', () => {
     expect(result.current.data.grandTotal).toBe(2000); // cached figures still render
     expect(result.current.priceBasis).toBe('approx');
     expect(result.current.pricesUpdatedAt).toBeNull();
+  });
+
+  it('a cache entry saved as unavailable stays unavailable while hydrating', () => {
+    loadPortfolioCache.mockReturnValue({ ts: Date.now(), data: { ...LIVE_RESULT, grandTotal: 0, priceBasis: 'unavailable', pricesUpdatedAt: null } });
+    useLivePrices.mockReturnValue(livePrices());
+    getBalanceEth.mockImplementation(pending);
+    const { result } = setup();
+    expect(result.current.priceBasis).toBe('unavailable');
   });
 
   it('recomputes a freshly written cache entry on the first session render', async () => {
