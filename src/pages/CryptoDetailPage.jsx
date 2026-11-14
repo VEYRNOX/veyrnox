@@ -24,12 +24,13 @@ import {
   setSpamTokenOverride,
 } from "@/lib/spamTokenIntel";
 import { evaluateSuspiciousToken } from "@/lib/suspiciousAssets";
-import { getAsset, getAssetById, canSend } from "@/wallet-core/assets.js";
+import { getAsset, getAssetById, canSend, NON_LIVE_ASSET_SPEND_NOTICE } from "@/wallet-core/assets.js";
 import { formatAssetId } from "@/wallet-core/assetId.js";
 import { assetDisplaySymbol, assetChainLabel } from "@/lib/assetLabel";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { DEMO } from "@/api/demoClient";
 import { formatUsd } from "@/lib/locale";
+import { spotPriceFractionDigits } from "@/components/FiatCurrencySelector";
 
 export default function CryptoDetailPage() {
   const { t } = useTranslation("wallet");
@@ -155,7 +156,7 @@ export default function CryptoDetailPage() {
           <div className="flex items-center gap-2 mt-0.5">
             {spotPrice != null && (
               <span className="text-lg font-semibold mono-value" data-testid="asset-spot-price">
-                {formatUsd(spotPrice, undefined, { maximumFractionDigits: spotPrice < 1 ? 4 : 2, minimumFractionDigits: 2 })}
+                {formatUsd(spotPrice, undefined, spotPriceFractionDigits(spotPrice))}
               </span>
             )}
             {isUp != null && (
@@ -291,7 +292,7 @@ export default function CryptoDetailPage() {
         <Button
           className="h-14 gap-2 text-base"
           disabled={!canSend(resolvedAsset)}
-          title={!canSend(resolvedAsset) ? "Receive only — sending isn't verified for this asset yet" : undefined}
+          title={!canSend(resolvedAsset) ? NON_LIVE_ASSET_SPEND_NOTICE : undefined}
           onClick={() => navigate(`/send?asset=${symbol}`)}
         >
           <ArrowUpRight className="h-5 w-5" />
