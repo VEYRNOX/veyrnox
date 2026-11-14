@@ -325,6 +325,61 @@
     "rehearsal": {
       "title": "演練可否認性",
       "description": "以拿著你已解鎖手機的人的視角檢視儀表板。"
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — 線上回答",
+      "description": "需主動開啟 · 你輸入的問題會離開裝置",
+      "help": "開啟後，你在顧問中輸入的問題會傳送到我們的代理，並由第三方 AI 模型回答，同時傳送的還有你目前所在的畫面、所選鏈，以及一個僅用於執行每台裝置每日提問上限的隨機安裝 ID。關閉後會立即停止；顧問仍會依據內建知識作答。重新開啟時會再次顯示完整說明，讓你在了解詳情的前提下同意。",
+      "enable_aria": "檢視並開啟 AI 安全顧問線上回答",
+      "disable_aria": "關閉 AI 安全顧問線上回答"
+    },
+    "page": {
+      "section_appearance": "外觀",
+      "section_privacy": "隱私",
+      "section_language": "語言",
+      "section_security": "安全",
+      "section_plan": "方案",
+      "section_wallet": "錢包",
+      "section_help_legal": "說明與法律",
+      "section_danger_zone": "危險區域",
+      "security_managed_note": "安全設定在已解鎖的錢包中管理。",
+      "unlock_methods": "解鎖方式",
+      "biometric_heading": "生物識別",
+      "wallet_passkeys": "錢包通行密鑰",
+      "wallet_passkeys_loading": "正在載入錢包通行密鑰…",
+      "create_wallet_first": "請先建立錢包",
+      "plan_current": "目前方案：{{plan}}",
+      "plan_desc_safety_plus_ai": "包含所有 Safety Plus 功能，以及由 TIP 支援的即時 Vigil 解答",
+      "plan_desc_safety_plus": "更深入的安全控制與進階分析",
+      "plan_desc_ai": "由 TIP 支援的即時 Vigil 解答",
+      "plan_desc_free": "升級至 Safety Plus 或 AI Security Protection",
+      "plan_view_plans": "查看方案",
+      "quick_links": "快捷入口",
+      "link_security_center": "安全中心",
+      "link_security_center_desc": "工作階段與限額",
+      "link_network_manager": "網路管理",
+      "link_network_manager_desc": "RPC 與鏈",
+      "link_token_approvals": "代幣授權",
+      "link_token_approvals_desc": "查看並撤銷授權額度",
+      "link_personal_backup": "加密個人備份",
+      "link_personal_backup_desc": "個人備份",
+      "link_reveal_seed": "顯示 Seed",
+      "link_reveal_seed_desc": "備份短語 QR 碼",
+      "link_change_pin": "變更 PIN",
+      "link_change_password": "變更保險庫密碼",
+      "link_change_desc": "存取與復原",
+      "terms_title": "條款與法律",
+      "terms_desc": "條款、揭露與坦誠的限制",
+      "terms_action": "查看",
+      "rate_title": "為 Veyrnox 評分",
+      "rate_desc": "開啟商店評價提示",
+      "rate_action": "評分",
+      "feedback_title": "傳送意見回饋",
+      "feedback_desc": "透過電子郵件直接聯絡團隊",
+      "feedback_action": "郵件",
+      "feature_title": "提交功能建議",
+      "feature_desc": "提出想法供團隊考慮",
+      "feature_action": "建議"
     }
   },
   "nav": {
@@ -347,7 +402,9 @@
     "tab_home": "首頁",
     "tab_send": "傳送",
     "tab_receive": "接收",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "你需要輸入 PIN 才能重新進入。",
+    "lock_confirm_cancel": "取消"
   },
   "back": {
     "default_label": "返回"
@@ -381,7 +438,8 @@
       "local_disclosure": "收件人會根據你自己的歷史在裝置上進行詐騙地址檢查 — 資料不會離開你的裝置。",
       "remote_opt_in": "同時對照線上威脅資料庫進行篩查（會將此地址傳送給第三方）",
       "remote_unavailable": "線上篩查已啟用，但此構建中未配置提供者 — 篩查仍在本地進行，因此我們無法與外部列表進行比對。",
-      "demo_poison_button": "演示：貼上一個相似地址"
+      "demo_poison_button": "演示：貼上一個相似地址",
+      "remote_enabled": "線上威脅情報篩查已啟用。在驗證步驟中，這會將收款地址、你自己的傳送地址、金額，以及（針對代幣轉帳）合約地址和呼叫資料傳送到 TIP 服務。"
     },
     "simulation": {
       "title": "交易模擬",
@@ -407,7 +465,13 @@
       "balance_prefix": "餘額：",
       "demo_suffix": "（演示）",
       "live_suffix": "（即時）",
-      "reading_from_network": "正在從網路讀取…"
+      "reading_from_network": "正在從網路讀取…",
+      "mode_crypto_aria": "以 {{currency}} 輸入金額",
+      "mode_fiat_aria": "以 USD 輸入金額",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "最大",
+      "max_chip_aria": "使用你全部的 {{currency}} 餘額"
     },
     "errors": {
       "amount_missing": "必須輸入金額",
@@ -433,7 +497,8 @@
       "back": "返回"
     },
     "verify": {
-      "summary_label": "你正在傳送"
+      "summary_label": "你正在傳送",
+      "finality": "傳送是最終的。轉帳在網路上確認後，將無法撤銷或退款 — 請核對收款方與金額。"
     },
     "fee": {
       "automatic": "{{currency}}（{{network}}）的網路費將自動設定。",
@@ -482,6 +547,11 @@
       "two_factor_retry": "傳送未能完成 — 請再次驗證以重試。",
       "send_failed_fallback": "傳送失敗",
       "unconfirmed": "尚無法在網路中確認此交易 — 可能仍在待處理狀態。請檢視瀏覽器。"
+    },
+    "wizard": {
+      "step_recipient": "收款方與金額",
+      "step_review": "檢查",
+      "step_confirm": "確認"
     }
   },
   "receive": {
@@ -511,7 +581,14 @@
       "solana": "請僅在 {{network}} 上向此地址傳送 Solana。"
     },
     "select_asset_prompt": "選擇要接收的資產。",
-    "unlock_footer_note": "地址來自你裝置上的錢包，僅在解鎖時才顯示。"
+    "unlock_footer_note": "地址來自你裝置上的錢包，僅在解鎖時才顯示。",
+    "actions": {
+      "copy": "複製",
+      "copied": "已複製",
+      "share": "分享",
+      "share_dialog_title": "分享地址",
+      "share_failed_toast": "無法開啟分享面板"
+    }
   },
   "dashboard": {
     "portfolioValue": "投資組合價值",

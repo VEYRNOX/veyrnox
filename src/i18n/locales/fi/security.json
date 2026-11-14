@@ -78,7 +78,10 @@
     "demo_reset": "Nollaa demo (poista kaikki lompakkotiedot + piilolompakko)",
     "non_demo_hint": "Lukitse lompakkosi ja syötä hätä-PIN kokeillaksesi sitä. Älä koskaan jaa sitä. Unohditko sen? Poista se tässä, kun lompakko on avattu oikealla PIN-koodillasi.",
     "network_default_name": "testiverkko",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Uuden hätä-PIN-koodin asettaminen kuuluu Safety Plus -palveluun",
+    "setup_locked_body": "Hätä-PIN-koodin luominen tai muuttaminen vaatii aktiivisen Safety Plus -tilauksen. Sen poistaminen ei koskaan vaadi tilausta, ja voit tehdä sen alla milloin tahansa.",
+    "setup_locked_cta": "Katso paketit"
   },
   "stealth": {
     "heading": "Piilolompakot / Salaiset lompakot",
@@ -213,7 +216,8 @@
       "trust_warning": "Yhdistä vain dAppeihin, joihin luotat. Tämä lompakko näkyy dAppille yhdistämisen jälkeen.",
       "reject": "Hylkää",
       "connect_busy": "Yhdistetään…",
-      "connect": "Yhdistä"
+      "connect": "Yhdistä",
+      "risk_blocked": "Yhteys tähän dAppiin on estetty. Hylkää ja avaa sen sijaan luotettu URL-osoite."
     },
     "request_approval": {
       "blocked_title": "Pyyntö estetty",
@@ -248,7 +252,20 @@
       "sending_busy": "Lähetetään…",
       "signing_busy": "Allekirjoitetaan…",
       "unknown_network_with_id": "Tuntematon verkko (ketju {{id}})",
-      "unknown_network": "Tuntematon verkko"
+      "unknown_network": "Tuntematon verkko",
+      "typed_contract_row_label": "Sopimus",
+      "typed_chain_row_label": "Ketjun tunnus",
+      "typed_contract_hint": "Yllä oleva nimi on sivuston valitsema. Tämä sopimusosoite on se, jonka allekirjoituksesi todella valtuuttaa — vertaa sitä odottamaasi tokeniin.",
+      "permit_unapprovable": "Tämä allekirjoitus valtuuttaa kolmannen osapuolen (spender) siirtämään tokenisi, eikä Veyrnox hyväksy niitä WalletConnectin kautta. Suorita se sovelluksen Lähetä-näytöllä, jossa riski voidaan tarkistaa ja kuitata.",
+      "token_amount_row_label": "Tokenien määrä",
+      "token_recipient_row_label": "Tokenien vastaanottaja",
+      "unknown_token_title": "⚠ Tuntematon token",
+      "unknown_token_body": "Summaa ei voi lukea tästä pyynnöstä. Älä hyväksy, ellet tiedä tarkasti, mitä tämä lähettää.",
+      "max_fee_row_label": "Enimmäismaksu",
+      "max_fee_row_value": "enintään {{amount}} {{symbol}}",
+      "max_fee_note": "Tämä on enimmäismäärä, jonka verkkomaksu voi maksaa, yllä olevan arvon lisäksi. Se on katto, ei arvio — todellinen maksu on yleensä paljon pienempi.",
+      "remote_screening_notice": "Verkossa tehtävä uhkatietoseulonta on käytössä tälle pyynnölle. Ennen hyväksyntää Veyrnox voi lähettää vastaanottajan osoitteen, summan ja kutsun datan TIP-seulontapalveluunsa.",
+      "remote_screening_unavailable": "Verkkoseulonta on otettu käyttöön asetuksissasi, mutta tähän versioon ei ole määritetty TIP-palveluntarjoajaa. Tämä pyyntö seulotaan vain paikallisesti."
     },
     "active_sessions": {
       "empty": "Ei vielä yhdistettyjä dAppeja. Yhdistä yksi yllä aloittaaksesi.",
@@ -293,6 +310,23 @@
       "biometric": "Valtuuta tämä lähetys PIN-koodilla + biometriikalla",
       "passkey": "Valtuuta tämä lähetys PIN-koodilla + passkeylla",
       "password": "Valtuuta tämä lähetys PIN-koodilla + toimintosalasanalla"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Lähde: {{source}}.",
+      "note_fallback": "Merkitty paikalliseen uhkatietolistaan",
+      "critical_footer": "Tämä on merkitty kriittiseksi. Voit silti jatkaa, mutta ymmärrä riski ensin.",
+      "headline": {
+        "sanctioned": "Tämä osoite on pakotelistalla.",
+        "drainer": "Tämä on tunnettu lompakon tyhjentäjä (drainer).",
+        "phishing": "Tämä osoite liittyy kalasteluun.",
+        "exploit": "Tämä osoite liittyy tunnettuun haavoittuvuuden hyväksikäyttöön.",
+        "scam": "Tämä osoite on merkitty huijaukseksi.",
+        "malicious_contract": "Tämä sopimus on merkitty haitalliseksi.",
+        "mixer": "Tämä on sekoituspalvelu.",
+        "burn": "Tämä on polttoosoite (burn).",
+        "default": "Sentinel on merkinnyt tämän osoitteen."
+      }
     }
   }
 }

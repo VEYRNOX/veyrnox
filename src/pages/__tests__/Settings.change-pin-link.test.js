@@ -14,6 +14,7 @@ import { dirname, resolve } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (rel) => readFileSync(resolve(here, rel), 'utf8');
 const settingsCode = read('../Settings.jsx');
+const en = JSON.parse(read('../../i18n/locales/en/wallet.json')).settings.page;
 
 describe('Settings — Change PIN entry point', () => {
   it('links to the Access & Recovery page (/wallet-access)', () => {
@@ -28,7 +29,10 @@ describe('Settings — Change PIN entry point', () => {
     // isPin drives the label — "Change PIN" for the PIN cohort, the password
     // wording as the legacy fallback.
     expect(settingsCode).toMatch(/getAuthModel\(\)\s*===\s*["']pin["']/);
-    expect(settingsCode).toMatch(/Change PIN/);
-    expect(settingsCode).toMatch(/Change vault password/);
+    // Wording now lives in the en catalog; Settings.jsx references the keys.
+    expect(settingsCode).toContain('settings.page.link_change_pin');
+    expect(settingsCode).toContain('settings.page.link_change_password');
+    expect(en.link_change_pin).toBe('Change PIN');
+    expect(en.link_change_password).toBe('Change vault password');
   });
 });

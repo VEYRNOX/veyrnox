@@ -325,6 +325,61 @@
     "rehearsal": {
       "title": "Répéter la déniabilité",
       "description": "Voir le tableau de bord exactement comme le verrait quelqu'un tenant ton téléphone déverrouillé."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — réponses en ligne",
+      "description": "Sur option · tes questions saisies quittent l'appareil",
+      "help": "Lorsque cette option est activée, les questions que tu saisis dans l'Advisor sont envoyées à notre proxy et traitées par un modèle d'IA tiers, avec l'écran où tu te trouves, la chaîne sélectionnée et un identifiant d'installation aléatoire utilisé uniquement pour appliquer une limite quotidienne de questions par appareil. La désactiver l'arrête immédiatement ; l'Advisor répond alors à partir de ses connaissances intégrées. La réactiver réaffiche l'explication complète afin que tu puisses l'accepter en connaissance de cause.",
+      "enable_aria": "Consulter et activer les réponses en ligne de l'AI Security Advisor",
+      "disable_aria": "Désactiver les réponses en ligne de l'AI Security Advisor"
+    },
+    "page": {
+      "section_appearance": "Apparence",
+      "section_privacy": "Confidentialité",
+      "section_language": "Langue",
+      "section_security": "Sécurité",
+      "section_plan": "Abonnement",
+      "section_wallet": "Portefeuille",
+      "section_help_legal": "Aide et mentions légales",
+      "section_danger_zone": "Zone de danger",
+      "security_managed_note": "Les réglages de sécurité se gèrent depuis ton portefeuille déverrouillé.",
+      "unlock_methods": "Méthodes de déverrouillage",
+      "biometric_heading": "Biométrie",
+      "wallet_passkeys": "Passkeys du portefeuille",
+      "wallet_passkeys_loading": "Chargement des passkeys du portefeuille…",
+      "create_wallet_first": "Crée d'abord un portefeuille",
+      "plan_current": "Abonnement actuel : {{plan}}",
+      "plan_desc_safety_plus_ai": "Inclut toutes les fonctions Safety Plus, ainsi que les réponses Vigil en direct alimentées par TIP",
+      "plan_desc_safety_plus": "Contrôles de sécurité avancés et analyses détaillées",
+      "plan_desc_ai": "Réponses Vigil en direct alimentées par TIP",
+      "plan_desc_free": "Passe à Safety Plus ou AI Security Protection",
+      "plan_view_plans": "Voir les abonnements",
+      "quick_links": "Liens rapides",
+      "link_security_center": "Centre de sécurité",
+      "link_security_center_desc": "Sessions et limites",
+      "link_network_manager": "Gestionnaire de réseaux",
+      "link_network_manager_desc": "RPC et chaînes",
+      "link_token_approvals": "Autorisations de tokens",
+      "link_token_approvals_desc": "Consulter et révoquer les autorisations",
+      "link_personal_backup": "Sauvegarde personnelle chiffrée",
+      "link_personal_backup_desc": "Sauvegarde personnelle",
+      "link_reveal_seed": "Afficher la seed",
+      "link_reveal_seed_desc": "QR de la phrase de sauvegarde",
+      "link_change_pin": "Changer le PIN",
+      "link_change_password": "Changer le mot de passe du coffre",
+      "link_change_desc": "Accès et récupération",
+      "terms_title": "Conditions et mentions légales",
+      "terms_desc": "Conditions, avertissements et limites en toute honnêteté",
+      "terms_action": "Voir",
+      "rate_title": "Noter Veyrnox",
+      "rate_desc": "Ouvrir l'invite d'avis du store",
+      "rate_action": "Noter",
+      "feedback_title": "Envoyer un retour",
+      "feedback_desc": "Contacte directement l'équipe par e-mail",
+      "feedback_action": "E-mail",
+      "feature_title": "Proposer une fonctionnalité",
+      "feature_desc": "Suggère une idée à l'équipe",
+      "feature_action": "Suggérer"
     }
   },
   "nav": {
@@ -347,7 +402,9 @@
     "tab_home": "Accueil",
     "tab_send": "Envoyer",
     "tab_receive": "Recevoir",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Tu auras besoin de ton PIN pour y revenir.",
+    "lock_confirm_cancel": "Annuler"
   },
   "back": {
     "default_label": "Retour"
@@ -381,7 +438,8 @@
       "local_disclosure": "Les destinataires sont vérifiés sur ton appareil pour détecter des adresses d'arnaque à partir de ton propre historique — rien ne quitte ton appareil.",
       "remote_opt_in": "Vérifier aussi auprès d'une base de données de menaces en ligne (envoie cette adresse à un tiers)",
       "remote_unavailable": "La vérification en ligne est activée, mais aucun fournisseur n'est configuré dans cette version — la vérification reste locale, nous n'avons donc pas pu la confirmer par rapport à une liste externe.",
-      "demo_poison_button": "Démo : coller une adresse ressemblante"
+      "demo_poison_button": "Démo : coller une adresse ressemblante",
+      "remote_enabled": "Le filtrage en ligne par renseignement sur les menaces est actif. À l'étape de vérification, il envoie au service TIP l'adresse du destinataire, ta propre adresse d'envoi, le montant et, pour les transferts de jetons, l'adresse du contrat et les données d'appel."
     },
     "simulation": {
       "title": "Simulation de transaction",
@@ -407,7 +465,13 @@
       "balance_prefix": "Solde :",
       "demo_suffix": "(démo)",
       "live_suffix": "(en direct)",
-      "reading_from_network": "lecture depuis le réseau…"
+      "reading_from_network": "lecture depuis le réseau…",
+      "mode_crypto_aria": "Saisir le montant en {{currency}}",
+      "mode_fiat_aria": "Saisir le montant en USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Max",
+      "max_chip_aria": "Utiliser tout ton solde en {{currency}}"
     },
     "errors": {
       "amount_missing": "Le montant est requis",
@@ -433,7 +497,8 @@
       "back": "Retour"
     },
     "verify": {
-      "summary_label": "Tu envoies"
+      "summary_label": "Tu envoies",
+      "finality": "L'envoi est définitif. Une fois confirmé sur le réseau, ce transfert ne peut être ni annulé ni remboursé — vérifie le destinataire et le montant."
     },
     "fee": {
       "automatic": "Les frais de réseau sont définis automatiquement pour {{currency}} ({{network}}).",
@@ -482,6 +547,11 @@
       "two_factor_retry": "L'envoi n'a pas pu aboutir — veuillez vérifier à nouveau pour réessayer.",
       "send_failed_fallback": "Échec de l'envoi",
       "unconfirmed": "Impossible de confirmer cette transaction sur le réseau pour l'instant — elle est peut-être encore en attente. Vérifie sur l'explorateur."
+    },
+    "wizard": {
+      "step_recipient": "Destinataire et montant",
+      "step_review": "Vérification",
+      "step_confirm": "Confirmation"
     }
   },
   "receive": {
@@ -511,7 +581,14 @@
       "solana": "N'envoie du Solana sur {{network}} qu'à cette adresse."
     },
     "select_asset_prompt": "Sélectionne un actif à recevoir.",
-    "unlock_footer_note": "Les adresses proviennent de ton portefeuille sur l'appareil et n'apparaissent que lorsqu'il est déverrouillé."
+    "unlock_footer_note": "Les adresses proviennent de ton portefeuille sur l'appareil et n'apparaissent que lorsqu'il est déverrouillé.",
+    "actions": {
+      "copy": "Copier",
+      "copied": "Copié",
+      "share": "Partager",
+      "share_dialog_title": "Partager l'adresse",
+      "share_failed_toast": "Impossible d'ouvrir la feuille de partage"
+    }
   },
   "dashboard": {
     "portfolioValue": "Valeur du portefeuille",

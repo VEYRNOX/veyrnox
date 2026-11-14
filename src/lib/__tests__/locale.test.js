@@ -37,7 +37,27 @@ describe('resolveLocale / resolveTimeZone / resolveFiatCurrency', () => {
     expect(typeof resolveLocale()).toBe('string');
     expect(resolveLocale().length).toBeGreaterThan(0);
     expect(typeof resolveTimeZone()).toBe('string');
-    expect(resolveFiatCurrency()).toBe('USD');
+    expect(resolveFiatCurrency({ navigator: { language: 'en-US' } })).toBe('USD');
+  });
+
+  it('defaults fiat from the device locale when that currency is catalogued', () => {
+    expect(resolveFiatCurrency({ navigator: { language: 'en-GB' } })).toBe('GBP');
+    expect(resolveFiatCurrency({ navigator: { language: 'fr-FR' } })).toBe('EUR');
+    expect(resolveFiatCurrency({ navigator: { language: 'ja-JP' } })).toBe('JPY');
+  });
+
+  it('derives the fallback from the DEVICE locale, not the stored UI language', () => {
+    // LanguageSwitcher stores language-only tags; they must not move the currency.
+    localStorage.setItem(LOCALE_KEY, 'en');
+    expect(resolveFiatCurrency({ navigator: { language: 'en-GB' } })).toBe('GBP');
+    localStorage.setItem(LOCALE_KEY, 'fr');
+    expect(resolveFiatCurrency({ navigator: { language: 'en-GB' } })).toBe('GBP');
+    localStorage.setItem(LOCALE_KEY, 'ja-JP');
+    expect(resolveFiatCurrency({ navigator: { languages: ['en-GB'], language: 'en-GB' } })).toBe('GBP');
+  });
+
+  it('falls back to USD when the locale region currency is not catalogued', () => {
+    expect(resolveFiatCurrency({ navigator: { language: 'en-ZW' } })).toBe('USD');
   });
 
   it('honours a stored preference over the browser default', () => {
@@ -51,7 +71,7 @@ describe('resolveLocale / resolveTimeZone / resolveFiatCurrency', () => {
 
   it('rejects a stored fiat code outside SUPPORTED_FIAT (fail-closed)', () => {
     localStorage.setItem(FIAT_KEY, 'ZWL');
-    expect(resolveFiatCurrency()).toBe('USD');
+    expect(resolveFiatCurrency({ navigator: { language: 'en-US' } })).toBe('USD');
   });
 
   it('accepts a synthetic navigator via opts (API preserved from PR #1471)', () => {

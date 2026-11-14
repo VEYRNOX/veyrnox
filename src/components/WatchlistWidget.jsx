@@ -87,8 +87,13 @@ export default function WatchlistWidget() {
       ) : (
         <div className="space-y-2">
           {items.map(item => {
-            const data = MOCK_PRICES[item.symbol] || { price: 0, change: 0 };
-            const up = data.change >= 0;
+            // A symbol with no reference quote (usd: null, e.g. a receive-only
+            // token) or no entry at all renders as unavailable, never as $0 or a
+            // fabricated 0% move, and never throws.
+            const data = MOCK_PRICES[item.symbol] || { price: null, change: null };
+            const hasPrice = Number.isFinite(data.price);
+            const hasChange = Number.isFinite(data.change);
+            const up = hasChange && data.change >= 0;
             return (
               <div key={item.id} className="flex items-center gap-2 group">
                 <CoinLogo symbol={item.symbol} size={28} />
@@ -97,11 +102,13 @@ export default function WatchlistWidget() {
                   {item.note && <p className="text-xs text-muted-foreground truncate">{item.note}</p>}
                 </div>
                 <div className="text-end me-1">
-                  <p className="text-sm font-semibold">${data.price.toLocaleString()}</p>
-                  <p className={`text-xs flex items-center gap-0.5 justify-end ${up ? "text-success" : "text-destructive"}`}>
-                    {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
-                    {up ? "+" : ""}{data.change}%
-                  </p>
+                  <p className="text-sm font-semibold">{hasPrice ? `$${data.price.toLocaleString()}` : "—"}</p>
+                  {hasChange && (
+                    <p className={`text-xs flex items-center gap-0.5 justify-end ${up ? "text-success" : "text-destructive"}`}>
+                      {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
+                      {up ? "+" : ""}{data.change}%
+                    </p>
+                  )}
                 </div>
                 <button
                   onClick={() => remove.mutate(item.id)}
