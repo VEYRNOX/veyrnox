@@ -93,8 +93,6 @@ Android tamper-cert residual, web artifact never ALLOW, N-D1, N-D2 (10-05 deniab
 Prior ~415 total (corrected 10-12 weekly and `.npmrc` additions); +2 weekly (N-E1, N-E2) +4 daily-diff watch items = **~421**. Fixed
 **~310** (+1, N-A2). Still open **~114**. Regressed **2** (unchanged: 09-28 H-3 KEK-stamp, WC
 refused-request queue). Needs on-device **~36** (unchanged). Counts are approximate by
-construction (MEDIUM/LOW grouped). Regressed **2** (unchanged: 09-28 H-3 KEK-stamp, WC
-refused-request queue). Needs on-device **~36** (unchanged). Counts are approximate by
 construction (MEDIUM/LOW grouped).
 
 ---
