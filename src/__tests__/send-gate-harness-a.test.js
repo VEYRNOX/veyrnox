@@ -154,11 +154,12 @@ describe('Harness A · G2 — canSend() is true only for the live set', () => {
     expect(sendable).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB', 'BTC', 'SOL']);
   });
 
-  it('canSend() is FALSE for every receive_only asset (the current catalog has none)', () => {
+  it('canSend() is FALSE for every receive_only asset (exactly the four mainnet ERC-20 additions)', () => {
     const receiveOnly = ASSETS.filter((a) => a.status === ASSET_STATUS.RECEIVE_ONLY);
-    // This PR removes the unverified Phase 1b rows, leaving only the ten assets
-    // that have completed the app's real testnet-send gate.
-    expect(receiveOnly).toHaveLength(0);
+    // The ten LIVE assets earned that status with real sends. The only other rows
+    // are the receive-only mainnet ERC-20s; this pin names them so a new row
+    // cannot appear (or flip to live) without this test changing.
+    expect(receiveOnly.map((a) => a.symbol)).toEqual(['LINK', 'UNI', 'SHIB', 'LEO']);
     for (const a of receiveOnly) {
       expect(canSend(a)).toBe(false);
       expect(canReceive(a)).toBe(true);

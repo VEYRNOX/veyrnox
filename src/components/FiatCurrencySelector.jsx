@@ -49,6 +49,40 @@ export function formatFiat(usdAmount, fiatCurrency, locale) {
 }
 
 /**
+ * Fraction-digit options for a SPOT PRICE (a unit price, not a balance total).
+ * At or above 1 it is the usual 2 decimals; below 1 it keeps about four
+ * significant digits (up to 10 decimals) so a sub-cent price such as 0.00001
+ * never rounds to a misleading $0.00.
+ * @param {number} value
+ * @returns {{ minimumFractionDigits: number, maximumFractionDigits: number }}
+ */
+export function spotPriceFractionDigits(value) {
+  const v = Math.abs(Number(value));
+  if (!Number.isFinite(v) || v === 0 || v >= 1) {
+    return { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+  }
+  const digits = Math.min(10, Math.max(2, 3 - Math.floor(Math.log10(v))));
+  return { minimumFractionDigits: 2, maximumFractionDigits: digits };
+}
+
+/** Like formatFiat, but magnitude-aware for unit prices (see spotPriceFractionDigits). */
+export function formatSpotPrice(usdAmount, fiatCurrency, locale) {
+  const fiat = FIAT_CURRENCIES[fiatCurrency] || FIAT_CURRENCIES.USD;
+  const currency = FIAT_CURRENCIES[fiatCurrency] ? fiatCurrency : 'USD';
+  const converted = Number(usdAmount ?? 0) * fiat.rate;
+  const value = Number.isFinite(converted) ? converted : 0;
+  try {
+    return new Intl.NumberFormat(locale || resolveLocale(), {
+      style: 'currency',
+      currency,
+      ...(fiat.rate === 1 || Math.abs(value) < 1 ? spotPriceFractionDigits(value) : {}),
+    }).format(value);
+  } catch {
+    return `${currency} ${value.toFixed(2)}`;
+  }
+}
+
+/**
  * @param {object} props
  * @param {string} props.value
  * @param {(v:string)=>void} props.onChange
