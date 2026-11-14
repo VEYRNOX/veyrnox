@@ -27,6 +27,10 @@ const TICKER_TO_CG = {
   ARB:  'arbitrum',
   OP:   'optimism',
   AVAX: 'avalanche-2',
+  LINK: 'chainlink',
+  UNI:  'uniswap',
+  SHIB: 'shiba-inu',
+  LEO:  'unus-sed-leo',
 };
 
 // Market basket — top coins we display prices for.

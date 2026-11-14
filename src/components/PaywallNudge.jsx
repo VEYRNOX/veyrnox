@@ -24,7 +24,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { X } from 'lucide-react';
-import Vigil from '@/components/Vigil';
+import VigilMotion from '@/components/VigilMotion';
 import { Button } from '@/components/ui/button';
 import { useModalA11y } from '@/lib/useModalA11y';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
@@ -254,7 +254,7 @@ export default function PaywallNudge() {
           </button>
         </div>
         <div className="flex justify-center">
-          <Vigil state="asleep" size={84} />
+          <VigilMotion state="asleep" size={84} />
         </div>
         <p className="text-sm text-muted-foreground">{offer.body}</p>
         <div className="flex gap-3">

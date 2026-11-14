@@ -18,6 +18,11 @@ export const INDETERMINATE_DASH = '—';
 export const PARTIAL_TOTAL_NOTE =
   "Some balances couldn't be loaded — this total may be incomplete.";
 
+/** Copy when every balance loaded but some holdings have no price yet, so the
+ * total leaves them out. A known balance without a quote is not a failed read. */
+export const UNPRICED_TOTAL_NOTE =
+  "Some holdings have no price yet and are not counted in this total.";
+
 /**
  * Format a possibly-indeterminate native amount for display.
  *   null / undefined → "—"  (read FAILED — I4 fail-closed, never "0")

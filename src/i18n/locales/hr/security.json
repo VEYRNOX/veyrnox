@@ -78,7 +78,10 @@
     "demo_reset": "Resetiraj demo (izbriši sve podatke novčanika + skriveni novčanik)",
     "non_demo_hint": "Zaključajte novčanik i unesite Hitni PIN da ga isprobate. Nikada ga ne dijelite. Zaboravili ste ga? Uklonite ga ovdje dok je otključan s pravim PIN-om.",
     "network_default_name": "testna mreža",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Postavljanje novog Hitnog PIN-a dio je usluge Safety Plus",
+    "setup_locked_body": "Za izradu ili promjenu Hitnog PIN-a potrebna je aktivna pretplata na Safety Plus. Za njegovo uklanjanje nikad nije potrebna, a to možete učiniti u nastavku u bilo kojem trenutku.",
+    "setup_locked_cta": "Pogledaj planove"
   },
   "stealth": {
     "heading": "Skriveni novčanici",
@@ -213,7 +216,8 @@
       "trust_warning": "Povezujte se samo s dApp-ovima kojima vjerujete. Ovaj novčanik bit će vidljiv dApp-u nakon povezivanja.",
       "reject": "Odbij",
       "connect_busy": "Povezivanje…",
-      "connect": "Poveži"
+      "connect": "Poveži",
+      "risk_blocked": "Veza s ovim dAppom je blokirana. Odbijte i umjesto toga otvorite pouzdan URL."
     },
     "request_approval": {
       "blocked_title": "Zahtjev blokiran",
@@ -248,7 +252,20 @@
       "sending_busy": "Slanje…",
       "signing_busy": "Potpisivanje…",
       "unknown_network_with_id": "Nepoznata mreža (lanac {{id}})",
-      "unknown_network": "Nepoznata mreža"
+      "unknown_network": "Nepoznata mreža",
+      "typed_contract_row_label": "Ugovor",
+      "typed_chain_row_label": "ID lanca",
+      "typed_contract_hint": "Naziv iznad odabrala je stranica. Ova adresa ugovora je ono što vaš potpis stvarno ovlašćuje — usporedite je s tokenom koji očekujete.",
+      "permit_unapprovable": "Ovaj potpis ovlašćuje spendera da premješta vaše tokene, a Veyrnox takve zahtjeve ne odobrava putem WalletConnecta. Dovršite ga na zaslonu Pošalji u aplikaciji, gdje se rizik može pregledati i potvrditi.",
+      "token_amount_row_label": "Iznos tokena",
+      "token_recipient_row_label": "Primatelj tokena",
+      "unknown_token_title": "⚠ Nepoznat token",
+      "unknown_token_body": "Iznos se ne može pročitati iz ovog zahtjeva. Ne odobravajte osim ako točno ne znate što ovo šalje.",
+      "max_fee_row_label": "Maks. naknada",
+      "max_fee_row_value": "do {{amount}} {{symbol}}",
+      "max_fee_note": "Ovo je najviše što mrežna naknada može koštati, povrh gornje vrijednosti. To je gornja granica, a ne procjena — stvarna je naknada obično znatno niža.",
+      "remote_screening_notice": "Online provjera prema obavještajnim podacima o prijetnjama aktivna je za ovaj zahtjev. Prije odobrenja Veyrnox može poslati adresu primatelja, iznos i podatke poziva svojoj TIP usluzi provjere.",
+      "remote_screening_unavailable": "Online provjera uključena je u vašim postavkama, ali u ovoj verziji nije konfiguriran nijedan TIP pružatelj. Ovaj će se zahtjev provjeravati samo lokalno."
     },
     "active_sessions": {
       "empty": "Još nema povezanih dApp-ova. Uparite jedan gore za početak.",
@@ -293,6 +310,23 @@
       "biometric": "Ovlastite ovo slanje PIN-om + biometrijom",
       "passkey": "Ovlastite ovo slanje PIN-om + passkeyem",
       "password": "Ovlastite ovo slanje PIN-om + lozinkom za radnje"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Izvor: {{source}}.",
+      "note_fallback": "Označeno na lokalnom popisu obavještajnih podataka o prijetnjama",
+      "critical_footer": "Ovo je označeno kao kritično. I dalje možete nastaviti, ali prije toga razumite rizik.",
+      "headline": {
+        "sanctioned": "Ova je adresa na popisu sankcija.",
+        "drainer": "Ovo je poznati drainer novčanika.",
+        "phishing": "Ova je adresa povezana s phishingom.",
+        "exploit": "Ova je adresa povezana s poznatim exploitom.",
+        "scam": "Ova je adresa označena kao prevara.",
+        "malicious_contract": "Ovaj je ugovor označen kao zlonamjeran.",
+        "mixer": "Ovo je usluga miješanja.",
+        "burn": "Ovo je burn adresa.",
+        "default": "Sentinel je označio ovu adresu."
+      }
     }
   }
 }

@@ -325,6 +325,61 @@
     "rehearsal": {
       "title": "Fanya mazoezi ya ukanushaji",
       "description": "Ona dashibodi kama vile mtu anayeshikilia simu yako iliyofunguliwa angeiona."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — majibu ya mtandaoni",
+      "description": "Hiari · maswali unayoandika yanaondoka kwenye kifaa",
+      "help": "Ikiwa imewashwa, maswali unayoandika kwenye Mshauri hutumwa kwa proksi yetu na kujibiwa na modeli ya AI ya mtu wa tatu, pamoja na skrini uliyopo, mnyororo uliochaguliwa, na kitambulisho cha usakinishaji cha nasibu kinachotumika tu kutekeleza kikomo cha kila siku cha maswali kwa kila kifaa. Kuizima husimamisha hili mara moja; Mshauri bado hujibu kutoka kwa maarifa yake yaliyojengewa ndani. Kuiwasha tena huonyesha tena maelezo kamili ili ukubali ukiwa na maelezo mbele yako.",
+      "enable_aria": "Kagua na uwashe majibu ya mtandaoni ya Mshauri wa Usalama wa AI",
+      "disable_aria": "Zima majibu ya mtandaoni ya Mshauri wa Usalama wa AI"
+    },
+    "page": {
+      "section_appearance": "Mwonekano",
+      "section_privacy": "Faragha",
+      "section_language": "Lugha",
+      "section_security": "Usalama",
+      "section_plan": "Mpango",
+      "section_wallet": "Pochi",
+      "section_help_legal": "Msaada na sheria",
+      "section_danger_zone": "Eneo la hatari",
+      "security_managed_note": "Mipangilio ya usalama inasimamiwa kutoka kwenye pochi yako iliyofunguliwa.",
+      "unlock_methods": "Njia za Kufungua",
+      "biometric_heading": "Alama za mwili",
+      "wallet_passkeys": "Funguo za Pochi (Passkeys)",
+      "wallet_passkeys_loading": "Inapakia funguo za pochi…",
+      "create_wallet_first": "Unda pochi kwanza",
+      "plan_current": "Mpango wa sasa: {{plan}}",
+      "plan_desc_safety_plus_ai": "Inajumuisha vipengele vyote vya Safety Plus pamoja na majibu ya moja kwa moja ya Vigil yanayoendeshwa na TIP",
+      "plan_desc_safety_plus": "Udhibiti wa kina wa usalama na uchanganuzi wa hali ya juu",
+      "plan_desc_ai": "Majibu ya moja kwa moja ya Vigil yanayoendeshwa na TIP",
+      "plan_desc_free": "Boresha hadi Safety Plus au AI Security Protection",
+      "plan_view_plans": "Tazama mipango",
+      "quick_links": "Viungo vya haraka",
+      "link_security_center": "Kituo cha Usalama",
+      "link_security_center_desc": "Vipindi na Vikomo",
+      "link_network_manager": "Kidhibiti cha Mtandao",
+      "link_network_manager_desc": "RPC na minyororo",
+      "link_token_approvals": "Idhini za Tokeni",
+      "link_token_approvals_desc": "Tazama na ubatilishe ruhusa",
+      "link_personal_backup": "Hifadhi Nakala Binafsi Iliyosimbwa",
+      "link_personal_backup_desc": "Hifadhi nakala binafsi",
+      "link_reveal_seed": "Onyesha Seed",
+      "link_reveal_seed_desc": "QR ya maneno ya kuhifadhi",
+      "link_change_pin": "Badilisha PIN",
+      "link_change_password": "Badilisha nenosiri la hazina",
+      "link_change_desc": "Ufikiaji na urejeshaji",
+      "terms_title": "Masharti na sheria",
+      "terms_desc": "Masharti, maelezo na mipaka ya kweli",
+      "terms_action": "Tazama",
+      "rate_title": "Kadiria Veyrnox",
+      "rate_desc": "Fungua ombi la tathmini la duka",
+      "rate_action": "Kadiria",
+      "feedback_title": "Tuma maoni",
+      "feedback_desc": "Wasiliana na timu moja kwa moja kwa barua pepe",
+      "feedback_action": "Barua pepe",
+      "feature_title": "Omba kipengele",
+      "feature_desc": "Pendekeza wazo ambalo timu itafikiria",
+      "feature_action": "Pendekeza"
     }
   },
   "nav": {
@@ -347,7 +402,9 @@
     "tab_home": "Nyumbani",
     "tab_send": "Tuma",
     "tab_receive": "Pokea",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Utahitaji PIN yako ili kuingia tena.",
+    "lock_confirm_cancel": "Ghairi"
   },
   "back": {
     "default_label": "Rudi"
@@ -381,7 +438,8 @@
       "local_disclosure": "Wapokeaji wanaangaliwa kwenye kifaa chako kwa anwani za udanganyifu dhidi ya historia yako mwenyewe — hakuna kinachotoka kwenye kifaa chako.",
       "remote_opt_in": "Pia angalia dhidi ya hifadhidata ya vitisho mtandaoni (inatuma anwani hii kwa mtu wa tatu)",
       "remote_unavailable": "Uangalizi mtandaoni umewashwa, lakini hakuna mtoa huduma aliyesanidiwa katika toleo hili — uangalizi unabaki wa ndani, kwa hivyo hatukuweza kuthibitisha hii dhidi ya orodha ya nje.",
-      "demo_poison_button": "Onyesho: bandika anwani inayofanana"
+      "demo_poison_button": "Onyesho: bandika anwani inayofanana",
+      "remote_enabled": "Uchunguzi wa taarifa za kijasusi za vitisho mtandaoni umewashwa. Katika hatua ya uthibitishaji, hii hutuma anwani ya mpokeaji, anwani yako ya kutuma, kiasi, na — kwa uhamisho wa tokeni — anwani ya mkataba na data ya wito kwa huduma ya TIP."
     },
     "simulation": {
       "title": "Uigaji wa Muamala",
@@ -407,7 +465,13 @@
       "balance_prefix": "Salio:",
       "demo_suffix": "(onyesho)",
       "live_suffix": "(moja kwa moja)",
-      "reading_from_network": "inasoma kutoka kwenye mtandao…"
+      "reading_from_network": "inasoma kutoka kwenye mtandao…",
+      "mode_crypto_aria": "Weka kiasi katika {{currency}}",
+      "mode_fiat_aria": "Weka kiasi katika USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Kiwango cha juu",
+      "max_chip_aria": "Tumia salio lako lote la {{currency}}"
     },
     "errors": {
       "amount_missing": "Kiasi kinahitajika",
@@ -433,7 +497,8 @@
       "back": "Rudi"
     },
     "verify": {
-      "summary_label": "Unatuma"
+      "summary_label": "Unatuma",
+      "finality": "Kutuma ni kwa mwisho. Mara uhamisho unapothibitishwa kwenye mtandao, hauwezi kutenguliwa wala kurejeshewa pesa — hakikisha mpokeaji na kiasi."
     },
     "fee": {
       "automatic": "Ada ya mtandao imewekwa kiotomatiki kwa {{currency}} ({{network}}).",
@@ -482,6 +547,11 @@
       "two_factor_retry": "Utumaji haukukamilika — tafadhali thibitisha tena ili kujaribu tena.",
       "send_failed_fallback": "Utumaji umeshindwa",
       "unconfirmed": "Imeshindwa kuthibitisha muamala huu kwenye mtandao bado — huenda bado unasubiri. Angalia kivinjari."
+    },
+    "wizard": {
+      "step_recipient": "Mpokeaji na kiasi",
+      "step_review": "Kagua",
+      "step_confirm": "Thibitisha"
     }
   },
   "receive": {
@@ -511,7 +581,14 @@
       "solana": "Tuma tu Solana kwenye {{network}} kwenye anwani hii."
     },
     "select_asset_prompt": "Chagua rasilimali ya kupokea.",
-    "unlock_footer_note": "Anwani zinatoka kwenye pochi yako ya ndani na zinaonekana tu ikiwa imefunguliwa."
+    "unlock_footer_note": "Anwani zinatoka kwenye pochi yako ya ndani na zinaonekana tu ikiwa imefunguliwa.",
+    "actions": {
+      "copy": "Nakili",
+      "copied": "Imenakiliwa",
+      "share": "Shiriki",
+      "share_dialog_title": "Shiriki anwani",
+      "share_failed_toast": "Imeshindwa kufungua karatasi ya kushiriki"
+    }
   },
   "dashboard": {
     "portfolioValue": "Thamani ya Portfolio",

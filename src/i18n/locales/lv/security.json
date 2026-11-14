@@ -78,7 +78,10 @@
     "demo_reset": "Atiestatīt demo (dzēst visus maka datus + slēpto maku)",
     "non_demo_hint": "Bloķējiet savu maku un ievadiet Ārkārtas PIN, lai to izmēģinātu. Nekad to nekopīgojiet. Aizmirsāt to? Noņemiet to šeit, kamēr esat atbloķēts ar savu īsto PIN.",
     "network_default_name": "testa tīkls",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Jauna ĀRKĀRTAS PIN iestatīšana ir Safety Plus daļa",
+    "setup_locked_body": "Lai izveidotu vai mainītu ārkārtas PIN, nepieciešams aktīvs Safety Plus abonements. Tā noņemšanai abonements nekad nav vajadzīgs, un to varat izdarīt tālāk jebkurā laikā.",
+    "setup_locked_cta": "Skatīt plānus"
   },
   "stealth": {
     "heading": "Slepenie / slēptie maki",
@@ -213,7 +216,8 @@
       "trust_warning": "Savienojieties tikai ar uzticamām dApp. Šis maks pēc savienošanas būs redzams dApp.",
       "reject": "Noraidīt",
       "connect_busy": "Savienojas…",
-      "connect": "Savienot"
+      "connect": "Savienot",
+      "risk_blocked": "Savienojums ar šo dApp ir bloķēts. Noraidiet un tā vietā atveriet uzticamu URL."
     },
     "request_approval": {
       "blocked_title": "Pieprasījums bloķēts",
@@ -248,7 +252,20 @@
       "sending_busy": "Sūta…",
       "signing_busy": "Paraksta…",
       "unknown_network_with_id": "Nezināms tīkls (ķēde {{id}})",
-      "unknown_network": "Nezināms tīkls"
+      "unknown_network": "Nezināms tīkls",
+      "typed_contract_row_label": "Līgums",
+      "typed_chain_row_label": "Tīkla ID",
+      "typed_contract_hint": "Augstāk redzamo nosaukumu izvēlējusies vietne. Šī līguma adrese ir tā, ko jūsu paraksts patiesībā pilnvaro — salīdziniet to ar gaidīto žetonu.",
+      "permit_unapprovable": "Šis paraksts pilnvaro izdevumu veicēju pārvietot jūsu žetonus, un Veyrnox šādas pilnvaras caur WalletConnect neapstiprina. Pabeidziet to lietotnes ekrānā Sūtīt, kur risku var pārskatīt un apstiprināt, ka to saprotat.",
+      "token_amount_row_label": "Žetonu daudzums",
+      "token_recipient_row_label": "Žetonu saņēmējs",
+      "unknown_token_title": "⚠ Nezināms žetons",
+      "unknown_token_body": "No šī pieprasījuma summu nevar nolasīt. Neapstipriniet, ja precīzi nezināt, ko tas sūta.",
+      "max_fee_row_label": "Maks. komisija",
+      "max_fee_row_value": "līdz {{amount}} {{symbol}}",
+      "max_fee_note": "Tā ir lielākā tīkla komisijas summa papildus iepriekš norādītajai vērtībai. Tā ir augšējā robeža, nevis aplēse — faktiskā komisija parasti ir ievērojami zemāka.",
+      "remote_screening_notice": "Šim pieprasījumam ir aktīva tiešsaistes draudu izlūkdatu pārbaude. Pirms apstiprināšanas Veyrnox var nosūtīt saņēmēja adresi, summu un izsaukuma datus savam TIP pārbaudes pakalpojumam.",
+      "remote_screening_unavailable": "Tiešsaistes pārbaude ir ieslēgta jūsu preferencēs, taču šajā būvējumā nav konfigurēts neviens TIP nodrošinātājs. Šis pieprasījums tiks pārbaudīts tikai lokāli."
     },
     "active_sessions": {
       "empty": "Vēl nav savienotu dApp. Sapāro vienu augstāk, lai sāktu.",
@@ -293,6 +310,23 @@
       "biometric": "Autorizējiet šo sūtījumu ar savu PIN + biometriju",
       "passkey": "Autorizējiet šo sūtījumu ar savu PIN + piekļuves atslēgu",
       "password": "Autorizējiet šo sūtījumu ar savu PIN + darbības paroli"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Avots: {{source}}.",
+      "note_fallback": "Atzīmēts lokālajā draudu izlūkdatu sarakstā",
+      "critical_footer": "Tas ir atzīmēts kā kritisks. Joprojām varat turpināt, taču pirms tam izprotiet risku.",
+      "headline": {
+        "sanctioned": "Šī adrese ir sankciju sarakstā.",
+        "drainer": "Šī ir zināma maku iztukšotāja (drainer) adrese.",
+        "phishing": "Šī adrese ir saistīta ar pikšķerēšanu.",
+        "exploit": "Šī adrese ir saistīta ar zināmu ievainojamības izmantošanu (exploit).",
+        "scam": "Šī adrese ir atzīmēta kā krāpšana.",
+        "malicious_contract": "Šis līgums ir atzīmēts kā ļaunprātīgs.",
+        "mixer": "Šis ir sajaukšanas pakalpojums.",
+        "burn": "Šī ir sadedzināšanas adrese.",
+        "default": "Sentinel ir atzīmējis šo adresi."
+      }
     }
   }
 }

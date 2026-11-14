@@ -78,7 +78,10 @@
     "demo_reset": "데모 초기화 (모든 지갑 데이터 + 숨김 지갑 삭제)",
     "non_demo_hint": "지갑을 잠그고 긴급 PIN을 입력해 체험해 보세요. 절대 공유하지 마세요. 잊으셨나요? 실제 PIN으로 잠금 해제된 상태에서 이곳에서 제거할 수 있습니다.",
     "network_default_name": "테스트 네트워크",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "새 긴급 PIN 설정은 Safety Plus에 포함됩니다",
+    "setup_locked_body": "긴급 PIN을 만들거나 변경하려면 활성 상태의 Safety Plus 구독이 필요합니다. 삭제는 구독 없이도 가능하며, 아래에서 언제든지 하실 수 있습니다.",
+    "setup_locked_cta": "요금제 보기"
   },
   "stealth": {
     "heading": "은신 / 숨김 지갑",
@@ -213,7 +216,8 @@
       "trust_warning": "신뢰하는 dApp에만 연결하세요. 연결되면 이 지갑이 dApp에 노출됩니다.",
       "reject": "거부",
       "connect_busy": "연결 중…",
-      "connect": "연결"
+      "connect": "연결",
+      "risk_blocked": "이 dApp에 대한 연결이 차단되었습니다. 거부하고 신뢰할 수 있는 URL을 대신 여세요."
     },
     "request_approval": {
       "blocked_title": "요청이 차단되었습니다",
@@ -248,7 +252,20 @@
       "sending_busy": "전송 중…",
       "signing_busy": "서명 중…",
       "unknown_network_with_id": "알 수 없는 네트워크 (체인 {{id}})",
-      "unknown_network": "알 수 없는 네트워크"
+      "unknown_network": "알 수 없는 네트워크",
+      "typed_contract_row_label": "컨트랙트",
+      "typed_chain_row_label": "체인 ID",
+      "typed_contract_hint": "위의 이름은 사이트에서 정한 것입니다. 이 컨트랙트 주소가 실제로 서명이 승인하는 대상이므로, 예상한 토큰과 일치하는지 확인하세요.",
+      "permit_unapprovable": "이 서명은 지출자가 회원님의 토큰을 이동할 수 있도록 승인하는 것이며, Veyrnox는 WalletConnect를 통한 이러한 승인을 허용하지 않습니다. 위험을 검토하고 확인할 수 있는 앱 내 보내기 화면에서 완료하세요.",
+      "token_amount_row_label": "토큰 수량",
+      "token_recipient_row_label": "토큰 받는 사람",
+      "unknown_token_title": "⚠ 알 수 없는 토큰",
+      "unknown_token_body": "이 요청에서 수량을 읽을 수 없습니다. 무엇을 전송하는지 정확히 알지 못한다면 승인하지 마세요.",
+      "max_fee_row_label": "최대 수수료",
+      "max_fee_row_value": "최대 {{amount}} {{symbol}}",
+      "max_fee_note": "위 금액과 별도로 네트워크 수수료로 부과될 수 있는 최대 금액입니다. 예상치가 아닌 상한선이며, 실제 수수료는 보통 훨씬 낮습니다.",
+      "remote_screening_notice": "이 요청에는 온라인 위협 인텔리전스 검증이 활성화되어 있습니다. 승인 전에 Veyrnox가 받는 사람 주소, 금액, 호출 데이터를 TIP 검증 서비스로 전송할 수 있습니다.",
+      "remote_screening_unavailable": "환경설정에서 온라인 검증이 켜져 있지만 이 빌드에는 TIP 제공자가 구성되어 있지 않습니다. 이 요청은 로컬에서만 검증됩니다."
     },
     "active_sessions": {
       "empty": "아직 연결된 dApp이 없습니다. 위에서 하나를 연결해 시작하세요.",
@@ -293,6 +310,23 @@
       "biometric": "PIN + 생체 인증으로 이 전송을 승인하세요",
       "passkey": "PIN + 패스키로 이 전송을 승인하세요",
       "password": "PIN + 작업 비밀번호로 이 전송을 승인하세요"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — 출처: {{source}}.",
+      "note_fallback": "로컬 위협 인텔리전스 목록에 표시됨",
+      "critical_footer": "치명적 위험으로 표시되었습니다. 계속 진행할 수는 있지만, 진행하기 전에 위험을 충분히 이해하세요.",
+      "headline": {
+        "sanctioned": "이 주소는 제재 목록에 있습니다.",
+        "drainer": "알려진 지갑 탈취(드레이너) 주소입니다.",
+        "phishing": "이 주소는 피싱과 연관되어 있습니다.",
+        "exploit": "이 주소는 알려진 익스플로잇과 연관되어 있습니다.",
+        "scam": "이 주소는 사기로 표시되었습니다.",
+        "malicious_contract": "이 컨트랙트는 악성으로 표시되었습니다.",
+        "mixer": "믹싱 서비스입니다.",
+        "burn": "소각 주소입니다.",
+        "default": "Sentinel이 이 주소를 위험으로 표시했습니다."
+      }
     }
   }
 }

@@ -78,7 +78,10 @@
     "demo_reset": "Demo zurücksetzen (alle Wallet-Daten + versteckte Wallet löschen)",
     "non_demo_hint": "Sperre deine Wallet und gib die Notfall-PIN ein, um es auszuprobieren. Teile sie niemals. Vergessen? Entferne sie hier, während du mit deiner echten PIN entsperrt bist.",
     "network_default_name": "das Testnetz",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Das Festlegen einer neuen Notfall-PIN ist Teil von Safety Plus",
+    "setup_locked_body": "Zum Erstellen oder Ändern einer Notfall-PIN ist ein aktives Safety-Plus-Abonnement erforderlich. Das Entfernen erfordert dies nie, und Sie können es jederzeit unten tun.",
+    "setup_locked_cta": "Tarife ansehen"
   },
   "stealth": {
     "heading": "Stealth / Versteckte Wallets",
@@ -213,7 +216,8 @@
       "trust_warning": "Verbinde dich nur mit dApps, denen du vertraust. Diese Wallet ist für die dApp sichtbar, sobald sie verbunden ist.",
       "reject": "Ablehnen",
       "connect_busy": "Verbinde…",
-      "connect": "Verbinden"
+      "connect": "Verbinden",
+      "risk_blocked": "Die Verbindung zu dieser dApp ist blockiert. Lehnen Sie ab und öffnen Sie stattdessen eine vertrauenswürdige URL."
     },
     "request_approval": {
       "blocked_title": "Anfrage blockiert",
@@ -248,7 +252,20 @@
       "sending_busy": "Wird gesendet…",
       "signing_busy": "Wird signiert…",
       "unknown_network_with_id": "Unbekanntes Netzwerk (Chain {{id}})",
-      "unknown_network": "Unbekanntes Netzwerk"
+      "unknown_network": "Unbekanntes Netzwerk",
+      "typed_contract_row_label": "Vertrag",
+      "typed_chain_row_label": "Chain-ID",
+      "typed_contract_hint": "Der obige Name wird von der Website gewählt. Diese Vertragsadresse ist das, was Ihre Signatur tatsächlich autorisiert – prüfen Sie sie anhand des Tokens, den Sie erwarten.",
+      "permit_unapprovable": "Diese Signatur autorisiert einen Spender, Ihre Token zu bewegen, und Veyrnox genehmigt solche Signaturen nicht über WalletConnect. Schließen Sie den Vorgang über den Senden-Bildschirm in der App ab, wo das Risiko geprüft und bestätigt werden kann.",
+      "token_amount_row_label": "Token-Betrag",
+      "token_recipient_row_label": "Token-Empfänger",
+      "unknown_token_title": "⚠ Unbekannter Token",
+      "unknown_token_body": "Der Betrag ist aus dieser Anfrage nicht lesbar. Genehmigen Sie nur, wenn Sie genau wissen, was dies sendet.",
+      "max_fee_row_label": "Max. Gebühr",
+      "max_fee_row_value": "bis zu {{amount}} {{symbol}}",
+      "max_fee_note": "Dies ist der Höchstbetrag, den die Netzwerkgebühr kosten kann, zusätzlich zum obigen Wert. Es ist eine Obergrenze, keine Schätzung – die tatsächliche Gebühr ist meist deutlich niedriger.",
+      "remote_screening_notice": "Für diese Anfrage ist das Online-Screening mit Bedrohungsinformationen aktiv. Vor der Genehmigung kann Veyrnox die Empfängeradresse, den Betrag und die Aufrufdaten an seinen TIP-Screening-Dienst senden.",
+      "remote_screening_unavailable": "Das Online-Screening ist in Ihren Einstellungen aktiviert, aber in diesem Build ist kein TIP-Anbieter konfiguriert. Diese Anfrage wird nur lokal geprüft."
     },
     "active_sessions": {
       "empty": "Noch keine dApps verbunden. Verbinde oben eine, um zu starten.",
@@ -293,6 +310,23 @@
       "biometric": "Autorisiere diese Sendung mit deiner PIN + Biometrie",
       "passkey": "Autorisiere diese Sendung mit deiner PIN + Passkey",
       "password": "Autorisiere diese Sendung mit deiner PIN + Aktionspasswort"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Quelle: {{source}}.",
+      "note_fallback": "In der lokalen Bedrohungsinformationsliste markiert",
+      "critical_footer": "Dies ist als kritisch markiert. Sie können dennoch fortfahren, aber bitte machen Sie sich das Risiko bewusst, bevor Sie es tun.",
+      "headline": {
+        "sanctioned": "Diese Adresse steht auf einer Sanktionsliste.",
+        "drainer": "Dies ist ein bekannter Wallet-Drainer.",
+        "phishing": "Diese Adresse steht im Zusammenhang mit Phishing.",
+        "exploit": "Diese Adresse steht im Zusammenhang mit einem bekannten Exploit.",
+        "scam": "Diese Adresse ist als Betrug markiert.",
+        "malicious_contract": "Dieser Vertrag wurde als schädlich markiert.",
+        "mixer": "Dies ist ein Mixing-Dienst.",
+        "burn": "Dies ist eine Burn-Adresse.",
+        "default": "Sentinel hat diese Adresse markiert."
+      }
     }
   }
 }
