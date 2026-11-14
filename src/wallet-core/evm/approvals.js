@@ -25,8 +25,9 @@
 //     broadcast unless it decodes to a true zero-allowance approve. The display
 //     of "UNLIMITED" in the list reuses that decoder too, so the user sees the
 //     allowance classified identically everywhere.
-//   - Mainnet stays gated: getNetwork()/getProvider() throw for any non-testnet
-//     until ALLOW_MAINNET, so a revoke can only ever touch testnet funds today.
+//   - The caller's networkKey is preserved end-to-end. A mainnet approval revoke
+//     is therefore a real mainnet transaction with a real native-token gas cost;
+//     the UI must identify that network before the user confirms.
 
 import { Contract, Interface, Wallet, isAddress } from 'ethers';
 import { getProvider } from './provider.js';
@@ -91,7 +92,7 @@ export function summarizeAllowance({ rawAmount, spender, tokenSymbol, decimals =
 export async function getAllowance({ networkKey, symbol, owner, spender }) {
   if (!isAddress(owner)) throw new Error('Invalid owner address');
   if (!isAddress(spender)) throw new Error('Invalid spender address');
-  const provider = getProvider(networkKey);     // throws if mainnet gated / disabled
+  const provider = getProvider(networkKey);     // enforces configured network availability
   const t = getToken(networkKey, symbol);       // throws if unconfigured/unverified
   const c = new Contract(t.address, ERC20_ABI, provider);
   const [raw, onchainDecimals] = await Promise.all([c.allowance(owner, spender), c.decimals()]);
@@ -112,7 +113,7 @@ export async function getAllowance({ networkKey, symbol, owner, spender }) {
  */
 export async function sendRevoke({ networkKey, privateKey, symbol, spender }) {
   if (!isAddress(spender)) throw new Error('Invalid spender address');
-  const net = getNetwork(networkKey);           // throws if mainnet gated / disabled
+  const net = getNetwork(networkKey);           // enforces configured network availability
   const provider = getProvider(networkKey);
   const t = getToken(networkKey, symbol);
 
