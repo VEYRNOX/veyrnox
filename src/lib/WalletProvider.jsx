@@ -101,6 +101,7 @@ import {
   readWipeMarker,
   clearWipeMarker,
 } from '@/wallet-core/panic';
+import { invalidatePendingWork } from '@/wallet-core/wipeEpoch';
 // SAST M2: the post-primary-miss deniability resolution runs a CONSTANT number
 // of KDFs regardless of which features are configured, so the presence/count of
 // panic/duress/hidden is not timeable at the prompt. See deniabilityUnlock.js.
@@ -567,6 +568,9 @@ export function WalletProvider({ children }) {
     // for the duress/panic path it matters that the pending timer cannot
     // race back into a coerced session. See lib/relockGrace.
     cancelRelockGrace();
+    // Discard custom-token imports still awaiting an RPC so they cannot
+    // re-create storage after the lock.
+    invalidatePendingWork();
     // Codex P1 2026-08-15: invalidate any in-flight unlock BEFORE we clear
     // session state. An unlock() continuation resuming after this line will
     // see unlockGenRef.current has moved past its captured gen and abort
