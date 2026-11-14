@@ -1,0 +1,48 @@
+/* VigilMotion wings. One-shot animations only, never looping (pinned by test).
+   Feathers rotate about the shoulder pivot, staggered by --d so the wing
+   unfolds instead of swinging as one piece. */
+.vw-feather {
+  transform-box: view-box;
+  transform: rotate(var(--from));
+}
+.vw-body {
+  transform-origin: 50% 92%;
+}
+.vw-root[data-play='open'] .vw-feather {
+  animation: vw-open 3.6s cubic-bezier(0.3, 1.35, 0.5, 1) 1 both;
+  animation-delay: var(--d);
+}
+.vw-root[data-play='open'] .vw-body {
+  animation: vw-open-body 3.6s ease-in-out 1 both;
+}
+.vw-root[data-play='flap'] .vw-feather {
+  animation: vw-flap 2.4s ease-in-out 1 both;
+  animation-delay: calc(var(--d) / 3);
+}
+.vw-root[data-play='flap'] .vw-body {
+  animation: vw-flap-body 2.4s ease-in-out 1 both;
+}
+@keyframes vw-open {
+  0%, 8% { transform: rotate(var(--from)); }
+  30%, 68% { transform: rotate(var(--to)); }
+  92%, 100% { transform: rotate(var(--from)); }
+}
+@keyframes vw-open-body {
+  0%, 8% { transform: none; }
+  30% { transform: translateY(-8%) scale(1.04); }
+  40%, 68% { transform: scale(1.02); }
+  92%, 100% { transform: none; }
+}
+@keyframes vw-flap {
+  0%, 100% { transform: rotate(var(--from)); }
+  12%, 36%, 60% { transform: rotate(var(--to)); }
+  24%, 48% { transform: rotate(calc(var(--to) - 38deg)); }
+  80% { transform: rotate(var(--from)); }
+}
+@keyframes vw-flap-body {
+  0%, 100% { transform: none; }
+  12%, 60% { transform: translateY(-11%); }
+  24%, 48% { transform: translateY(-4%); }
+  36% { transform: translateY(-13%); }
+  78% { transform: scale(1.05, 0.95); }
+}

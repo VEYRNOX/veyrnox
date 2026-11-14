@@ -1,6 +1,6 @@
 // wallet-core/assets.js
 //
-// Single source of truth for the 10 assets shown in the UI AND for what each
+// Single source of truth for the assets shown in the UI AND for what each
 // is actually allowed to do. Status drives BOTH display and capability:
 //
 //   live         - real keys + signing/broadcast; SEND allowed
@@ -9,7 +9,7 @@
 //
 // SECURITY RATIONALE
 // The original codebase showed 10 wallets that all "worked" but were fake —
-// a user could send to a fabricated address. Here all 10 remain visible, but
+// a user could send to a fabricated address. The registry is now larger, but
 // `canSend()` is a HARD gate the send flow must honor, and `coming_soon`
 // assets never render an address. Flipping an asset to `live` is a deliberate,
 // one-line change made only after that asset's crypto path is verified.
@@ -21,6 +21,10 @@ export const ASSET_STATUS = Object.freeze({
   RECEIVE_ONLY: 'receive_only',
   COMING_SOON: 'coming_soon',
 });
+
+/** Honest capability disclosure for every receive-only send gate. */
+export const NON_LIVE_ASSET_SPEND_NOTICE =
+  'Direct sends are disabled. Connected dApps may still spend this token through existing approvals.';
 
 // family determines which derivation/signing stack an asset uses.
 //   evm    - native coin on an EVM chain (secp256k1, m/44'/60')
@@ -61,6 +65,15 @@ const ASSETS_RAW = Object.freeze([
   // NOTE: PR #280 first recorded a WRONG txid here (0x3f2fe19a…, which is a USDC
   // transfer); corrected to the real USDT-contract send above on 2026-06-22.
   { symbol: 'USDT',  name: 'Tether',    family: 'erc20',  chain: 'mainnet',   status: ASSET_STATUS.LIVE },
+  // Ethereum-mainnet registry facts were read on-chain and cross-checked with
+  // the Etherscan links published by CoinMarketCap on 2026-11-01. Issuer docs
+  // were NOT checked. These remain RECEIVE_ONLY and flip to LIVE only after the
+  // owner confirms a real on-chain send with a txid.
+  { symbol: 'LINK',  name: 'Chainlink', family: 'erc20', chain: 'mainnet', status: ASSET_STATUS.RECEIVE_ONLY },
+  { symbol: 'UNI',   name: 'Uniswap',   family: 'erc20', chain: 'mainnet', status: ASSET_STATUS.RECEIVE_ONLY },
+  { symbol: 'SHIB',  name: 'Shiba Inu', family: 'erc20', chain: 'mainnet', status: ASSET_STATUS.RECEIVE_ONLY },
+  // LEO is an exchange token; its pause/blacklist behaviour is unreviewed.
+  { symbol: 'LEO',   name: 'UNUS SED LEO', family: 'erc20', chain: 'mainnet', status: ASSET_STATUS.RECEIVE_ONLY },
   // Phase C: five EVM chains, each sharing the SAME secp256k1 / m/44'/60'/0'/0/0
   // address as ETH. Address derivation + live per-chain balance reads are wired.
   // `chain` points at the mainnet network key (ALLOW_MAINNET = true since 2026-06-17).
@@ -153,6 +166,15 @@ const ASSETS_RAW = Object.freeze([
 export const ASSETS = Object.freeze(
   ASSETS_RAW.map((a) => Object.freeze({ ...a, id: formatAssetId(a) }))
 );
+
+/** Semantic product counts derived from the capability registry. */
+export const TOTAL_SUPPORTED_ASSET_COUNT = ASSETS.length;
+export const LIVE_SEND_ENABLED_ASSET_COUNT = ASSETS.filter(
+  (asset) => asset.status === ASSET_STATUS.LIVE,
+).length;
+export const RECEIVE_ONLY_ASSET_COUNT = ASSETS.filter(
+  (asset) => asset.status === ASSET_STATUS.RECEIVE_ONLY,
+).length;
 
 /** Unique asset symbols, registry order. The single source of truth for any
  * symbol PICKLIST (transaction filters, address-book currency tags). Those

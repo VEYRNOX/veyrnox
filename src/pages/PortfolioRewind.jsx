@@ -140,7 +140,7 @@ export default function PortfolioRewind() {
 
       {/* I4 fail-closed: the "Now" value is grandTotal, which EXCLUDES any asset
           whose CURRENT balance read failed (distinct from history above). Flag it. */}
-      {portfolio?.indeterminate && <IncompleteBalanceNote />}
+      {(portfolio?.indeterminate || portfolio?.quoteUnavailable) && <IncompleteBalanceNote unpricedOnly={!portfolio?.indeterminate} />}
 
       {/* Summary */}
       <div className="p-5 rounded-xl border border-border bg-card text-center space-y-1">
