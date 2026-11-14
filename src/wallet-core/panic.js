@@ -308,12 +308,15 @@ const DENIABILITY_RESIDUE_KEYS = Object.freeze([
 //   veyrnox-active-portfolio  — lib/portfolios.js ACTIVE_KEY (active portfolio id)
 //   veyrnox-spam-overrides    — pages/SpamTokenFilter.jsx OVERRIDES_KEY (names the
 //                               tokens the user un-hid from the spam filter)
+//   veyrnox-custom-tokens     — lib/customTokenStore.js CUSTOM_TOKEN_STORAGE_KEY
+//                               (contract addresses + symbols chosen by primary)
 const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-wallet-meta',
   'veyrnox-active-wallet',
   'veyrnox-portfolios',
   'veyrnox-active-portfolio',
   'veyrnox-spam-overrides',
+  'veyrnox-custom-tokens',
   'veyrnox-contract-intel-consent', // lib/suspiciousAssetPrefs.js CONTRACT_INTEL_CONSENT_KEY
   'veyrnox-contract-intel-cache', // lib/suspiciousAssetPrefs.js CONTRACT_INTEL_CACHE_KEY
   'veyrnox-dismissed-suspicious-nfts', // lib/suspiciousAssetPrefs.js DISMISSED_SUSPICIOUS_NFTS_KEY
