@@ -1,19 +1,56 @@
 // wallet-core/__tests__/assets.test.js
 import { describe, it, expect } from 'vitest';
-import { ASSETS, getAsset, canSend, canReceive, isEvmFamily, ASSET_STATUS } from '../assets.js';
+import {
+  ASSETS,
+  ASSET_STATUS,
+  LIVE_SEND_ENABLED_ASSET_COUNT,
+  RECEIVE_ONLY_ASSET_COUNT,
+  TOTAL_SUPPORTED_ASSET_COUNT,
+  canReceive,
+  canSend,
+  getAsset,
+  isEvmFamily,
+} from '../assets.js';
 import { getNetwork } from '../evm/networks.js';
 
 describe('asset registry', () => {
-  it('contains all 10 assets in canonical order', () => {
-    // Phase 1b's 10 experimental (symbol, chain) rows were deleted in the
-    // SafePal-rename PR (2026-09-02); registry is back to the original 10.
+  it('contains the 10 live assets followed by the four receive-only ERC-20s', () => {
     const symbols = ASSETS.map(a => a.symbol);
-    expect(symbols).toEqual(['ETH','USDC','USDT','MATIC','ARB','OP','AVAX','BNB','BTC','SOL']);
+    expect(symbols).toEqual([
+      'ETH', 'USDC', 'USDT', 'LINK', 'UNI', 'SHIB', 'LEO',
+      'MATIC', 'ARB', 'OP', 'AVAX', 'BNB', 'BTC', 'SOL',
+    ]);
   });
 
   it('the live (sendable) set is all 10 assets — each verified on-chain (AVAX+BNB added 2026-06-19)', () => {
     const sendable = ASSETS.filter(canSend).map(a => a.symbol);
     expect(sendable).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB', 'BTC', 'SOL']);
+  });
+
+  it('derives the 14/10/4 product split from registry capability status', () => {
+    expect(TOTAL_SUPPORTED_ASSET_COUNT).toBe(ASSETS.length);
+    expect(LIVE_SEND_ENABLED_ASSET_COUNT).toBe(ASSETS.filter(canSend).length);
+    expect(RECEIVE_ONLY_ASSET_COUNT).toBe(
+      ASSETS.filter((asset) => asset.status === ASSET_STATUS.RECEIVE_ONLY).length,
+    );
+    expect({
+      total: TOTAL_SUPPORTED_ASSET_COUNT,
+      live: LIVE_SEND_ENABLED_ASSET_COUNT,
+      receiveOnly: RECEIVE_ONLY_ASSET_COUNT,
+    }).toEqual({ total: 14, live: 10, receiveOnly: 4 });
+  });
+
+  it.each(['LINK', 'UNI', 'SHIB', 'LEO'])('%s is a mainnet receive-only ERC-20 with a composite id', (symbol) => {
+    const asset = getAsset(`${symbol}:mainnet`);
+    expect(asset).toMatchObject({
+      id: `${symbol}:mainnet`,
+      symbol,
+      family: 'erc20',
+      chain: 'mainnet',
+      status: ASSET_STATUS.RECEIVE_ONLY,
+    });
+    expect(canReceive(asset)).toBe(true);
+    expect(canSend(asset)).toBe(false);
   });
 
   it('USDT is LIVE ERC-20 on mainnet — chain key flipped after Sepolia testnet verification', () => {
