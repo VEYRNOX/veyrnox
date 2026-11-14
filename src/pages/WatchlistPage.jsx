@@ -17,6 +17,7 @@ import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { getAsset } from "@/wallet-core/assets";
 import { useBasketPrices } from "@/hooks/useBasketPrices";
 import { formatUsd } from "@/lib/locale";
+import { spotPriceFractionDigits } from "@/components/FiatCurrencySelector";
 import Spinner from "@/components/Spinner";
 
 const POPULAR = TOP_SYMBOLS;
@@ -149,7 +150,7 @@ export default function WatchlistPage() {
                     {price != null ? (
                       <>
                         <p className="text-sm font-semibold mono-value">
-                          {formatUsd(price, undefined, { maximumFractionDigits: price < 1 ? 4 : 2, minimumFractionDigits: 2 })}
+                          {formatUsd(price, undefined, spotPriceFractionDigits(price))}
                         </p>
                         {change != null && (
                           <p className={`text-xs mono-value ${change >= 0 ? "text-primary" : "text-risk"}`}>

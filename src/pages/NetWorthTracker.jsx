@@ -1,3 +1,4 @@
+import { UNPRICED_TOTAL_NOTE } from "@/lib/balanceDisplay";
 import { useTranslation } from "react-i18next";
 import { useWallet } from "@/lib/WalletProvider";
 import { usePortfolio } from "@/lib/portfolioBalances";
@@ -6,6 +7,7 @@ import { CURRENCY_COLORS, approxUsd } from "@/lib/cryptos";
 import { formatFiat } from "@/components/FiatCurrencySelector";
 import { useLocalePreferences } from "@/lib/useLocale";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
+import FiatApproximationNote from "@/components/FiatApproximationNote";
 import CoinLogo from "@/components/CoinLogo";
 import { RefreshCw } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
@@ -31,6 +33,8 @@ export default function NetWorthTracker() {
 
   const total = portfolio?.grandTotal ?? 0;
   const incomplete = !!portfolio?.indeterminate;
+  // A known balance with no quote is not a failed read, but the total leaves it out.
+  const unpriced = !incomplete && !!portfolio?.quoteUnavailable;
   const assetTotals = /** @type {Record<string, { amount?: number, usd?: number|null, indeterminate?: boolean }>} */ (portfolio?.assetTotals || {});
   const live = priceBasis === "live";
   // null amount/usd = indeterminate (read failed) → "—", never a misleading $0.
@@ -69,6 +73,7 @@ export default function NetWorthTracker() {
         <p className="text-4xl font-bold mt-1">{isLoading ? "…" : fmtUsd(total)}</p>
         <div className="mt-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
           {incomplete && <span className="text-caution">{t("networth.partialNote")}</span>}
+          {unpriced && <span className="text-caution">{UNPRICED_TOTAL_NOTE}</span>}
           {live ? (
             <button
               type="button"
@@ -131,6 +136,7 @@ export default function NetWorthTracker() {
           stale rates (when live, values are real-time and need no caveat). The
           token's presence here also satisfies the usdDisclosure guard. */}
       {!live && <ReferenceRateNote />}
+      {live && <FiatApproximationNote fiatCurrency={fiatCurrency} />}
     </div>
   );
 }
