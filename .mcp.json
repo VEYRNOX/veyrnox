@@ -3,6 +3,10 @@
     "metricool": {
       "type": "http",
       "url": "https://ai.metricool.com/mcp"
+    },
+    "veyrnox-ai": {
+      "type": "http",
+      "url": "https://veyrnox.ai/api/v1/mcp"
     }
   }
 }
