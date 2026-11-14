@@ -46,6 +46,23 @@ describe('sumSentTodayUSD', () => {
     expect(sumSentTodayUSD({ history: HISTORY, currency: 'ETH', usdRates: RATES, now: NOW })).toBe(320);
     expect(sumSentTodayUSD({ history: HISTORY, currency: 'USDC', usdRates: RATES, now: NOW })).toBe(50);
   });
+  it('counts a speed-up replacement chain once ($50 original + $50 replacement = $50)', () => {
+    const chain = [
+      { type: 'send', currency: 'USDC', amount: 50, created_date: todayAt(9), tx_hash: '0xAA', status: 'pending' },
+      { type: 'send', currency: 'USDC', amount: 50, created_date: todayAt(9), tx_hash: '0xbb', replaces_tx_hash: '0xaa', status: 'pending' },
+      { type: 'send', currency: 'USDC', amount: 50, created_date: todayAt(10), tx_hash: '0xcc', replaces_tx_hash: '0xbb', status: 'pending' },
+    ];
+    expect(sumSentTodayUSD({ history: chain, currency: 'USDC', usdRates: RATES, now: NOW })).toBe(50);
+    // The same holds once the original is marked replaced after a receipt.
+    chain[0].status = 'replaced';
+    expect(sumSentTodayUSD({ history: chain, currency: 'ALL', usdRates: RATES, now: NOW })).toBe(50);
+  });
+  it('still counts a replacement whose original is not in the history (fail closed)', () => {
+    const orphan = [
+      { type: 'send', currency: 'USDC', amount: 50, created_date: todayAt(9), tx_hash: '0xbb', replaces_tx_hash: '0xaa' },
+    ];
+    expect(sumSentTodayUSD({ history: orphan, currency: 'USDC', usdRates: RATES, now: NOW })).toBe(50);
+  });
 });
 
 describe('evaluateSendAgainstLimits — per-transaction cap', () => {

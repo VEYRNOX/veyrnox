@@ -15,6 +15,8 @@ A self-custody cryptocurrency wallet built for coercion resistance and plausible
 
 All 10 assets are testnet-verified — each has a real on-chain send confirmed on a block explorer. Throughout this README, **"verified" means a real on-chain testnet transaction, never merely passing tests or a clean review.**
 
+Veyrnox supports 14 assets in total: the 10 verified live/send-enabled assets above, plus LINK, UNI, SHIB, and LEO as 4 receive-only Ethereum tokens. **Direct sends are disabled. Connected dApps may still spend this token through existing approvals.**
+
 An independent third-party audit (ECC, June 2026) covered the core wallet. The **hardware-KEK layer and native OS-level RASP are internally device-verified only** — independent audit of those areas is still outstanding. Features are marked as one of **BUILT** (in code, testnet/provisional), **TARGET** (designed, not yet confirmed in shipped code), or **roadmap**; nothing below should be read as independently audited unless stated.
 
 ## Features
