@@ -223,3 +223,6 @@ node_modules/
 .e2e/failures/
 .e2e/logs/
 .e2e/videos/
+
+# Local agent tooling runtime state (session records, PIDs, temp files). Never commit.
+.omc/
