@@ -200,7 +200,7 @@ export default function Analytics() {
       {/* I4 fail-closed: totals/allocation below derive from grandTotal/assetTotals,
           which EXCLUDE any asset whose balance read failed. Mark the figures as
           incomplete rather than presenting a silently-understated view as fact. */}
-      {portfolio?.indeterminate && <IncompleteBalanceNote />}
+      {(portfolio?.indeterminate || portfolio?.quoteUnavailable) && <IncompleteBalanceNote unpricedOnly={!portfolio?.indeterminate} />}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
