@@ -35,6 +35,23 @@ New dependency report: `docs/dependency-audits/dep-audit-2026-11-02.md` (standin
 SPKI pins still `PLACEHOLDER_*_REPLACE_ON_DEVICE`. `PRIMARY_UNLOCK_EQUALIZER_MS` no longer
 exists as a constant (removed; only comments/tests reference it, `WalletProvider.jsx:235`).
 
+### Carried forward — 2026-10-12 weekly (7 new findings; corrected prior count)
+
+The 10-12 weekly’s N-D2 credential-verifier mismatch was incorrectly treated as the 10-05
+N-D2 deniability finding in the previous tracker. It is a separate finding (N-D3); the
+weekly adds seven findings, plus the `.npmrc` watch item, for eight additions total.
+
+| ID | Sev | Finding | File:Line | Evidence |
+|---|---|---|---|---|
+| N-C2 | MEDIUM | Silent fast-path stores the raw DEK under a 30 s device-wide `BIOMETRIC_STRONG` window, without `CryptoObject`; bypasses H/C/KEK. Owner decision whether accepted. | `native.js:625-660,1322-1345`; `AndroidBiometricCachePlugin.kt:546-575`; `fastpathUnlock.js:62-63` | (doc) 10-12 weekly |
+| N-B6 | LOW | WalletConnect pending queue filters by request ID only, not topic plus ID; another dApp can evict a pending request (griefing, no spoof). | `WalletConnectProvider.jsx:891,912,937,986` | (grep) 10-12 weekly |
+| N-C3 | LOW | StrongBox fallback catches only `StrongBoxUnavailableException`; some OEMs throw `ProviderException`, so enrollment fails instead of falling back to TEE (fail-closed). | `HardwareKekPlugin.kt:256`; `AndroidBiometricCachePlugin.kt:572,625` | (doc) 10-12 weekly |
+| N-C4 | LOW | `combineKek` uses Web Crypto HKDF despite the documented @noble/@scure-only policy; I6 concat/domain and buffer zeroing are correct. | `kek.js:100-112` | (doc) 10-12 weekly |
+| N-C5 | LOW | `unwrapDek` still accepts `WRAP_V1` without AAD (requires KEK to forge). | `kek.js:151-157` | (doc) 10-12 weekly |
+| N-D1b | LOW | PIN counter is localStorage; session floor is monotonic but lost on restart (disclosed), distinct from 10-05 N-D1. | `pinAttemptGuard.js:105-140` | (doc) 10-12 weekly |
+| N-D3 | LOW | Credential-verifier comment says “same cost as vault”, but it defaults to 96 MiB/t6 versus the 192 MiB/t3 legacy-vault profile; session-local. Correct the comment or use the vault profile. | `credentialVerifier.js:3-4,105-110` | (doc) 10-12 weekly |
+| DIFF-1022-NPMRC | NEEDS-REVIEW (supply chain) | Repo-wide `.npmrc` date pin blocks npm install/audit fixes/Dependabot from resolving packages published after 2026-10-21; no expiry or tracking issue. | `.npmrc:5` | (doc) diff-2026-10-22 |
+
 ### Fixed this run
 
 | ID | Sev | Finding | Fixed by | Confirmed by |
@@ -68,13 +85,15 @@ device-unverified); N-B3, N-B5 (doc); H-5 refused WC request stays queued (doc, 
 class, reclassified MEDIUM); M-3 v3 reseal drops `kekKdf` (grep, latent); M-4, M-5, M-6 (doc);
 M-7 (grep); Android biometric-cache alias; L-4 Argon2 OOM counted as wrong PIN (doc).
 LOW/INFO: N-A3, N-B2 (grep), N-B4, N-B6, N-C3..N-C5, L-5..L-7, iOS tamper no cert pin,
-Android tamper-cert residual, web artifact never ALLOW, N-D1, N-D2, stale comments.
+Android tamper-cert residual, web artifact never ALLOW, N-D1, N-D2 (10-05 deniability finding), N-D3 (10-12 credential verifier), stale comments.
 **No fix landed for any 11-02 carried item.**
 
 ### Summary adjustment (this run; supersedes the blocks below)
 
-Prior ~407 total; +2 weekly (N-E1, N-E2) +4 daily-diff watch items = **~413**. Fixed
-**~310** (+1, N-A2). Still open **~106**. Regressed **2** (unchanged: 09-28 H-3 KEK-stamp, WC
+Prior ~415 total (corrected 10-12 weekly and `.npmrc` additions); +2 weekly (N-E1, N-E2) +4 daily-diff watch items = **~421**. Fixed
+**~310** (+1, N-A2). Still open **~114**. Regressed **2** (unchanged: 09-28 H-3 KEK-stamp, WC
+refused-request queue). Needs on-device **~36** (unchanged). Counts are approximate by
+construction (MEDIUM/LOW grouped). Regressed **2** (unchanged: 09-28 H-3 KEK-stamp, WC
 refused-request queue). Needs on-device **~36** (unchanged). Counts are approximate by
 construction (MEDIUM/LOW grouped).
 
