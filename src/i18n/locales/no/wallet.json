@@ -325,6 +325,61 @@
     "rehearsal": {
       "title": "Øv på fornektbarhet",
       "description": "Se dashbordet akkurat slik noen som holder den opplåste telefonen din, ville sett det."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — svar på nett",
+      "description": "Må velges aktivt · spørsmålene du skriver forlater enheten",
+      "help": "Når dette er på, sendes spørsmålene du skriver i Rådgiveren til proxyen vår og besvares av en AI-modell fra en tredjepart, sammen med skjermen du er på, valgt kjede og en tilfeldig installasjons-ID som bare brukes til å håndheve en daglig spørsmålsgrense per enhet. Slår du det av, stopper det umiddelbart; Rådgiveren svarer fortsatt ut fra sin innebygde kunnskap. Slår du det på igjen, vises hele forklaringen på nytt, slik at du kan samtykke med alle detaljene foran deg.",
+      "enable_aria": "Gjennomgå og slå på AI-sikkerhetsrådgiverens svar på nett",
+      "disable_aria": "Slå av AI-sikkerhetsrådgiverens svar på nett"
+    },
+    "page": {
+      "section_appearance": "Utseende",
+      "section_privacy": "Personvern",
+      "section_language": "Språk",
+      "section_security": "Sikkerhet",
+      "section_plan": "Abonnement",
+      "section_wallet": "Lommebok",
+      "section_help_legal": "Hjelp og juridisk",
+      "section_danger_zone": "Faresone",
+      "security_managed_note": "Sikkerhetsinnstillinger administreres fra den opplåste lommeboken din.",
+      "unlock_methods": "Opplåsingsmetoder",
+      "biometric_heading": "Biometri",
+      "wallet_passkeys": "Lommebok-passkeys",
+      "wallet_passkeys_loading": "Laster lommebok-passkeys…",
+      "create_wallet_first": "Opprett en lommebok først",
+      "plan_current": "Gjeldende abonnement: {{plan}}",
+      "plan_desc_safety_plus_ai": "Inkluderer alle Safety Plus-funksjoner pluss live Vigil-svar basert på TIP",
+      "plan_desc_safety_plus": "Dypere sikkerhetskontroller og avansert analyse",
+      "plan_desc_ai": "Live Vigil-svar basert på TIP",
+      "plan_desc_free": "Oppgrader til Safety Plus eller AI Security Protection",
+      "plan_view_plans": "Se abonnementer",
+      "quick_links": "Hurtiglenker",
+      "link_security_center": "Sikkerhetssenter",
+      "link_security_center_desc": "Økter og grenser",
+      "link_network_manager": "Nettverksbehandler",
+      "link_network_manager_desc": "RPC og kjeder",
+      "link_token_approvals": "Token-godkjenninger",
+      "link_token_approvals_desc": "Se og tilbakekall tillatelser",
+      "link_personal_backup": "Kryptert personlig sikkerhetskopi",
+      "link_personal_backup_desc": "Personlig sikkerhetskopi",
+      "link_reveal_seed": "Vis seed",
+      "link_reveal_seed_desc": "QR for sikkerhetskopifrase",
+      "link_change_pin": "Endre PIN",
+      "link_change_password": "Endre hvelvpassord",
+      "link_change_desc": "Tilgang og gjenoppretting",
+      "terms_title": "Vilkår og juridisk",
+      "terms_desc": "Vilkår, opplysninger og ærlige begrensninger",
+      "terms_action": "Vis",
+      "rate_title": "Vurder Veyrnox",
+      "rate_desc": "Åpne vurderingsforespørselen i butikken",
+      "rate_action": "Vurder",
+      "feedback_title": "Send tilbakemelding",
+      "feedback_desc": "Kontakt teamet direkte på e-post",
+      "feedback_action": "E-post",
+      "feature_title": "Foreslå en funksjon",
+      "feature_desc": "Foreslå en idé teamet kan vurdere",
+      "feature_action": "Foreslå"
     }
   },
   "nav": {
@@ -347,7 +402,9 @@
     "tab_home": "Hjem",
     "tab_send": "Send",
     "tab_receive": "Motta",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "Du trenger PIN-koden din for å komme inn igjen.",
+    "lock_confirm_cancel": "Avbryt"
   },
   "back": {
     "default_label": "Tilbake"
@@ -381,7 +438,8 @@
       "local_disclosure": "Mottakere sjekkes på enheten din for svindeladresser mot din egen historikk — ingenting forlater enheten din.",
       "remote_opt_in": "Sjekk også mot en nettbasert trusseldatabase (sender denne adressen til en tredjepart)",
       "remote_unavailable": "Nettbasert screening er aktivert, men ingen leverandør er konfigurert i denne appversjonen — screening forblir lokal, så vi kunne ikke bekrefte dette mot en ekstern liste.",
-      "demo_poison_button": "Demo: lim inn en lignende adresse"
+      "demo_poison_button": "Demo: lim inn en lignende adresse",
+      "remote_enabled": "Trusseletterretningskontroll på nett er aktiv. I bekreftelsessteget sendes mottakeradressen, din egen avsenderadresse, beløpet og — ved tokenoverføringer — kontraktadressen og kalldataene til TIP-tjenesten."
     },
     "simulation": {
       "title": "Transaksjonssimulering",
@@ -407,7 +465,13 @@
       "balance_prefix": "Saldo:",
       "demo_suffix": "(demo)",
       "live_suffix": "(live)",
-      "reading_from_network": "leser fra nettverket…"
+      "reading_from_network": "leser fra nettverket…",
+      "mode_crypto_aria": "Skriv inn beløp i {{currency}}",
+      "mode_fiat_aria": "Skriv inn beløp i USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Maks",
+      "max_chip_aria": "Bruk hele {{currency}}-saldoen din"
     },
     "errors": {
       "amount_missing": "Beløp er påkrevd",
@@ -433,7 +497,8 @@
       "back": "Tilbake"
     },
     "verify": {
-      "summary_label": "Du sender"
+      "summary_label": "Du sender",
+      "finality": "Sending er endelig. Når den er bekreftet på nettverket, kan denne overføringen ikke reverseres eller refunderes — kontroller mottaker og beløp."
     },
     "fee": {
       "automatic": "Nettverksgebyr angis automatisk for {{currency}} ({{network}}).",
@@ -482,6 +547,11 @@
       "two_factor_retry": "Sendingen kunne ikke fullføres — verifiser på nytt for å prøve igjen.",
       "send_failed_fallback": "Sending mislyktes",
       "unconfirmed": "Kunne ikke bekrefte denne transaksjonen på nettverket ennå — den kan fortsatt være under behandling. Sjekk exploreren."
+    },
+    "wizard": {
+      "step_recipient": "Mottaker og beløp",
+      "step_review": "Gjennomgang",
+      "step_confirm": "Bekreft"
     }
   },
   "receive": {
@@ -511,7 +581,14 @@
       "solana": "Send bare Solana på {{network}} til denne adressen."
     },
     "select_asset_prompt": "Velg en eiendel å motta.",
-    "unlock_footer_note": "Adresser kommer fra lommeboken din på enheten og vises bare mens den er låst opp."
+    "unlock_footer_note": "Adresser kommer fra lommeboken din på enheten og vises bare mens den er låst opp.",
+    "actions": {
+      "copy": "Kopier",
+      "copied": "Kopiert",
+      "share": "Del",
+      "share_dialog_title": "Del adresse",
+      "share_failed_toast": "Kunne ikke åpne delingsarket"
+    }
   },
   "dashboard": {
     "portfolioValue": "Porteføljeverdi",

@@ -78,7 +78,10 @@
     "demo_reset": "Demó visszaállítása (az összes pénztárcaadat + rejtett pénztárca törlése)",
     "non_demo_hint": "Zárolja a pénztárcáját, majd adja meg a Vészhelyzeti PIN-t a kipróbáláshoz. Soha ne ossza meg. Elfelejtette? Távolítsa el itt, amíg a valódi PIN-jével fel van oldva.",
     "network_default_name": "a teszthálózat",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Új Vészhelyzeti PIN beállítása a Safety Plus része",
+    "setup_locked_body": "A Vészhelyzeti PIN létrehozásához vagy módosításához aktív Safety Plus előfizetés szükséges. Az eltávolításához soha nem, és azt lent bármikor megteheti.",
+    "setup_locked_cta": "Csomagok megtekintése"
   },
   "stealth": {
     "heading": "Rejtett / Titkos pénztárcák",
@@ -213,7 +216,8 @@
       "trust_warning": "Csak megbízható dAppokhoz csatlakozzon. Csatlakozás után a dApp látni fogja ezt a pénztárcát.",
       "reject": "Elutasítás",
       "connect_busy": "Csatlakozás…",
-      "connect": "Csatlakozás"
+      "connect": "Csatlakozás",
+      "risk_blocked": "A kapcsolódás ehhez a dApphoz le van tiltva. Utasítsa el, és nyisson meg helyette egy megbízható URL-t."
     },
     "request_approval": {
       "blocked_title": "A kérés blokkolva",
@@ -248,7 +252,20 @@
       "sending_busy": "Küldés…",
       "signing_busy": "Aláírás…",
       "unknown_network_with_id": "Ismeretlen hálózat ({{id}} lánc)",
-      "unknown_network": "Ismeretlen hálózat"
+      "unknown_network": "Ismeretlen hálózat",
+      "typed_contract_row_label": "Szerződés",
+      "typed_chain_row_label": "Lánc azonosító",
+      "typed_contract_hint": "A fenti nevet az oldal választja. Ez a szerződéscím az, amit az aláírása ténylegesen engedélyez — vesse össze a várt tokennel.",
+      "permit_unapprovable": "Ez az aláírás feljogosít egy költőt (spender) a tokenjei mozgatására, és a Veyrnox ezeket nem hagyja jóvá WalletConnecten keresztül. Az alkalmazás Küldés képernyőjén fejezze be, ahol a kockázat áttekinthető és tudomásul vehető.",
+      "token_amount_row_label": "Token összege",
+      "token_recipient_row_label": "Token címzettje",
+      "unknown_token_title": "⚠ Ismeretlen token",
+      "unknown_token_body": "Az összeg nem olvasható ki ebből a kérésből. Ne hagyja jóvá, hacsak nem tudja pontosan, mit küld ez.",
+      "max_fee_row_label": "Maximális díj",
+      "max_fee_row_value": "legfeljebb {{amount}} {{symbol}}",
+      "max_fee_note": "Ez a legtöbb, amennyibe a hálózati díj kerülhet, a fenti értéken felül. Felső határ, nem becslés — a tényleges díj általában jóval alacsonyabb.",
+      "remote_screening_notice": "Az online fenyegetésfelderítési szűrés aktív ennél a kérésnél. A jóváhagyás előtt a Veyrnox elküldheti a címzett címét, az összeget és a hívás adatait a TIP szűrési szolgáltatásának.",
+      "remote_screening_unavailable": "Az online szűrés be van kapcsolva a beállításokban, de ebben a buildben nincs TIP szolgáltató beállítva. Ez a kérés csak helyben lesz átszűrve."
     },
     "active_sessions": {
       "empty": "Még nincs csatlakoztatott dApp. Párosítson egyet fent a kezdéshez.",
@@ -293,6 +310,23 @@
       "biometric": "Hagyja jóvá ezt a küldést PIN-nel + biometrikus azonosítással",
       "passkey": "Hagyja jóvá ezt a küldést PIN-nel + jelszókulccsal",
       "password": "Hagyja jóvá ezt a küldést PIN-nel + Művelet jelszóval"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Forrás: {{source}}.",
+      "note_fallback": "Megjelölve a helyi fenyegetésfelderítési listán",
+      "critical_footer": "Ez kritikusként van megjelölve. Továbbmehet, de előtte győződjön meg a kockázatról.",
+      "headline": {
+        "sanctioned": "Ez a cím szankciós listán szerepel.",
+        "drainer": "Ez egy ismert pénztárca-kiürítő (drainer).",
+        "phishing": "Ez a cím adathalászathoz kapcsolódik.",
+        "exploit": "Ez a cím egy ismert kihasználáshoz (exploit) kapcsolódik.",
+        "scam": "Ez a cím csalásként van megjelölve.",
+        "malicious_contract": "Ezt a szerződést rosszindulatúként jelölték meg.",
+        "mixer": "Ez egy keverőszolgáltatás.",
+        "burn": "Ez egy égetési (burn) cím.",
+        "default": "A Sentinel megjelölte ezt a címet."
+      }
     }
   }
 }

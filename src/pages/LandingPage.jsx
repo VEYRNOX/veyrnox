@@ -7,6 +7,12 @@ import {
   CheckCircle2, Bell, BarChart3, Key, Menu, X,
   Sparkles, Bot, WifiOff, FileSearch, ArrowUp
 } from "lucide-react";
+import {
+  LIVE_SEND_ENABLED_ASSET_COUNT,
+  NON_LIVE_ASSET_SPEND_NOTICE,
+  RECEIVE_ONLY_ASSET_COUNT,
+  TOTAL_SUPPORTED_ASSET_COUNT,
+} from "@/wallet-core/assets";
 
 // The public docs are a STATIC file in public/ — not the in-app /docs route.
 // /landing only renders on a no-vault device (LandingGuard), so every in-app
@@ -302,7 +308,7 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { icon: Smartphone, title: "Multi-Chain", desc: "Send & receive across 10 assets on EVM, Bitcoin & Solana" },
+              { icon: Smartphone, title: "Multi-Chain", desc: `Receive ${TOTAL_SUPPORTED_ASSET_COUNT} assets across EVM, Bitcoin & Solana; ${LIVE_SEND_ENABLED_ASSET_COUNT} support direct sends and ${RECEIVE_ONLY_ASSET_COUNT} are receive-only. ${NON_LIVE_ASSET_SPEND_NOTICE}` },
               { icon: Shield, title: "Coercion resistance", desc: "Duress PIN, decoy & panic wipe" },
               { icon: Eye, title: "Pre-sign screening", desc: "Local tx simulation + address-poisoning / look-alike checks" },
               { icon: BarChart3, title: "Analytics", desc: "Portfolio tracking and P&L reports" },
@@ -473,7 +479,7 @@ export default function LandingPage() {
       <section aria-labelledby="cta-heading" className="py-20 bg-gradient-to-r from-primary/10 via-info/10 to-primary/10 border-y border-border">
         <div className="max-w-4xl mx-auto px-6 text-center space-y-8">
           <h2 id="cta-heading" className="text-4xl font-bold">Take control of your crypto</h2>
-          <p className="text-xl text-muted-foreground">Self-custody across 10 assets — your keys, your device, your rules.</p>
+          <p className="text-xl text-muted-foreground">Self-custody across {TOTAL_SUPPORTED_ASSET_COUNT} assets — {LIVE_SEND_ENABLED_ASSET_COUNT} live/send-enabled and {RECEIVE_ONLY_ASSET_COUNT} receive-only. {NON_LIVE_ASSET_SPEND_NOTICE}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" onClick={() => navigate("/")} className="bg-primary hover:bg-primary/90 text-lg px-8">
               Start Now

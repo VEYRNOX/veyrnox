@@ -78,7 +78,10 @@
     "demo_reset": "デモをリセット（すべてのウォレットデータ＋隠しウォレットを削除）",
     "non_demo_hint": "ウォレットをロックし、緊急用PINを入力して試してください。絶対に他人と共有しないでください。忘れてしまった場合は、本来のPINでロック解除した状態でここから削除してください。",
     "network_default_name": "テストネットワーク",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "新しい緊急用PINの設定はSafety Plusに含まれます",
+    "setup_locked_body": "緊急用PINの作成または変更には、有効なSafety Plusサブスクリプションが必要です。削除には不要で、下からいつでも行えます。",
+    "setup_locked_cta": "プランを見る"
   },
   "stealth": {
     "heading": "ステルス／隠しウォレット",
@@ -213,7 +216,8 @@
       "trust_warning": "信頼できるdAppにのみ接続してください。接続すると、このウォレットはdAppから見えるようになります。",
       "reject": "拒否",
       "connect_busy": "接続中…",
-      "connect": "接続"
+      "connect": "接続",
+      "risk_blocked": "このdAppへの接続はブロックされています。拒否して、信頼できるURLを開いてください。"
     },
     "request_approval": {
       "blocked_title": "リクエストをブロックしました",
@@ -248,7 +252,20 @@
       "sending_busy": "送信中…",
       "signing_busy": "署名中…",
       "unknown_network_with_id": "不明なネットワーク（チェーン {{id}}）",
-      "unknown_network": "不明なネットワーク"
+      "unknown_network": "不明なネットワーク",
+      "typed_contract_row_label": "コントラクト",
+      "typed_chain_row_label": "チェーンID",
+      "typed_contract_hint": "上の名前はサイト側が決めたものです。このコントラクトアドレスこそ、あなたの署名が実際に承認する対象です — 想定しているトークンと照合してください。",
+      "permit_unapprovable": "この署名は、スペンダー（spender）にあなたのトークンの移動を承認するものであり、VeyrnoxはWalletConnect経由ではこれを承認しません。リスクを確認し了承できるアプリ内の送信画面から行ってください。",
+      "token_amount_row_label": "トークン数量",
+      "token_recipient_row_label": "トークンの受取人",
+      "unknown_token_title": "⚠ 不明なトークン",
+      "unknown_token_body": "このリクエストから金額を読み取れません。何が送られるか正確に把握していない限り、承認しないでください。",
+      "max_fee_row_label": "最大手数料",
+      "max_fee_row_value": "最大 {{amount}} {{symbol}}",
+      "max_fee_note": "上記の金額に加えて、ネットワーク手数料がかかり得る最大額です。見積もりではなく上限であり、実際の手数料は通常はるかに低くなります。",
+      "remote_screening_notice": "このリクエストではオンラインの脅威インテリジェンス・スクリーニングが有効です。承認の前に、Veyrnoxは受取人のアドレス、金額、コールデータをTIPスクリーニングサービスに送信することがあります。",
+      "remote_screening_unavailable": "設定でオンラインスクリーニングは有効ですが、このビルドにはTIPプロバイダーが設定されていません。このリクエストはローカルでのみスクリーニングされます。"
     },
     "active_sessions": {
       "empty": "接続されているdAppはまだありません。上から接続を開始してください。",
@@ -293,6 +310,23 @@
       "biometric": "PINと生体認証でこの送金を承認",
       "passkey": "PINとパスキーでこの送金を承認",
       "password": "PINとアクションパスワードでこの送金を承認"
+    },
+    "sentinel": {
+      "speaker": "Sentinel：",
+      "detail": "{{note}} — 情報源：{{source}}。",
+      "note_fallback": "ローカルの脅威インテリジェンスリストでフラグが付いています",
+      "critical_footer": "これは重大としてフラグが付いています。続行は可能ですが、リスクを理解したうえで進めてください。",
+      "headline": {
+        "sanctioned": "このアドレスは制裁リストに載っています。",
+        "drainer": "これは既知のウォレットドレイナーです。",
+        "phishing": "このアドレスはフィッシングに関連しています。",
+        "exploit": "このアドレスは既知のエクスプロイトに関連しています。",
+        "scam": "このアドレスは詐欺としてフラグが付いています。",
+        "malicious_contract": "このコントラクトは悪意があるとしてフラグが付いています。",
+        "mixer": "これはミキシングサービスです。",
+        "burn": "これはバーンアドレスです。",
+        "default": "Sentinelがこのアドレスにフラグを付けました。"
+      }
     }
   }
 }

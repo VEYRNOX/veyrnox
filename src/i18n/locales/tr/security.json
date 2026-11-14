@@ -78,7 +78,10 @@
     "demo_reset": "Demoyu sıfırla (tüm cüzdan verilerini + gizli cüzdanı sil)",
     "non_demo_hint": "Denemek için cüzdanınızı kilitleyin ve Acil Durum PIN'ini girin. Asla paylaşmayın. Unuttunuz mu? Gerçek PIN'inizle kilit açıkken burada kaldırın.",
     "network_default_name": "test ağı",
-    "address_dash": "—"
+    "address_dash": "—",
+    "setup_locked_title": "Yeni bir Acil Durum PIN'i belirlemek Safety Plus kapsamındadır",
+    "setup_locked_body": "Acil Durum PIN'i oluşturmak veya değiştirmek etkin bir Safety Plus aboneliği gerektirir. Kaldırmak hiçbir zaman gerektirmez ve bunu aşağıdan istediğiniz zaman yapabilirsiniz.",
+    "setup_locked_cta": "Planları gör"
   },
   "stealth": {
     "heading": "Gizli / Saklı Cüzdanlar",
@@ -213,7 +216,8 @@
       "trust_warning": "Yalnızca güvendiğiniz dApp'lere bağlanın. Bağlandıktan sonra bu cüzdan dApp tarafından görülebilir olacak.",
       "reject": "Reddet",
       "connect_busy": "Bağlanılıyor…",
-      "connect": "Bağlan"
+      "connect": "Bağlan",
+      "risk_blocked": "Bu dApp ile bağlantı engellendi. Reddedin ve bunun yerine güvenilir bir URL açın."
     },
     "request_approval": {
       "blocked_title": "İstek engellendi",
@@ -248,7 +252,20 @@
       "sending_busy": "Gönderiliyor…",
       "signing_busy": "İmzalanıyor…",
       "unknown_network_with_id": "Bilinmeyen ağ (zincir {{id}})",
-      "unknown_network": "Bilinmeyen ağ"
+      "unknown_network": "Bilinmeyen ağ",
+      "typed_contract_row_label": "Sözleşme",
+      "typed_chain_row_label": "Zincir kimliği",
+      "typed_contract_hint": "Yukarıdaki adı site seçer. İmzanızın gerçekte yetkilendirdiği şey bu sözleşme adresidir — beklediğiniz token ile karşılaştırarak kontrol edin.",
+      "permit_unapprovable": "Bu imza, bir harcayıcıya (spender) tokenlarınızı taşıma yetkisi verir ve Veyrnox bunları WalletConnect üzerinden onaylamaz. Riskin incelenip kabul edilebileceği uygulama içi Gönder ekranından tamamlayın.",
+      "token_amount_row_label": "Token tutarı",
+      "token_recipient_row_label": "Token alıcısı",
+      "unknown_token_title": "⚠ Bilinmeyen token",
+      "unknown_token_body": "Tutar bu istekten okunamıyor. Tam olarak neyi gönderdiğini bilmiyorsanız onaylamayın.",
+      "max_fee_row_label": "Maks. ücret",
+      "max_fee_row_value": "en fazla {{amount}} {{symbol}}",
+      "max_fee_note": "Bu, yukarıdaki değere ek olarak ağ ücretinin en fazla ne kadar olabileceğidir. Bir tahmin değil, bir üst sınırdır — gerçek ücret genellikle çok daha düşüktür.",
+      "remote_screening_notice": "Bu istek için çevrimiçi tehdit istihbaratı taraması etkin. Onaydan önce Veyrnox, alıcı adresini, tutarı ve çağrı verisini TIP tarama hizmetine gönderebilir.",
+      "remote_screening_unavailable": "Çevrimiçi tarama tercihlerinizde etkin, ancak bu sürümde yapılandırılmış bir TIP sağlayıcısı yok. Bu istek yalnızca yerel olarak taranacak."
     },
     "active_sessions": {
       "empty": "Henüz bağlı dApp yok. Başlamak için yukarıdan birini eşleştirin.",
@@ -293,6 +310,23 @@
       "biometric": "Bu gönderimi PIN'iniz + biyometri ile yetkilendirin",
       "passkey": "Bu gönderimi PIN'iniz + geçiş anahtarı ile yetkilendirin",
       "password": "Bu gönderimi PIN'iniz + İşlem Parolası ile yetkilendirin"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Kaynak: {{source}}.",
+      "note_fallback": "Yerel tehdit istihbaratı listesinde işaretlendi",
+      "critical_footer": "Bu, kritik olarak işaretlendi. Yine de devam edebilirsiniz, ancak bunu yapmadan önce riski anlayın.",
+      "headline": {
+        "sanctioned": "Bu adres bir yaptırım listesinde yer alıyor.",
+        "drainer": "Bu, bilinen bir cüzdan boşaltıcı (drainer).",
+        "phishing": "Bu adres kimlik avıyla (phishing) bağlantılı.",
+        "exploit": "Bu adres bilinen bir istismarla (exploit) bağlantılı.",
+        "scam": "Bu adres dolandırıcılık olarak işaretlendi.",
+        "malicious_contract": "Bu sözleşme kötü amaçlı olarak işaretlendi.",
+        "mixer": "Bu bir karıştırma hizmetidir (mixer).",
+        "burn": "Bu bir yakma (burn) adresidir.",
+        "default": "Sentinel bu adresi işaretledi."
+      }
     }
   }
 }
