@@ -7,7 +7,7 @@ import test from 'node:test';
 import { checkInstalledTree, DRIVER_SOURCE, safeVersion } from './check-appium-dependencies.mjs';
 
 const versions = {
-  appium: '3.8.0',
+  appium: '3.9.0',
   'appium-uiautomator2-driver': '8.7.0',
   axios: '1.20.0',
   morgan: '1.12.1',
