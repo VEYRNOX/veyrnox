@@ -33,7 +33,7 @@ entries — unchanged vs prior check); N-A1 `AndroidManifest.xml` 0 `<queries>`;
 on `id` only (`WalletConnectProvider.jsx:891,912,937,986`). **No finding fixed, none
 regressed this window.**
 
-### New this run — 2026-10-12 weekly (6 new; IDs per surface)
+### New this run — 2026-10-12 weekly (7 new; IDs per surface)
 
 | ID | Sev | Finding | File:Line | Evidence |
 |---|---|---|---|---|
@@ -43,9 +43,9 @@ regressed this window.**
 | N-C4 | LOW | `combineKek` uses Web Crypto HKDF; CLAUDE.md says @noble/@scure only (policy deviation; I6 concat/domain correct) | `kek.js:100-112` | (doc) |
 | N-C5 | LOW | `unwrapDek` still accepts `WRAP_V1` without AAD (needs KEK to forge) | `kek.js:151-157` | (doc) |
 | N-D1b | LOW | PIN counter is localStorage; session floor monotonic but lost on restart (disclosed). Distinct from 10-05 N-D1 (TierProvider I3) | `pinAttemptGuard.js:105-140` | (doc) |
+| N-D3 | LOW | Credential verifier comment says “same cost as vault”, but `createCredentialVerifier` defaults to 96 MiB/t6 versus the 192 MiB/t3 legacy-vault profile; session-local. Correct the comment or use the vault profile. | `credentialVerifier.js:3-4,105-110` | (doc) 10-12 weekly |
 
-Also in the 10-12 weekly, already tracked: N-D2 (credential verifier KDF cost vs comment) and
-L-6 (iOS `enroll` now RASP-gated — **PARTIALLY FIXED (doc)**; Android `enroll` and
+Also in the 10-12 weekly, already tracked: L-6 (iOS `enroll` now RASP-gated — **PARTIALLY FIXED (doc)**; Android `enroll` and
 `clearCredential` on both platforms still ungated). 10-12 weekly: **Any REGRESSED: none.**
 It could not locate 09-28 H-5 (refused WC request stays queued) at the cited lines and did
 not re-read L-4/L-5; this tracker keeps H-5 as REGRESSED per its last grep verification
@@ -63,8 +63,8 @@ lazy-loaded NFT `<img>` tags (`safeNftImageUrl`, `referrerPolicy` unchanged).
 
 ### Summary adjustment (this run)
 
-Prior totals (10-12 section below) plus 7 new open items (6 weekly + `.npmrc`): total
-**~414**, fixed **~309** (+0), still open **~108**, regressed **2** (unchanged), needs
+Prior totals (10-12 section below) plus 8 new open items (7 weekly + `.npmrc`): total
+**~415**, fixed **~309** (+0), still open **~109**, regressed **2** (unchanged), needs
 on-device **~36** (unchanged). The summary block lower in this file is superseded by this
 section.
 
