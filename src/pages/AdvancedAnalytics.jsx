@@ -152,7 +152,7 @@ export default function AdvancedAnalytics() {
 
       {/* I4 fail-closed: every metric below derives from assetTotals/grandTotal,
           which EXCLUDE any asset whose balance read failed — flag the incompleteness. */}
-      {portfolio?.indeterminate && <IncompleteBalanceNote />}
+      {(portfolio?.indeterminate || portfolio?.quoteUnavailable) && <IncompleteBalanceNote unpricedOnly={!portfolio?.indeterminate} />}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {metrics.map(m => (

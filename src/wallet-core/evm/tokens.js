@@ -46,21 +46,51 @@ const MAINNET_USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 // Cross-checked on Etherscan: name=Tether USD, symbol=USDT, decimals=6
 const MAINNET_USDT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
 
+// Ethereum-mainnet ERC-20 facts read on-chain 2026-11-01 and cross-checked
+// against the Etherscan links published by CoinMarketCap, then checked against
+// each issuer's own published material (2026-11-01):
+//   LINK: Chainlink docs, "LINK Token Contracts", Ethereum mainnet, chain id 1:
+//         https://docs.chain.link/resources/link-token-contracts
+//   UNI:  Uniswap developer docs, "UNI Token", lists it as the UNI token:
+//         https://developers.uniswap.org/docs/ecosystem/governance/uni
+//   SHIB: WEAKER evidence: Shiba Inu's own ShibaSwap SDK docs use this address
+//         as SHIB on Ethereum in a code example (https://docs.shib.io/build-tools/shibaswap-sdk-v2);
+//         there is no dedicated contract listing on shib.io to cite.
+//   LEO:  Bitfinex Help Center, "Unus Sed LEO Token Conversion", links its
+//         Ethereum token contract to this address:
+//         https://support.bitfinex.com/hc/en-us/articles/360023617554-Unus-Sed-LEO-Token-Conversion
+// The asset capability registry keeps all four receive-only until the owner
+// confirms a real on-chain send with a txid.
+// On-chain names: ChainLink Token, Uniswap, SHIBA INU, Bitfinex LEO Token.
+const MAINNET_LINK = '0x514910771AF9Ca656af840dff83E8264EcF986CA';
+const MAINNET_UNI = '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984';
+const MAINNET_SHIB = '0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE';
+// LEO is an exchange token. Its pause/blacklist behaviour has NOT been reviewed
+// from source. Heuristic only: none of 14 common pause/blacklist/freeze/owner/
+// upgrade function selectors appear in its deployed bytecode (2026-11-01).
+const MAINNET_LEO = '0x2AF5D2aD76741191D15Dfe7bF6aC92d4Bd912Ca3';
+
 export const TOKENS = {
   sepolia: {
-    USDC: { address: SEPOLIA_USDC, decimals: 6, symbol: 'USDC' },
-    USDT: { address: SEPOLIA_USDT, decimals: 6, symbol: 'USDT' },
+    USDC: { address: SEPOLIA_USDC, decimals: 6, symbol: 'USDC', assetId: 'USDC:mainnet' },
+    USDT: { address: SEPOLIA_USDT, decimals: 6, symbol: 'USDT', assetId: 'USDT:mainnet' },
   },
   // Mainnet entries added 2026-06-17 after owner sign-off (ALLOW_MAINNET = true).
   mainnet: {
-    USDC: { address: MAINNET_USDC, decimals: 6, symbol: 'USDC' },
-    USDT: { address: MAINNET_USDT, decimals: 6, symbol: 'USDT' },
+    USDC: { address: MAINNET_USDC, decimals: 6, symbol: 'USDC', assetId: 'USDC:mainnet' },
+    USDT: { address: MAINNET_USDT, decimals: 6, symbol: 'USDT', assetId: 'USDT:mainnet' },
+    LINK: { address: MAINNET_LINK, decimals: 18, symbol: 'LINK', assetId: 'LINK:mainnet' },
+    UNI: { address: MAINNET_UNI, decimals: 18, symbol: 'UNI', assetId: 'UNI:mainnet' },
+    SHIB: { address: MAINNET_SHIB, decimals: 18, symbol: 'SHIB', assetId: 'SHIB:mainnet' },
+    LEO: { address: MAINNET_LEO, decimals: 18, symbol: 'LEO', assetId: 'LEO:mainnet' },
   },
 };
 
 /**
  * Resolve a token's registry entry, refusing anything not configured/verified.
- * @returns {{ address: string, decimals: number, symbol: string }}
+ * `assetId` binds each network-specific contract to the composite capability
+ * registry entry that authorises direct sends.
+ * @returns {{ address: string, decimals: number, symbol: string, assetId: string }}
  */
 export function getToken(networkKey, symbol) {
   const t = TOKENS[networkKey]?.[symbol];
