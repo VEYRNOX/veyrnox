@@ -66,9 +66,20 @@ function toUsd(amount, currency, usdRates) {
  */
 export function sumSentTodayUSD({ history = [], currency = 'ALL', usdRates = {}, now = new Date() }) {
   const scopeAll = !currency || currency === 'ALL';
+  // A speed-up re-broadcasts the SAME payment under the same nonce, so only one
+  // member of a replacement chain can ever spend. Count each chain once, via
+  // its root: a row whose `replaces_tx_hash` names another row in this history
+  // is skipped (regardless of status — the original stays "pending" until a
+  // receipt says which one won). A replacement whose root is absent from the
+  // history is still counted, which can only over-count (fail closed).
+  const knownHashes = new Set();
+  for (const tx of history) {
+    if (typeof tx?.tx_hash === 'string') knownHashes.add(tx.tx_hash.toLowerCase());
+  }
   let total = 0;
   for (const tx of history) {
     if (tx?.type !== 'send') continue;
+    if (typeof tx.replaces_tx_hash === 'string' && knownHashes.has(tx.replaces_tx_hash.toLowerCase())) continue;
     if (!scopeAll && tx.currency !== currency) continue;
     if (!isToday(tx.created_date || tx.date, now)) continue;
     total += toUsd(tx.amount, tx.currency, usdRates);

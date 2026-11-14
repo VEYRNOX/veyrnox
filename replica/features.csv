@@ -1,0 +1,23 @@
+feature,area,priority,original,clone,notes
+OAuth-style consent screen with scope list,agent access,must,yes,no,Veyrnox: local pairing code + scope list; no hosted OAuth needed
+Scoped credentials fixed at creation,agent access,must,yes,no,hash-only storage; deny on unknown scope (I4)
+Mandatory expiry on credentials,agent access,must,yes,no,Era: 90d free / 365d paid; Veyrnox: short default (e.g. 24h)
+Revoke access immediately,agent access,must,yes,no,must also kill in-flight sessions
+Read-only portfolio tools (balances holdings history),agent tools,must,yes,no,watch-only data; off in deniability (I3)
+Separate scope for dangerous capability,agent access,must,yes,no,Era: mcp:billing-write; Veyrnox: propose-tx scope
+Per-transaction human approval,safety,must,yes,no,Veyrnox: on-device presignGate + step-up; agent can never sign
+Agent proposes unsigned intent,agent tools,must,partial,no,replaces Era "move money"; intent shown with plain-language risk
+Activity log of agent actions (reads and writes),safety,must,partial,no,Era logs MCP reads and writes but REST reads are unlogged; Veyrnox logs every read and write on every path
+Dry-run / preview before create,agent tools,should,yes,no,Transaction Simulation only; never broadcast in sim
+Spend limits per agent per period,safety,should,no,no,not seen at Era; natural fit for coercion-resistance
+Address allowlist for agent proposals,safety,should,no,no,Veyrnox-native
+Rules that keep running (alerts watch rules),automation,could,yes,no,alerts only; no autonomous signing
+Optimistic concurrency + bulk caps,api,could,yes,no,only if a REST surface ships
+Tiered tool-call quota,billing,could,yes,no,RevenueCat entitlement ai_security_protection pattern exists
+Webhooks / push for changes,api,could,no,no,Era has none; Veyrnox should not copy the gap
+Shared agent memory,agent tools,skip,yes,no,privacy risk; stores user facts off-device
+Undo for agent edits,agent tools,could,yes,no,only meaningful for labels/tags not tx
+Bank account aggregation,data,skip,yes,no,licensed aggregators; out of scope
+Brokerage + SEC adviser,regulated,skip,yes,no,licence required
+Documents vault,data,skip,yes,no,not core to a wallet
+Supported AI clients list (Claude ChatGPT Cursor etc),distribution,should,yes,no,via MCP standard transport
