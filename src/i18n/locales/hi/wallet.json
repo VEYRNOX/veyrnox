@@ -325,6 +325,61 @@
     "rehearsal": {
       "title": "इनकार की पूर्वाभ्यास करें",
       "description": "डैशबोर्ड को ठीक वैसे देखें जैसे आपका अनलॉक फ़ोन पकड़ने वाला कोई व्यक्ति देखेगा।"
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — ऑनलाइन जवाब",
+      "description": "ऑप्ट-इन · आपके टाइप किए सवाल डिवाइस से बाहर जाते हैं",
+      "help": "चालू होने पर, Advisor में आपके टाइप किए सवाल हमारे प्रॉक्सी को भेजे जाते हैं और किसी थर्ड-पार्टी AI मॉडल द्वारा उनके जवाब दिए जाते हैं। साथ में वह स्क्रीन जिस पर आप हैं, चुनी गई चेन और एक रैंडम इंस्टॉल ID भेजी जाती है, जिसका उपयोग केवल प्रति-डिवाइस दैनिक सवाल सीमा लागू करने के लिए होता है। इसे बंद करने पर यह तुरंत रुक जाता है; Advisor फिर भी अपनी अंतर्निहित जानकारी से जवाब देता है। फिर से चालू करने पर पूरा विवरण दोबारा दिखाया जाता है, ताकि आप सारी जानकारी देखकर सहमत हो सकें।",
+      "enable_aria": "AI Security Advisor के ऑनलाइन जवाब देखें और चालू करें",
+      "disable_aria": "AI Security Advisor के ऑनलाइन जवाब बंद करें"
+    },
+    "page": {
+      "section_appearance": "दिखावट",
+      "section_privacy": "गोपनीयता",
+      "section_language": "भाषा",
+      "section_security": "सुरक्षा",
+      "section_plan": "प्लान",
+      "section_wallet": "वॉलेट",
+      "section_help_legal": "सहायता और कानूनी",
+      "section_danger_zone": "खतरा क्षेत्र",
+      "security_managed_note": "सुरक्षा सेटिंग्स आपके अनलॉक किए गए वॉलेट से प्रबंधित होती हैं।",
+      "unlock_methods": "अनलॉक के तरीके",
+      "biometric_heading": "बायोमेट्रिक",
+      "wallet_passkeys": "वॉलेट पासकी",
+      "wallet_passkeys_loading": "वॉलेट पासकी लोड हो रही हैं…",
+      "create_wallet_first": "पहले एक वॉलेट बनाएं",
+      "plan_current": "मौजूदा प्लान: {{plan}}",
+      "plan_desc_safety_plus_ai": "इसमें Safety Plus की सभी सुविधाएं और TIP-आधारित लाइव Vigil उत्तर शामिल हैं",
+      "plan_desc_safety_plus": "गहरे सुरक्षा नियंत्रण और उन्नत एनालिटिक्स",
+      "plan_desc_ai": "TIP-आधारित लाइव Vigil उत्तर",
+      "plan_desc_free": "Safety Plus या AI Security Protection में अपग्रेड करें",
+      "plan_view_plans": "प्लान देखें",
+      "quick_links": "त्वरित लिंक",
+      "link_security_center": "सुरक्षा केंद्र",
+      "link_security_center_desc": "सेशन और सीमाएं",
+      "link_network_manager": "नेटवर्क मैनेजर",
+      "link_network_manager_desc": "RPC और चेन",
+      "link_token_approvals": "टोकन अनुमतियां",
+      "link_token_approvals_desc": "अनुमतियां देखें और रद्द करें",
+      "link_personal_backup": "एन्क्रिप्टेड व्यक्तिगत बैकअप",
+      "link_personal_backup_desc": "व्यक्तिगत बैकअप",
+      "link_reveal_seed": "सीड दिखाएं",
+      "link_reveal_seed_desc": "बैकअप फ़्रेज़ QR",
+      "link_change_pin": "PIN बदलें",
+      "link_change_password": "वॉल्ट पासवर्ड बदलें",
+      "link_change_desc": "एक्सेस और रिकवरी",
+      "terms_title": "शर्तें और कानूनी",
+      "terms_desc": "शर्तें, खुलासे और ईमानदार सीमाएं",
+      "terms_action": "देखें",
+      "rate_title": "Veyrnox को रेट करें",
+      "rate_desc": "स्टोर रिव्यू प्रॉम्प्ट खोलें",
+      "rate_action": "रेट करें",
+      "feedback_title": "फ़ीडबैक भेजें",
+      "feedback_desc": "ईमेल से सीधे टीम तक पहुंचें",
+      "feedback_action": "ईमेल",
+      "feature_title": "फ़ीचर का अनुरोध करें",
+      "feature_desc": "टीम के विचार के लिए कोई सुझाव दें",
+      "feature_action": "सुझाव दें"
     }
   },
   "nav": {
@@ -347,7 +402,9 @@
     "tab_home": "होम",
     "tab_send": "भेजें",
     "tab_receive": "प्राप्त करें",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "वापस आने के लिए आपको अपना PIN चाहिए होगा।",
+    "lock_confirm_cancel": "रद्द करें"
   },
   "back": {
     "default_label": "वापस"
@@ -381,7 +438,8 @@
       "local_disclosure": "प्राप्तकर्ताओं की आपके अपने इतिहास के विरुद्ध घोटाला-पते के लिए आपके डिवाइस पर ही जांच होती है — कुछ भी आपके डिवाइस से बाहर नहीं जाता।",
       "remote_opt_in": "एक ऑनलाइन खतरा डेटाबेस के विरुद्ध भी जांच करें (यह पता किसी तीसरे पक्ष को भेजता है)",
       "remote_unavailable": "ऑनलाइन जांच सक्षम है, लेकिन इस बिल्ड में कोई प्रोवाइडर कॉन्फ़िगर नहीं है — जांच स्थानीय ही रहती है, इसलिए हम इसे किसी बाहरी सूची के विरुद्ध सत्यापित नहीं कर सके।",
-      "demo_poison_button": "डेमो: एक मिलता-जुलता पता पेस्ट करें"
+      "demo_poison_button": "डेमो: एक मिलता-जुलता पता पेस्ट करें",
+      "remote_enabled": "ऑनलाइन थ्रेट इंटेलिजेंस स्क्रीनिंग चालू है। सत्यापन चरण में यह प्राप्तकर्ता का पता, आपका अपना भेजने का पता, राशि और — टोकन ट्रांसफ़र के लिए — कॉन्ट्रैक्ट पता और कॉल डेटा TIP सेवा को भेजती है।"
     },
     "simulation": {
       "title": "लेनदेन सिमुलेशन",
@@ -407,7 +465,13 @@
       "balance_prefix": "बैलेंस:",
       "demo_suffix": "(डेमो)",
       "live_suffix": "(लाइव)",
-      "reading_from_network": "नेटवर्क से पढ़ा जा रहा है…"
+      "reading_from_network": "नेटवर्क से पढ़ा जा रहा है…",
+      "mode_crypto_aria": "{{currency}} में राशि दर्ज करें",
+      "mode_fiat_aria": "USD में राशि दर्ज करें",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "अधिकतम",
+      "max_chip_aria": "अपना पूरा {{currency}} बैलेंस उपयोग करें"
     },
     "errors": {
       "amount_missing": "राशि आवश्यक है",
@@ -433,7 +497,8 @@
       "back": "वापस"
     },
     "verify": {
-      "summary_label": "आप भेज रहे हैं"
+      "summary_label": "आप भेज रहे हैं",
+      "finality": "भेजना अंतिम होता है। नेटवर्क पर कन्फ़र्म होने के बाद यह ट्रांसफ़र वापस नहीं किया जा सकता और न ही रिफ़ंड हो सकता है — प्राप्तकर्ता और राशि जाँच लें।"
     },
     "fee": {
       "automatic": "{{currency}} ({{network}}) के लिए नेटवर्क शुल्क स्वचालित रूप से सेट किया गया है।",
@@ -482,6 +547,11 @@
       "two_factor_retry": "भेजना पूरा नहीं हो सका — फिर से प्रयास करने के लिए कृपया दोबारा सत्यापित करें।",
       "send_failed_fallback": "भेजना विफल हुआ",
       "unconfirmed": "इस लेनदेन की नेटवर्क पर अभी पुष्टि नहीं हो सकी — यह अभी भी लंबित हो सकता है। एक्सप्लोरर जांचें।"
+    },
+    "wizard": {
+      "step_recipient": "प्राप्तकर्ता और राशि",
+      "step_review": "समीक्षा",
+      "step_confirm": "पुष्टि करें"
     }
   },
   "receive": {
@@ -511,7 +581,14 @@
       "solana": "इस पते पर केवल {{network}} पर Solana भेजें।"
     },
     "select_asset_prompt": "प्राप्त करने के लिए एक एसेट चुनें।",
-    "unlock_footer_note": "पते आपके ऑन-डिवाइस वॉलेट से आते हैं और केवल इसके अनलॉक रहने के दौरान ही दिखाई देते हैं।"
+    "unlock_footer_note": "पते आपके ऑन-डिवाइस वॉलेट से आते हैं और केवल इसके अनलॉक रहने के दौरान ही दिखाई देते हैं।",
+    "actions": {
+      "copy": "कॉपी करें",
+      "copied": "कॉपी हो गया",
+      "share": "साझा करें",
+      "share_dialog_title": "पता साझा करें",
+      "share_failed_toast": "शेयर शीट नहीं खुल सकी"
+    }
   },
   "dashboard": {
     "portfolioValue": "पोर्टफ़ोलियो मूल्य",

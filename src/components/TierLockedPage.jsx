@@ -5,7 +5,7 @@
 // this feature IS live, just paywalled, so the notice points at /plans instead
 // of explaining an engineering limitation.
 import { Link } from 'react-router';
-import Vigil from '@/components/Vigil';
+import VigilMotion from '@/components/VigilMotion';
 
 export default function TierLockedPage({ tier = 'safety_plus' }) {
   const isAi = tier === 'ai_security_protection';
@@ -25,7 +25,7 @@ export default function TierLockedPage({ tier = 'safety_plus' }) {
           The sleeping state is the honest one for a paywall (I4): off duty,
           never sad, never implying cover that has not been paid for. Vigil
           self-gates on deniability/demo, so there is no guard here. */}
-      <Vigil state="asleep" size={72} />
+      <VigilMotion state="asleep" size={72} />
       <div className="text-sm min-w-0">
         <p className="font-semibold text-foreground">{heading}</p>
         <p className="text-muted-foreground mt-1">{body}</p>

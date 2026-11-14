@@ -325,6 +325,61 @@
     "rehearsal": {
       "title": "Elutasíthatóság próbája",
       "description": "Nézze meg a vezérlőpultot pontosan úgy, ahogy azt látná, aki az Ön feloldott telefonját tartja."
+    },
+    "advisorConsent": {
+      "label": "AI Security Advisor — online válaszok",
+      "description": "Opcionális · a beírt kérdései elhagyják az eszközt",
+      "help": "Bekapcsolt állapotban az Advisorba beírt kérdései a proxynkra kerülnek, és egy külső AI-modell válaszol rájuk, a képernyővel, amelyen éppen tartózkodik, a kiválasztott lánccal és egy véletlenszerű telepítési azonosítóval együtt, amelyet kizárólag az eszközönkénti napi kérdéskorlát érvényesítésére használunk. A kikapcsolás azonnal leállítja ezt; az Advisor továbbra is a beépített tudásából válaszol. Az újbóli bekapcsoláskor a teljes magyarázat ismét megjelenik, hogy a részletek ismeretében fogadhassa el.",
+      "enable_aria": "Az AI Security Advisor online válaszainak áttekintése és bekapcsolása",
+      "disable_aria": "Az AI Security Advisor online válaszainak kikapcsolása"
+    },
+    "page": {
+      "section_appearance": "Megjelenés",
+      "section_privacy": "Adatvédelem",
+      "section_language": "Nyelv",
+      "section_security": "Biztonság",
+      "section_plan": "Csomag",
+      "section_wallet": "Pénztárca",
+      "section_help_legal": "Súgó és jogi tudnivalók",
+      "section_danger_zone": "Veszélyzóna",
+      "security_managed_note": "A biztonsági beállításokat a feloldott pénztárcájából kezelheti.",
+      "unlock_methods": "Feloldási módok",
+      "biometric_heading": "Biometrikus azonosítás",
+      "wallet_passkeys": "Pénztárca-passkey-ek",
+      "wallet_passkeys_loading": "Pénztárca-passkey-ek betöltése…",
+      "create_wallet_first": "Először hozzon létre egy pénztárcát",
+      "plan_current": "Jelenlegi csomag: {{plan}}",
+      "plan_desc_safety_plus_ai": "Tartalmazza az összes Safety Plus funkciót, valamint a TIP-alapú élő Vigil-válaszokat",
+      "plan_desc_safety_plus": "Mélyebb biztonsági vezérlők és fejlett elemzések",
+      "plan_desc_ai": "TIP-alapú élő Vigil-válaszok",
+      "plan_desc_free": "Frissítsen Safety Plus vagy AI Security Protection csomagra",
+      "plan_view_plans": "Csomagok megtekintése",
+      "quick_links": "Gyorshivatkozások",
+      "link_security_center": "Biztonsági központ",
+      "link_security_center_desc": "Munkamenetek és korlátok",
+      "link_network_manager": "Hálózatkezelő",
+      "link_network_manager_desc": "RPC és láncok",
+      "link_token_approvals": "Token-jóváhagyások",
+      "link_token_approvals_desc": "Engedélyek megtekintése és visszavonása",
+      "link_personal_backup": "Titkosított személyes biztonsági mentés",
+      "link_personal_backup_desc": "Személyes biztonsági mentés",
+      "link_reveal_seed": "Seed megjelenítése",
+      "link_reveal_seed_desc": "Mentési mondat QR-kódja",
+      "link_change_pin": "PIN módosítása",
+      "link_change_password": "Tároló jelszavának módosítása",
+      "link_change_desc": "Hozzáférés és helyreállítás",
+      "terms_title": "Feltételek és jogi tudnivalók",
+      "terms_desc": "Feltételek, közlemények és őszinte korlátok",
+      "terms_action": "Megtekintés",
+      "rate_title": "Értékelje a Veyrnoxot",
+      "rate_desc": "Az áruházi értékelési ablak megnyitása",
+      "rate_action": "Értékel",
+      "feedback_title": "Visszajelzés küldése",
+      "feedback_desc": "Vegye fel a kapcsolatot a csapattal e-mailben",
+      "feedback_action": "E-mail",
+      "feature_title": "Funkció kérése",
+      "feature_desc": "Javasoljon ötletet a csapatnak",
+      "feature_action": "Javasol"
     }
   },
   "nav": {
@@ -347,7 +402,9 @@
     "tab_home": "Kezdőlap",
     "tab_send": "Küldés",
     "tab_receive": "Fogadás",
-    "tab_buy": "Buy"
+    "tab_buy": "Buy",
+    "lock_confirm_body": "A visszatéréshez szüksége lesz a PIN-kódjára.",
+    "lock_confirm_cancel": "Mégse"
   },
   "back": {
     "default_label": "Vissza"
@@ -381,7 +438,8 @@
       "local_disclosure": "A címzetteket az eszközén ellenőrizzük csaló címekre a saját előzményei alapján — semmi nem hagyja el az eszközét.",
       "remote_opt_in": "Online fenyegetésadatbázis ellen is ellenőrzés (elküldi ezt a címet egy harmadik félnek)",
       "remote_unavailable": "Az online ellenőrzés engedélyezve van, de ebben az összeállításban nincs beállítva szolgáltató — az ellenőrzés helyi marad, így ezt nem tudtuk külső listával összevetni.",
-      "demo_poison_button": "Demó: hasonló megjelenésű cím beillesztése"
+      "demo_poison_button": "Demó: hasonló megjelenésű cím beillesztése",
+      "remote_enabled": "Az online fenyegetésfelderítési szűrés aktív. Az ellenőrzési lépésnél a TIP szolgáltatásnak elküldi a címzett címét, az Ön saját küldő címét, az összeget, token-átutalás esetén pedig a szerződés címét és a hívás adatait."
     },
     "simulation": {
       "title": "Tranzakciószimuláció",
@@ -407,7 +465,13 @@
       "balance_prefix": "Egyenleg:",
       "demo_suffix": "(demó)",
       "live_suffix": "(élő)",
-      "reading_from_network": "beolvasás a hálózatról…"
+      "reading_from_network": "beolvasás a hálózatról…",
+      "mode_crypto_aria": "Összeg megadása ({{currency}})",
+      "mode_fiat_aria": "Összeg megadása USD-ben",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}",
+      "max_chip": "Max",
+      "max_chip_aria": "A teljes {{currency}}-egyenleg használata"
     },
     "errors": {
       "amount_missing": "Az összeg megadása kötelező",
@@ -433,7 +497,8 @@
       "back": "Vissza"
     },
     "verify": {
-      "summary_label": "Ön a következőt küldi"
+      "summary_label": "Ön a következőt küldi",
+      "finality": "A küldés végleges. Amint a hálózaton megerősítést nyer, az átutalás nem vonható vissza és nem téríthető meg — ellenőrizze a címzettet és az összeget."
     },
     "fee": {
       "automatic": "A hálózati díj automatikusan van beállítva a(z) {{currency}} ({{network}}) esetében.",
@@ -482,6 +547,11 @@
       "two_factor_retry": "A küldés nem fejeződött be — az újrapróbálkozáshoz ellenőrizze magát ismét.",
       "send_failed_fallback": "A küldés sikertelen",
       "unconfirmed": "Ezt a tranzakciót még nem sikerült megerősíteni a hálózaton — lehet, hogy még függőben van. Ellenőrizze az exploreren."
+    },
+    "wizard": {
+      "step_recipient": "Címzett és összeg",
+      "step_review": "Áttekintés",
+      "step_confirm": "Megerősítés"
     }
   },
   "receive": {
@@ -511,7 +581,14 @@
       "solana": "Csak Solanát küldjön erre a címre a(z) {{network}} hálózaton."
     },
     "select_asset_prompt": "Válasszon egy fogadandó eszközt.",
-    "unlock_footer_note": "A címek az eszközön lévő pénztárcájából származnak, és csak feloldott állapotban jelennek meg."
+    "unlock_footer_note": "A címek az eszközön lévő pénztárcájából származnak, és csak feloldott állapotban jelennek meg.",
+    "actions": {
+      "copy": "Másolás",
+      "copied": "Másolva",
+      "share": "Megosztás",
+      "share_dialog_title": "Cím megosztása",
+      "share_failed_toast": "A megosztási lap nem nyitható meg"
+    }
   },
   "dashboard": {
     "portfolioValue": "Portfólió értéke",
