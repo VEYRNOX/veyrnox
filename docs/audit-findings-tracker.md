@@ -19,10 +19,14 @@ Code touching audited surfaces is limited to `src/wallet-core/evm` (custom ERC-2
 ERC-20 reader I3 hardening #2943) and the approvals/pre-sign gate (#2942). **Nothing under
 `src/rasp`, `android/`, `ios/App/App`, `supabase/` or `functions/` changed.** Two weekly
 audits are in the corpus for this window: `docs/audit-2026-11-02-weekly.md` (spans
-10-12 → 11-02; no 10-19 / 10-26 report exists) and, not yet on `main` at this pin, the
+10-12 → 11-02; no 10-19 / 10-26 report was present at this snapshot's pin) and, not yet
+on `main` at this pin, the
 11-09 weekly (PR #2959) — **not synthesised here; it lands next run.** Daily diffs
 10-14 … 11-09 (`docs/security-diffs/`): **0 REGRESSION verdicts**; NEEDS-REVIEW items listed below.
 New dependency report: `docs/dependency-audits/dep-audit-2026-11-02.md` (standing item only).
+The 2026-10-26 tracker (#2911), 2026-10-26 weekly audit (#2910), and 2026-11-02 tracker
+(#2949) landed after this snapshot's pin. This 2026-11-09 tracker supersedes #2949, but
+does not synthesise #2910.
 
 **Re-verified this run (grep, at `a09abed2`):** M-7 `SceneDelegate.swift:67-73`
 `QA-INSTRUMENT-TEMP` `NSLog` loop still present (**eighth consecutive window**); H-3
@@ -39,18 +43,20 @@ exists as a constant (removed; only comments/tests reference it, `WalletProvider
 
 The 10-12 weekly’s N-D2 credential-verifier mismatch was incorrectly treated as the 10-05
 N-D2 deniability finding in the previous tracker. It is a separate finding (N-D3); the
-weekly adds seven findings, plus the `.npmrc` watch item, for eight additions total.
+weekly adds seven findings, plus the `.npmrc` and Vigil-comment watch items, for nine
+additions total.
 
 | ID | Sev | Finding | File:Line | Evidence |
 |---|---|---|---|---|
-| N-C2 | MEDIUM | Silent fast-path stores the raw DEK under a 30 s device-wide `BIOMETRIC_STRONG` window, without `CryptoObject`; bypasses H/C/KEK. Owner decision whether accepted. | `native.js:625-660,1322-1345`; `AndroidBiometricCachePlugin.kt:546-575`; `fastpathUnlock.js:62-63` | (doc) 10-12 weekly |
+| N-C2 | MEDIUM | Silent fast-path stores the raw DEK under a 30 s device-wide `BIOMETRIC_STRONG` window, without `CryptoObject`; bypasses H/C/KEK. Owner decision whether accepted. | `native.js:625-660,1322-1345`; `AndroidBiometricCachePlugin.kt:546-575`; `fastpathUnlock.js:62-63` | (grep) default-on; (doc) bypass analysis, device-unverified |
 | N-B6 | LOW | WalletConnect pending queue filters by request ID only, not topic plus ID; another dApp can evict a pending request (griefing, no spoof). | `WalletConnectProvider.jsx:891,912,937,986` | (grep) 10-12 weekly |
 | N-C3 | LOW | StrongBox fallback catches only `StrongBoxUnavailableException`; some OEMs throw `ProviderException`, so enrollment fails instead of falling back to TEE (fail-closed). | `HardwareKekPlugin.kt:256`; `AndroidBiometricCachePlugin.kt:572,625` | (doc) 10-12 weekly |
-| N-C4 | LOW | `combineKek` uses Web Crypto HKDF despite the documented @noble/@scure-only policy; I6 concat/domain and buffer zeroing are correct. | `kek.js:100-112` | (doc) 10-12 weekly |
+| N-C4 | LOW | `combineKek` uses Web Crypto HKDF despite the documented @noble/@scure-only policy; I6 concat/domain and buffer zeroing are correct. | `kek.js:245-250` | (grep) |
 | N-C5 | LOW | `unwrapDek` still accepts `WRAP_V1` without AAD (requires KEK to forge). | `kek.js:151-157` | (doc) 10-12 weekly |
 | N-D1b | LOW | PIN counter is localStorage; session floor is monotonic but lost on restart (disclosed), distinct from 10-05 N-D1. | `pinAttemptGuard.js:105-140` | (doc) 10-12 weekly |
 | N-D3 | LOW | Credential-verifier comment says “same cost as vault”, but it defaults to 96 MiB/t6 versus the 192 MiB/t3 legacy-vault profile; session-local. Correct the comment or use the vault profile. | `credentialVerifier.js:3-4,105-110` | (doc) 10-12 weekly |
 | DIFF-1022-NPMRC | NEEDS-REVIEW (supply chain) | Repo-wide `.npmrc` date pin blocks npm install/audit fixes/Dependabot from resolving packages published after 2026-10-21; no expiry or tracking issue. | `.npmrc:5` | (doc) diff-2026-10-22 |
+| DIFF-1022-VIGIL-COMMENT | LOW (doc drift) | `TierLockedPage.jsx` comment says Vigil self-gates on deniability; `Vigil.jsx` deliberately renders identically in decoy (I3). Behaviour correct, comment stale. | `TierLockedPage.jsx:26-27` | (grep) still present on merged main; (doc) diff-2026-10-22 |
 
 ### Fixed this run
 
@@ -69,8 +75,8 @@ weekly adds seven findings, plus the `.npmrc` watch item, for eight additions to
 | DIFF-1107-REPLACE-WARN | NEEDS-REVIEW (design) | Speed-up/cancel (`evm/replacement.js`, #2931) is refused for WARN-tier devices that can still send with acknowledgement: availability trade-off, `replacement.js` otherwise SAFE per diff | `sign-gate/presignOrReject.js` | (doc) diff-2026-11-07 |
 | DIFF-1108-DOC-CLAIM | NEEDS-REVIEW (honesty) | `Feature-Status.md` says receive and balance reads "work for all 14 assets" with no supplied txid: BUILT at most; and `LiveBalances.hardening.test.jsx` lost its page-level decimals-mismatch "Balance unavailable" case | `docs/Feature-Status.md` | (doc) diff-2026-11-08 |
 
-Standing: `.npmrc` date pin (10-22 NEEDS-REVIEW, supply-chain config) and the 11-02 dep-audit
-residuals are carried as standing items. New wallet-core surface from #2930/#2931/#2945 has
+Standing: `.npmrc` date pin (10-22 NEEDS-REVIEW, supply-chain config), Vigil comment drift,
+and the 11-02 dep-audit residuals are carried as standing items. New wallet-core surface from #2930/#2931/#2945 has
 only the daily-diff review (BUILT, unit tests); it has had **no weekly audit pass until the
 11-09 weekly**.
 
@@ -90,9 +96,10 @@ Android tamper-cert residual, web artifact never ALLOW, N-D1, N-D2 (10-05 deniab
 
 ### Summary adjustment (this run; supersedes the blocks below)
 
-Prior ~415 total (corrected 10-12 weekly and `.npmrc` additions); +2 weekly (N-E1, N-E2) +4 daily-diff watch items = **~421**. Fixed
-**~310** (+1, N-A2). Still open **~114**. Regressed **2** (unchanged: 09-28 H-3 KEK-stamp, WC
-refused-request queue). Needs on-device **~36** (unchanged). Counts are approximate by
+Prior ~416 total (corrected 10-12 weekly plus `.npmrc` and Vigil-comment additions); +2
+weekly (N-E1, N-E2) +4 daily-diff watch items = **~422**. Fixed **~310** (+1, N-A2).
+Still open **~115**. Regressed **2** (unchanged: 09-28 H-3 KEK-stamp, WC refused-request
+queue). Needs on-device **~37** (unchanged). Counts are approximate by
 construction (MEDIUM/LOW grouped).
 
 ---
