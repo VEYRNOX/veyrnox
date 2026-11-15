@@ -16,10 +16,13 @@ not a `git show` fallback. macOS/zsh.)
 Previous tracker analysed `4b98715a`; `main` has moved **23 commits** (`040e260d`). The
 `git diff --stat` over `src/wallet-core`, `src/rasp`, `android/`, `ios/App/App`, `supabase/`,
 `functions/`, `src/walletconnect`, `src/providers` is **empty — no security-surface code
-changed**. This window had a three-week gap (no tracker on 10-19 or 10-26). Two audit
+changed**. At this snapshot's original pin there had been a three-week gap (no tracker on
+10-19 or 10-26). Two audit
 inputs landed that the 10-12 tracker did not include: the **2026-10-12 weekly internal
 audit** (#2887, `docs/audit-2026-10-12-weekly.md`, same pin `4b98715a`) and daily diffs
 10-14 … 11-02. Daily diffs: **0 REGRESSION**; one NEEDS-REVIEW (10-22 `.npmrc`, below).
+The 2026-10-26 tracker (#2911) and weekly internal audit (#2910) landed after this snapshot's
+pin; this 2026-11-02 tracker supersedes #2911, but does not synthesise #2910.
 The 2026-11-02 weekly audit (PR #2948) is **not on `main` at this pin**, so it is not
 synthesised here; next run will pick it up.
 
@@ -37,10 +40,10 @@ regressed this window.**
 
 | ID | Sev | Finding | File:Line | Evidence |
 |---|---|---|---|---|
-| N-C2 | MEDIUM | Silent fast-path stores the RAW DEK under a 30 s device-wide `BIOMETRIC_STRONG` window, no `CryptoObject`, bypassing H/C/KEK; `isFastpathEnabled()` is `!== OFF` (default-on) contradicting the plugin comment. Owner decision whether accepted | `native.js:625-660,1322-1345`; `AndroidBiometricCachePlugin.kt:546-575`; `fastpathUnlock.js:62-63` | (doc) |
+| N-C2 | MEDIUM | Silent fast-path stores the RAW DEK under a 30 s device-wide `BIOMETRIC_STRONG` window, no `CryptoObject`, bypassing H/C/KEK; `isFastpathEnabled()` is `!== OFF` (default-on) contradicting the plugin comment. Owner decision whether accepted | `native.js:625-660,1322-1345`; `AndroidBiometricCachePlugin.kt:546-575`; `fastpathUnlock.js:62-63` | (grep) default-on; (doc) bypass analysis, device-unverified |
 | N-B6 | LOW | WC pending queue filtered by `id` only, not `topic+id`; a second dApp can evict another's pending request (griefing, no spoof) | `WalletConnectProvider.jsx:891,912,937,986` | (grep) |
 | N-C3 | LOW | StrongBox fallback catches only `StrongBoxUnavailableException`; some OEMs throw `ProviderException` so enroll fails instead of TEE fallback (fail-closed) | `HardwareKekPlugin.kt:256`; `AndroidBiometricCachePlugin.kt:572,625` | (doc) |
-| N-C4 | LOW | `combineKek` uses Web Crypto HKDF; CLAUDE.md says @noble/@scure only (policy deviation; I6 concat/domain correct) | `kek.js:100-112` | (doc) |
+| N-C4 | LOW | `combineKek` uses Web Crypto HKDF; CLAUDE.md says @noble/@scure only (policy deviation; I6 concat/domain correct) | `kek.js:245-250` | (grep) |
 | N-C5 | LOW | `unwrapDek` still accepts `WRAP_V1` without AAD (needs KEK to forge) | `kek.js:151-157` | (doc) |
 | N-D1b | LOW | PIN counter is localStorage; session floor monotonic but lost on restart (disclosed). Distinct from 10-05 N-D1 (TierProvider I3) | `pinAttemptGuard.js:105-140` | (doc) |
 | N-D3 | LOW | Credential verifier comment says “same cost as vault”, but `createCredentialVerifier` defaults to 96 MiB/t6 versus the 192 MiB/t3 legacy-vault profile; session-local. Correct the comment or use the vault profile. | `credentialVerifier.js:3-4,105-110` | (doc) 10-12 weekly |
@@ -56,16 +59,19 @@ not re-read L-4/L-5; this tracker keeps H-5 as REGRESSED per its last grep verif
 | ID | Sev | Finding | File:Line | Evidence |
 |---|---|---|---|---|
 | DIFF-1022-NPMRC | NEEDS-REVIEW (supply chain) | New repo-wide `.npmrc` `before=2026-10-21T00:00:00.000Z` (c7cea504, #2903). `npm ci` unaffected, but `npm install`/`npm audit fix`/Dependabot cannot resolve any package published after 2026-10-21, so a fresh crypto/security patch silently fails to resolve. Labelled temporary; no expiry or tracking issue | `.npmrc:5` | (grep) file present with `before=` line; effect (doc) diff-2026-10-22 |
+| DIFF-1022-VIGIL-COMMENT | LOW (doc drift) | `TierLockedPage.jsx` comment says Vigil self-gates on deniability; `Vigil.jsx` deliberately renders identically in decoy (I3). Behaviour correct, comment stale | `TierLockedPage.jsx:26-27` | (grep) still present on merged main; (doc) diff-2026-10-22 |
 
 Other daily diffs (10-14, 15, 16, 18, 28, 29, 30, 31, 11-01, 11-02) rated SAFE: i18n string
 swaps, paywall components, lockfile `dompurify` bump, `.omc/` ignore, `public/_headers` and
 lazy-loaded NFT `<img>` tags (`safeNftImageUrl`, `referrerPolicy` unchanged).
+Dependency audit 2026-10-12 reported 5 low findings, all in the accepted `elliptic` residual;
+none were critical or high.
 
 ### Summary adjustment (this run)
 
-Prior totals (10-12 section below) plus 8 new open items (7 weekly + `.npmrc`): total
-**~415**, fixed **~309** (+0), still open **~109**, regressed **2** (unchanged), needs
-on-device **~36** (unchanged). The summary block lower in this file is superseded by this
+Prior totals (10-12 section below) plus 9 new open items (7 weekly + 2 daily-diff items):
+total **~416**, fixed **~309** (+0), still open **~110**, regressed **2** (unchanged), needs
+on-device **~37** (N-C2). The summary block lower in this file is superseded by this
 section.
 
 ---
