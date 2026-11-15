@@ -115,7 +115,7 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
           cache: npm
 
       - run: npm install -g npm@11
@@ -235,7 +235,7 @@ jobs:
           ref: main
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
       - env:
           DEPLOY_URL: ${{ needs.deploy.outputs.deployment_url }}
         run: node scripts/check-edge-endpoints.mjs "$DEPLOY_URL"
@@ -353,7 +353,7 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
           cache: npm
 
       - run: npm install -g npm@11

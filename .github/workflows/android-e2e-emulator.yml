@@ -24,7 +24,7 @@ env:
   # "invalid source release: 21" (same pin as ci.yml android-release).
   JAVA_VERSION: '21'
   # Capacitor CLI requires Node >= 22.
-  NODE_VERSION: '22'
+  NODE_VERSION: '22.22.3'
   GRADLE_OPTS: '-Xmx6g -Dorg.gradle.daemon=false'
   # Public client identifier baked into `npm run build` (see ci.yml).
   VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}

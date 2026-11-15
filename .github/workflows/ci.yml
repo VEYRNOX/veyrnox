@@ -176,7 +176,7 @@ jobs:
           git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
       - name: Detect mainnet flag changes
         id: detect
         env:
@@ -256,7 +256,7 @@ jobs:
           git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
           cache: npm
       # The lockfile is authored with npm 11; Node 22 ships npm 10, which rejects
       # it (optional native dep resolution). Pin npm 11 to match the toolchain.
@@ -449,7 +449,7 @@ jobs:
           git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
           cache: npm
       # Lockfile is authored with npm 11; Node 22 ships npm 10, which rejects it.
       - run: npm install -g npm@11
@@ -471,7 +471,7 @@ jobs:
           git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v4
         with:
           distribution: temurin
@@ -516,7 +516,7 @@ jobs:
           git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v4
         with:
           distribution: temurin
@@ -560,7 +560,7 @@ jobs:
           git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
           cache: npm
       - run: npm install -g npm@11
       - run: npm ci
@@ -721,7 +721,7 @@ jobs:
           git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
           cache: npm
       - run: npm install -g npm@11
       - run: npm ci
@@ -818,7 +818,7 @@ jobs:
           git checkout --detach "$VALIDATED_SHA"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
           cache: npm
       - run: npm install -g npm@11
       - run: npm ci
@@ -1194,7 +1194,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: env.NEEDED == 'true'
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
           cache: npm
       - run: npm install -g npm@11
         if: env.NEEDED == 'true'
