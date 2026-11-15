@@ -1,10 +1,10 @@
 diff --git a/node_modules/@capacitor/ios/Capacitor/Capacitor/assets/native-bridge.js b/node_modules/@capacitor/ios/Capacitor/Capacitor/assets/native-bridge.js
-index f5e7cc4..f44bc58 100644
+index 2a9d707..fcaf04d 100644
 --- a/node_modules/@capacitor/ios/Capacitor/Capacitor/assets/native-bridge.js
 +++ b/node_modules/@capacitor/ios/Capacitor/Capacitor/assets/native-bridge.js
-@@ -315,7 +315,44 @@ var nativeBridge = (function (exports) {
-         };
+@@ -316,7 +316,44 @@ var nativeBridge = (function (exports) {
          const initLogger = (win, cap) => {
+             var _a, _b;
              const BRIDGED_CONSOLE_METHODS = ['debug', 'error', 'info', 'log', 'trace', 'warn'];
 -            const createLogFromNative = (c) => (result) => {
 +            // VEYRNOX PATCH (debug-build log redaction): the bridge echo below prints
@@ -48,7 +48,7 @@ index f5e7cc4..f44bc58 100644
                  if (isFullConsole(c)) {
                      const success = result.success === true;
                      const tagStyles = success
-@@ -339,7 +376,8 @@ var nativeBridge = (function (exports) {
+@@ -340,7 +377,8 @@ var nativeBridge = (function (exports) {
                      }
                  }
              };
