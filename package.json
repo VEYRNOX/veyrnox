@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.22.3 <23"
+  },
   "scripts": {
     "dev": "vite",
     "build": "node ./node_modules/cross-env/dist/bin/cross-env.js NODE_OPTIONS=--max-old-space-size=4096 vite build",
@@ -34,7 +37,7 @@
     "verify:onchain": "node scripts/verify-onchain-evidence.mjs",
     "phase2:checklist": "node scripts/phase2-checklist-runner.mjs",
     "phase2:checklist:quick": "node scripts/phase2-checklist-runner.mjs --no-tests --no-native",
-    "pretest": "node scripts/audit/lib/source-scan.selftest.mjs && node scripts/lib/postAuditDeferrals.selftest.mjs && node scripts/check-crypto-rng.mjs && node scripts/check-deniability-strings.mjs && node scripts/check-finding-id-consistency.mjs && node scripts/check-cert-pin-manager-safety.mjs && npm run typecheck:core",
+    "pretest": "node scripts/check-node-version.mjs && node scripts/audit/lib/source-scan.selftest.mjs && node scripts/lib/postAuditDeferrals.selftest.mjs && node scripts/check-crypto-rng.mjs && node scripts/check-deniability-strings.mjs && node scripts/check-finding-id-consistency.mjs && node scripts/check-cert-pin-manager-safety.mjs && npm run typecheck:core",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
@@ -171,7 +174,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.5.2",
     "ethers": "6.17.0",
-    "framer-motion": "13.4.4",
+    "framer-motion": "14.6.0",
     "hash-wasm": "^4.12.0",
     "i18next": "^26.7.2",
     "input-otp": "^1.5.0",
@@ -211,10 +214,11 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.2.1",
     "@walletconnect/sign-client": "^2.26.0",
-    "@wdio/cli": "^9.32.0",
-    "@wdio/local-runner": "^9.32.0",
-    "@wdio/mocha-framework": "^9.32.0",
-    "@wdio/spec-reporter": "^9.32.0",
+    "@wdio/cli": "^10.1.0",
+    "@wdio/globals": "^10.1.0",
+    "@wdio/local-runner": "^10.1.0",
+    "@wdio/mocha-framework": "^10.1.0",
+    "@wdio/spec-reporter": "^10.1.0",
     "appium": "^3.9.0",
     "appium-uiautomator2-driver": "git+https://github.com/appium/appium-uiautomator2-driver.git#7a54db007aa8a44f5df21cd0b52afc13c0d277ae",
     "autoprefixer": "^10.6.2",
@@ -229,6 +233,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "eslint-plugin-unused-imports": "^4.3.0",
+    "expect-webdriverio": "^8.0.0",
     "fake-indexeddb": "^6.2.7",
     "globals": "^17.14.0",
     "javascript-obfuscator": "^5.10.0",
@@ -239,7 +244,7 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.6",
     "vitest": "^5.1.0",
-    "webdriverio": "^9.29.1"
+    "webdriverio": "^10.1.0"
   },
   "//overrides-audit-notes": [
     "Appium bundled Axios/Morgan/brace-expansion: RETIRED 2026-10-03 by PR #2800. UiAutomator2 is pinned to the exact v8.7.0 Git source, which does not bundle dependencies; clean npm ci checks on origin/main 238ce2bb confirmed the nested copies are absent and the resolved shared copies are patched. Git preparation has separate build dependencies, so this is not a claim of byte-reproducible output. The AJV override remains scoped to v6 consumers because Appium requires v8.20.0; a global v6 override breaks its CLI. Return to a published registry driver only when its actual installed bundle is patched.",

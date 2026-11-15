@@ -60,7 +60,6 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: '22'
   VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
   VITE_TIP_BASE_URL: ${{ vars.VITE_TIP_BASE_URL }}
   VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
@@ -91,7 +90,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Pin npm to 11
