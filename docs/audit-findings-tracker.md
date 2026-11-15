@@ -1,6 +1,6 @@
 # Audit Findings Tracker
-Last updated: 2026-10-26
-Analysed against: origin/main @ `88cbe054f5cd3d40b080c8fbe86d36ae5ec33b96`
+Last updated: 2026-11-02
+Analysed against: origin/main @ `040e260dbe6de2a68dfcb09528dec62055b25562`
 (clean branch worktree cut from `origin/main` per Step 0 — not the live checkout,
 not a `git show` fallback. macOS/zsh.)
 
@@ -11,62 +11,68 @@ not a `git show` fallback. macOS/zsh.)
 > against source this run; rows tagged `(doc)` carry the status recorded in an audit doc or
 > PR history and were not independently re-checked.
 
-## Window since last run (2026-10-12 → 2026-10-26)
+## Window since last run (2026-10-12 → 2026-11-02)
 
-Previous run analysed `4b98715a`. `main` has moved **12 commits** since (`88cbe054`). **Zero
-commits touch `src/wallet-core`, `src/rasp`, `android/`, `ios/App/App`, `supabase/` or
-`functions/`.** Code changes: Settings i18n extraction (#2890/#2891), Vigil owl paywall
-animation (#2902), a repo-wide `.npmrc` (#2903). **No finding fixed, none regressed this window.**
+Previous tracker analysed `4b98715a`; `main` has moved **23 commits** (`040e260d`). The
+`git diff --stat` over `src/wallet-core`, `src/rasp`, `android/`, `ios/App/App`, `supabase/`,
+`functions/`, `src/walletconnect`, `src/providers` is **empty — no security-surface code
+changed**. At this snapshot's original pin there had been a three-week gap (no tracker on
+10-19 or 10-26). Two audit
+inputs landed that the 10-12 tracker did not include: the **2026-10-12 weekly internal
+audit** (#2887, `docs/audit-2026-10-12-weekly.md`, same pin `4b98715a`) and daily diffs
+10-14 … 11-02. Daily diffs: **0 REGRESSION**; one NEEDS-REVIEW (10-22 `.npmrc`, below).
+The 2026-10-26 tracker (#2911) and weekly internal audit (#2910) landed after this snapshot's
+pin; this 2026-11-02 tracker supersedes #2911, but does not synthesise #2910.
+The 2026-11-02 weekly audit (PR #2948) is **not on `main` at this pin**, so it is not
+synthesised here; next run will pick it up.
 
-**The 2026-10-12 weekly internal audit landed** (#2887, `docs/audit-2026-10-12-weekly.md`)
-*after* the 10-12 tracker (#2884) was cut, so this is the first tracker to ingest it. Every
-carried item is STILL PRESENT; it adds 5 new items (below). It could not locate the 09-28 H-5
-(refused WC request stays queued) at its cited lines and did not re-read L-4/L-5 — those two
-are carried by prior status, not re-confirmed by that audit.
+**Re-verified this run (grep, at `040e260d`) — all STILL OPEN, unchanged:**
+M-7 `SceneDelegate.swift:67-73` `QA-INSTRUMENT-TEMP` `NSLog` block still present (**seventh
+consecutive window unfiled**); H-3 `keystore/kekProfiles.js:101` `usedFallback: !stamped && i > 0`;
+H-1 `typed-data.js` still only 2 hits for `TransferWithAuthorization|SafeTx` (no struct
+entries — unchanged vs prior check); N-A1 `AndroidManifest.xml` 0 `<queries>`; N-B2
+`RequestApprovalModal.jsx:89` unguarded `BigInt(reqParams[0].value)`; H-2 `HEARTBEAT_MS =
+60_000`; M-3 `AAD_V3_MIGRATION_ENABLED = false` (`vault.js:323`); N-B6 pending queues filter
+on `id` only (`WalletConnectProvider.jsx:891,912,937,986`). **No finding fixed, none
+regressed this window.**
 
-**Re-verified this run (grep, at `88cbe054`):** M-7 `SceneDelegate.swift:67-73`
-`QA-INSTRUMENT-TEMP` present (seventh consecutive window unfiled); H-3 `kekProfiles.js:101`
-`usedFallback: !stamped && i > 0` unchanged; H-1 `typed-data.js` 0 hits for
-`TransferWithAuthorization`; N-B2 `RequestApprovalModal.jsx:89` unguarded `BigInt(...)`;
-N-A1 `AndroidManifest.xml` 0 `<queries`; H-2 `useRaspArtifact.js:59` `HEARTBEAT_MS = 60_000`;
-M-3 `vault.js:323` `AAD_V3_MIGRATION_ENABLED = false`; M-5 `WalletEntry.jsx:1089,1218`
-`clearPinAttempts()`; N-C2 `fastpathUnlock.js:62-63` `isFastpathEnabled()` is
-`value !== OFF` (default-on); N-C4 `kek.js:245,250` Web Crypto HKDF; L-6 iOS `enroll`
-RASP-gated (`HardwareKekPlugin.m:113-119`). WC queue (`WalletConnectProvider.jsx:912-993`)
-still filters `pendingRequests` by `id` only (supports N-B6).
-
-### New this run — 2026-10-12 weekly (5)
-
-| ID | Sev | Finding | File:Line | Evidence |
-|---|---|---|---|---|
-| 10-12 N-C2 | MEDIUM | Silent fast-path stores the RAW DEK under a 30 s device-wide `BIOMETRIC_STRONG` window with no `CryptoObject`, bypassing H, C and the KEK; **default-on** despite "opt-in OFF" comments. Owner decision whether accepted | `native.js:625-660,1322-1345`, `AndroidBiometricCachePlugin.kt:546-575`, `fastpathUnlock.js:62-63` | (grep) default-on; (doc) bypass analysis, device-unverified |
-| 10-12 N-B6 | LOW | WC pending queue filtered by `id` only, not `topic+id`; a second dApp can evict another dApp's pending request (griefing, no spoof) | `WalletConnectProvider.jsx:~912-989` | (grep) id-only filter |
-| 10-12 N-C3 | LOW | StrongBox fallback catches only `StrongBoxUnavailableException`; OEM `ProviderException` fails enroll instead of TEE fallback (fail-closed) | `HardwareKekPlugin.kt:256`, `AndroidBiometricCachePlugin.kt:572,625` | (doc) |
-| 10-12 N-C4 | LOW | `combineKek` uses Web Crypto HKDF; CLAUDE.md says @noble/@scure only. I6 concat/domain correct, buffers zeroed | `kek.js:245-250` | (grep) |
-| 10-12 N-C5 | LOW | `unwrapDek` still accepts `WRAP_V1` without AAD (needs the KEK to forge) | `kek.js:151-157` | (doc) |
-| 10-12 N-D2 | LOW | `credentialVerifier` defaults to 96 MiB/t6, half the memory-hardness of 192 MiB/t3 legacy vaults; comment overclaims (session-local) | `credentialVerifier.js:3-4,105-110` | (doc) |
-
-*(10-12's own `N-D1` — PIN counter in localStorage, session floor lost on restart, disclosed — is
-tracked here as **10-12 N-D1 (INFO)**; it is a different item from the 10-05 `N-D1`
-subscription-refresh/I3 row. IDs collide across weeks, so cite the date prefix.)*
-
-### New this run — daily diffs 10-14 … 10-22
+### New this run — 2026-10-12 weekly (7 new; IDs per surface)
 
 | ID | Sev | Finding | File:Line | Evidence |
 |---|---|---|---|---|
-| **DIFF-1022-NPMRC** | NEEDS-REVIEW (supply chain, low) | New repo-wide `.npmrc` `before=2026-10-21T00:00:00.000Z` (#2903). `npm ci` is unaffected, but any fresh install/`npm audit fix`/Dependabot bump cannot resolve versions published after that date, so a new security patch for a crypto package would silently fail to resolve. Labelled temporary; no expiry or tracking issue | `.npmrc` | (grep) file present with `before=`; (doc) diff-2026-10-22 |
-| DIFF-1022-VIGIL-COMMENT | LOW (doc drift) | `TierLockedPage.jsx` comment says Vigil self-gates on deniability; `Vigil.jsx` deliberately renders identically in decoy (I3). Behaviour correct, comment stale | `TierLockedPage.jsx` | (doc) |
+| N-C2 | MEDIUM | Silent fast-path stores the RAW DEK under a 30 s device-wide `BIOMETRIC_STRONG` window, no `CryptoObject`, bypassing H/C/KEK; `isFastpathEnabled()` is `!== OFF` (default-on) contradicting the plugin comment. Owner decision whether accepted | `native.js:625-660,1322-1345`; `AndroidBiometricCachePlugin.kt:546-575`; `fastpathUnlock.js:62-63` | (grep) default-on; (doc) bypass analysis, device-unverified |
+| N-B6 | LOW | WC pending queue filtered by `id` only, not `topic+id`; a second dApp can evict another's pending request (griefing, no spoof) | `WalletConnectProvider.jsx:891,912,937,986` | (grep) |
+| N-C3 | LOW | StrongBox fallback catches only `StrongBoxUnavailableException`; some OEMs throw `ProviderException` so enroll fails instead of TEE fallback (fail-closed) | `HardwareKekPlugin.kt:256`; `AndroidBiometricCachePlugin.kt:572,625` | (doc) |
+| N-C4 | LOW | `combineKek` uses Web Crypto HKDF; CLAUDE.md says @noble/@scure only (policy deviation; I6 concat/domain correct) | `kek.js:245-250` | (grep) |
+| N-C5 | LOW | `unwrapDek` still accepts `WRAP_V1` without AAD (needs KEK to forge) | `kek.js:151-157` | (doc) |
+| N-D1b | LOW | PIN counter is localStorage; session floor monotonic but lost on restart (disclosed). Distinct from 10-05 N-D1 (TierProvider I3) | `pinAttemptGuard.js:105-140` | (doc) |
+| N-D3 | LOW | Credential verifier comment says “same cost as vault”, but `createCredentialVerifier` defaults to 96 MiB/t6 versus the 192 MiB/t3 legacy-vault profile; session-local. Correct the comment or use the vault profile. | `credentialVerifier.js:3-4,105-110` | (doc) 10-12 weekly |
 
-Daily diffs 10-14, 10-16, 10-18: no security-relevant commits. 10-15 (Settings i18n): SAFE, I3 branch
-intact. 10-22 Vigil paywall animation: SAFE. Dependency audit 2026-10-12 (clean tree): 5 low, all
-the accepted `elliptic` residual; none critical/high.
+Also in the 10-12 weekly, already tracked: L-6 (iOS `enroll` now RASP-gated — **PARTIALLY FIXED (doc)**; Android `enroll` and
+`clearCredential` on both platforms still ungated). 10-12 weekly: **Any REGRESSED: none.**
+It could not locate 09-28 H-5 (refused WC request stays queued) at the cited lines and did
+not re-read L-4/L-5; this tracker keeps H-5 as REGRESSED per its last grep verification
+(2026-10-05) and flags it as due for a fresh grep.
+
+### New this run — daily diffs 10-14 … 11-02
+
+| ID | Sev | Finding | File:Line | Evidence |
+|---|---|---|---|---|
+| DIFF-1022-NPMRC | NEEDS-REVIEW (supply chain) | New repo-wide `.npmrc` `before=2026-10-21T00:00:00.000Z` (c7cea504, #2903). `npm ci` unaffected, but `npm install`/`npm audit fix`/Dependabot cannot resolve any package published after 2026-10-21, so a fresh crypto/security patch silently fails to resolve. Labelled temporary; no expiry or tracking issue | `.npmrc:5` | (grep) file present with `before=` line; effect (doc) diff-2026-10-22 |
+| DIFF-1022-VIGIL-COMMENT | LOW (doc drift) | `TierLockedPage.jsx` comment says Vigil self-gates on deniability; `Vigil.jsx` deliberately renders identically in decoy (I3). Behaviour correct, comment stale | `TierLockedPage.jsx:26-27` | (grep) still present on merged main; (doc) diff-2026-10-22 |
+
+Other daily diffs (10-14, 15, 16, 18, 28, 29, 30, 31, 11-01, 11-02) rated SAFE: i18n string
+swaps, paywall components, lockfile `dompurify` bump, `.omc/` ignore, `public/_headers` and
+lazy-loaded NFT `<img>` tags (`safeNftImageUrl`, `referrerPolicy` unchanged).
+Dependency audit 2026-10-12 reported 5 low findings, all in the accepted `elliptic` residual;
+none were critical or high.
 
 ### Summary adjustment (this run)
 
-Prior totals (~407 / ~309 fixed / ~101 open / 2 regressed / ~36 on-device) plus 8 new open items
-(6 from the 10-12 weekly, 2 from daily diffs): total **~415**, fixed **~309** (+0), still open
-**~109**, regressed **2** (unchanged: 09-28 H-3 KEK stamp, 09-28 H-5 WC queue — the latter not
-re-located by the 10-12 audit, status carried), needs on-device **~37** (N-C2).
+Prior totals (10-12 section below) plus 9 new open items (7 weekly + 2 daily-diff items):
+total **~416**, fixed **~309** (+0), still open **~110**, regressed **2** (unchanged), needs
+on-device **~37** (N-C2). The summary block lower in this file is superseded by this
+section.
 
 ---
 
