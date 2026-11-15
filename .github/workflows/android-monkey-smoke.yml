@@ -46,7 +46,6 @@ permissions:
 
 env:
   JAVA_VERSION: '21'
-  NODE_VERSION: '22.22.3'
   GRADLE_OPTS: '-Xmx6g -Dorg.gradle.daemon=false'
   VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
   # Backend egress is deliberately BLANKED for this job, unlike every other
@@ -93,7 +92,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Setup Java
