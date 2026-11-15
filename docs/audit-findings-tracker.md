@@ -39,12 +39,11 @@ does not synthesise #2910.
 SPKI pins still `PLACEHOLDER_*_REPLACE_ON_DEVICE`. `PRIMARY_UNLOCK_EQUALIZER_MS` no longer
 exists as a constant (removed; only comments/tests reference it, `WalletProvider.jsx:235`).
 
-### Carried forward — 2026-10-12 weekly (7 new findings; corrected prior count)
+### Carried forward — 2026-10-12 weekly (7 findings)
 
-The 10-12 weekly’s N-D2 credential-verifier mismatch was incorrectly treated as the 10-05
-N-D2 deniability finding in the previous tracker. It is a separate finding (N-D3); the
-weekly adds seven findings, plus the `.npmrc` and Vigil-comment watch items, for nine
-additions total.
+The 10-12 credential-verifier mismatch is tracked separately as N-D3, distinct from the
+10-05 N-D2 deniability finding. The weekly adds seven findings, plus the `.npmrc` and
+Vigil-comment watch items, for nine additions total.
 
 | ID | Sev | Finding | File:Line | Evidence |
 |---|---|---|---|---|
@@ -55,8 +54,13 @@ additions total.
 | N-C5 | LOW | `unwrapDek` still accepts `WRAP_V1` without AAD (requires KEK to forge). | `kek.js:151-157` | (doc) 10-12 weekly |
 | N-D1b | LOW | PIN counter is localStorage; session floor is monotonic but lost on restart (disclosed), distinct from 10-05 N-D1. | `pinAttemptGuard.js:105-140` | (doc) 10-12 weekly |
 | N-D3 | LOW | Credential-verifier comment says “same cost as vault”, but it defaults to 96 MiB/t6 versus the 192 MiB/t3 legacy-vault profile; session-local. Correct the comment or use the vault profile. | `credentialVerifier.js:3-4,105-110` | (doc) 10-12 weekly |
-| DIFF-1022-NPMRC | NEEDS-REVIEW (supply chain) | Repo-wide `.npmrc` date pin blocks npm install/audit fixes/Dependabot from resolving packages published after 2026-10-21; no expiry or tracking issue. | `.npmrc:5` | (doc) diff-2026-10-22 |
+| DIFF-1022-NPMRC | NEEDS-REVIEW (supply chain) | Repo-wide `.npmrc` date pin blocks npm install/audit fixes/Dependabot from resolving packages published after 2026-10-21; no expiry or tracking issue. | `.npmrc:5` | (grep) file present; (doc) effect, diff-2026-10-22 |
 | DIFF-1022-VIGIL-COMMENT | LOW (doc drift) | `TierLockedPage.jsx` comment says Vigil self-gates on deniability; `Vigil.jsx` deliberately renders identically in decoy (I3). Behaviour correct, comment stale. | `TierLockedPage.jsx:26-27` | (grep) still present on merged main; (doc) diff-2026-10-22 |
+
+Status carried from #2949: L-6 is **PARTIALLY FIXED (doc)** — iOS `enroll` is RASP-gated,
+while Android `enroll` and `clearCredential` on both platforms remain ungated. H-5 (a
+refused WalletConnect request stays queued) remains in the regressed class and is still due
+for a fresh grep verification.
 
 ### Fixed this run
 
@@ -84,8 +88,9 @@ only the daily-diff review (BUILT, unit tests); it has had **no weekly audit pas
 
 HIGH: H-1 / N-B1 typed-data fall-through (grep); H-2 attestation on dashboard (grep); H-3
 KEK stamp-on-fallback timing (grep, **regressed** class); H-4 primary/decoy tier tell (doc).
-MEDIUM: N-C2 silent fast-path raw DEK under 30 s biometric window (doc; weekly suggests
-HIGH); M-1 `'sign'` blockedActions unread (doc); M-2 approval calldata gaps (doc); N-A1
+MEDIUM: N-C2 silent fast-path raw DEK under 30 s biometric window (grep default-on; bypass
+analysis and device status from docs; weekly suggests HIGH); M-1 `'sign'` blockedActions
+unread (doc); M-2 approval calldata gaps (doc); N-A1
 Android package-based RASP probes inert on targetSdk 36 (grep, upgraded to probable,
 device-unverified); N-B3, N-B5 (doc); H-5 refused WC request stays queued (doc, **regressed**
 class, reclassified MEDIUM); M-3 v3 reseal drops `kekKdf` (grep, latent); M-4, M-5, M-6 (doc);
@@ -300,7 +305,8 @@ from 09-14, cited in full in `docs/audit-2026-09-28-weekly.md`.
 **Carried LOWs (09-14, all STILL PRESENT):** L-1 (TP refusal leaves decrypted container
 resident), L-2 (TP token not consumed on Digital Shield), L-3 (step-up OOM counted as wrong
 PIN), L-4 (unparseable fee skips WC fee ceiling), L-5 (**escalated into 09-28 H-1** — SafeTx/
-`address[]` backstop gap), L-6 (no RASP gate on KEK enroll/clearCredential), L-7 (plaintext
+`address[]` backstop gap), L-6 (**PARTIALLY FIXED**: iOS `enroll` is RASP-gated; Android
+`enroll` and `clearCredential` on both platforms remain ungated), L-7 (plaintext
 H/DEK write-side residue), L-8 (web fresh RASP artifact can never be ALLOW), L-9 (stale
 comments, extended into 09-28 L-14), INFO (`handleSendTransaction` deps omit
 `isDecoy`/`isHidden`, mitigated).
