@@ -162,7 +162,7 @@ jobs:
           if [ -f public/_redirects ]; then cp public/_redirects _bundle/dist/_redirects; fi
           # Include the edge-probe script (used from the post-deploy job) —
           # trusted only because it will be re-checked-out from main below.
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: deploy-bundle
           path: _bundle
@@ -399,7 +399,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: staging-e2e-report
           path: playwright-report/
