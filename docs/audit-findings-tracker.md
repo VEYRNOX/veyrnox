@@ -1,6 +1,6 @@
 # Audit Findings Tracker
-Last updated: 2026-11-09
-Analysed against: origin/main @ `a09abed2b1fe5e89d33c2eb631d865e8a871ed88`
+Last updated: 2026-11-16
+Analysed against: origin/main @ `5cd7de75f643dded69cd0c612894ab02e11a03e8`
 (clean branch worktree cut from `origin/main` per Step 0 — not the live checkout,
 not a `git show` fallback. macOS/zsh.)
 
@@ -11,7 +11,87 @@ not a `git show` fallback. macOS/zsh.)
 > against source this run; rows tagged `(doc)` carry the status recorded in an audit doc or
 > PR history and were not independently re-checked.
 
-## Window since last run (2026-10-12 → 2026-11-09)
+## Window since last run (2026-11-09 → 2026-11-16)
+
+Previous run analysed `a09abed2`. `main` has moved to `5cd7de75` (includes the 2026-11-09
+tracker #2960, daily diffs #2968/#2974, and dependency bumps #2969–#2973). **Code under
+`src/`, `android/` and `ios/App/App` did not change** — the only non-doc diffs are
+`package.json` (24-package npm-minor-patch group #2970, `react-i18next` 18 #2971,
+`@capacitor/browser` 8.0.5 #2972, `@capacitor/ios` 8.6.2 #2973 with its LOG-1 patch renamed
+to `patches/@capacitor+ios+8.6.2.patch`) and `ios/Gemfile.lock` (`addressable` 2.9.1).
+
+**The 2026-11-09 weekly audit is now on `main`** (`docs/audit-2026-11-09-weekly.md`, PR
+#2959) and is synthesised below. The 2026-11-16 weekly security audit was **not on `main` at
+this pin** (no open PR either); it lands in a later run. Any NEEDS-REVIEW items in the
+11-16 daily diff (#2974): `hash-wasm` 4.12.0 → 4.13.0 rebuilt the Argon2id WASM modules and
+the vault KDF output against existing blobs has not been verified (**watch item,
+DIFF-1116-HASHWASM, NEEDS-REVIEW**; `vault.js` uses `argon2id` from `hash-wasm`; no
+Argon2id-vector test result seen by this tracker — (doc)).
+
+**Re-verified this run (grep, at `5cd7de75`):** M-7/M-11 `SceneDelegate.swift:67,73`
+`QA-INSTRUMENT-TEMP` markers and `:69` `NSLog` still present (**ninth consecutive
+window**); H-3 `kekProfiles.js:101` `usedFallback: !stamped && i > 0` unchanged; H-1
+`typed-data.js` mentions `SafeTx` only in comments (lines 20, 44), no
+`TransferWithAuthorization`; N-A1 `AndroidManifest.xml` has 0 `<queries>`; N-B2
+`RequestApprovalModal.jsx:89` unguarded `BigInt(reqParams[0].value)`; H-2 `HEARTBEAT_MS =
+60_000` (`useRaspArtifact.js:59`) and `deferAttestation = false` default (`:104`); M-3/M-5
+`AAD_V3_MIGRATION_ENABLED = false` (`vault.js:323`), `KDF_PROFILE_V2_MIGRATION_ENABLED =
+false` (`vault.js:98`); H10 `rpc/pinning.js:47-49` SPKI pins still
+`PLACEHOLDER_*_REPLACE_ON_DEVICE`; N-A2 `TokenApprovals.jsx:21,202` still calls
+`presignGateOrReject`; M-1 `SendCrypto.jsx` imports `presignGate` (`:71`) and has no
+`blockedActions` read; M-2 `FRESH_PROBE_TIMEOUT_MS = 1500` wraps the probe
+(`getFreshRaspArtifact.js:61`); H16 `HardwareKekPlugin.kt:23,95` states
+`AUTH_DEVICE_CREDENTIAL` removed (no active use); RASP-A2 `SendCrypto.jsx:1299,1492` falls
+back to `TIER.BLOCK`; H-NEW-3 `copySecret.js` has the `visibilitychange` listener (`:12,25`);
+`kek.js:193,272` zero helper present. **No regression found.**
+
+### Synthesised this run — 2026-11-09 weekly (all carried / one fixed)
+
+The 11-09 weekly reports **0 CRITICAL, 2 HIGH** and re-confirms every 11-02 item STILL
+PRESENT except N-A2 (FIXED, #2942) and N-A3 (PARTIALLY FIXED). It re-numbers findings with
+its own per-report IDs (H-1, H-2, M-1 … M-11, L-1 … L-13); the mapping to tracker IDs:
+
+| 11-09 ID | Tracker ID | Sev | Finding | Evidence |
+|---|---|---|---|---|
+| H-1 | N-C2 | HIGH (weekly) | Silent fast-path stores raw DEK under 30 s device-wide biometric window; default-on makes the Kotlin accepted-risk comment stale | (grep) code present; (doc) bypass analysis, device-unverified |
+| H-2 | H-1 / N-B1 | HIGH | EIP-712 shape check fails open: `TransferWithAuthorization`, `Withdraw`, CoW `Order`, `Delegation` score `LEVEL.OK` | (grep) no entry in `typed-data.js`; (doc) synthetic-payload result |
+| M-1 | M-1 | MEDIUM | SendCrypto ignores `'sign'` in `blockedActions` (React-state biometric) | (grep) |
+| M-2 | N-E1 | MEDIUM | Native hard-signal latch bypassed by 1500 ms stall: BLOCK degrades to WARN | (grep) timeout present; (doc) analysis |
+| M-3 | N-A1 | MEDIUM | Magisk/Zygisk package probes inert on targetSdk 36 | (grep) 0 `<queries>` |
+| M-4 | — | MEDIUM | Android biometric-cache legacy alias `requiresAuth=false` | (doc) |
+| M-5 | M-3 | MEDIUM (latent) | v3 reseal drops `kekKdf`; flag off | (grep) flag |
+| M-6 | H-3/M-4/L-4/L-5 | MEDIUM | PIN-attempt accounting cluster (timing oracle, late persistence, OOM counted as wrong PIN) | (grep) `kekProfiles.js:101`; rest (doc) |
+| M-7 | H-5 | MEDIUM | Refused WC request stays queued, new instance `:625` | (doc) — **still due a fresh grep** |
+| M-8 | N-B3 | MEDIUM | WC gas/fee fallback holes (1M cap, uncapped fee) | (doc) |
+| M-9 / M-10 | M-2 / N-B5 | MEDIUM | `calldata.js` selector gaps; `personal_sign` unscored | (doc) |
+| M-11 | M-7 | MEDIUM | iOS `SceneDelegate` logs every URL | (grep) |
+| L-3 (NEW) | N-F2 | LOW | Three divergent `presignGateOrReject` implementations; `sendRevoke` does not self-gate | (doc) |
+| L-7 (NEW) | N-F1-D | LOW | Leftover verifier-capture KDF may overlap next unlock (OOM path) | (doc, unconfirmed on device) |
+| L-8 (NEW) | N-F3 | LOW | Custom-token symbol contract-controlled, no "unverified" cue | (doc) |
+| L-9 (NEW) | — | LOW | Expired WC requests may never dequeue (inference; check SDK types) | (doc) |
+| L-11 (NEW) | — | LOW (honesty) | iOS "SecureEnclave" label: H is random in-app bytes, SE-wrapped | (doc) |
+
+### Fixed this run
+
+None. N-A2 (#2942) was recorded fixed in the 11-09 tracker and is re-confirmed present
+(grep). N-A3 stays **open / partially fixed**.
+
+### Regressed
+
+None new. Two carried "regressed-class" items remain open: 09-28 H-3 KEK stamp-on-fallback
+(`kekProfiles.js:101`) and H-5 WC refused-request queue.
+
+### Summary adjustment (this run; supersedes the blocks below)
+
+Prior ~422 total; this run adds the 11-09 new items (N-F2, N-F1-D, N-F3, L-9, L-11 = 5) and
+one daily-diff watch item (DIFF-1116-HASHWASM) = **~428**. Fixed **~310** (unchanged;
+no new fix). Still open **~121**. Regressed **2** (unchanged). Needs on-device **~37**
+(unchanged; `hash-wasm` vector check would add one if run on-device). Counts are approximate
+by construction (MEDIUM/LOW grouped). **No fix landed for any carried item this window.**
+
+---
+
+## Previous window (2026-10-12 → 2026-11-09, retained for reference)
 
 Previous tracker run analysed `4b98715a`. `main` has moved **38 commits** to `a09abed2`.
 Code touching audited surfaces is limited to `src/wallet-core/evm` (custom ERC-20 tokens
