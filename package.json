@@ -151,7 +151,7 @@
     "@radix-ui/react-toggle-group": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.4.1",
     "@reown/appkit": "^1.8.24",
-    "@reown/appkit-common": "^1.8.24",
+    "@reown/appkit-common": "^2.0.0",
     "@reown/appkit-universal-connector": "^1.8.24",
     "@reown/walletkit": "1.6.0",
     "@revenuecat/purchases-capacitor": "^13.7.0",
